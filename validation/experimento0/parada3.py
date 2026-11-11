@@ -268,7 +268,9 @@ def resumir(r, calib=None):
                    "desfase_movimiento_activo_p10_p50_p90": q(lag2),
                    "movimiento_activo_en_0_5_25_frames_pct": [pct([x is not None and x <= w for x in lag2]) for w in (0, 5, 25)],
                    "sin_movimiento_activo_3s_pct": pct([x is None for x in lag2]),
-                   "mismo_equipo_pct": pct([p["mismo_equipo"] for p in re_])}
+                   "mismo_equipo_pct": pct([p["mismo_equipo"] for p in re_]),
+                   "salto_al_reanudar_m_p10_p50_p90": q([p["salto"] for p in re_]),
+                   "balon_quieto_en_D_pct": round(100.0 * r["frames_d_quietos"] / r["frames_d"], 2) if r["frames_d"] else None}
     ad, dd = r["cortas_antes_de_D"], r["cortas_despues_de_D"]
     s["cortas"] = {
         "antes_de_D": len(ad), "despues_de_D": len(dd), "entre_dos_D": r["cortas_entre_dos_D"],

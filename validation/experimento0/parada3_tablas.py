@@ -177,9 +177,11 @@ def main():
     print()
 
     print("### 2e, paso a activo\n")
-    print(tabla(["partido", "medida fijada: desfase p10 / p50 / p90 (artefacto)", "medida nueva: desfase p10 / p50 / p90",
+    print(tabla(["partido", "balón quieto en los frames D %", "salto del balón al reanudar p10 / p50 / p90 (m)",
+                 "medida fijada: desfase p10 / p50 / p90 (artefacto)", "medida nueva: desfase p10 / p50 / p90",
                  "se mueve a 0 / ≤ 5 / ≤ 25 frames %", "flag de la parada = equipo que reanuda %"],
-                [[p, f(s["activo"]["desfase_movimiento_p10_p50_p90"], 0), f(s["activo"]["desfase_movimiento_activo_p10_p50_p90"], 0),
+                [[p, f(s["activo"]["balon_quieto_en_D_pct"], 2), f(s["activo"]["salto_al_reanudar_m_p10_p50_p90"], 2),
+                  f(s["activo"]["desfase_movimiento_p10_p50_p90"], 0), f(s["activo"]["desfase_movimiento_activo_p10_p50_p90"], 0),
                   f(s["activo"]["movimiento_activo_en_0_5_25_frames_pct"]), f(s["activo"]["mismo_equipo_pct"])]
                  for p, s in filas_partidos(P)]))
     print()

@@ -380,6 +380,11 @@ def medir_parte(parte, prm, rng, eventos_parte=None, prep=None, campo=(105.0, 68
                       "tipo": tipo, "duracion": dur, "flag_constante": bool(np.all(flag_d == flag_d[0])),
                       "flag_igual_al_anterior": bool(poss[o] == poss[o - 1])})
     r["pasos_a_inactivo"] = pasos
+    # balón congelado en D: frames inactivos con la misma posición que el frame anterior
+    quieto = np.zeros(n, bool)
+    quieto[1:] = (np.diff(prep["x"]) == 0) & (np.diff(prep["y"]) == 0)
+    r["frames_d"] = int(np.sum(estado[1:] != 1))
+    r["frames_d_quietos"] = int(np.sum(quieto[1:] & (estado[1:] != 1)))
     # 2e: pasos a activo
     reanudar = []
     for e in fines_d:
@@ -391,7 +396,8 @@ def medir_parte(parte, prm, rng, eventos_parte=None, prep=None, campo=(105.0, 68
         avance = np.hypot(np.diff(prep["x"][e:b]), np.diff(prep["y"][e:b])) * FPS
         mov2 = np.flatnonzero(avance > 2.0)
         reanudar.append({"desfase_movimiento": lag, "desfase_movimiento_activo": int(mov2[0]) if len(mov2) else None,
-                         "mismo_equipo": bool(poss[e - 1] == poss[e])})
+                         "mismo_equipo": bool(poss[e - 1] == poss[e]),
+                         "salto": float(np.hypot(prep["x"][e] - prep["x"][e - 1], prep["y"][e] - prep["y"][e - 1]))})
     r["pasos_a_activo"] = reanudar
     # posesiones cortas junto a un D
     lab = np.where(estado == 0, 2, poss - 1)  # 0 local, 1 visitante, 2 D

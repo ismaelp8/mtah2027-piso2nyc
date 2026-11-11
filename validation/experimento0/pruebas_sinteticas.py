@@ -290,6 +290,7 @@ def prueba_medir_parte():
     assert len(r["pasos_a_activo"]) == 1, r["pasos_a_activo"]
     q = r["pasos_a_activo"][0]
     assert q["mismo_equipo"] is False and -2 <= q["desfase_movimiento"] <= 2 and q["desfase_movimiento_activo"] == 0, q
+    assert r["frames_d"] == 120 and r["frames_d_quietos"] == 0 and q["salto"] > 0.2, (r["frames_d_quietos"], q)
     assert r["fuera_frames"] >= 100 and 0 < r["fuera_activos"] <= 12, (r["fuera_frames"], r["fuera_activos"])
     assert r["fuera_activo_frames_todos"] == r["fuera_activos"] and r["fuera_activo_episodios"] == [], r["fuera_activo_episodios"]
     assert r["cobertura"] == {"ThrowIn": [2]} and r["fines_d_emparejados"] == 1 and r["fines_d_sin_reinicio"] == []
