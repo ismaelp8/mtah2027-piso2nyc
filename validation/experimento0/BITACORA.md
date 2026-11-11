@@ -553,3 +553,122 @@ Es descriptivo.
   campo en otro caso. Se mira en el inicio del `D` o, si cruzó una línea en los 3 s anteriores, en el
   primer frame fuera;
 - **sensibilidad:** cada parámetro se varía de uno en uno, con el resto en su valor principal.
+
+### 7. Parada 3: 2c, 2d, 2e y 2g de los 7 partidos
+
+**Ficheros.** Las tablas completas están en `validation/resultados/2026-11-11_experimento0.md`. Las
+genera `parada3_tablas.py` a partir del JSON que escribe `parada3.py`, fuera del repo, sin copiar
+cifras a mano.
+
+**Pruebas sintéticas, antes de tocar datos reales** **[medido]**:
+
+- **Detectores:**
+  - golpeo junto al local A: un toque en el frame 60 ± 2 y un control;
+  - balón que pasa de largo a 6 m/s a 0,3 m del visitante B: ningún toque y ningún control, pero sí una
+    retención de 5 frames. Por eso se cambió a control;
+  - desvío de 60° junto al visitante C: un toque y ningún control;
+  - ruido: ningún toque.
+- **Lógica,** con segmentos puestos a mano: grupos de 2b, momento, 2g y emparejamiento uno a uno.
+- **`medir_parte` de principio a fin.** Guion: pase con control, desvío a banda, saque de banda y
+  control. Pasó a la primera. Para no quedarse en "pasa", se imprimieron los valores intermedios, y
+  coinciden con lo previsto al escribir el guion:
+  - toques en 200, 250, 350, 412, 426, 549 y 579;
+  - controles 0–203, 248–354 y 578–700;
+  - momento −4;
+  - 7 frames desde el cruce de la línea hasta el `D`;
+  - 9 frames activos fuera.
+- **Prueba de balón congelado:** un jugador junto al balón durante un `D` da un control con todos los
+  frames y ninguno con `solo_activos`.
+
+**Registro, en el orden en que se hizo y se vio:**
+
+1. **Primera ejecución** (`parada3.py --solo-principal`, variante fijada): 4 s. Veredictos con los 7:
+   1a cumple, 1b cumple, 2b entre medias, 2c "al controlar", 3a cumple, 2g no cumple.
+2. **2e daba −2 frames en todas las paradas.** Ningún dato real es tan regular, así que antes de
+   seguir se miró el balón en los frames inactivos (comprobación aparte, solo agregados) **[medido]**:
+   - en los 7 partidos, el 100 % de los frames `D` tiene la misma posición que el anterior;
+   - el salto al empezar el `D` es 0 en todos (el balón se congela en la posición del último frame
+     activo);
+   - al reanudar salta: mediana de unos 6 m, p10 de 1,5–2 m y p90 de 22–27 m;
+   - la velocidad centrada de ±2 frames ve ese salto 2 frames antes, y de ahí el −2. **La medida
+     fijada de 2e no sirve con estos datos.**
+3. **Qué más toca el congelado** (diagnóstico aparte, solo recuentos) **[medido]**:
+   - 603 de 5.439 controles (11 %) incluyen frames `D`: un jugador junto al balón congelado;
+   - 1.289 de 16.397 toques (8 %) tienen su ventana en un borde de `D`: la parada brusca y el salto;
+   - 317 de 2.351 cambios tienen un `D` en su ventana de 2b;
+   - de los 203 casos de 2g, ninguno tiene un `D` entre el control anterior y el toque, así que 2g no
+     se ve afectado.
+
+   Por eso se añadió la variante **"solo en juego"**. Cambia poco: 2b pasa del 42,9 % al 42,1 % y 2g
+   se queda en el 85,2 %. Lo que sí cambia son los toques "después de un `D`", que eran el salto.
+4. **2g, contra un placebo.** Se añadió el placebo (toques del propio equipo entre sus dos controles):
+   el flag pasa al otro equipo en el 9,5 % de los toques, frente al 85,2 %. También el desfase: el
+   cambio cae en el mismo frame del toque (mediana 0).
+5. **Revisión antes de escribir.** Se añadieron cuatro comprobaciones:
+   - el estado del flag 3 frames antes del toque. Es de X en el 71,9 %; de esos, el 81 % pasa a Y, y el
+     74,7 % a ≤ 2 frames;
+   - el recuento por hueco entre controles: 83,5 % de 176 huecos; placebo, 10,0 % de 1.140;
+   - la duración de la racha del rival: mediana de 2,0 s; solo el 17,9 % dura menos de 1 s;
+   - para 1b, episodios activos fuera que no dependen del congelado: 2 en los 7 partidos.
+6. **Flag durante el `D`.** Constante en el 99,6 % de las paradas, e igual al del último frame activo
+   solo en el 30,8 %. El flag pasa al equipo que reanuda en el primer frame del `D` **[medido]**.
+   Antes, con una comprobación aparte, se vio que en las 696 paradas que acaban en un reinicio es
+   constante en todas.
+7. **Medidas del congelado en el script** (porcentaje de balón quieto, salto al reanudar), para que
+   sean reproducibles. Ejecución final: 56,5 s y 435 MB de pico para las dos variantes con las 21
+   variaciones cada una. Cifras del commit `a295bbb`.
+
+**Cambios de criterio en esta parada:**
+
+- **Antes de la primera ejecución con datos reales:**
+  - 2b y 2c también con la retención (los criterios originales);
+  - placebo de la retención;
+  - margen del placebo como parámetro, para la fila "placebo ±1 / ±3 s" de la sensibilidad fijada;
+  - tope de 1.000 placebos por parte (2.000 por partido, como se fijó);
+  - distancia a la línea medida en el inicio del `D`;
+  - eventos `Delete` fuera;
+  - campo de los metadatos (105 × 68 en los 7);
+  - anclaje de la hora con el saque inicial de cada parte.
+- **Después de ver datos:**
+  - variante "solo en juego";
+  - medida nueva de 2e. La fijada se mantiene en la tabla, marcada como artefacto;
+  - en 2g: placebo, desfase, flag 3 frames antes, recuento por hueco y duración de la racha;
+  - en 1b: episodios activos fuera de ≥ 1 s;
+  - flag durante el `D`, balón quieto y salto al reanudar.
+- Ningún corte de ningún veredicto ha cambiado. Todo se da con el criterio fijado y con el nuevo.
+
+**Resultados** (tablas en el fichero de resultados) **[medido]**:
+
+| punto | criterio | los 7 | partidos que cumplen / entre medias / no | ¿aguanta? |
+|---|---|---|---|---|
+| 1 | 1a | cumple | 7 / 0 / 0 | sí con ±5 s; las ventanas de ±2 y ±3 s son descriptivas y caen por el error de hora de los eventos **[inferencia]** |
+| 1 | 1b | cumple | 7 / 0 / 0 | sí |
+| 2 | 2b (control) | entre medias, 42,9 % | 0 / 5 / 2 | no: control de 20 frames o ventana de ±1 s → no cumple |
+| 2 | 2c | "al controlar", mediana −2 frames | 7 | sí, pero mide el primer contacto (ver abajo) |
+| 2 | 2g | no cumple, 85,2 % | 0 / 0 / 7 | sí |
+| 3 | 3a | cumple, 0,2 % | 7 / 0 / 0 | sí |
+
+- **2c no apoya el punto 2.** El control "empieza" cuando el balón llega a 1 m, que es casi el primer
+  contacto. Además, un 35,5 % de los cambios con control lo tiene 0,5–2 s después del cambio.
+  **[inferencia]**: el flag cambia en el primer contacto del rival.
+- **1ª frente a Düsseldorf:** el flag se comporta igual en los dos grupos (2g 83,3 % frente a 86,4 %;
+  2b 42,5 % frente a 43,1 %).
+- **Dos modas en las duraciones,** con los 7 juntos: una pequeña en 4–6 frames y la principal en
+  1,6–2,5 s.
+
+**2f no se ha hecho.** Las reglas del paso 3 están escritas para campos de StatsBomb. Trasladarlas a los
+eventos de la DFL es un diseño que hay que fijar antes de medir. Queda propuesta como parada siguiente,
+con 3b.
+
+**Sorpresas:**
+
+- el balón congelado durante el `D`, que delata la etiqueta;
+- la medida fijada de 2e, inservible por eso;
+- el flag cambia al equipo que reanuda en el primer frame del `D`.
+
+**Sin verificar:**
+
+- si el ATD también congela el balón muerto;
+- qué son los 21 fines de `D` sin reinicio;
+- la causa de la diferencia de R entre 1ª y 2. Bundesliga;
+- 2f y 3b.
