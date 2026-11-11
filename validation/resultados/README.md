@@ -1,0 +1,33 @@
+# Resultados
+
+Cada resultado de la validación va en un fichero, para que lo vea todo el equipo y para el documento
+técnico.
+
+## Cómo se apunta un resultado
+
+- **Nombre:** `AAAA-MM-DD_tema.md`, por ejemplo `2026-11-12_experimento0.md`.
+- **Cabecera:** fecha y quién; datos usados, con su versión; comando exacto; para qué; lectura en tres
+  líneas. Si responde a alguna duda de `PASOS.md`, su número (D1…D21).
+- **Debajo, la salida tal cual,** en un bloque de código.
+- **Para el experimento 0** hay una plantilla: copia `_plantilla_experimento0.md`.
+- **Si de un resultado sale una decisión,** se apunta también en `docs/decisiones.md` (`/decision`).
+- **Se añade una línea al índice** de abajo.
+
+## Qué se puede apuntar
+
+- **Solo agregados:** recuentos, porcentajes, cuantiles, métricas, tiempos.
+- **Del partido del reto:** nunca valores por frame ni números de frame concretos. Los agregados (por
+  ejemplo, el perfil del ATD) sí.
+- **De datos abiertos:** agregados por partido. Nunca copias de los datos: las licencias no lo permiten.
+- **Nada ajustado contra la ventana pública.**
+- **Una diferencia por debajo del ruido es un empate.** La regla está en la sección 5.8 de
+  `docs/investigacion_metodos.md`.
+
+## Índice
+
+| fecha | quién | qué | fichero | en una línea |
+|---|---|---|---|---|
+| 2026-11-11 | Claude (sesión de Ismael) | coste de cada tipo de error en `spellF1`, con GT sintética | [sensibilidad_metrica](2026-11-11_sensibilidad_metrica.md) | inventar cambios de posesión y no ver las posesiones cortas son los errores más caros |
+| 2026-11-11 | Claude (sesión de Ismael) | perfil de la GT pública | [perfil_ventana_publica](2026-11-11_perfil_ventana_publica.md) | hay posesiones de 19 y 33 frames; la ventana tiene menos posesiones cortas y menos `D` que el partido completo |
+| 2026-11-11 | Claude (sesión de Ismael) | baselines oficiales en la ventana pública | [baselines_ventana_publica](2026-11-11_baselines_ventana_publica.md) | el baseline cambia de equipo en momentos equivocados y confunde "sin balón" con balón muerto |
+| 2026-11-11 | Claude (sesión de Ismael) | datos abiertos del Barça como local | [inventario_datos_barca_local](2026-11-11_inventario_datos_barca_local.md) | no hay tracking con flags del Barça; sí eventos de 264 partidos en el Camp Nou y un Clásico con tracking de broadcast |

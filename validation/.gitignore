@@ -1,0 +1,18 @@
+# Red de seguridad propia de validation/ (el .gitignore oficial de la raíz no se toca).
+# Aquí solo entran scripts y resultados agregados en .md. Los datos, abiertos o del partido, y las
+# etiquetas por frame derivadas de ellos viven fuera del repo. Si algún día hace falta subir un fichero
+# de estos tipos que no sea un dato, se añade con `git add -f` y se explica en la PR.
+*.csv
+*.json
+*.jsonl
+*.xml
+*.zip
+*.bz2
+*.txt
+*.parquet
+*.feather
+*.npz
+*.npy
+*.pkl
+*.h5
+*.part
