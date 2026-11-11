@@ -192,9 +192,13 @@ def frames_placebo(estado, poss, f_cambios, rng, maximo, antes, despues, margen=
 def toques_sin_control(t_toques, eq_toques, segs_control, estado, poss, z, ventana=125, propio=False):
     """2g: toques del rival sin control y si el flag pasa a ese rival antes del siguiente control propio.
 
-    Devuelve una lista de (frame, equipo_toque, cambio_del_flag (bool), aereo (bool), desfase), con el
-    desfase en frames desde el toque hasta el primer frame en que el flag marca al equipo del toque
-    (None si no lo marca).
+    Devuelve una lista de dicts, uno por toque:
+    - `t`, `equipo`: frame y equipo del toque; `aereo`: balón a más de 1,5 m de altura;
+    - `cambia`: el flag marca al otro equipo (el que no tiene los controles) entre el toque y el siguiente
+      control; `desfase`: frames desde el toque hasta el primer frame así (None si no lo hay);
+    - `x_antes`: el flag marca al equipo de los controles 3 frames antes del toque;
+    - `duracion`: frames seguidos con el flag en el otro equipo desde ese primer frame;
+    - `hueco`: inicio del control anterior, para contar por hueco entre controles y no por toque.
 
     Con `propio=True` es el placebo: toques sin control del mismo equipo que tiene los dos controles, y
     si el flag pasa al otro equipo entre el toque y el siguiente control.
@@ -221,8 +225,25 @@ def toques_sin_control(t_toques, eq_toques, segs_control, estado, poss, z, venta
             continue  # hay un D entre medias: va a "posesiones cortas antes de un D"
         otro = 1 - p[2]
         marca = np.flatnonzero(np.asarray(poss[t:s[0] + 1]) - 1 == otro)
-        salida.append((int(t), int(y_eq), bool(len(marca)), bool(z[t] > 1.5), int(marca[0]) if len(marca) else None))
+        duracion = None
+        if len(marca):
+            m = t + int(marca[0])
+            fin = m
+            while fin < len(poss) and poss[fin] - 1 == otro and estado[fin] == 1:
+                fin += 1
+            duracion = int(fin - m)
+        salida.append({"t": int(t), "equipo": int(y_eq), "cambia": bool(len(marca)), "aereo": bool(z[t] > 1.5),
+                       "desfase": int(marca[0]) if len(marca) else None,
+                       "x_antes": bool(poss[max(0, t - 3)] - 1 == p[2]), "duracion": duracion, "hueco": int(p[0])})
     return salida
+
+
+def por_hueco(casos):
+    """Un valor por hueco entre controles: si algún toque del hueco cambió el flag."""
+    huecos = {}
+    for c in casos:
+        huecos[c["hueco"]] = huecos.get(c["hueco"], False) or c["cambia"]
+    return list(huecos.values())
 
 
 def fuera(x, y, margen, largo=105.0, ancho=68.0):
@@ -317,12 +338,18 @@ def medir_parte(parte, prm, rng, eventos_parte=None, prep=None, campo=(105.0, 68
     # 2g
     r["toques_sin_control"] = toques_sin_control(t_toq, eq_toq, segs, estado, poss, prep["z"])
     r["toques_propios_sin_control"] = toques_sin_control(t_toq, eq_toq, segs, estado, poss, prep["z"], propio=True)
+    r["huecos_2g"] = por_hueco(r["toques_sin_control"])
+    r["huecos_2g_placebo"] = por_hueco(r["toques_propios_sin_control"])
     # 1b: balón fuera durante 1 s o más
     fu = fuera(prep["x"], prep["y"], prm["margen_fuera"], largo, ancho)
     frames_fuera = [(a, b) for a, b, val in rachas(fu.astype(int), FPS) if val == 1]
     total_fuera = sum(b - a for a, b in frames_fuera)
     activos_fuera = sum(int(np.sum(estado[a:b] == 1)) for a, b in frames_fuera)
     r["fuera_frames"], r["fuera_activos"] = int(total_fuera), int(activos_fuera)
+    # lo mismo sin depender del balón congelado en D: frames activos fuera y episodios de 1 s o más
+    fuera_y_activo = fu & (estado == 1)
+    r["fuera_activo_frames_todos"] = int(np.sum(fuera_y_activo))
+    r["fuera_activo_episodios"] = [b - a for a, b, val in rachas(fuera_y_activo.astype(int), FPS) if val == 1]
     # 2d: pasos a inactivo
     inicios_d = np.flatnonzero((estado[1:] == 0) & (estado[:-1] == 1)) + 1
     fines_d = np.flatnonzero((estado[1:] == 1) & (estado[:-1] == 0)) + 1

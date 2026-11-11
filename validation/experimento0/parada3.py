@@ -215,15 +215,27 @@ def resumir(r, calib=None):
     s["aire_pct"] = pct(r["en_el_aire"])
     tsc = r["toques_sin_control"]
     s["toques_sin_control"] = len(tsc)
-    s["toques_sin_control_cambia_pct"] = pct([c for _, _, c, _, _ in tsc])
-    s["toques_sin_control_desfase_p10_p50_p90"] = q([d for *_, d in tsc])
-    s["toques_sin_control_desfase_0_2_5_pct"] = [pct([d is not None and d <= w for *_, d in tsc]) for w in (0, 2, 5)]
-    s["aereos_sin_control"] = sum(1 for _, _, _, a, _ in tsc if a)
-    s["aereos_sin_control_cambia_pct"] = pct([c for _, _, c, a, _ in tsc if a])
-    s["rasos_sin_control_cambia_pct"] = pct([c for _, _, c, a, _ in tsc if not a])
+    s["toques_sin_control_cambia_pct"] = pct([c["cambia"] for c in tsc])
+    s["toques_sin_control_desfase_p10_p50_p90"] = q([c["desfase"] for c in tsc])
+    s["toques_sin_control_desfase_0_2_5_pct"] = [pct([c["desfase"] is not None and c["desfase"] <= w for c in tsc])
+                                                 for w in (0, 2, 5)]
+    s["toques_sin_control_x_antes_pct"] = pct([c["x_antes"] for c in tsc])
+    s["toques_sin_control_x_antes_y_cambia_pct"] = pct([c["x_antes"] and c["cambia"] for c in tsc])
+    s["toques_sin_control_x_antes_cambia_en_2_pct"] = pct(
+        [c["cambia"] and c["desfase"] <= 2 for c in tsc if c["x_antes"]])
+    dur = [c["duracion"] for c in tsc if c["cambia"]]
+    s["toques_sin_control_duracion_p10_p50_p90"] = q(dur)
+    s["toques_sin_control_duracion_menos_1s_pct"] = pct([d < FPS for d in dur])
+    s["huecos_2g"] = len(r["huecos_2g"])
+    s["huecos_2g_cambia_pct"] = pct(r["huecos_2g"])
+    s["aereos_sin_control"] = sum(1 for c in tsc if c["aereo"])
+    s["aereos_sin_control_cambia_pct"] = pct([c["cambia"] for c in tsc if c["aereo"]])
+    s["rasos_sin_control_cambia_pct"] = pct([c["cambia"] for c in tsc if not c["aereo"]])
     tsp = r["toques_propios_sin_control"]
     s["placebo_2g_toques_propios"] = len(tsp)
-    s["placebo_2g_cambia_pct"] = pct([c for _, _, c, _, _ in tsp])
+    s["placebo_2g_cambia_pct"] = pct([c["cambia"] for c in tsp])
+    s["placebo_2g_huecos"] = len(r["huecos_2g_placebo"])
+    s["placebo_2g_huecos_cambia_pct"] = pct(r["huecos_2g_placebo"])
     s["d_nuevo_p10_p50_p90"] = q(r["d_nuevo_en_cambio"])
     s["d_viejo_p10_p50_p90"] = q(r["d_viejo_en_cambio"])
     s["nuevo_cerca_1s_pct"] = pct(r["nuevo_cerca_1s"])
@@ -233,6 +245,10 @@ def resumir(r, calib=None):
     s["placebo_desfase_toque_p10_p50_p90"] = q(r["placebo_desfase_toque_otro"])
     s["fuera_frames"] = r["fuera_frames"]
     s["fuera_activo_pct"] = round(100.0 * r["fuera_activos"] / r["fuera_frames"], 2) if r["fuera_frames"] else None
+    s["fuera_activo_frames_todos"] = r["fuera_activo_frames_todos"]
+    s["fuera_activo_frames_por_minuto"] = round(r["fuera_activo_frames_todos"] / r["minutos_vivos"], 2)
+    s["fuera_activo_episodios_1s"] = len(r["fuera_activo_episodios"])
+    s["fuera_activo_episodio_max_s"] = round(max(r["fuera_activo_episodios"]) / FPS, 2) if r["fuera_activo_episodios"] else 0
     pa = r["pasos_a_inactivo"]
     tipos = collections.Counter(p["tipo"] for p in pa)
     s["inactivo"] = {
@@ -358,6 +374,8 @@ def analizar(prm, datos, con_sensibilidad):
                         "aire_pct": l7["aire_pct"], "toques_sin_control": l7["toques_sin_control"],
                         "toques_sin_control_cambia_pct": l7["toques_sin_control_cambia_pct"],
                         "placebo_2g_cambia_pct": l7["placebo_2g_cambia_pct"],
+                        "huecos_2g_cambia_pct": l7["huecos_2g_cambia_pct"],
+                        "fuera_activo_episodios_1s": l7["fuera_activo_episodios_1s"],
                         "fuera_activo_pct": l7["fuera_activo_pct"], "cobertura_pct": l7["cobertura"]["pct"],
                         "placebo_control_otro_pct": l7["placebo_control_otro_pct"],
                         "placebo_control_flag_pct": l7["placebo_control_flag_pct"],

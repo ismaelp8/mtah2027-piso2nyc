@@ -223,11 +223,13 @@ def prueba_logica_cambios():
     t_toq = np.array([40, 155, 195])
     eq_toq = np.array([1, 1, 1])
     res = mc.toques_sin_control(t_toq, eq_toq, [s for s in segs if s[2] == 0], estado, poss, np.zeros(n))
-    assert res == [(40, 1, True, False, 1), (155, 1, False, False, None)], res
+    assert [(c["t"], c["equipo"], c["cambia"], c["aereo"], c["desfase"], c["x_antes"], c["duracion"], c["hueco"])
+            for c in res] == [(40, 1, True, False, 1, True, 10, 0), (155, 1, False, False, None, True, None, 60)], res
+    assert mc.por_hueco(res + [dict(res[0], t=45, cambia=False)]) == [True, False]
     # placebo: un toque local en 40 entre los dos controles locales; el flag pasa al visitante en 41
     res = mc.toques_sin_control(np.array([40]), np.array([0]), [s for s in segs if s[2] == 0], estado, poss,
                                 np.zeros(n), propio=True)
-    assert res == [(40, 0, True, False, 1)], res
+    assert [(c["t"], c["equipo"], c["cambia"], c["desfase"]) for c in res] == [(40, 0, True, 1)], res
     # Emparejamiento uno a uno: dos eventos y un solo fin cerca.
     desf, usados = mc.emparejar([100, 104], [101], 5)
     assert desf == [-1, None] and usados == {0}, (desf, usados)
@@ -289,6 +291,7 @@ def prueba_medir_parte():
     q = r["pasos_a_activo"][0]
     assert q["mismo_equipo"] is False and -2 <= q["desfase_movimiento"] <= 2 and q["desfase_movimiento_activo"] == 0, q
     assert r["fuera_frames"] >= 100 and 0 < r["fuera_activos"] <= 12, (r["fuera_frames"], r["fuera_activos"])
+    assert r["fuera_activo_frames_todos"] == r["fuera_activos"] and r["fuera_activo_episodios"] == [], r["fuera_activo_episodios"]
     assert r["cobertura"] == {"ThrowIn": [2]} and r["fines_d_emparejados"] == 1 and r["fines_d_sin_reinicio"] == []
     assert r["placebo_n"] > 0
     # con solo_activos sale lo mismo: aquí no hay nada junto al balón durante el D
