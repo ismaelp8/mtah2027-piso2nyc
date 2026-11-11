@@ -80,6 +80,7 @@ def bootstrap_dif(a, b, rng, veces=1000):
 
 def main():
     aciertos = {d: collections.defaultdict(list) for d in DEFINICIONES}
+    por_partido = {d: collections.defaultdict(lambda: collections.defaultdict(list)) for d in DEFINICIONES}
     cuenta = collections.Counter()
     en_el_pase = {d: [] for d in DEFINICIONES}
     for p in etiquetas_dfl.PARTIDOS:
@@ -123,6 +124,7 @@ def main():
             for d in DEFINICIONES:
                 ok = labs[d][f3] == (1 - x) if a.get("PossessionChange") == "true" else labs[d][f3] == x
                 aciertos[d][clave].append(bool(ok))
+                por_partido[d][p][clave].append(bool(ok))
         # fallo de quitar: pases completados y recuperaciones
         pases, recs = eventos_guardia(dfl_lector.rutas_partido(p)["eventos"], meta)
         for ms, pasador, receptor, eq in pases:
@@ -143,6 +145,7 @@ def main():
             cuenta["G-pase"] += 1
             for d in DEFINICIONES:
                 aciertos[d]["G-pase"].append(bool(labs[d][fr + 5] == eq))
+                por_partido[d][p]["G-pase"].append(bool(labs[d][fr + 5] == eq))
                 en_el_pase[d].append(bool(labs[d][fp] == eq))
         for ms, jugador, eq in recs:
             v = buscar(ms)
@@ -157,6 +160,7 @@ def main():
             cuenta["G-recuperación"] += 1
             for d in DEFINICIONES:
                 aciertos[d]["G-recuperación"].append(bool(labs[d][fj + 12] == eq))
+                por_partido[d][p]["G-recuperación"].append(bool(labs[d][fj + 12] == eq))
     rng = np.random.default_rng(SEMILLA)
     salida = {"recuento": dict(cuenta), "acierto_pct": {}, "en_el_frame_del_pase_pct": {},
               "diferencias_con_C0-12_IC95": {}}
@@ -170,6 +174,15 @@ def main():
         salida["diferencias_con_C0-12_IC95"][d] = {c: bootstrap_dif(aciertos[d][c], aciertos[ref][c], rng)
                                                    for c in sorted(aciertos[d])}
     print(json.dumps(salida, ensure_ascii=False, indent=1))
+    print("Por partido (G-pase / G-recuperación / duelo PC=true / duelo PC=false, %):")
+    for d in ("flag tal cual", "C0-12", "dos toques", "C0-12 o dos toques"):
+        filas = []
+        for p in etiquetas_dfl.PARTIDOS:
+            v = por_partido[d][p]
+            filas.append("{} {}".format(p, " / ".join(
+                "{:.0f}".format(100.0 * np.mean(v[c])) if v[c] else "-"
+                for c in ("G-pase", "G-recuperación", "duelo PC=true", "duelo PC=false"))))
+        print("  {}: {}".format(d, " | ".join(filas)))
 
 
 if __name__ == "__main__":

@@ -288,6 +288,11 @@ Lectura:
   - la fecha del cambio queda abierta (R(c) no la toca);
   - la decisión es de Ismael.
 - **En el frame del pase** (depende de la fecha): 93,0 % el flag y 82,9–94,7 % las correcciones.
+- **Por partido** (G-pase / G-recuperación / duelos true / duelos false), el patrón se repite en los 7
+  **[medido]**:
+  - el flag tal cual acierta solo el 25–61 % de los duelos sin cambio en todos los partidos;
+  - "C0-12 o dos toques" acierta el 98–100 % de G-pase, el 78–100 % de G-recuperación (unas 28 por
+    partido), el 79–90 % de los duelos true y el 68–82 % de los false.
 
 ## 9. Cuánto importa la fecha del cambio (`fecha_del_cambio.py`, descriptivo) [medido]
 
