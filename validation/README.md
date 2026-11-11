@@ -35,6 +35,6 @@ python validation/scripts/descargar_datos_abiertos.py dfl --solo-ligeros
   seguridad. El `.gitignore` oficial de la raíz no se toca.
 - **Los datos se descargan fuera del repo** (por defecto, `~/mtah2027-datos-abiertos`) y nunca se suben.
   Al repo van los scripts y los resultados agregados.
-- **Por decisión de Ismael (11/11), este plan manda** sobre lo que digan `CLAUDE.md` y
-  `docs/GUIA_EQUIPO.md` sobre la validación externa y la política de `X`. Esos documentos se escribieron
-  antes.
+- **`CLAUDE.md` y `docs/GUIA_EQUIPO.md` están alineados con este plan desde el 11/11** en la validación
+  externa y en la política de `X`. Si vuelven a discrepar, manda
+  [`docs/investigacion_metodos.md`](../docs/investigacion_metodos.md) hasta que se corrijan.
