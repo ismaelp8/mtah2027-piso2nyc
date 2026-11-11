@@ -306,3 +306,79 @@ modas. Los dos partidos de 1ª Bundesliga se comparan con los cinco del Düsseld
 **Propuesta de decisión del paso 2** (la decide Ismael): la Bundesliga vale como proxy principal si
 cumplen los puntos 1, 2 y 3. Si alguno no cumple, se apunta en qué difiere y si se puede corregir al
 derivar las etiquetas, por ejemplo quitando las posesiones intercaladas de menos de 1 s.
+
+### Cambios en los criterios de 2c, 2d y 2e (antes de medir)
+
+**Cuándo y por qué:** el 11/11, a petición de la sesión orquestadora tras revisar la parada 1, y antes
+de medir ningún instante de cambio, ningún tramo `D` frente a un reinicio concreto y ningún toque. Lo
+que sigue sustituye a la sección anterior en lo que choque con ella.
+
+**1a. Cobertura de reinicios.**
+
+- **Por qué cambia:** con el error de hora de los eventos (−0,37 ± 1,82 s), solo por ese error
+  quedaría fuera de ±3 s alrededor del 11 % de los reinicios y fuera de ±2 s alrededor del 28 %. El
+  90 % podría fallar con una cobertura perfecta.
+- **Ventana principal: ±5 s.** Las de ±2 y ±3 s son solo descriptivas.
+- **Emparejamiento uno a uno y en orden:** cada fin de `D` sirve para un solo reinicio. Los reinicios
+  se recorren en orden de tiempo y cada uno se queda con el fin de `D` libre más cercano dentro de la
+  ventana.
+- **Se da también:** la distribución del desfase (hora del reinicio menos fin del tramo `D`
+  emparejado) por tipo de reinicio, y la tasa de emparejamiento por azar con un placebo (los mismos
+  instantes desplazados al azar dentro de la parte, con semilla fija).
+- **Sentido contrario:** qué fracción de tramos `D` acaba emparejada con un reinicio, y qué son los que
+  no (por ejemplo, el final de cada parte).
+- Los cortes no cambian: cumple con el 90 % o más en saques de banda, de puerta y córners; no cumple
+  con menos del 70 % en alguno.
+
+**2b. Retención y control.**
+
+- **Por qué cambia:** un balón a 10 m/s tarda 0,2 s en cruzar un círculo de 1 m de radio, así que un
+  desvío o un balón que pasa de largo cuenta como una retención de 5 frames.
+- **Definición de control, fijada ahora:** al menos 12 frames seguidos (0,5 s) en los que el mismo
+  jugador del equipo (el mismo `PersonId`) es el más cercano al balón y está a 1,0 m o menos. La
+  retención de 5 frames se sigue dando, como medida más blanda.
+- **Cada cambio H↔A se clasifica en tres grupos**, mirando del frame f − 25 al f + 50 (1 s antes y 2 s
+  después):
+  1. seguido de control del equipo nuevo;
+  2. solo un toque: algún jugador del equipo nuevo a 1,0 m o menos en algún frame, pero sin control;
+  3. nada: ningún jugador del equipo nuevo a 1,0 m o menos en la ventana.
+- **Veredicto de 2b, con el control:** cumple si el 70 % o más de los cambios tiene control del equipo
+  nuevo en la ventana; no cumple si es el 40 % o menos.
+- **Placebo, concreto:** frames activos al azar, con semilla fija, a más de 2 s de cualquier cambio, con
+  la misma ventana. Dos referencias:
+  - el control del equipo que **no** tiene el flag: tasa de falsos positivos;
+  - el control del equipo que **sí** lo tiene: techo.
+
+  El 70 % se lee entre esas dos.
+- **Sensibilidad:** retención de 3, 5, 8 y 12 frames; control de 8, 12 y 20 frames.
+
+**2c. Momento.** Además del veredicto por la mediana: la distribución en frames (p10, p50 y p90) del
+desfase entre el cambio y el inicio del control del equipo nuevo, y qué fracción de cambios cae a ±3,
+±8 y ±25 frames del inicio del control. Es lo que tendrá que imitar nuestro método.
+
+**Nuevo: 2g. El sentido que pide el reto.** `CHALLENGE.md` dice que un toque sin control, un desvío o
+un duelo aéreo ganado sin control posterior no cambian la posesión. Se mide al revés, sin mirar el
+flag para elegir los casos:
+
+- **Toque**, solo con el tracking: un cambio de velocidad del balón de 3 m/s o más entre la media de los
+  4 frames siguientes y la de los 4 anteriores, en un máximo local (±4 frames), atribuido al equipo del
+  jugador más cercano si está a 1,5 m o menos. El detector se prueba antes con una trayectoria sintética
+  con toques en instantes conocidos y ruido de 1–2 cm.
+- **Toque del rival sin control:** un toque del equipo Y cuyo control anterior (en los 5 s previos) es
+  del equipo X, cuyo control siguiente (en los 5 s posteriores) también es de X, y sin ningún control de
+  Y entre medias.
+- **Medida:** en qué fracción de esos toques el flag marca a Y en algún frame entre el toque y el
+  siguiente control de X.
+  - Cumple si es el 10 % o menos; no cumple si es el 30 % o más; entre medias, inconcluso.
+  - Se da aparte para los toques con el balón alto (`Z` de más de 1,5 m), que son los duelos aéreos.
+
+**Lectura final (para la parada 3).** `CHALLENGE.md` dice que la GT sale mecánicamente del flag de un
+tracking corregido, que su texto no es una especificación técnica y que, si la definición y la GT no
+coinciden, manda la GT. Así que, si el punto 2 no cumple, hay dos lecturas:
+
+- la DFL marca distinto de lo que pide el reto, y habría que corregir al derivar las etiquetas;
+- los flags de proveedor se comportan así, y la GT del reto podría parecerse más a la DFL que al texto.
+
+No se presentará ninguna corrección (por ejemplo, quitar las posesiones intercaladas de menos de 1 s)
+como la opción por defecto. Se expondrán las dos lecturas, qué las distinguiría y qué no podemos saber.
+La ventana pública sigue sin usarse para decidir.
