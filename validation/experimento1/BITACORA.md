@@ -288,3 +288,19 @@ Lectura:
   - la fecha del cambio queda abierta (R(c) no la toca);
   - la decisión es de Ismael.
 - **En el frame del pase** (depende de la fecha): 93,0 % el flag y 82,9–94,7 % las correcciones.
+
+## 9. Cuánto importa la fecha del cambio (`fecha_del_cambio.py`, descriptivo) [medido]
+
+Para cada cambio que se queda tras la corrección: frames entre el cambio del flag (el primer toque del
+equipo nuevo) y el primer frame de control del equipo nuevo según la definición.
+
+| definición | cambios | mediana / p75 / p90 (frames) | en el mismo frame | a más de 8 frames | a más de 1 s |
+|---|---|---|---|---|---|
+| C0-12 | 839 | 15 / 47 / 83 | 45,5 % | 52,7 % | 40,5 % |
+| dos toques | 842 | 0 / 25 / 74 | 62,1 % | 28,5 % | 24,0 % |
+| C0-12 o dos toques | 1.026 | 0 / 3 / 53 | 71,1 % | 24,5 % | 20,6 % |
+
+**Lectura:** si la GT fecha el cambio al empezar el control, y no en el primer toque, entre una cuarta
+parte y la mitad de los cambios se moverían más de 8 frames. Es la escala en que el `spellF1` ya pierde
+(0,89 con 8 frames de retraso). La fecha es una pregunta tan importante como la definición de control,
+y solo la GT pública con el vídeo puede responderla.
