@@ -43,12 +43,22 @@ def rachas(mascara):
 
 
 def reinicios_en_eventos(ruta):
+    """Reinicios por tipo en el XML de eventos, y si algún evento `Delete` anula alguno.
+
+    Los `Delete` no llevan el id del evento que borran; se comprueba si su propio `EventId` coincide
+    con el de algún otro evento del fichero.
+    """
     raiz = etree.parse(ruta).getroot()
+    eventos = raiz.findall("Event")
     cuenta = collections.Counter()
-    for e in raiz.findall("Event"):
+    for e in eventos:
         if len(e) and e[0].tag in REINICIOS:
             cuenta[e[0].tag] += 1
-    return dict(cuenta)
+    deletes = [e for e in eventos if len(e) and e[0].tag == "Delete"]
+    ids_otros = {e.get("EventId") for e in eventos if not (len(e) and e[0].tag == "Delete")}
+    return dict(cuenta), {"eventos_delete": len(deletes),
+                          "delete_con_EventId_de_otro_evento": sum(1 for e in deletes if e.get("EventId") in ids_otros),
+                          "delete_con_atributo_EventId_propio": sum(1 for e in deletes if e[0].get("EventId"))}
 
 
 def velocidad_central(x, y, k=2):
@@ -134,13 +144,29 @@ def comprobar(partido, cache=None):
     salida["C11_total_frames"] = c11_total["n"]
     salida["C11_total_coincide"] = round(c11_total["coinciden"] / c11_total["n"], 4) if c11_total["n"] else None
     if rutas["eventos"]:
-        rein = reinicios_en_eventos(rutas["eventos"])
+        rein, deletes = reinicios_en_eventos(rutas["eventos"])
         n_rein = sum(rein.values())
         n_tramos = sum(p["C7_tramos_inactivos"] for p in salida["partes"].values())
         salida["C7_reinicios_en_eventos"] = rein
+        salida["C7_eventos_delete"] = deletes
         salida["C7_reinicios_total"] = n_rein
         salida["C7_tramos_inactivos_total"] = n_tramos
         salida["C7_cociente_tramos_entre_reinicios"] = round(n_tramos / n_rein, 3)
+        # Ajuste por los bordes de cada parte: un tramo inactivo final no acaba en un reinicio, y un
+        # saque inicial con el que empieza la parte no viene de un tramo inactivo. RefereeBall se
+        # añadió a la lista de reinicios después de ver los tipos de evento, así que se da también sin él.
+        finales = sum(1 for p in salida["partes"].values() if p["acaba_inactivo"])
+        iniciales = sum(1 for p in salida["partes"].values() if not p["empieza_inactivo"])
+        tramos_que_acaban_en_reinicio = n_tramos - finales
+        reinicios_tras_tramo = n_rein - iniciales
+        sin_balon_a_tierra = reinicios_tras_tramo - rein.get("RefereeBall", 0)
+        salida["C7_ajustado"] = {
+            "tramos_inactivos_que_no_son_el_final_de_una_parte": tramos_que_acaban_en_reinicio,
+            "reinicios_que_no_abren_una_parte": reinicios_tras_tramo,
+            "cociente": round(tramos_que_acaban_en_reinicio / reinicios_tras_tramo, 3),
+            "reinicios_sin_RefereeBall": sin_balon_a_tierra,
+            "cociente_sin_RefereeBall": round(tramos_que_acaban_en_reinicio / sin_balon_a_tierra, 3),
+        }
     return salida
 
 

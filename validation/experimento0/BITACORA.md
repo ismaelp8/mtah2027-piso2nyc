@@ -136,8 +136,8 @@ partes empiezan con el balón activo (el tracking arranca en el saque inicial) y
 | criterio | resultado | veredicto |
 |---|---|---|
 | C6 fracción activa frente al tiempo neto oficial | 66,789 % frente a 66,788 % y 50,684 % frente a 50,683 %; los frames activos son `PlayingTime` / 40 + 1 en las dos partes | cumple, pero **no es independiente**: el tiempo neto oficial sale del mismo flag **[inferencia]**. Valida el lector, no lo que cuenta como inactivo |
-| C7 tramos inactivos frente a reinicios de los eventos | 103 tramos (41 + 62) frente a 104 reinicios en el XML de eventos: 52 saques de banda, 20 faltas, 14 saques de puerta, 10 córners, 5 saques iniciales, 1 penalti y 2 balones a tierra. Cociente 0,99. Ningún tramo inactivo de menos de 1 s | cumple: primer indicio de que `D` incluye saques de banda, de puerta y córners (D5). Se comprobará caso a caso en 2d |
-| C8 unidades de `S` | `S` / velocidad de las posiciones: p10 2,5–2,8, mediana 3,72–3,74, p90 4,4–4,6 | cumple: km/h. La dispersión indica que `S` está suavizada **[inferencia]** |
+| C7 tramos inactivos frente a reinicios de los eventos | 103 tramos (41 + 62) frente a 104 reinicios en el XML de eventos: 52 saques de banda, 20 faltas, 14 saques de puerta, 10 córners, 5 saques iniciales, 1 penalti y 2 balones a tierra. Cociente 0,99. Ningún tramo inactivo de menos de 1 s | cumple el criterio fijado. Matiz: las dos partes empiezan activas y acaban inactivas. Quitando los 2 tramos finales (no acaban en un reinicio) y los 2 saques iniciales que abren cada parte, son 101 tramos para 102 reinicios (0,99), o 101 para 100 sin los balones a tierra (1,01). `RefereeBall` se añadió a la lista después de ver los tipos de evento. Que los totales cuadren **no prueba** que cada reinicio tenga su tramo: eso es 2d |
+| C8 unidades de `S` | `S` / velocidad de las posiciones: p10 2,5–2,8, mediana 3,72–3,74, p90 4,4–4,6 | cumple: km/h. La dispersión puede deberse a que `S` esté suavizada o a que sea la velocidad en 3D (con `Z`) **[inferencia]**; no bloquea, porque 2c calcula la velocidad con las posiciones |
 | C9 origen | primer frame activo a 0,25 m y 0,47 m de (0, 0) | cumple: origen en el centro |
 | C10 escala | p99,9 de \|x\| = 52,2–52,9 y de \|y\| = 34,6–34,8; máximos 55,1 y 36,8 (balón fuera del campo) | cumple: metros |
 | C11 sentido de `BallPossession` | 7.814 frames estables; el jugador cercano es del equipo del flag en el 98,9 % (flag 1: 97,4 % y 99,3 %; flag 2: 99,6 % y 98,6 %) | cumple: 1 = local en este partido. Falta comprobarlo en los otros 6 |
@@ -145,8 +145,9 @@ partes empiezan con el balón activo (el tracking arranca en el saque inicial) y
 Informativo **[medido]**: con el balón inactivo, el flag sigue al equipo del jugador cercano en el 85 %
 de los frames estables. El flag de posesión no se apaga en las paradas.
 
-Los 108 eventos `Delete` del XML de eventos no apuntan a ningún evento que siga en el fichero: no anulan
-ningún reinicio **[medido]**.
+Los 108 eventos `Delete` del XML de eventos no llevan el id de ningún evento, y su propio `EventId` no
+coincide con el de ningún otro evento del fichero: no anulan ningún reinicio **[medido]** (lo comprueba
+`comprobaciones_lector.py`).
 
 ### 3. kloppy frente al lector propio (C12 y D9)
 
@@ -157,6 +158,9 @@ ningún reinicio **[medido]**.
   - `teams[0]` es el local (`HomeTeamId`) aunque en el XML vaya primero el visitante;
   - `ball_state` solo toma `alive` y `dead`, y en 3.000 frames no discrepa del XML ni en `ball_state` ni
     en el poseedor;
+  - con `coordinates="sportec"`, las 66.000 posiciones de jugador (3.000 frames × 22) y las del balón
+    coinciden con la caché con diferencia 0,0 m; el equipo de cada jugador y el número de jugadores por
+    frame coinciden en todos. **El lector propio queda validado también para los jugadores**;
   - 25 fps;
   - cuando falta `BallPossession`, kloppy pone el visitante (lo dice su código). En la DFL no falta
     nunca (C5), así que aquí no afecta.
@@ -164,8 +168,21 @@ ningún reinicio **[medido]**.
   que las de por defecto son "metros, origen en el centro". En kloppy 3.18 el sistema por defecto es el
   de kloppy: x = X/105 + 0,5 e y = −Y/68 + 0,5 (de 0 a 1, origen arriba a la izquierda y eje `y`
   invertido; residuo de 1e-15). Con `coordinates="sportec"` devuelve exactamente los metros del XML
-  **[medido]**. El lector propio no se ve afectado (trabaja en metros: C9 y C10), pero el fragmento de
-  `PASOS.md` lo tiene mal.
+  **[medido]** (el ajuste está en `comprobar_kloppy.py J03WMX mapeo`). El lector propio no se ve
+  afectado (trabaja en metros: C9 y C10), pero el fragmento de `PASOS.md` lo tiene mal.
+  **Corrección propuesta** para 2a de `PASOS.md`: `coordinates="sportec"` para tener metros con origen
+  en el centro. No se ha aplicado: lo decide la sesión orquestadora. Lo hecho después de verlo no usa
+  coordenadas de kloppy.
+- **Carga completa** (`comprobar_kloppy.py J03WMX completo`: `only_alive=False` y `to_df()`, como en
+  `PASOS.md` 2a) **[medido]**: funciona. 145.967 frames y 137 columnas; `alive` 85.369 y `dead`
+  60.598, igual que el lector propio. Tarda 104 s (98 s de `load_tracking`), con un pico de memoria de
+  4,5 GB; al sistema le llegaron a quedar 1,53 GB libres. La RAM libre al lanzarla no se apuntó (4,4 GB
+  al empezar la sesión), y a la vez corrieron las etiquetas, el perfil y las pruebas sintéticas.
+  Lectura: con unos 6 GB libres cabe, pero justo; un partido cada vez (D9).
+- **Fallo del vigilante de memoria, corregido:** en Windows, el python del entorno virtual es un
+  lanzador que arranca el intérprete real como proceso hijo. El vigilante medía el lanzador (4 MB) y no
+  el intérprete; el corte por memoria libre del sistema sí funcionaba, pero habría matado solo al
+  lanzador. Ahora vigila y corta el árbol de procesos entero. En esta ejecución no hizo falta cortar.
 
 ### 4. 2a de J03WMX
 
@@ -191,3 +208,5 @@ ningún reinicio **[medido]**.
   es justo lo que el reto dice que no debe pasar. **No está medido:** es la pregunta de 2c (D3, D4).
   Otras explicaciones posibles, que 2c tiene que distinguir: pases cortos de verdad del rival
   (posesiones reales y cortas), duelos con balón dividido, o un flag por jugador más cercano.
+- La huella de retrasos no entra en este argumento ni dice nada sobre la GT del reto: es solo
+  informativa (D1, D21).

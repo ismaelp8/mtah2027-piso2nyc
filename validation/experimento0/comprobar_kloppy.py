@@ -90,23 +90,58 @@ def comprobar_balon(partido):
     return salida
 
 
+def _ajuste_coordenadas(ds, d1, pos_idx):
+    """Ajuste lineal de las coordenadas del balón de kloppy frente a los metros del XML (parte 1)."""
+    xs, ys, xr, yr = [], [], [], []
+    for fr in ds.frames:
+        i = pos_idx.get(int(fr.frame_id))
+        if fr.period.id == 1 and fr.ball_coordinates is not None and i is not None:
+            xs.append(fr.ball_coordinates.x)
+            ys.append(fr.ball_coordinates.y)
+            xr.append(d1["x"][i])
+            yr.append(d1["y"][i])
+    xs, ys, xr, yr = map(np.array, (xs, ys, xr, yr))
+    ax, bx = np.polyfit(xr, xs, 1)
+    ay, by = np.polyfit(yr, ys, 1)
+    sistema = ds.metadata.coordinate_system
+    return {"sistema": type(sistema).__name__, "origen": str(sistema.origin),
+            "eje_y": str(sistema.vertical_orientation),
+            "x_kloppy = a * X_xml + b": [round(float(ax), 6), round(float(bx), 6)],
+            "y_kloppy = a * Y_xml + b": [round(float(ay), 6), round(float(by), 6)],
+            "residuo_max": float(max(np.max(np.abs(xs - (ax * xr + bx))), np.max(np.abs(ys - (ay * yr + by)))))}
+
+
 def comprobar_mapeo(partido, limite):
+    """Carga limitada de kloppy. Coordenadas por defecto y 'sportec'; balón y jugadores frente a la caché."""
     from kloppy import sportec
-    from kloppy.domain import BallState, Ground
+    from kloppy.domain import BallState
     rutas = dfl_lector.rutas_partido(partido)
-    t0 = time.time()
-    ds = sportec.load_tracking(meta_data=rutas["metadatos"], raw_data=rutas["posiciones"],
-                               limit=limite, only_alive=False)
-    t_carga = time.time() - t0
     propio = dfl_lector.cargar_cache(partido)
     meta = propio["meta"]
-    equipos = ds.metadata.teams
     d1 = propio["partes"][1]
     pos_idx = {int(n): i for i, n in enumerate(d1["n"])}
+    columnas = {}
+    for equipo, team_id in (("local", meta["local_id"]), ("visitante", meta["visitante_id"])):
+        for j, persona in enumerate(d1["equipos"][equipo]["personas"]):
+            columnas[str(persona)] = (equipo, team_id, j)
+
+    t0 = time.time()
+    ds_defecto = sportec.load_tracking(meta_data=rutas["metadatos"], raw_data=rutas["posiciones"],
+                                       limit=limite, only_alive=False)
+    t_defecto = time.time() - t0
+    ajuste_defecto = _ajuste_coordenadas(ds_defecto, d1, pos_idx)
+    equipos = ds_defecto.metadata.teams
+    del ds_defecto
+
+    t0 = time.time()
+    ds = sportec.load_tracking(meta_data=rutas["metadatos"], raw_data=rutas["posiciones"],
+                               limit=limite, only_alive=False, coordinates="sportec")
+    t_sportec = time.time() - t0
     estados = collections.Counter()
     discrepancias = collections.Counter()
-    max_dif_xy = 0.0
-    n_comparados = 0
+    max_dif_balon = 0.0
+    max_dif_jugadores = 0.0
+    n_frames, n_jugadores = 0, 0
     for fr in ds.frames:
         if fr.period.id != 1:
             continue
@@ -114,34 +149,56 @@ def comprobar_mapeo(partido, limite):
         if i is None:
             discrepancias["frame_sin_pareja"] += 1
             continue
-        n_comparados += 1
+        n_frames += 1
         estados[fr.ball_state.value if fr.ball_state else "None"] += 1
-        estado_crudo = int(d1["estado"][i])
-        if (fr.ball_state == BallState.ALIVE) != (estado_crudo == 1):
+        if (fr.ball_state == BallState.ALIVE) != (int(d1["estado"][i]) == 1):
             discrepancias["ball_state"] += 1
         local_k = fr.ball_owning_team is not None and fr.ball_owning_team.team_id == meta["local_id"]
         if local_k != (int(d1["poss"][i]) == 1):
             discrepancias["ball_owning_team"] += 1
         if fr.ball_coordinates is not None:
-            dx = abs(fr.ball_coordinates.x - d1["x"][i])
-            dy = abs(fr.ball_coordinates.y - d1["y"][i])
-            max_dif_xy = max(max_dif_xy, float(dx), float(dy))
+            max_dif_balon = max(max_dif_balon, abs(fr.ball_coordinates.x - d1["x"][i]),
+                                abs(fr.ball_coordinates.y - d1["y"][i]))
+        for jugador, datos_j in fr.players_data.items():
+            col = columnas.get(str(jugador.player_id))
+            if col is None:
+                discrepancias["jugador_sin_columna_en_la_cache"] += 1
+                continue
+            equipo, team_id, j = col
+            n_jugadores += 1
+            if jugador.team.team_id != team_id:
+                discrepancias["equipo_del_jugador"] += 1
+            if datos_j.coordinates is None:
+                discrepancias["jugador_sin_coordenadas"] += 1
+                continue
+            cx = d1["equipos"][equipo]["x"][i, j]
+            cy = d1["equipos"][equipo]["y"][i, j]
+            if np.isnan(cx):
+                discrepancias["jugador_en_kloppy_y_no_en_la_cache"] += 1
+                continue
+            max_dif_jugadores = max(max_dif_jugadores, abs(datos_j.coordinates.x - cx), abs(datos_j.coordinates.y - cy))
+        presentes_cache = int(np.sum(~np.isnan(d1["equipos"]["local"]["x"][i]))
+                              + np.sum(~np.isnan(d1["equipos"]["visitante"]["x"][i])))
+        if presentes_cache != len(fr.players_data):
+            discrepancias["numero_de_jugadores_por_frame"] += 1
     return {
-        "partido": partido, "limite": limite, "segundos_carga": round(t_carga, 1),
+        "partido": partido, "limite": limite,
+        "segundos_carga_defecto_y_sportec": [round(t_defecto, 1), round(t_sportec, 1)],
         "memoria_pico_mb": dfl_lector.memoria_pico_mb(),
         "teams_0": {"team_id": equipos[0].team_id, "ground": equipos[0].ground.value,
                     "es_HomeTeamId": equipos[0].team_id == meta["local_id"]},
         "teams_1": {"team_id": equipos[1].team_id, "ground": equipos[1].ground.value,
                     "es_GuestTeamId": equipos[1].team_id == meta["visitante_id"]},
         "orden_teams_en_xml": meta["orden_teams"],
-        "sistema_de_coordenadas": str(ds.metadata.coordinate_system),
-        "pitch_dimensions": [ds.metadata.pitch_dimensions.x_dim.min, ds.metadata.pitch_dimensions.x_dim.max,
-                             ds.metadata.pitch_dimensions.y_dim.min, ds.metadata.pitch_dimensions.y_dim.max],
+        "coordenadas_por_defecto": ajuste_defecto,
+        "coordenadas_sportec": _ajuste_coordenadas(ds, d1, pos_idx),
         "frame_rate": ds.metadata.frame_rate,
-        "frames_comparados_parte_1": n_comparados,
+        "frames_comparados_parte_1": n_frames,
+        "posiciones_de_jugador_comparadas": n_jugadores,
         "valores_ball_state": dict(estados),
         "discrepancias": dict(discrepancias),
-        "max_diferencia_xy_balon_m": round(max_dif_xy, 4),
+        "max_diferencia_balon_m_sportec": round(float(max_dif_balon), 6),
+        "max_diferencia_jugadores_m_sportec": round(float(max_dif_jugadores), 6),
     }
 
 
@@ -166,18 +223,33 @@ def comprobar_completo(partido):
     hijo = subprocess.Popen([sys.executable, os.path.abspath(__file__), partido, "hijo-completo"],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8")
     proc = psutil.Process(hijo.pid)
+
+    def arbol():
+        # En Windows, el python de un venv es un lanzador que arranca el intérprete real como proceso
+        # hijo suyo: hay que vigilar y cortar el árbol entero, no solo el primer proceso.
+        try:
+            return [proc] + proc.children(recursive=True)
+        except psutil.NoSuchProcess:
+            return []
+
     pico_rss, min_libre, cortado = 0, float("inf"), None
     while hijo.poll() is None:
-        try:
-            rss = proc.memory_info().rss
-        except psutil.NoSuchProcess:
-            break
+        rss = 0
+        for p in arbol():
+            try:
+                rss += p.memory_info().rss
+            except psutil.NoSuchProcess:
+                pass
         libre = psutil.virtual_memory().available
         pico_rss, min_libre = max(pico_rss, rss), min(min_libre, libre)
         if rss > LIMITE_HIJO_GB * 1e9 or libre < MINIMO_LIBRE_GB * 1e9:
             cortado = "el hijo pasó de {} GB".format(LIMITE_HIJO_GB) if rss > LIMITE_HIJO_GB * 1e9 \
                 else "quedaban menos de {} GB libres".format(MINIMO_LIBRE_GB)
-            hijo.kill()
+            for p in reversed(arbol()):
+                try:
+                    p.kill()
+                except psutil.NoSuchProcess:
+                    pass
             break
         time.sleep(0.5)
     salida_hijo, error_hijo = hijo.communicate()
