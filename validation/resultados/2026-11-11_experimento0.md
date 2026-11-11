@@ -6,19 +6,23 @@
 
 **Lectura en tres líneas:**
 
-1. **`D` sí:** el balón muerto de la DFL cubre todo balón fuera de juego. Empieza 3–4 frames después
-   de que el balón cruce la línea y acaba en el frame en que se golpea el balón para reanudar.
-   Cumple en los 7 partidos **[medido]**.
-2. **Cambio de posesión no:** el flag pasa al rival en su primer toque, haya control o no. En los 7
-   partidos, en el 85 % de los toques sin control del rival entre dos controles del mismo equipo, el
-   flag pasa al rival; en el placebo, el 10 % **[medido]**. Se parece a una regla de "último toque"
-   **[inferencia]**.
-3. **Sorpresa:** mientras el flag dice inactivo, la posición del balón está congelada (100 % de los
-   frames `D`) y salta al reanudar (mediana de 6,2 m). En la DFL, la posición del balón delata el `D`
+1. **`D` sí:** el balón muerto de la DFL cubre todo balón fuera de juego y cumple en los 7 partidos
    **[medido]**.
+   - Empieza 3–4 frames después de que el balón cruce la línea.
+   - Acaba en el golpeo del reinicio o pocos frames después: en el primer frame activo, el jugador del
+     equipo del flag está a 0,75 m del balón (mediana) y el 87 % a 2 m o menos.
+2. **Cambio de posesión no:** el flag pasa al rival en su primer toque, haya control o no **[medido]**:
+   - toques sin control del rival entre dos controles del mismo equipo: el flag marca al rival en el
+     85 %, frente al 10 % del placebo;
+   - en el 81 % de los casos en que el flag era del otro equipo justo antes, cambia en ese toque.
+
+   Se parece a una regla de "último toque" **[inferencia]**.
+3. **Sorpresa:** mientras el flag dice inactivo, la posición del balón está congelada (100 % de los
+   frames `D`) y salta al reanudar (mediana de 6,2 m). En la DFL, la posición del balón delata el `D`.
+   Los jugadores no se congelan **[medido]**.
 
 - **Código:** rama `exp/experimento-0`, carpeta `validation/experimento0/`. Las cifras de este
-  fichero salen del commit `a295bbb` (solo commits locales; sin push).
+  fichero salen del commit `65d552f` (solo commits locales; sin push).
 - **Datos:** Bundesliga (Bassek, Rein, Weber y Memmert, 2025), figshare
   10.6084/m9.figshare.28196177.v1, CC BY 4.0, 7 partidos.
 - **Comandos** (todos imprimen solo agregados; los detalles van en JSON junto a la caché, fuera del
@@ -27,8 +31,10 @@
   - `python validation/experimento0/dfl_lector.py <partido>`, uno cada vez (caché `.npz`)
   - `python validation/experimento0/pruebas_sinteticas.py` (todas las pruebas: OK)
   - `python validation/experimento0/parada2_resumen.py` (2a, 2b, C1–C11)
-  - `python validation/experimento0/parada3.py` (2c, 2d, 2e, 2g, 1a, 1b, sensibilidad: 56,5 s y
-    435 MB de pico con los 7 partidos)
+  - `python validation/experimento0/parada3.py` (2c, 2d, 2e, 2g, 1a, 1b, sensibilidad: 46,1 s y
+    457 MB de pico con los 7 partidos)
+  - `python validation/experimento0/diagnostico_congelado.py` (cuánto toca el balón congelado a
+    toques, controles y 2g)
   - `python validation/experimento0/parada3_tablas.py` (las tablas de este fichero)
 - **kloppy:** 3.18.0. Solo se usó para comprobar el lector propio, con `coordinates="sportec"` para
   tener metros.
@@ -53,15 +59,15 @@
 **Qué hemos aprendido:**
 
 - **El balón muerto de la DFL es como el `D` del reto.** Pasa a muerto unos 3–4 frames después de que
-  el balón salga y vuelve a vivo justo en el golpeo del saque. Cubre todos los saques de banda, de
-  puerta y córners. Sirve tal cual.
+  el balón salga y vuelve a vivo en el golpeo del saque o muy poco después. Cubre todos los saques de
+  banda, de puerta y córners. Sirve tal cual.
 - **El cambio de posesión no es como el del reto.** La DFL da la posesión al rival en cuanto la toca,
   aunque sea un toque sin control: un despeje, un desvío o un rechace. El reto dice que eso no cambia la
-  posesión. Pasa en los 7 partidos (en el 85 % de esos toques, frente al 10 % del placebo) y con
-  cualquier ajuste de los parámetros.
+  posesión. Pasa en los 7 partidos y con cualquier ajuste de los parámetros: en esos toques, el flag
+  marca al rival en el 85 % de los casos, frente al 10 % del placebo.
 - **Sorpresa: mientras el balón está muerto, la DFL lo deja quieto donde estaba y lo hace saltar al
   reanudar.** Si se entrena o se prueba un detector de balón muerto con estos datos sin tapar el balón
-  en esos frames, el balón le chiva la respuesta.
+  en esos frames, el balón le chiva la respuesta. Los jugadores sí se mueven con normalidad.
 
 **Qué hay que decidir (tú):** si usamos la posesión de la DFL tal cual o corregida. Hay dos lecturas:
 
@@ -167,7 +173,7 @@ Lo que pide `PASOS.md` (variante original, los 7) **[medido]**:
 |---|---|---|---|
 | distancia del balón al jugador más cercano del equipo nuevo (m) | 0,19 | 0,62 | 1,13 |
 | distancia del balón al jugador más cercano del equipo antiguo (m) | 0,63 | 2,07 | 6,65 |
-| desfase del cambio respecto al toque del equipo nuevo (frames del toque − cambio) | −2 | 0 | +6 |
+| desfase del cambio respecto al toque del equipo nuevo (frames, cambio − toque; negativo = el flag cambia antes del toque) | −6 | 0 | +2 |
 
 - **Cambios con un jugador del equipo nuevo a ≤ 1,5 m en ±1 s:** 99,6 %. En el placebo (frames estables
   al azar): 21,8 % para el equipo sin el flag y 96,1 % para el que lo tiene.
@@ -191,10 +197,19 @@ Lo que pide `PASOS.md` (variante original, los 7) **[medido]**:
 | Düsseldorf (5) | 0,23 / 0,62 / 1,12 | 0,63 / 2,08 / 6,81 | 87,7 | -2 / 0 / 3 | 2,1 | 99,8 | 20,2 / 96,3 | 0,3 |
 | los 7 | 0,19 / 0,62 / 1,13 | 0,63 / 2,07 / 6,65 | 87,5 | -2 / 0 / 6 | 2,3 | 99,6 | 21,8 / 96,1 | 0,2 |
 
-**Criterios del punto 2 fijados antes de medir** (bitácora). 2b: cambio seguido de control del equipo
-nuevo (el mismo jugador, el más cercano, a ≤ 1 m durante ≥ 12 frames) entre 1 s antes y 2 s después.
-2c: momento del inicio de ese control. Los dos "retención" son los criterios originales, con 5 frames
-del mismo equipo, que se cambiaron antes de medir.
+La tabla de abajo da el desfase con el signo contrario (toque − cambio).
+
+**Criterios del punto 2 fijados antes de medir** (bitácora):
+
+- **2b:** cambio seguido de control del equipo nuevo (el mismo jugador, el más cercano, a ≤ 1 m durante
+  ≥ 12 frames) entre 1 s antes y 2 s después.
+- **2c:** momento del inicio de ese control.
+- **"Retención":** las columnas así llamadas usan la retención de 5 frames del mismo equipo con la
+  ventana nueva (−1 s / +2 s).
+  - El criterio original exacto de 2b era la retención en ±1 s. Es la fila "ventana 2b ±1 s" de la
+    sensibilidad: 59,8 % con los 7, entre medias, y entre medias en los 7 partidos (59,6 % solo en
+    juego).
+  - El 2c original buscaba la primera retención en ±2 s. Aquí se toma la más cercana al cambio.
 
 | partido | cambios | por min vivo | control % | solo toque % | nada % | placebo control: otro / flag % | control normalizado % | retención 5 frames % | placebo retención: otro / flag % | momento del control p10 / p50 / p90 (frames) | sin control en ±2 s % | a ±3 / ±8 / ±25 frames % | momento de la retención p10 / p50 / p90 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
@@ -230,13 +245,16 @@ separados como mucho 5 s, y sin `D` entre medias.
 
 Lectura **[medido]**:
 
-- **El flag pasa al rival en el 85,2 % de esos toques** (83,5 % contando una vez cada hueco entre dos
+- **El flag marca al rival en el 85,2 % de esos toques** (83,5 % contando una vez cada hueco entre dos
   controles). Por partido, entre el 73,9 % y el 91,2 %, con 18–43 toques por partido. El corte de "no
   cumple" era del 30 %.
 - **Placebo:** con un toque del mismo equipo X entre sus dos controles, el flag pasa a Y en el 10,0 % de
   los huecos (1.140 huecos). La diferencia es del toque del rival, no de la ventana.
 - **Es en el toque, no antes:** en el 71,9 % de los casos el flag es de X 3 frames antes del toque. De
   esos, el 81 % pasa a Y, y el 74,7 % lo hace a 2 frames o menos del toque.
+- **Contando solo los cambios de X a Y:** el 58,1 % de todos los toques.
+- **El resto del 85 %:** casos en que el flag ya era de Y antes del toque. Puede haber, por ejemplo,
+  un toque anterior de Y en el mismo hueco.
 - **Sensibilidad:** entre el 81 % y el 87 % por toque (del 80 % al 86 % por hueco) en todas las
   variaciones de las dos variantes.
 - **Duración de la racha del rival que crea el toque:** mediana de 2,0 s (p10 0,64 s, p90 4,1 s). Solo
@@ -332,8 +350,10 @@ Placebo (instantes al azar, ±5 s): 14,6 %. Fines de `D` emparejados con un rein
 
 | medida | valor |
 |---|---|
-| desfase entre el flag y el balón en movimiento (frames, mediana y p90) | 0 y 0 (medida nueva, solo con frames activos); el 91,4 % se mueve en el mismo frame y el 98,6 % a 5 frames o menos |
-| % de paradas en las que el equipo del flag durante la parada es el que reanuda | 99,7 % |
+| desfase entre el flag y el balón en movimiento (frames, mediana y p90) | 0 y 0 (medida nueva, solo con frames activos). Con el balón congelado solo puede dar 0 o más: dice que el flag no pasa a activo antes del golpeo, no que no lo haga después. Para eso, la fila siguiente |
+| jugador del equipo del flag más cercano al balón en el primer frame activo | p10 / p50 / p90 = 0,20 / 0,75 / 2,51 m; el 69,8 % a ≤ 1 m y el 87,3 % a ≤ 2 m |
+| % de paradas en las que el equipo del flag durante la parada es el del flag en el primer frame activo | 99,7 % |
+| equipo del evento de reinicio emparejado = flag en el primer frame activo | 97,8 % (saque de banda 96,1 %, falta 100 %, de puerta 100 %, córner 96,5 %) |
 
 | partido | balón quieto en los frames D % | salto del balón al reanudar p10 / p50 / p90 (m) | medida fijada: desfase p10 / p50 / p90 (artefacto) | medida nueva: desfase p10 / p50 / p90 | se mueve a 0 / ≤ 5 / ≤ 25 frames % | flag de la parada = equipo que reanuda % |
 |---|---|---|---|---|---|---|
@@ -351,10 +371,48 @@ Placebo (instantes al azar, ±5 s): 14,6 %. Fines de `D` emparejados con un rein
 - **La medida fijada en `PASOS.md` no sirve aquí.** Da −2 frames en todas las paradas porque el balón
   está congelado durante el `D` y salta al reanudar. La velocidad centrada de ±2 frames ve ese salto
   2 frames antes. Se apunta como artefacto y se da la medida nueva.
-- **El flag durante la parada:** es constante en el 99,6 % de los `D`. Solo coincide con el del último
-  frame activo en el 30,8 %. Ya es el del equipo que reanuda: el flag cambia al reanudador en el primer
-  frame del `D` **[medido]**. Las excepciones al 100 % son paradas sin reinicio al final de una parte
-  **[inferencia]**.
+Todos los pasos a activo (699): jugador del equipo del flag más cercano al balón en el primer frame activo, p10 / p50 / p90 = 0,20 / 0,75 / 2,51 m; a ≤ 1 m / ≤ 2 m: 69,8 / 87,3 %.
+
+| tipo de reinicio (emparejado a ±5 s) | n | jugador del flag más cercano p10 / p50 / p90 (m) | a ≤ 1 m % | equipo del evento = flag en el primer frame activo % |
+|---|---|---|---|---|
+| ThrowIn | 306 | 0,19 / 0,75 / 2,91 | 57,5 | 96,1 |
+| FreeKick | 165 | 0,23 / 0,70 / 1,01 | 88,5 | 100,0 |
+| GoalKick | 119 | 0,23 / 0,80 / 2,16 | 78,2 | 100,0 |
+| CornerKick | 57 | 0,28 / 0,92 / 3,56 | 50,9 | 96,5 |
+| KickOff | 17 | 0,27 / 0,59 / 1,06 | 88,2 | — |
+| RefereeBall | 11 | 0,11 / 0,44 / 0,62 | 100,0 | — |
+| Penalty | 3 | 0,88 / 0,99 / 1,61 | 66,7 | 100,0 |
+
+Equipo del evento = flag, todos los tipos: 97,8 %.
+
+- **Cuándo pasa a activo [medido]:**
+  - en el primer frame activo, el balón está pegado a un jugador del equipo del flag (mediana
+    0,75 m), así que el `D` acaba en el golpeo o muy cerca;
+  - en la cola (p90 de 2,5 m; en saques de banda y córners, entre el 51 % y el 58 % a ≤ 1 m) el balón ya
+    ha salido unos metros: el flag pasaría a activo unos frames después del golpeo **[inferencia]**.
+    Con el balón congelado no se puede medir mejor.
+- **El flag durante la parada [medido]:**
+  - es constante en el 99,6 % de los `D`, y en las 696 que acaban en un reinicio, en todas
+    (`diagnostico_congelado.py`);
+  - solo coincide con el del último frame activo en el 30,8 %;
+  - coincide con el equipo del evento de reinicio en el 97,8 %.
+
+  Es decir, el flag pasa al equipo que reanuda en el primer frame del `D`.
+
+| partido | frames D | con todos los jugadores quietos % | frames activos con todos quietos | velocidad media de los jugadores en D p10 / p50 / p90 (m/s) | en juego p10 / p50 / p90 (m/s) |
+|---|---|---|---|---|---|
+| J03WMX | 60.598 | 0,00 | 0 | 0,53 / 1,01 / 1,62 | 1,38 / 2,26 / 3,51 |
+| J03WN1 | 73.183 | 0,00 | 0 | 0,54 / 0,98 / 1,62 | 1,32 / 2,16 / 3,55 |
+| J03WOH | 65.268 | 0,00 | 0 | 0,53 / 1,05 / 1,69 | 1,47 / 2,43 / 3,74 |
+| J03WOY | 66.249 | 0,00 | 0 | 0,62 / 1,06 / 1,81 | 1,47 / 2,37 / 3,64 |
+| J03WPY | 64.751 | 0,00 | 0 | 0,46 / 0,97 / 1,65 | 1,41 / 2,29 / 3,72 |
+| J03WQQ | 57.993 | 0,00 | 0 | 0,50 / 1,06 / 1,76 | 1,39 / 2,33 / 3,69 |
+| J03WR9 | 61.494 | 0,00 | 0 | 0,53 / 1,03 / 1,73 | 1,32 / 2,10 / 3,38 |
+| los 7 | 449.536 | 0,00 | 0 | 0,53 / 1,02 / 1,69 | 1,38 / 2,27 / 3,62 |
+
+**Los jugadores no se congelan [medido]:** ningún frame `D` tiene a todos los jugadores quietos. Van
+más despacio que en juego (mediana de 1,0 m/s frente a 2,3 m/s), pero se mueven. La fuga es solo de la
+posición del balón.
 
 ## Posesiones cortas junto a un `D` (lo pidió la revisión de la parada 2)
 
@@ -552,7 +610,10 @@ Los detalles están en la bitácora (sección 7).
 - **En 2d y 2e:**
   - flag durante el `D`;
   - porcentaje de balón quieto en los `D`;
-  - salto al reanudar.
+  - salto al reanudar;
+  - distancia del jugador del flag al balón al reanudar;
+  - equipo del evento frente al flag;
+  - movimiento de los jugadores en los `D`.
 
 En los dos casos se dan los resultados con el criterio fijado y con el nuevo. Ningún corte de los
 veredictos ha cambiado.
@@ -561,12 +622,12 @@ veredictos ha cambiado.
 
 | id | estado | respuesta y evidencia |
 |---|---|---|
-| D2 | resuelta: en parte | **`D` sí** (1a y 1b cumplen en 7/7; 2d, 2e). **El cambio de posesión no:** cambia en el primer toque del rival aunque no controle (2g no cumple en 7/7, 85 % frente a un placebo del 10 %). |
-| D3 | resuelta | **En el primer toque del rival.** Desfase toque − cambio: mediana 0 frames (p10 −2, p90 +6); el 87,5 % de los cambios tiene un toque del equipo nuevo a ±2 s, frente al 2,3 % del placebo. No espera al control (2g) ni cambia en el aire (3a: 0,2 %). |
+| D2 | a medias | **`D` sí** (1a y 1b cumplen en 7/7; 2d, 2e). **El cambio de posesión no:** cambia en el primer toque del rival aunque no controle (2g no cumple en 7/7, 85 % frente a un placebo del 10 %). |
+| D3 | resuelta | **En el primer toque del rival.** Desfase cambio − toque: mediana 0 frames (p10 −6, p90 +2); el 87,5 % de los cambios tiene un toque del equipo nuevo a ±2 s, frente al 2,3 % del placebo. No espera al control (2g) ni cambia en el aire (3a: 0,2 %). |
 | D4 | a medias | Mientras el balón viaja, el flag se queda con el último equipo (3a cumple). En un toque sin control del rival, cambia (2g). Los pases fallados de los eventos (3b) no se han medido: falta 2f. |
 | D5 | resuelta | Inactivo es todo balón fuera de juego: banda, fondo y paradas dentro del campo. El 66 % de los `D` empieza con el balón fuera de las líneas; el 99,4–100 % de los saques de banda, de puerta y córners tiene su fin de `D` a ±5 s; con el balón fuera ≥ 1 s solo hay 2 episodios activos en 7 partidos. |
-| D6 | resuelta | **A inactivo:** 3–4 frames después de que el balón cruce la línea (p90 de 8–10). **A activo:** en el frame en que se golpea el balón (0 frames en el 91,4 %). El flag durante la parada ya es el del equipo que reanuda (99,7 %). |
-| D7 | a medias | **En la DFL**, ningún retraso sistemático: el cambio cae en el frame del toque y el `D` acaba en el golpeo. No encaja con un marcado en directo con retraso humano de 0,3–1 s **[inferencia]**. **En la GT del reto** no se puede medir. |
+| D6 | resuelta | **A inactivo:** 3–4 frames después de que el balón cruce la línea (p90 de 8–10). **A activo:** en el golpeo o pocos frames después: en el primer frame activo, el jugador del equipo del flag está a 0,75 m del balón (mediana) y el 87 % a ≤ 2 m. No se puede afinar más porque el balón está congelado durante el `D`. El flag durante la parada ya es el del equipo del evento de reinicio (97,8 %). |
+| D7 | a medias | **En la DFL**, ningún retraso sistemático: el cambio cae en el frame del toque y el `D` acaba en el golpeo o a pocos frames. No encaja con un marcado en directo con retraso humano de 0,3–1 s **[inferencia]**. **En la GT del reto** no se puede medir. |
 | D8 | resuelta | No faltan frames: `N` y `T` de 1 en 1 en las dos partes de los 7, y 1.002.644 frames como el artículo. |
 | D9 | resuelta | kloppy 3.18 lee bien la DFL: local en `teams[0]`, `ball_state` `alive`/`dead`, y 0 diferencias con el lector propio en J03WMX. Las coordenadas por defecto no son metros: hace falta `coordinates="sportec"`. Carga completa: 4,5 GB de pico, así que un partido cada vez. |
 | D10 | resuelta (una descarga) | 21 ficheros, 2,63 GB, en 4 min, con el md5 correcto en todos. No se ha probado otro día ni el espejo. |
@@ -579,7 +640,7 @@ veredictos ha cambiado.
   nítidas: empieza 3–4 frames tras salir el balón y acaba en el golpeo.
   - **Cuidado:** en la DFL, la posición del balón está congelada durante el `D` y salta al reanudar
     (mediana 6,2 m). Si se entrena o se valida un detector de `D` con la DFL sin tapar el balón en esos
-    frames, el balón le da la respuesta.
+    frames, el balón le da la respuesta. Los jugadores no se congelan: la fuga es solo del balón.
   - Al degradar la DFL para que se parezca al ATD, hay que enmascarar o reemplazar el balón en los `D`.
     Si el ATD hace lo mismo con el balón muerto, **[sin verificar]**; lo diría el perfil del ATD
     (paso 5, solo una persona).
@@ -614,7 +675,8 @@ veredictos ha cambiado.
 **¿Cuándo debe cambiar nuestra etiqueta de equipo y cuándo empieza y acaba un `D`?**
 
 - **`D`:** empieza a los pocos frames de que el balón cruce la línea o de que el árbitro pare el juego,
-  y acaba en el golpeo del reinicio. Al volver de un `D`, la etiqueta es la del equipo que reanuda.
+  y acaba en el golpeo del reinicio o pocos frames después. Al volver de un `D`, la etiqueta es la del
+  equipo que reanuda.
 - **Equipo, según la lectura b:** en el primer toque del rival.
 - **Equipo, según la lectura a:** cuando el rival controla. El tracking de la DFL da el momento del
   inicio del control: mediana de 2 frames antes del cambio del flag cuando hay control.

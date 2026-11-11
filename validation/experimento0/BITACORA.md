@@ -592,7 +592,7 @@ cifras a mano.
    - al reanudar salta: mediana de unos 6 m, p10 de 1,5–2 m y p90 de 22–27 m;
    - la velocidad centrada de ±2 frames ve ese salto 2 frames antes, y de ahí el −2. **La medida
      fijada de 2e no sirve con estos datos.**
-3. **Qué más toca el congelado** (diagnóstico aparte, solo recuentos) **[medido]**:
+3. **Qué más toca el congelado** (`diagnostico_congelado.py`, solo recuentos) **[medido]**:
    - 603 de 5.439 controles (11 %) incluyen frames `D`: un jugador junto al balón congelado;
    - 1.289 de 16.397 toques (8 %) tienen su ventana en un borde de `D`: la parada brusca y el salto;
    - 317 de 2.351 cambios tienen un `D` en su ventana de 2b;
@@ -612,11 +612,28 @@ cifras a mano.
    - para 1b, episodios activos fuera que no dependen del congelado: 2 en los 7 partidos.
 6. **Flag durante el `D`.** Constante en el 99,6 % de las paradas, e igual al del último frame activo
    solo en el 30,8 %. El flag pasa al equipo que reanuda en el primer frame del `D` **[medido]**.
-   Antes, con una comprobación aparte, se vio que en las 696 paradas que acaban en un reinicio es
-   constante en todas.
+   En las 696 paradas que acaban en un reinicio es constante en todas (`diagnostico_congelado.py`).
 7. **Medidas del congelado en el script** (porcentaje de balón quieto, salto al reanudar), para que
-   sean reproducibles. Ejecución final: 56,5 s y 435 MB de pico para las dos variantes con las 21
-   variaciones cada una. Cifras del commit `a295bbb`.
+   sean reproducibles.
+8. **Segunda revisión, antes de enviar.** Se añadieron cuatro comprobaciones.
+   - **Cuándo pasa a activo.** Con el balón congelado, la medida nueva de 2e solo puede dar 0 o más:
+     dice que el flag no pasa a activo antes del golpeo, pero no que no lo haga después. Por eso se
+     midió la distancia del jugador del equipo del flag al balón en el primer frame activo:
+     - mediana 0,75 m, p90 2,51 m;
+     - el 69,8 % a ≤ 1 m;
+     - en saques de banda y córners, entre el 51 % y el 58 % a ≤ 1 m.
+
+     Lectura: en el golpeo o pocos frames después **[medido / inferencia]**.
+   - **El equipo del evento de reinicio emparejado** coincide con el flag del primer frame activo en el
+     97,8 % **[medido]**.
+   - **Los jugadores no se congelan:** ningún frame `D` tiene a todos quietos. Velocidad media de 1,0 m/s
+     en `D` frente a 2,3 m/s en juego **[medido]**.
+   - **El criterio original exacto de 2b** (retención en ±1 s) es la fila "ventana 2b ±1 s": 59,8 %,
+     entre medias en los 7 partidos.
+   - Además, el desfase toque–cambio se da con el signo de `PASOS.md` en el fichero de resultados.
+
+   Ejecución final: 46,1 s y 457 MB de pico para las dos variantes, con las 21 variaciones cada una.
+   Cifras del commit `65d552f`.
 
 **Cambios de criterio en esta parada:**
 
@@ -631,6 +648,8 @@ cifras a mano.
   - anclaje de la hora con el saque inicial de cada parte.
 - **Después de ver datos:**
   - variante "solo en juego";
+  - distancia del jugador del flag al balón al reanudar, equipo del evento frente al flag, y
+    movimiento de los jugadores durante los `D`;
   - medida nueva de 2e. La fijada se mantiene en la tabla, marcada como artefacto;
   - en 2g: placebo, desfase, flag 3 frames antes, recuento por hueco y duración de la racha;
   - en 1b: episodios activos fuera de ≥ 1 s;
