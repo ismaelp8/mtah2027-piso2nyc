@@ -167,3 +167,53 @@ Decisión y por qué:
 - Si quiere que David le revise algo, usa rama y PR.
 - Está en `CONTRIBUTING.md` §5, en `CLAUDE.md` y en las skills `/subir`, `/empezar`, `/actualizar` y
   `/decision`.
+
+### 2026-11-12 · validación · experimento 0: `D` de la DFL vale; el equipo se deriva con el control del reto
+
+Quién: Ismael
+
+Qué se probó: si el flag por frame de la Bundesliga (DFL) se comporta como pide `CHALLENGE.md`.
+Experimento 0, pasos 1 y 2 de `validation/PASOS.md`, con los criterios fijados antes de medir.
+
+Cómo se midió:
+- **Dataset:** la Bundesliga (Bassek et al., 2025): 7 partidos, 1.002.644 frames, 2.351 cambios H↔A
+  con el balón vivo y 710 paradas.
+- **Medidas:** solo tracking y eventos, con placebos y 21 variaciones de cada parámetro.
+- **Réplica:** la sesión orquestadora repitió 2g con detectores propios.
+- **Detalle:** en `validation/resultados/2026-11-11_experimento0.md`. No se usó la ventana pública ni
+  la tabla de retrasos (D21).
+
+Resultado:
+- **`D` cumple en los 7 partidos.**
+  - El 99,4–100 % de los saques de banda, de puerta y córners tiene un final de `D` a ±5 s. En el
+    placebo, el 14,6 %.
+  - Con el balón fuera 1 s o más y el flag activo solo hay 2 episodios en 7 partidos.
+  - El `D` empieza 3–4 frames después de que el balón cruce la línea y acaba en el golpeo del reinicio
+    o pocos frames después.
+- **El balón está congelado durante los `D`:** el 100 % de esos frames repite la posición anterior, y
+  al reanudar salta una mediana de 6,2 m. La posición del balón delata la etiqueta.
+- **El equipo no cumple: el flag sigue al primer toque del rival.**
+  - Con un toque sin control del rival entre dos controles del mismo equipo, el flag pasa al rival en
+    el 72–85 % de los casos según el detector. En el placebo, el 10–14 %.
+  - No cumple en ninguno de los 7 partidos y aguanta todas las variaciones.
+  - El cambio cae en el mismo frame del toque (mediana 0).
+
+Decisión y por qué:
+- **`D` de la DFL: vale tal cual,** tapando el balón en los frames `D` y en las ventanas que tocan sus
+  bordes (entrada y salida). Si no, el balón congelado y el salto al reanudar dan la respuesta.
+- **H/A de la DFL: no vale tal cual.** Las etiquetas de equipo se derivan con el criterio de control
+  del reto: la posesión cambia cuando el rival controla el balón, no cuando lo toca.
+- **Por qué:** es lo que dice `CHALLENGE.md`: un toque sin control, un desvío que no intercepta el pase
+  o un duelo aéreo ganado sin control posterior no cambian la posesión. Ismael lo decidió el 12/11.
+
+Abierto:
+- **Qué definición de control se usa para corregir las etiquetas de la DFL.** Hay varias metodologías
+  en el informe. La propuesta del siguiente paso está al final del fichero de resultados.
+- **Riesgo apuntado:** que la GT del reto siga, como la DFL, al primer toque. `CHALLENGE.md` dice que
+  su tracking nombra equipo con el balón muerto ("whoever will restart, or touched it last"; líneas
+  42–45), y eso va en esa dirección. Las líneas 76–80 van en la contraria. Si Ismael lo pide, se puede
+  comprobar de forma cualitativa con la ventana pública (una persona, sí o no) o preguntando a la
+  organización.
+
+Descartado:
+- **Usar el flag de posesión de la DFL tal cual como etiqueta de equipo.**
