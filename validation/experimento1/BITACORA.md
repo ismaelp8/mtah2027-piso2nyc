@@ -205,8 +205,86 @@ Prueba sintética de la corrección (`correccion.py`): OK.
     diferencias son del tamaño del ruido (unos ±3 puntos) **[inferencia]**. Es un empate a falta de más
     referencias.
 - **Contexto, no se usa para elegir:**
-  - la ventana pública tiene 4,2 posesiones por minuto de balón vivo; el flag de la DFL tiene 8,3, y las
-    correcciones intermedias, 3,7–4,7;
-  - son 17 posesiones de los primeros 5 minutos, no representativas;
-  - lo único que se lee es que el flag tal cual tiene el doble de cambios que la ventana pública, algo
-    coherente con que la GT no cambie en cada toque **[inferencia]**.
+  - el flag tal cual tiene unas 8,3 posesiones por minuto de balón vivo, más o menos el doble que la
+    ventana pública (17 posesiones de los primeros 5 minutos, no representativas);
+  - es coherente con que la GT no cambie en cada toque **[inferencia]**;
+  - no se compara ninguna definición de control con la ventana pública.
+- **Lo que R(c) no resuelve: la fecha del cambio.** R(c) solo quita rachas: todo cambio que se queda
+  sigue fechado donde lo puso el flag, en el primer toque. Si la GT fecha el cambio cuando empieza el
+  control, habría desfases de varios frames; a la escala del `spellF1`, 8 frames pesan. Queda abierto.
+
+## 7. Antes de medir el otro fallo: quitar posesiones reales (fijado antes de calcular)
+
+La referencia de duelos solo ve una parte: es pequeña (unos 440 casos) y con `PossessionChange` = true
+las correcciones ya bajan del 88,6 % del flag al 72–82 %, lo que apunta a que quitan posesiones
+reales. Para medir ese fallo se usan eventos en los que un equipo **seguro** tiene el balón con
+cualquier lectura del reto:
+
+- **Pases completados** (`Play` en juego, `Evaluation` = `successfullyCompleted`, con `Recipient`):
+  - se sitúan en el frame activo, en ±3 s de su hora, en que el pasador (`Player`, por `PersonId`) está
+    más cerca del balón (≤ 1,5 m; si no, no se cuentan);
+  - la recepción es, en los 3 s siguientes, el frame en que el receptor está más cerca del balón
+    (≤ 1,5 m);
+  - **G-pase:** la etiqueta 5 frames después de la recepción es del equipo del pasador. No depende de
+    cuándo se feche el cambio: en un pase completado el equipo ya controla al recibir;
+  - aparte, y solo descriptivo porque sí depende de la fecha: la etiqueta en el frame del pase.
+- **Recuperaciones** (`BallClaiming`, `InterceptedBall` o `BallClaimed`):
+  - se sitúan igual con el jugador que recupera;
+  - **G-recuperación:** la etiqueta 12 frames (0,5 s) después es de su equipo.
+- Se descartan los casos con el balón inactivo en los frames medidos.
+- **Para cada definición:** el fallo de quitar (porcentaje de G-pase y G-recuperación con la etiqueta
+  del otro equipo) frente al de no quitar (los duelos con `PossessionChange` = false que siguen en Y a
+  2 s).
+- **Empate:** diferencias de acierto entre definiciones con bootstrap emparejado (1.000 remuestreos,
+  semilla 20261112), sobre los mismos eventos. Si el intervalo del 95 % de la diferencia incluye el 0,
+  es un empate.
+- **Nada de esto elige todavía:** la elección necesita, además, que se verifique qué significa
+  `PossessionChange`, y la decide Ismael.
+
+## 8. Los dos fallos, medidos (`comparar_definiciones.py`) [medido]
+
+Eventos usados:
+
+- 3.142 pases completados situados (113 sin situar al pasador y 975 sin situar la recepción a ≤ 1,5 m
+  en 3 s);
+- 195 recuperaciones;
+- 440 duelos.
+
+Acierto de cada corrección (en G-pase y G-recuperación, lo que no es acierto es una posesión real
+quitada):
+
+| definición | G-pase | G-recuperación | duelo `PossessionChange` = true (Y a 2 s) | duelo `PossessionChange` = false (X a 2 s) |
+|---|---|---|---|---|
+| flag tal cual | 97,9 % | 89,2 % | 88,6 % | 47,4 % |
+| C0-8 | 97,5 % | 84,6 % | 81,7 % | 71,6 % |
+| C0-12 | 96,6 % | 81,0 % | 76,4 % | 78,2 % |
+| C0-20 | 95,3 % | 75,4 % | 71,6 % | 82,0 % |
+| C0-50 | 84,0 % | 59,0 % | 52,4 % | 82,0 % |
+| Ret-5 | 98,2 % | 86,2 % | 87,3 % | 61,6 % |
+| dos toques | 98,1 % | 80,5 % | 78,6 % | 77,7 % |
+| C0-12 o dos toques | 98,8 % | 87,7 % | 84,3 % | 74,9 % |
+
+Diferencias con C0-12 (bootstrap emparejado, intervalo del 95 %, en puntos):
+
+| definición | G-pase | G-recuperación | `PossessionChange` = true | `PossessionChange` = false |
+|---|---|---|---|---|
+| C0-12 o dos toques | +1,7 a +2,8 | +3,6 a +10,3 | +4,4 a +11,8 | −6,6 a +0,5 (empate) |
+| dos toques | +1,0 a +2,2 | empate | empate | empate |
+| C0-8 | +0,5 a +1,3 | +1,0 a +6,7 | +2,6 a +8,3 | −10,4 a −3,3 |
+| C0-20 | −1,7 a −0,8 | −9,2 a −2,6 | −8,3 a −1,3 | +0,5 a +7,1 |
+
+Lectura:
+
+- **Quitar posesiones reales es poco frecuente en los pases completados** (95–99 %), salvo con C0-50
+  (16 % quitadas): el proxy "unos segundos" quita demasiado. Las recuperaciones son el punto débil de
+  todas (59–88 %).
+- **Hay un compromiso:** cuanto más exigente el control, menos falsos cambios (duelos false) y más
+  posesiones reales quitadas (recuperaciones y duelos true).
+- **"C0-12 o dos toques" no queda por detrás de C0-8 ni de C0-12 en ninguna de las cuatro
+  referencias,** y en tres de ellas va por delante. Corresponde a los dos proxies del reto: un jugador
+  retiene el balón, o el equipo encadena toques (pases).
+- **No se elige nada aquí:**
+  - el significado de `PossessionChange` sigue **[sin verificar]**;
+  - la fecha del cambio queda abierta (R(c) no la toca);
+  - la decisión es de Ismael.
+- **En el frame del pase** (depende de la fecha): 93,0 % el flag y 82,9–94,7 % las correcciones.
