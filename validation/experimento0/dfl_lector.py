@@ -249,6 +249,9 @@ def main():
         "memoria_pico_mb": memoria_pico_mb(),
         "cache_mb": round(os.path.getsize(ruta_cache) / 1e6, 1),
     })
+    # El resumen (solo agregados) se guarda junto a la caché, fuera del repo, para reunir los 7 partidos.
+    with open(ruta_cache[:-len(".npz")] + "_lector.json", "w", encoding="utf-8") as f:
+        json.dump(resumen, f, ensure_ascii=False, indent=1)
     print(json.dumps(resumen, ensure_ascii=False, indent=1))
 
 

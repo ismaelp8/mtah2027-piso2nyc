@@ -131,6 +131,12 @@ def prueba_etiquetas():
     assert sorted(perfil["posesiones"].tolist()) == [10, 20, 25, 30, 30], perfil["posesiones"]
     assert sorted(perfil["paradas"].tolist()) == [10, 30]
     print("etiquetas y perfil: OK (5 posesiones, 2 paradas, 2 tramos)")
+    # Medida R: A4 (borde) H10 (intercalada) A30 D5 H10 (junto a D) A40 H5 (borde).
+    lab_r = np.array(list("A" * 4 + "H" * 10 + "A" * 30 + "D" * 5 + "H" * 10 + "A" * 40 + "H" * 5))
+    r = etiquetas_dfl.medida_r(lab_r)
+    assert r == {"posesiones": 6, "cortas": 4, "cortas_en_el_borde": 2, "cortas_intercaladas": 1,
+                 "cortas_junto_a_D": 1}, r
+    print("medida R: OK (6 posesiones, 1 intercalada, 1 junto a D, 2 en el borde)")
 
 
 def main():

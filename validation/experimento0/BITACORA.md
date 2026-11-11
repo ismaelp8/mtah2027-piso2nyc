@@ -382,3 +382,114 @@ coinciden, manda la GT. Así que, si el punto 2 no cumple, hay dos lecturas:
 No se presentará ninguna corrección (por ejemplo, quitar las posesiones intercaladas de menos de 1 s)
 como la opción por defecto. Se expondrán las dos lecturas, qué las distinguiría y qué no podemos saber.
 La ventana pública sigue sin usarse para decidir.
+
+### 5. Parada 2: 2a y 2b de los 7 partidos
+
+**Qué se ejecutó:**
+
+- `dfl_lector.py` en los 7 partidos, uno cada vez: entre 13 y 14 s por partido. El resumen de cada uno
+  se guarda junto a su caché, fuera del repo.
+- `etiquetas_dfl.py` en los 7 (CSV fuera del repo).
+- `parada2_resumen.py`, que reúne C1–C7 y C11 (con `comprobaciones_lector.py`), el perfil de 2a, la
+  medida R y la huella de 2b. Tarda 9 s.
+
+La medida R tiene su prueba sintética en `pruebas_sinteticas.py`: con una secuencia inventada de 6
+posesiones, 1 intercalada, 1 junto a `D` y 2 en el borde, el recuento sale exacto **[medido]**.
+
+**Salida de `parada2_resumen.py`** **[medido]** (decimales con punto, tal como la imprime el script):
+
+```text
+Total de frames: 1002644 (artículo: 1002644, diferencia +0)
+
+| partido | C1 frames − TotalTime/40 | C2 − artículo | C3 saltos N / T / repetidos | C4 | C5 BallStatus / BallPossession | jugadores por frame | C6 diferencia (puntos) | C7 tramos / reinicios | C7 ajustado (sin balones a tierra) | C11 frames, coincide |
+|---|---|---|---|---|---|---|---|---|---|---|
+| J03WMX | +1 / +1 | +0 | 0 / 0 / 0 | 0 | 0,1 / 1,2 | 22–22 | 0.001 / 0.001 | 103 / 104 = 0.99 | 101 / 102 = 0.99 (1.01) | 7814 · 98.9% |
+| J03WN1 | +1 / +1 | +0 | 0 / 0 / 0 | 0 | 0,1 / 1,2 | 21–22 | 0.001 / -0.001 | 107 / 104 = 1.029 | 105 / 103 = 1.019 (1.05) | 6638 · 98.5% |
+| J03WOH | +1 / +1 | +0 | 0 / 0 / 0 | 0 | 0,1 / 1,2 | 22–22 | 0.0 / -0.001 | 102 / 100 = 1.02 | 100 / 99 = 1.01 (1.031) | 7014 · 98.8% |
+| J03WOY | +1 / +1 | +0 | 0 / 0 / 0 | 0 | 0,1 / 1,2 | 22–22 | -0.001 / 0.0 | 113 / 110 = 1.027 | 111 / 109 = 1.018 (1.037) | 6638 · 98.9% |
+| J03WPY | +1 / +1 | +0 | 0 / 0 / 0 | 0 | 0,1 / 1,2 | 22–22 | 0.001 / 0.001 | 97 / 97 = 1.0 | 95 / 95 = 1.0 (1.044) | 7837 · 99.1% |
+| J03WQQ | +1 / +1 | +0 | 0 / 0 / 0 | 0 | 0,1 / 1,2 | 21–22 | 0.0 / 0.0 | 99 / 99 = 1.0 | 97 / 97 = 1.0 (1.01) | 9967 · 97.0% |
+| J03WR9 | +1 / +1 | +0 | 0 / 0 / 0 | 0 | 0,1 / 1,2 | 22–22 | 0.0 / 0.001 | 92 / 92 = 1.0 | 90 / 90 = 1.0 (1.011) | 11813 · 99.4% |
+
+| partido | H / A / D (%) | posesiones | por min vivo | posesión p10 / p50 / p90 (s) | < 1 s / < 2 s / < 3 s (%) | paradas | parada p10 / p50 / p90 (s) | cortas: intercaladas / junto a D / borde | R (%) | huella 1 / 3 / 8 / 25 (informativa) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| J03WMX | 26.79 / 31.69 / 41.51 | 511 | 8.98 | 0.68 / 3.0 / 15.28 | 16.8 / 37.4 / 49.7 | 103 | 5.01 / 15.48 / 48.89 | 55 / 31 / 0 | 10.76 | 0.9898 / 0.9503 / 0.8184 / 0.4943 |
+| J03WN1 | 25.73 / 22.57 / 51.7 | 500 | 10.97 | 0.8 / 3.12 / 12.08 | 15.2 / 34.2 / 47.6 | 107 | 5.38 / 23.84 / 49.25 | 44 / 32 / 0 | 8.8 | 0.9884 / 0.9476 / 0.8352 / 0.5048 |
+| J03WOH | 28.51 / 23.92 / 47.57 | 402 | 8.38 | 0.88 / 3.94 / 18.54 | 11.4 / 27.4 / 39.1 | 102 | 6.22 / 19.12 / 52.58 | 23 / 23 / 0 | 5.72 | 0.9925 / 0.9706 / 0.8746 / 0.5816 |
+| J03WOY | 26.53 / 26.99 / 46.48 | 456 | 8.97 | 1.04 / 3.6 / 17.58 | 9.0 / 28.1 / 43.2 | 113 | 4.54 / 19.24 / 48.57 | 18 / 23 / 0 | 3.95 | 0.9956 / 0.9732 / 0.8829 / 0.5395 |
+| J03WPY | 35.01 / 20.7 / 44.29 | 421 | 7.75 | 0.72 / 3.84 / 20.6 | 13.5 / 29.5 / 41.6 | 97 | 5.55 / 22.8 / 55.38 | 35 / 22 / 0 | 8.31 | 0.9862 / 0.9492 / 0.8518 / 0.5639 |
+| J03WQQ | 26.01 / 33.24 / 40.74 | 401 | 7.13 | 1.08 / 4.68 / 21.28 | 9.2 / 25.2 / 38.7 | 99 | 7.86 / 19.6 / 43.38 | 18 / 18 / 1 | 4.49 | 0.992 / 0.9731 / 0.8933 / 0.6125 |
+| J03WR9 | 36.26 / 21.85 / 41.89 | 370 | 6.51 | 0.96 / 4.24 / 23.6 | 11.1 / 25.4 / 38.4 | 92 | 7.88 / 20.02 / 48.08 | 18 / 23 / 0 | 4.86 | 0.9886 / 0.9524 / 0.8751 / 0.6011 |
+| los 7 | 29.32 / 25.85 / 44.84 | 3061 | 8.3 | 0.84 / 3.68 / 18.6 | 12.5 / 30.0 / 43.1 | 713 | 5.76 / 19.64 / 49.35 | 211 / 172 / 1 | 6.89 | 0.9905 / 0.959 / 0.8594 / 0.5522 |
+| 1ª Bundesliga (J03WMX, J03WN1) | 26.27 / 27.2 / 46.53 | 1011 | 9.86 | 0.72 / 3.08 / 13.96 | 16.0 / 35.8 / 48.7 | 210 | 5.1 / 19.82 / 49.2 | 99 / 63 / 0 | 9.79 | 0.9891 / 0.949 / 0.8267 / 0.4995 |
+| Düsseldorf en casa (5 de 2. Bundesliga) | 30.54 / 25.3 / 44.15 | 2050 | 7.7 | 0.92 / 3.92 / 20.05 | 10.8 / 27.2 / 40.3 | 503 | 5.98 / 19.52 / 49.16 | 112 / 109 / 1 | 5.46 | 0.9911 / 0.964 / 0.8755 / 0.5781 |
+
+Histograma de duraciones de posesión (s): [0-0,5) [0,5-1) [1-2) [2-3) [3-5) [5-10) [10-20) [20-40) [40+)
+  J03WMX: [29, 57, 105, 63, 74, 89, 56, 27, 11]
+  J03WN1: [32, 44, 95, 67, 93, 97, 46, 23, 3]
+  J03WOH: [14, 32, 64, 47, 77, 81, 54, 28, 5]
+  J03WOY: [17, 24, 87, 69, 94, 76, 51, 31, 7]
+  J03WPY: [27, 30, 67, 51, 78, 71, 54, 34, 9]
+  J03WQQ: [14, 23, 64, 54, 57, 79, 64, 37, 9]
+  J03WR9: [23, 18, 53, 48, 62, 76, 44, 30, 16]
+  los 7: [156, 228, 535, 399, 535, 569, 369, 210, 60]
+  1ª Bundesliga (J03WMX, J03WN1): [61, 101, 200, 130, 167, 186, 102, 50, 14]
+  Düsseldorf en casa (5 de 2. Bundesliga): [95, 127, 335, 269, 368, 383, 267, 160, 46]
+```
+
+**Lectura de C1–C11 en los 7** **[medido]**:
+
+- **C1 y C2:** los 7 cumplen. Cada parte tiene `TotalTime` / 40 + 1 frames, y el total es 1.002.644,
+  exactamente el del artículo.
+- **C3, C4 y C5:** los 7 cumplen. No hay ningún salto de `N` ni de `T`, ningún frame repetido, ningún
+  frame de jugador fuera de la rejilla del balón, y los flags solo toman 0/1 y 1/2, sin ausentes. **D8
+  resuelta: no faltan frames.**
+- **Jugadores por frame:** 22 en todo momento, salvo en J03WN1 y J03WQQ, que bajan a 21. Se comprobó
+  que no es un hueco del tracking: es una expulsión. En los dos hay una tarjeta roja en los eventos, y el
+  equipo afectado juega con 10 en un tramo seguido hasta el final del partido:
+  - J03WN1: el visitante (Leverkusen), desde el 15 % de la 1ª parte; casi todo el partido es 11 contra 10;
+  - J03WQQ: el visitante (St. Pauli), desde el 28 % de la 2ª parte.
+- **C6:** en los 7, la fracción activa coincide con el tiempo neto oficial (diferencias de 0,001 puntos
+  o menos). Confirma que el dato oficial sale del mismo flag; sigue sin ser una prueba independiente.
+- **C7:** el cociente entre tramos inactivos y reinicios va de 0,99 a 1,03, y ajustado por los bordes
+  de cada parte, de 0,99 a 1,02. Sin los balones a tierra va de 1,01 a 1,05. Los 7 están dentro del
+  rango fijado (0,85–1,30). La cobertura uno a uno sigue siendo 2d.
+- **C11:** en los 7, el jugador cercano es del equipo del flag entre el 97,0 % (J03WQQ) y el 99,4 %
+  (J03WR9) de los frames estables, con entre 6.638 y 11.813 frames por partido. **`BallPossession` 1 =
+  local queda confirmado en los 7**, que era la condición para pasar a 2c.
+
+**2a en los 7** **[medido]**:
+
+- **Balón muerto:** entre el 40,7 % y el 51,7 % de los frames, con 92–113 paradas por partido (713 en
+  total) y una duración mediana de 15,5 a 23,8 s. J03WN1, con el 51,7 %, es el partido del 11 contra 10
+  casi entero.
+- **Posesiones:** 370–511 por partido (3.061 en total), de 6,5 a 11,0 por minuto de balón vivo.
+  Duración mediana de 3,0 a 4,7 s. Las de menos de 1 s son entre el 9,0 % y el 16,8 %.
+- **Histograma de duraciones:** con los 7 juntos, los intervalos más poblados son de 1 a 10 s. Con
+  intervalos de anchura desigual no se ven dos modas claras; no se ha comprobado con un método formal
+  **[sin verificar]**.
+
+**Medida R (criterio 2a de la bitácora)** **[medido]**:
+
+- De las posesiones de menos de 1 s, 211 están intercaladas entre dos del mismo rival, 172 tocan un `D`
+  y 1 está en el borde de una parte.
+- **R = 6,89 % con los 7 juntos.** Está entre los dos cortes fijados (3 % y 10 %), así que, como se fijó
+  antes de medir, R no decide: **lo deciden 2b y 2c.**
+- Por partido, R va del 3,95 % (J03WOY) al 10,76 % (J03WMX). J03WMX es el único que pasa del 10 %.
+- **Los dos de 1ª (9,79 %) frente a los cinco del Düsseldorf (5,46 %).** Los de 1ª tienen también más
+  posesiones de menos de 1 s (16,0 % frente a 10,8 %) y más posesiones por minuto (9,9 frente a 7,7).
+  Explicaciones posibles, que con dos partidos no se pueden separar **[inferencia]**:
+  - otro estilo de juego en 1ª, con más presión y más duelos;
+  - las particularidades de esos dos partidos: un Bayern y un Leverkusen con 10 casi todo el partido;
+  - operadores distintos en cada estadio, si el flag lo marca una persona (D7);
+  - el mismo equipo local en los cinco de 2ª, que hace que sus partidos se parezcan entre sí.
+- Casi la mitad de las posesiones cortas (172 de 384) tocan un `D`: duran menos de 1 s justo antes de
+  una parada o justo después de un reinicio. Qué son se verá en 2d y 2e **[sin verificar]**.
+
+**2b, solo informativa (D21):** la huella con los 7 juntos es 0,9905 / 0,959 / 0,8594 / 0,5522 con 1 /
+3 / 8 / 25 frames. No se usa para decidir nada.
+
+**Sin verificar todavía:**
+- la cobertura uno a uno de los reinicios (2d);
+- qué son las posesiones cortas junto a un `D` (2d, 2e);
+- si la diferencia entre 1ª y 2. Bundesliga se debe a la liga, a esos partidos o a los operadores.

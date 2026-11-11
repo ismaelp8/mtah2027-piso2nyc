@@ -56,6 +56,33 @@ def rachas(lab):
     return [(str(lab[bordes[i]]), int(bordes[i + 1] - bordes[i])) for i in range(len(bordes) - 1)]
 
 
+def medida_r(lab, corta=FPS):
+    """Medida R del criterio 2a de la bitácora, solo con etiquetas de una parte.
+
+    De las posesiones (rachas de H o de A) de menos de `corta` frames:
+    - intercaladas: con una posesión a cada lado (con dos equipos, por fuerza del mismo rival: X–y–X);
+    - junto a D: con un D a algún lado;
+    - en el borde: la primera o la última de la parte.
+    R = intercaladas / total de posesiones.
+    """
+    r = rachas(lab)
+    cuenta = collections.Counter()
+    for i, (e, n) in enumerate(r):
+        if e not in ("H", "A"):
+            continue
+        cuenta["posesiones"] += 1
+        if n >= corta:
+            continue
+        cuenta["cortas"] += 1
+        if i == 0 or i == len(r) - 1:
+            cuenta["cortas_en_el_borde"] += 1
+        elif r[i - 1][0] in ("H", "A") and r[i + 1][0] in ("H", "A"):
+            cuenta["cortas_intercaladas"] += 1
+        else:
+            cuenta["cortas_junto_a_D"] += 1
+    return dict(cuenta)
+
+
 def resumen(datos):
     salida = {}
     for parte in (1, 2):
