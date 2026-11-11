@@ -210,3 +210,99 @@ coincide con el de ningún otro evento del fichero: no anulan ningún reinicio *
   (posesiones reales y cortas), duelos con balón dividido, o un flag por jugador más cercano.
 - La huella de retrasos no entra en este argumento ni dice nada sobre la GT del reto: es solo
   informativa (D1, D21).
+
+### Criterios de 2c, 2d y 2e
+
+**Cuándo se escribieron:** el 11/11, después de ver el 2a de J03WMX (511 posesiones, 86 de menos de
+1 s, 408 cambios directos) y **antes de medir nada en los instantes de cambio**. Están pendientes de
+revisión de la sesión orquestadora. Si cambian después de ver datos, se dirá aquí y por qué.
+
+**Definiciones comunes** (todo con las posiciones del lector propio, en metros):
+
+- **cambio H↔A:** frame en el que el flag pasa de un equipo al otro con el balón activo en ese frame y
+  en el anterior;
+- **velocidad del balón:** diferencia centrada de ±2 frames, para no amplificar el ruido de posición;
+- **jugador en contacto:** a 1,0 m del balón o menos;
+- **retención por un equipo:** al menos 5 frames seguidos (0,2 s) en los que el jugador más cercano al
+  balón es de ese equipo y está en contacto;
+- **placebo:** la misma medida en frames activos elegidos al azar, con semilla fija, dentro de
+  posesiones del equipo correspondiente y a más de 2 s de cualquier cambio;
+- **eventos:** su hora (`EventTime`) se pasa a frame con la `T` del tracking. Como su error es de
+  −0,37 ± 1,82 s según los autores, solo se usan con ventanas de varios segundos.
+
+**Punto 1. `D` cubre todo balón fuera de juego (2a, 2d).**
+
+- **1a. Cobertura de reinicios.** Para cada reinicio del XML de eventos (saque de banda, de puerta,
+  córner, falta, penalti y saque inicial que no abre una parte), ¿termina un tramo `D` a 3 s o menos del
+  evento?
+  - Cumple: 90 % o más en saques de banda, de puerta y córners, con los 7 partidos juntos.
+  - No cumple: menos del 70 % en alguno de esos tres.
+- **1b. Balón fuera ⇒ `D`.** En los tramos en que el balón está más de 0,5 m fuera de las líneas
+  durante 1 s seguido o más:
+  - cumple si el flag dice activo en el 5 % de esos frames o menos;
+  - no cumple si es más del 15 %.
+
+**Punto 2. La posesión cambia con un control del rival, no con un toque (2c).**
+
+- **2a. Solo con las etiquetas.** De las posesiones de menos de 1 s con el balón activo antes y
+  después, cuántas están intercaladas (el mismo rival antes y después: X–y–X) y cuántas tocan un `D`.
+  Se resume en R = posesiones intercaladas de menos de 1 s / total de posesiones.
+  - Lectura fijada antes de calcularla: R del 10 % o más indica que el flag cambia a menudo con toques
+    breves (no cumple); R del 3 % o menos es compatible con un cambio por control (cumple); entre medias
+    lo deciden 2b y 2c.
+  - Los cortes son a juicio, sin referencia externa.
+  - Se mide en los 7 partidos en la parada 2, porque solo usa etiquetas.
+- **2b. Retención.** Qué porcentaje de cambios H↔A tiene una retención del equipo nuevo en ±1 s.
+  - Cumple si es el 70 % o más; no cumple si es el 40 % o menos.
+  - Se da junto al placebo.
+- **2c. Momento.** Frames desde el cambio hasta el inicio de la primera retención del equipo nuevo,
+  buscada en ±2 s.
+  - Mediana entre −12 y +12 frames (±0,5 s): el flag cambia cuando el rival controla.
+  - Mediana de más de +12: cambia antes de que controle (con el primer toque o anticipándose).
+  - Mediana de menos de −12: cambia después, con retraso (D7).
+
+**Punto 3. La posesión se queda con el último equipo mientras el balón está suelto o en un pase
+fallado (2c, 2f).**
+
+- **3a. Cambios en el aire.** Porcentaje de cambios H↔A sin ningún jugador a 2 m del balón o menos y
+  con el balón a más de 5 m/s.
+  - Cumple si es el 10 % o menos; no cumple si es el 30 % o más.
+- **3b (2f, si se hace).** En los pases fallados del XML de eventos (`Evaluation = unsuccessful`), el
+  flag no pasa al rival antes de su primer contacto.
+
+**Descriptivos, sin veredicto (D6):**
+
+- **2d:** dónde está el balón al pasar a inactivo (dentro o fuera, distancia a la línea); desfase desde
+  que cruza una línea, si la cruzó en los 3 s anteriores; duración de la parada por tipo aproximado.
+- **2e:** desfase entre el paso a activo y el primer frame con el balón a más de 2 m/s (en ±3 s); si el
+  equipo del flag durante la parada es el que reanuda (el del flag en el primer frame activo).
+- **2c, lo que pide `PASOS.md`:**
+  - distancias del balón a los jugadores en el frame del cambio;
+  - desfase hasta el toque más cercano del equipo nuevo, con su placebo. Un toque es un cambio de
+    velocidad del balón de 3 m/s o más entre los 4 frames anteriores y los 4 siguientes, con un jugador
+    de ese equipo a 1,5 m o menos;
+  - fracción de cambios con un jugador del equipo nuevo a 1,5 m o menos en ±1 s, con su placebo.
+
+  El detector de toques se prueba antes con una trayectoria sintética de toques conocidos y ruido de
+  1–2 cm. Después se contrasta con los eventos (pases por minuto), nunca con el flag.
+
+**Sensibilidad** (todos los criterios). Una conclusión aguanta si el veredicto no cambia en ninguna de
+estas variaciones:
+
+| parámetro | valores |
+|---|---|
+| radio de contacto | 1,0 / 1,5 m |
+| retención | 3 / 5 / 8 frames |
+| ventanas de 2b y 2c | ±1 / ±2 s |
+| cambio en el aire | 1,5 / 2 / 3 m y 3 / 5 / 8 m/s |
+| margen de fuera del campo | 0,5 / 1,0 m |
+| ventana de cobertura de reinicios | ±2 / ±3 / ±5 s |
+| umbral de toque | 2 / 3 / 5 m/s |
+| ventana del placebo y del paso a activo | ±1 / ±3 s |
+
+**Distribuciones:** p10, p50 y p90 por partido y con los 7 juntos, con un histograma para ver si hay dos
+modas. Los dos partidos de 1ª Bundesliga se comparan con los cinco del Düsseldorf.
+
+**Propuesta de decisión del paso 2** (la decide Ismael): la Bundesliga vale como proxy principal si
+cumplen los puntos 1, 2 y 3. Si alguno no cumple, se apunta en qué difiere y si se puede corregir al
+derivar las etiquetas, por ejemplo quitando las posesiones intercaladas de menos de 1 s.
