@@ -683,9 +683,14 @@ ds = sportec.load_tracking(meta_data=".../DFL_02_01_matchinformation_..._J03WMX.
   `springernature.figshare.com`, que el 11/11 respondía a los scripts con un desafío antirrobots
   (`x-amzn-waf-action: challenge`). `ndownloader.figshare.com` y el espejo de Hugging Face
   (`pysport/idsse-data`) sirven los mismos ficheros. **[medido]**
-- **Coordenadas:** para medir distancias, las de por defecto (metros). `coordinates="metrica"` debería
-  dejarlas en 0–1, como el ATD; kloppy acepta ese valor, pero no lo he probado con estos datos.
-  **[sin verificar]**
+- **Coordenadas:** para medir distancias, `coordinates="sportec"`, que da exactamente los metros del XML
+  con origen en el centro **[medido]**. Las de por defecto no son metros: kloppy 3.18 da su propio
+  sistema, de 0 a 1, con origen arriba a la izquierda y el eje `y` invertido **[medido]**.
+  `coordinates="metrica"` debería dejarlas en 0–1, como el ATD; kloppy acepta ese valor, pero no lo he
+  probado con estos datos. **[sin verificar]**
+- **Memoria:** la carga completa de un partido con kloppy (`only_alive=False` y `to_df()`) tarda unos
+  104 s y llega a 4,5 GB de memoria **[medido]**. Con poca memoria libre,
+  `validation/experimento0/dfl_lector.py` lee lo mismo por streaming con menos de 1 GB.
 - Partidos disponibles: `J03WMX`, `J03WN1`, `J03WPY`, `J03WOH`, `J03WQQ`, `J03WOY`, `J03WR9`. kloppy 3.18
   lee sus eventos con el equipo local primero (comprobado con `J03WMX`). **[medido]**
 - **El equipo poseedor solo significa algo con el balón activo.** kloppy asigna el visitante a cualquier

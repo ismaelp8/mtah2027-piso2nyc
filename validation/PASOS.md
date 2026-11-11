@@ -118,6 +118,7 @@ ds = sportec.load_tracking(
     meta_data=".../DFL_02_01_matchinformation_DFL-COM-000001_DFL-MAT-J03WMX.xml",
     raw_data=".../DFL_04_03_positions_raw_observed_DFL-COM-000001_DFL-MAT-J03WMX.xml",
     only_alive=False,          # imprescindible: por defecto descarta el balón inactivo
+    coordinates="sportec",     # metros con origen en el centro; por defecto kloppy da 0–1
 )
 df = ds.to_df()                # period_id, frame_id, ball_state, ball_owning_team_id, ball_x...
 local = ds.metadata.teams[0].team_id
@@ -125,8 +126,13 @@ etiqueta = np.where(df["ball_state"] == "dead", "D",
                     np.where(df["ball_owning_team_id"] == local, "H", "A"))
 ```
 
-- **Coordenadas:** para este paso, las de por defecto (metros, origen en el centro), que son las que
-  hacen falta para medir distancias.
+- **Coordenadas:** `coordinates="sportec"`, que da exactamente los metros del XML, con origen en el
+  centro y el eje `y` hacia arriba **[medido]**. Son las que hacen falta para medir distancias. Por
+  defecto, kloppy 3.18 no da metros: da su propio sistema, de 0 a 1, con origen arriba a la izquierda y
+  el eje `y` invertido (x = X/105 + 0,5; y = −Y/68 + 0,5) **[medido]**.
+- **Memoria:** la carga completa de un partido con kloppy (`only_alive=False` y `to_df()`) tarda unos
+  104 s y llega a 4,5 GB de memoria **[medido]**. Con poca memoria libre, usa
+  `validation/experimento0/dfl_lector.py`, que lee lo mismo por streaming con menos de 1 GB.
 - **Comprobaciones antes de seguir:**
   - `ds.metadata.teams[0]` es el equipo local (los eventos de la DFL lo confirman: kloppy los lee con el
     local primero);
