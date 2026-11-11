@@ -119,6 +119,19 @@ def toques_en_juego(t_toq, eq_toq, estado):
     return t_toq[ok], eq_toq[ok]
 
 
+def movimiento_jugadores(parte):
+    """Por frame (desde el 1): si ningún jugador se ha movido respecto al anterior, y su velocidad media (m/s)."""
+    px = np.concatenate([parte["equipos"]["local"]["x"], parte["equipos"]["visitante"]["x"]], axis=1).astype(float)
+    py = np.concatenate([parte["equipos"]["local"]["y"], parte["equipos"]["visitante"]["y"]], axis=1).astype(float)
+    d = np.hypot(np.diff(px, axis=0), np.diff(py, axis=0))
+    validos = ~np.isnan(d)
+    hay = validos.any(axis=1)
+    d0 = np.where(validos, d, 0.0)
+    quietos = hay & (d0.max(axis=1) == 0)
+    vel = np.where(hay, d0.sum(axis=1) / np.maximum(validos.sum(axis=1), 1) * FPS, np.nan)
+    return quietos, vel
+
+
 def cambios(estado, poss):
     """(frames f, equipo nuevo, equipo anterior) de los cambios H↔A con el balón activo en f−1 y f."""
     estado, poss = np.asarray(estado), np.asarray(poss)
@@ -397,7 +410,9 @@ def medir_parte(parte, prm, rng, eventos_parte=None, prep=None, campo=(105.0, 68
         mov2 = np.flatnonzero(avance > 2.0)
         reanudar.append({"desfase_movimiento": lag, "desfase_movimiento_activo": int(mov2[0]) if len(mov2) else None,
                          "mismo_equipo": bool(poss[e - 1] == poss[e]),
-                         "salto": float(np.hypot(prep["x"][e] - prep["x"][e - 1], prep["y"][e] - prep["y"][e - 1]))})
+                         "salto": float(np.hypot(prep["x"][e] - prep["x"][e - 1], prep["y"][e] - prep["y"][e - 1])),
+                         # jugador del equipo del flag más cercano al balón en el primer frame activo
+                         "d_flag": float(prep["d_equipo"][int(poss[e]) - 1, e])})
     r["pasos_a_activo"] = reanudar
     # posesiones cortas junto a un D
     lab = np.where(estado == 0, 2, poss - 1)  # 0 local, 1 visitante, 2 D
@@ -427,11 +442,19 @@ def medir_parte(parte, prm, rng, eventos_parte=None, prep=None, campo=(105.0, 68
     # 1a: cobertura de reinicios
     if eventos_parte is not None:
         cob = {}
-        frames_ev = [fr for _, fr in eventos_parte]
+        frames_ev = [ev[1] for ev in eventos_parte]
         desf, usados = emparejar(frames_ev, list(fines_d), prm["ventana_cobertura"])
         orden = sorted(range(len(eventos_parte)), key=lambda i: eventos_parte[i][1])
+        emparejados = []
         for k, i in enumerate(orden):
             cob.setdefault(eventos_parte[i][0], []).append(desf[k])
+            if desf[k] is not None:
+                fin = int(eventos_parte[i][1] - desf[k])
+                eq_ev = eventos_parte[i][2] if len(eventos_parte[i]) > 2 else -1
+                flag = int(poss[fin]) - 1
+                emparejados.append({"tipo": eventos_parte[i][0], "d_flag": float(prep["d_equipo"][flag, fin]),
+                                    "equipo_coincide": None if eq_ev < 0 else bool(eq_ev == flag)})
+        r["reinicios_emparejados"] = emparejados
         r["cobertura"] = cob
         r["fines_d"] = int(len(fines_d))
         r["fines_d_emparejados"] = int(len(usados))

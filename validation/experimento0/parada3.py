@@ -82,14 +82,14 @@ def a_frame(t_ms, ms):
 
 
 def reinicios_de_la_parte(eventos, t_ms):
-    """[(tipo, frame)] de los reinicios que caen en la parte (±10 s), sin el saque inicial que la abre."""
+    """[(tipo, frame, equipo)] de los reinicios de la parte (±10 s), sin el saque inicial que la abre."""
     salida = []
-    for tipo, ms, _ in eventos:
+    for tipo, ms, eq in eventos:
         if tipo in REINICIOS and t_ms[0] - 10000 <= ms <= t_ms[-1] + 10000:
             fr = a_frame(t_ms, ms)
             if tipo == "KickOff" and fr <= 5 * FPS:
                 continue  # el saque inicial que abre la parte no viene de un D
-            salida.append((tipo, fr))
+            salida.append((tipo, fr, eq))
     return salida
 
 
@@ -110,9 +110,25 @@ def cargar(partido):
         saques = [ms for tipo, ms, _ in eventos if tipo == "KickOff" and abs(ms - t_ms[primer_activo]) <= 30000]
         anclaje.append(None if not saques else round((min(saques, key=lambda m: abs(m - t_ms[primer_activo]))
                                                       - t_ms[primer_activo]) / 1000.0, 2))
+        quietos, vel = mc.movimiento_jugadores(p)
+        en_d = estado[1:] != 1
         partes[k] = {"parte": {"estado": estado, "poss": np.asarray(p["poss"])}, "t_ms": t_ms,
-                     "prep": mc.preparar(p), "reinicios": reinicios_de_la_parte(eventos, t_ms)}
+                     "prep": mc.preparar(p), "reinicios": reinicios_de_la_parte(eventos, t_ms),
+                     "jugadores": {"frames_d": int(en_d.sum()), "frames_d_quietos": int((quietos & en_d).sum()),
+                                   "frames_activos_quietos": int((quietos & ~en_d).sum()),
+                                   "vel_d": vel[en_d], "vel_activo": vel[~en_d]}}
     return {"meta": meta, "eventos": eventos, "partes": partes, "anclaje_saque_s": anclaje}
+
+
+def resumen_jugadores(lista):
+    """Jugadores en los frames D y activos de varias partes: si se congelan y a qué velocidad van."""
+    fd = sum(j["frames_d"] for j in lista)
+    vd = np.concatenate([j["vel_d"] for j in lista])
+    va = np.concatenate([j["vel_activo"] for j in lista])
+    return {"frames_d": fd, "d_todos_quietos_pct": round(100.0 * sum(j["frames_d_quietos"] for j in lista) / fd, 2),
+            "activos_todos_quietos": sum(j["frames_activos_quietos"] for j in lista),
+            "vel_media_d_p10_p50_p90": [round(float(x), 2) for x in np.nanpercentile(vd, [10, 50, 90])],
+            "vel_media_activo_p10_p50_p90": [round(float(x), 2) for x in np.nanpercentile(va, [10, 50, 90])]}
 
 
 def medir_partido(i, datos, prm):
@@ -270,6 +286,8 @@ def resumir(r, calib=None):
                    "sin_movimiento_activo_3s_pct": pct([x is None for x in lag2]),
                    "mismo_equipo_pct": pct([p["mismo_equipo"] for p in re_]),
                    "salto_al_reanudar_m_p10_p50_p90": q([p["salto"] for p in re_]),
+                   "d_flag_m_p10_p50_p90": q([p["d_flag"] for p in re_]),
+                   "d_flag_1_2_m_pct": [pct([p["d_flag"] <= w for p in re_]) for w in (1.0, 2.0)],
                    "balon_quieto_en_D_pct": round(100.0 * r["frames_d_quietos"] / r["frames_d"], 2) if r["frames_d"] else None}
     ad, dd = r["cortas_antes_de_D"], r["cortas_despues_de_D"]
     s["cortas"] = {
@@ -293,6 +311,14 @@ def resumir(r, calib=None):
             "fines_d_sin_reinicio": len(r["fines_d_sin_reinicio"]),
             "sin_reinicio_evento_cercano": dict(collections.Counter(r["fines_d_sin_reinicio_evento_cercano"])),
         }
+        em = r["reinicios_emparejados"]
+        tipos_em = sorted(set(e["tipo"] for e in em))
+        s["reinicio_y_flag"] = {
+            t: {"n": sum(1 for e in em if e["tipo"] == t), "d_flag_p10_p50_p90": q([e["d_flag"] for e in em if e["tipo"] == t]),
+                "d_flag_1_m_pct": pct([e["d_flag"] <= 1.0 for e in em if e["tipo"] == t]),
+                "equipo_evento_igual_flag_pct": pct([e["equipo_coincide"] for e in em if e["tipo"] == t])}
+            for t in tipos_em}
+        s["reinicio_equipo_evento_igual_flag_pct"] = pct([e["equipo_coincide"] for e in em])
     if calib:
         c = dict(calib)
         c["pases_por_minuto"] = round(calib["pases"] / r["minutos_vivos"], 2)
@@ -405,6 +431,9 @@ def main():
     datos = {p: cargar(p) for p in PARTIDOS}
     salida = {"segundos_carga": round(time.time() - t0, 1),
               "anclaje_saque_s": {p: datos[p]["anclaje_saque_s"] for p in PARTIDOS}}
+    jug = {p: [datos[p]["partes"][k]["jugadores"] for k in (1, 2)] for p in PARTIDOS}
+    salida["jugadores_en_D"] = {p: resumen_jugadores(jug[p]) for p in PARTIDOS}
+    salida["jugadores_en_D"]["los 7"] = resumen_jugadores([j for p in PARTIDOS for j in jug[p]])
     duraciones = {}
     for p in PARTIDOS:
         lab = etiquetas_dfl.etiquetas_partido(dfl_lector.cargar_cache(p))

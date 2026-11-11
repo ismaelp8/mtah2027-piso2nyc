@@ -291,6 +291,17 @@ def prueba_medir_parte():
     q = r["pasos_a_activo"][0]
     assert q["mismo_equipo"] is False and -2 <= q["desfase_movimiento"] <= 2 and q["desfase_movimiento_activo"] == 0, q
     assert r["frames_d"] == 120 and r["frames_d_quietos"] == 0 and q["salto"] > 0.2, (r["frames_d_quietos"], q)
+    # en el primer frame activo el balón ya avanzó 0,32 m y E está a 10,1 − 0,32 = 9,78 m (no hay sacador)
+    assert abs(q["d_flag"] - 9.78) < 0.1, q
+    r3 = mc.medir_parte(parte, dict(mc.PARAMETROS), np.random.default_rng(1), [("ThrowIn", 552, 1)])
+    assert len(r3["reinicios_emparejados"]) == 1 and r3["reinicios_emparejados"][0]["equipo_coincide"] is True
+    quietos, vel = mc.movimiento_jugadores(parte)
+    assert quietos.all() and np.allclose(vel, 0.0)
+    parte_mov = dict(parte, equipos={"local": {"x": parte["equipos"]["local"]["x"] + (np.arange(n) >= 100)[:, None] * 0.5,
+                                               "y": parte["equipos"]["local"]["y"]},
+                                     "visitante": parte["equipos"]["visitante"]})
+    quietos, vel = mc.movimiento_jugadores(parte_mov)
+    assert not quietos[99] and quietos[98] and quietos[100] and abs(vel[99] - 0.5 * 25 / 2) < 1e-6, vel[99]
     assert r["fuera_frames"] >= 100 and 0 < r["fuera_activos"] <= 12, (r["fuera_frames"], r["fuera_activos"])
     assert r["fuera_activo_frames_todos"] == r["fuera_activos"] and r["fuera_activo_episodios"] == [], r["fuera_activo_episodios"]
     assert r["cobertura"] == {"ThrowIn": [2]} and r["fines_d_emparejados"] == 1 and r["fines_d_sin_reinicio"] == []

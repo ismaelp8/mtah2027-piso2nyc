@@ -186,6 +186,27 @@ def main():
                  for p, s in filas_partidos(P)]))
     print()
 
+    print("### Reanudación: jugador del flag junto al balón y equipo del evento (los 7)\n")
+    a7 = l7["activo"]
+    print("Todos los pasos a activo ({}): jugador del equipo del flag más cercano al balón en el primer frame "
+          "activo, p10 / p50 / p90 = {} m; a ≤ 1 m / ≤ 2 m: {} %.\n".format(
+              f(a7["n"]), f(a7["d_flag_m_p10_p50_p90"], 2), f(a7["d_flag_1_2_m_pct"])))
+    ryf = l7["reinicio_y_flag"]
+    print(tabla(["tipo de reinicio (emparejado a ±5 s)", "n", "jugador del flag más cercano p10 / p50 / p90 (m)", "a ≤ 1 m %",
+                 "equipo del evento = flag en el primer frame activo %"],
+                [[t, f(v["n"]), f(v["d_flag_p10_p50_p90"], 2), f(v["d_flag_1_m_pct"]), f(v["equipo_evento_igual_flag_pct"])]
+                 for t, v in sorted(ryf.items(), key=lambda kv: -kv[1]["n"])]))
+    print()
+    print("Equipo del evento = flag, todos los tipos: {} %.\n".format(f(l7["reinicio_equipo_evento_igual_flag_pct"])))
+
+    print("### Jugadores durante los `D`\n")
+    J = j["jugadores_en_D"]
+    print(tabla(["partido", "frames D", "con todos los jugadores quietos %", "frames activos con todos quietos",
+                 "velocidad media de los jugadores en D p10 / p50 / p90 (m/s)", "en juego p10 / p50 / p90 (m/s)"],
+                [[p, f(v["frames_d"]), f(v["d_todos_quietos_pct"], 2), f(v["activos_todos_quietos"]),
+                  f(v["vel_media_d_p10_p50_p90"], 2), f(v["vel_media_activo_p10_p50_p90"], 2)] for p, v in J.items()]))
+    print()
+
     print("### Posesiones cortas junto a un `D` (los 7)\n")
     filas = []
     for var in ("original", "solo_en_juego"):
