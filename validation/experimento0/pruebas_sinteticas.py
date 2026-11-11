@@ -139,10 +139,164 @@ def prueba_etiquetas():
     print("medida R: OK (6 posesiones, 1 intercalada, 1 junto a D, 2 en el borde)")
 
 
+def _parte(bx, by, local, visitante, estado=None, poss=None):
+    """Parte sintética en el formato de la caché. local/visitante: listas de (x, y) por frame (arrays n)."""
+    n = len(bx)
+    lx = np.stack([p[0] for p in local], axis=1).astype(np.float32)
+    ly = np.stack([p[1] for p in local], axis=1).astype(np.float32)
+    vx_ = np.stack([p[0] for p in visitante], axis=1).astype(np.float32)
+    vy_ = np.stack([p[1] for p in visitante], axis=1).astype(np.float32)
+    return {"x": np.asarray(bx, float), "y": np.asarray(by, float), "z": np.zeros(n),
+            "estado": np.ones(n, np.int8) if estado is None else np.asarray(estado, np.int8),
+            "poss": np.ones(n, np.int8) if poss is None else np.asarray(poss, np.int8),
+            "equipos": {"local": {"x": lx, "y": ly}, "visitante": {"x": vx_, "y": vy_}}}
+
+
+def prueba_detectores():
+    """Toques y control con trayectorias de respuesta conocida y ruido de 1,5 cm."""
+    import medidas_cambios as mc
+    rng = np.random.default_rng(0)
+    ruido = lambda n: rng.normal(0, 0.015, n)
+    lejos = (np.full(200, 30.0), np.full(200, 20.0))
+
+    # 1. Balón parado junto al local A (a 0,5 m) hasta el frame 60; en el 60 sale a 15 m/s.
+    n = 200
+    t = np.arange(n)
+    bx = np.where(t < 60, 0.0, 15.0 * (t - 59) / 25.0) + ruido(n)
+    by = np.zeros(n) + ruido(n)
+    parte = _parte(bx, by, [(np.zeros(n), np.full(n, 0.5))], [lejos])
+    prep = mc.preparar(parte)
+    tt, eq, dv = mc.toques(prep, 3.0, 1.5)
+    assert len(tt) == 1 and abs(int(tt[0]) - 60) <= 2 and int(eq[0]) == 0, (tt, eq, dv)
+    segs = mc.controles(prep, 1.0, 12)
+    assert len(segs) == 1 and segs[0][0] == 0 and 58 <= segs[0][1] <= 63 and segs[0][2] == 0, segs
+
+    # 2. Balón que pasa de largo a 6 m/s junto al visitante B (a 0,3 m) sin tocarlo.
+    bx = -20.0 + 6.0 * t / 25.0 + ruido(n)
+    by = np.zeros(n) + ruido(n)
+    parte = _parte(bx, by, [lejos], [(np.zeros(n), np.full(n, 0.3))])
+    prep = mc.preparar(parte)
+    tt, eq, _ = mc.toques(prep, 3.0, 1.5)
+    paso = int(np.argmin(np.abs(bx)))
+    assert not np.any(np.abs(tt - paso) <= 10), (tt, paso)
+    assert mc.controles(prep, 1.0, 12) == []
+    rets = mc.retenciones(prep, 1.0, 5)
+    assert len(rets) == 1 and rets[0][2] == 1, rets  # la retención de 5 frames sí se deja engañar
+
+    # 3. Desvío: a 12 m/s en +x; en el frame 100, junto al visitante C (0,4 m), gira 60°.
+    bx = np.where(t <= 100, 12.0 * (t - 100) / 25.0, 12.0 * 0.5 * (t - 100) / 25.0) + ruido(n)
+    by = np.where(t <= 100, 0.0, 12.0 * 0.866 * (t - 100) / 25.0) + ruido(n)
+    parte = _parte(bx, by, [lejos], [(np.zeros(n), np.full(n, 0.4))])
+    prep = mc.preparar(parte)
+    tt, eq, _ = mc.toques(prep, 3.0, 1.5)
+    assert len(tt) == 1 and abs(int(tt[0]) - 100) <= 2 and int(eq[0]) == 1, (tt, eq)
+    assert mc.controles(prep, 1.0, 12) == []
+
+    # 4. Ruido solo: balón parado y lejos de todos, sin ningún toque.
+    parte = _parte(ruido(n), ruido(n), [lejos], [lejos])
+    assert len(mc.toques(mc.preparar(parte), 3.0, 1.5)[0]) == 0
+    print("detectores: OK (golpeo, balón que pasa de largo, desvío y ruido)")
+
+
+def prueba_logica_cambios():
+    """Grupos, momento del control, 2g y emparejamiento, con segmentos puestos a mano."""
+    import medidas_cambios as mc
+    n = 300
+    d_equipo = np.full((2, n), 5.0)
+    d_equipo[1, 95:100] = 0.8           # el visitante toca cerca del cambio del frame 100
+    # Controles: locales en [0,30), [60,90), [160,190), [230,260); visitante en [170,200).
+    segs = [(0, 30, 0, 0), (60, 90, 0, 0), (160, 190, 0, 1), (170, 200, 1, 5), (230, 260, 0, 1)]
+    # Cambio a visitante en 100: su control empieza en 170, fuera de la ventana [75, 150] -> solo toque.
+    # Cambio a visitante en 150: su control empieza en 170, dentro -> control, momento +20.
+    # Cambio a visitante en 280: ningún control ni contacto del visitante en [255, 300) -> nada.
+    f = np.array([100, 150, 280])
+    nuevo = np.array([1, 1, 1])
+    g = mc.grupos_cambio(f, nuevo, segs, d_equipo, 1.0, 25, 50)
+    assert g == ["toque", "control", "nada"], g
+    m = mc.momento_control(f, nuevo, segs, 50)
+    assert m == [None, 20, None], m
+    # 2g: toque del visitante en 40 entre controles locales [0,30) y [60,90); el flag cambia en 41-50.
+    estado = np.ones(n, np.int8)
+    poss = np.ones(n, np.int8)
+    poss[41:51] = 2
+    estado[200:205] = 0                 # un D entre el toque de 195 y el control de 230
+    t_toq = np.array([40, 155, 195])
+    eq_toq = np.array([1, 1, 1])
+    res = mc.toques_sin_control(t_toq, eq_toq, [s for s in segs if s[2] == 0], estado, poss, np.zeros(n))
+    assert res == [(40, 1, True, False), (155, 1, False, False)], res
+    # Emparejamiento uno a uno: dos eventos y un solo fin cerca.
+    desf, usados = mc.emparejar([100, 104], [101], 5)
+    assert desf == [-1, None] and usados == {0}, (desf, usados)
+    print("lógica de cambios: OK (grupos, momento, 2g, emparejamiento)")
+
+
+def prueba_medir_parte():
+    """`medir_parte` de principio a fin: pase con control, desvío a banda, saque de banda y control.
+
+    Guion (frames): el local A conduce hasta el 200 y pasa al visitante B, que controla desde el ~248
+    (flag al visitante en el 252); B golpea en el 350 hacia la banda; el local C lo desvía en el 412
+    (flag al local en el 414, sin control); el balón sale por la banda (y > 34) en el 423 y se para;
+    `D` del 430 al 549; saque del visitante en el 550 (flag al visitante) y control del visitante E.
+    """
+    import medidas_cambios as mc
+    rng = np.random.default_rng(1)
+    n = 700
+    t = np.arange(n, dtype=float)
+    bx, by = np.zeros(n), np.zeros(n)
+    # 0–199 con A en (0, 0,5); 200–250 pase a 10 m/s hasta (20, 0); 250–349 parado junto a B.
+    bx = np.where(t >= 200, np.minimum(10.0 * (t - 200) / 25.0, 20.0), 0.0)
+    # 350–412 hacia la banda a 12 m/s; 412–426 desviado 60°; parado hasta el 549.
+    sube = (t >= 350) & (t <= 412)
+    by = np.where(sube, 12.0 * (t - 350) / 25.0, by)
+    y412 = 12.0 * 62 / 25.0
+    k = np.clip(t - 412, 0, 14)
+    desv = t > 412
+    bx = np.where(desv, 20.0 + 12.0 * 0.5 * k / 25.0, bx)
+    by = np.where(desv, y412 + 12.0 * 0.866 * k / 25.0, by)
+    x_o, y_o = 20.0 + 12.0 * 0.5 * 14 / 25.0, y412 + 12.0 * 0.866 * 14 / 25.0
+    # saque en el 550: hacia −y a 8 m/s durante 30 frames, y parado junto a E.
+    saque = t >= 550
+    by = np.where(saque, y_o - 8.0 * np.clip(t - 549, 0, 30) / 25.0, by)
+    bx = np.where(saque, x_o, bx)
+    bx, by = bx + rng.normal(0, 0.01, n), by + rng.normal(0, 0.01, n)
+    fijo = lambda x, y: (np.full(n, x), np.full(n, y))
+    y_e = y_o - 8.0 * 30 / 25.0
+    local = [fijo(0.0, 0.5), fijo(20.0, 30.2)]          # A, C
+    visitante = [fijo(20.0, 0.5), fijo(x_o, y_e - 0.5)]  # B, E
+    estado = np.ones(n, np.int8)
+    estado[430:550] = 0
+    poss = np.ones(n, np.int8)
+    poss[252:414] = 2
+    poss[550:] = 2
+    parte = _parte(bx, by, local, visitante, estado, poss)
+    r = mc.medir_parte(parte, dict(mc.PARAMETROS), rng, eventos_parte=[("ThrowIn", 552)])
+    assert r["cambios"] == 2, r["cambios"]
+    assert r["grupos"] == ["control", "toque"], r["grupos"]
+    assert r["momento"][1] is None and -8 <= r["momento"][0] <= 0, r["momento"]
+    assert r["en_el_aire"] == [False, False], r["en_el_aire"]
+    assert r["toques_sin_control"] == [], r["toques_sin_control"]
+    assert len(r["cortas_antes_de_D"]) == 1 and r["cortas_despues_de_D"] == [] and r["cortas_entre_dos_D"] == 0
+    c = r["cortas_antes_de_D"][0]
+    assert c == {"toque": True, "control": False, "fuera": True, "reanuda_el_otro": True}, c
+    assert len(r["pasos_a_inactivo"]) == 1, r["pasos_a_inactivo"]
+    p = r["pasos_a_inactivo"][0]
+    assert p["fuera_en_inicio"] and p["tipo"] == "banda" and 3 <= p["desfase_cruce"] <= 10 and p["duracion"] == 120, p
+    assert len(r["pasos_a_activo"]) == 1, r["pasos_a_activo"]
+    q = r["pasos_a_activo"][0]
+    assert q["mismo_equipo"] is False and -2 <= q["desfase_movimiento"] <= 2, q
+    assert r["fuera_frames"] >= 100 and 0 < r["fuera_activos"] <= 12, (r["fuera_frames"], r["fuera_activos"])
+    assert r["cobertura"] == {"ThrowIn": [2]} and r["fines_d_emparejados"] == 1 and r["fines_d_sin_reinicio"] == []
+    assert r["placebo_n"] > 0
+    print("medir_parte: OK (pase con control, desvío a banda, saque de banda; {} placebos)".format(r["placebo_n"]))
+
+
 def main():
     with tempfile.TemporaryDirectory() as carpeta:
         prueba_lector(carpeta)
     prueba_etiquetas()
+    prueba_detectores()
+    prueba_logica_cambios()
+    prueba_medir_parte()
     print("todas las pruebas: OK")
 
 
