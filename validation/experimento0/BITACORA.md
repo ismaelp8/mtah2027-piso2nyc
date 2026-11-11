@@ -725,3 +725,27 @@ Cambios en los documentos (no cambia ninguna cifra medida aquí):
 **Reproducibilidad** **[medido]**: `parada3.py` y `parada3_tablas.py` se ejecutaron dos veces seguidas.
 El JSON sin los campos de tiempo y memoria es idéntico (193.935 caracteres), las tablas son idénticas
 salvo la línea de tiempo y coinciden con las del fichero de resultados.
+
+### 9. Decisión de Ismael sobre el punto 2 (12/11)
+
+Ismael decidió, a través de la sesión orquestadora, seguir las normas del reto: la posesión cambia
+cuando el rival controla el balón, no cuando lo toca. Está apuntado en `docs/decisiones.md`:
+
+- **`D` de la DFL:** vale tal cual, tapando el balón en los `D` y en las ventanas de sus bordes.
+- **H/A de la DFL:** no vale tal cual. Las etiquetas de equipo se derivan con el criterio de control
+  del reto.
+- **Descartado:** usar el flag de posesión de la DFL tal cual como etiqueta de equipo.
+
+Cambios en el fichero de resultados:
+
+- la conclusión y el resumen para Ismael parten de esa decisión;
+- la lectura b queda como riesgo apuntado, con las evidencias de `CHALLENGE.md` (líneas 42–45 y 76–80)
+  y la comprobación cualitativa con la ventana pública si Ismael la pide;
+- al final, una propuesta del siguiente paso: qué definición de control usar, cómo medirla sin
+  circularidad (con los eventos de la DFL como referencia independiente) y qué fijar antes.
+
+No se ha medido aún cuántas posesiones cambian al corregir con el control de 12 frames: es la primera
+medida del siguiente paso.
+
+Una tercera ejecución de `parada3.py` y `parada3_tablas.py` da el mismo JSON (sin tiempos) y las mismas
+tablas que las dos anteriores **[medido]**.
