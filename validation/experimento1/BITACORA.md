@@ -349,3 +349,87 @@ marcado **[fuente]**.
   este mismo reto, con ficheros derivados del partido. No se ha abierto (regla nº 1 y juego limpio); lo
   decide Ismael.
 
+## 11. Definiciones de los proveedores (subagente, verificadas aquí en la fuente)
+
+- **Metrica, eventos** (`documentation/events-definitions.pdf` de `metrica-sports/sample-data`, leído
+  aquí con `pdftotext`) **[fuente]**:
+  - un jugador está en posesión desde que toca el balón (o decide dejarlo correr para controlarlo más
+    allá);
+  - la pierde cuando otro jugador se hace con ella, o cuando el balón sale;
+  - no la pierde si el toque del rival no tiene un impacto significativo: el pase llega a su destino, o
+    el que tenía el balón lo sigue controlando.
+
+  Es **toque con filtro de impacto**.
+- **StatsBomb** (especificación de open data v1.1, pág. 9, leída aquí) **[fuente]**:
+  - una posesión nueva empieza cuando un equipo demuestra que ha establecido el control;
+  - el equipo de la posesión aparece también en las acciones del rival dentro de ella (por ejemplo, un
+    intento de entrada).
+
+  Es **control establecido**.
+- **DFL:** el catálogo de definiciones no es público; `PossessionChange` sigue **[sin verificar]**.
+- Según el subagente, sin verificar aquí:
+  - Opta y Wyscout van por control;
+  - la FIFA (EFI) usa un tercer estado "en disputa";
+  - Link y Hoernig separan "posesión" (al entrar el balón en el espacio de acción del jugador) de
+    "control" (una capa más estricta).
+
+**Tres lecturas, no dos [inferencia]:**
+
+1. **Último toque:** el flag de la DFL.
+2. **Toque con impacto significativo:** los eventos de Metrica, la organizadora.
+   - Un desvío que no corta el pase, o un toque tras el que el poseedor sigue controlando, no cambia
+     nada, y eso coincide con dos de los tres ejemplos de `CHALLENGE.md`.
+   - Pero un toque que deja el balón suelto sí da la posesión al que toca. Eso crea rachas cortas
+     X → y → X como las de 19 y 33 frames de la GT pública.
+3. **Control establecido:** el texto de `CHALLENGE.md` y StatsBomb.
+   - El tercer ejemplo del reto, un duelo aéreo ganado sin control posterior de ese equipo, es justo
+     donde 2 y 3 se separan. Que el reto lo ponga como "no es cambio" apunta a 3.
+
+## 12. Antes de medir cuánto se separan las lecturas 2 y 3 (fijado antes de calcular)
+
+Sobre los casos de 2g (un toque del rival Y sin control, entre dos controles de X separados ≤ 5 s y
+sin `D`; variante original), se cruza el jugador de los dos controles con los pases de los eventos:
+
+- **mismo jugador:** el que controlaba antes vuelve a controlar;
+- **pase que llega:** otro jugador de X controla después, y hay un pase de los eventos del primero al
+  segundo, completado (`successfullyCompleted`, `Recipient` = el segundo), a ±3 s del toque. Es un
+  desvío que no corta el pase;
+- **balón suelto recuperado:** otro jugador de X controla después y no hay ese pase completado.
+
+**Qué se da:**
+
+- el reparto de los casos entre las tres clases;
+- en cada clase, cuántos hacen que el flag pase a Y.
+
+**Cómo se lee:**
+
+- la lectura 3 no cambia en ninguna clase;
+- la lectura 2 no cambia en "pase que llega" y sí en "balón suelto recuperado";
+- en "mismo jugador" depende de si el poseedor lo siguió controlando.
+
+Es descriptivo.
+
+## 13. Cuánto se separan las lecturas 2 y 3 (`lecturas_toque.py`) [medido]
+
+De los 203 casos de 2g:
+
+| clase | casos | reparto | el flag pasa al rival |
+|---|---|---|---|
+| balón suelto recuperado por otro jugador de X | 142 | 70,0 % | 90,1 % |
+| el mismo jugador de X vuelve a controlar | 45 | 22,2 % | 75,6 % |
+| pase que llega a su destino pese al toque | 16 | 7,9 % | 68,8 % |
+
+**Lectura:**
+
+- **Las lecturas 2 y 3 se separan en la mayoría de los casos.** En el 70 % el toque deja el balón
+  suelto y lo recupera un compañero:
+  - con la lectura 2 (Metrica) es una posesión corta del rival;
+  - con la 3 (reto, StatsBomb) no cambia nada.
+- **El flag de la DFL se parece a la lectura 2** en esa clase (cambia en el 90 %). Se aparta de ella en
+  los pases que llegan (cambia en el 69 %, y con la lectura 2 no debería).
+- La clase se decide con los pases de los eventos, a ±3 s. Un pase completado no encontrado convierte
+  un "pase que llega" en "balón suelto", así que el 7,9 % es un mínimo **[inferencia]**.
+- **La GT pública tiene dos rachas cortas X → y → X** (19 y 33 frames). Encajan de forma natural con
+  la lectura 2, y con la 3 solo si son controles muy breves. Con 17 posesiones no prueba nada
+  **[inferencia]**. El vídeo lo decide.
+
