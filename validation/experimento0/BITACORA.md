@@ -493,3 +493,63 @@ Histograma de duraciones de posesión (s): [0-0,5) [0,5-1) [1-2) [2-3) [3-5) [5-
 - la cobertura uno a uno de los reinicios (2d);
 - qué son las posesiones cortas junto a un `D` (2d, 2e);
 - si la diferencia entre 1ª y 2. Bundesliga se debe a la liga, a esos partidos o a los operadores.
+
+### 6. Parada 3: medidas añadidas y detalles fijados antes de mirar los datos
+
+**Cuándo:** el 11/11, tras la revisión de la parada 2 y antes de calcular ninguna medida de 2c, 2d, 2e
+ni 2g con datos reales. Lo nuevo lo pide la sesión orquestadora; los detalles concretan lo ya fijado
+sin cambiar ningún corte.
+
+**Veredicto por partido.** Cada criterio se da con los 7 juntos y partido a partido, contando cuántos
+de los 7 cumplen, cuántos no y cuántos quedan entre medias. La diferencia entre los dos de 1ª y los del
+Düsseldorf se trata como variación entre partidos, no como efecto de la liga.
+
+**Nuevo: posesiones cortas junto a un `D`** (las de menos de 1 s que tocan una parada).
+
+- **Antes de un `D`** (X → y → `D`, con y del equipo Y y de menos de 25 frames). Para cada una:
+  1. **toque de Y:** hay un toque detectado de Y entre 5 frames antes del inicio de y y su final;
+  2. **control de Y:** algún control de Y (12 frames, mismo jugador) se solapa con y;
+  3. **balón fuera:** en el inicio del `D`, el balón está fuera de las líneas o las cruzó en los 3 s
+     anteriores;
+  4. **quién reanuda:** el equipo del flag en el primer frame activo después del `D`.
+- Si se dan 1 y 3 y no 2, es un **toque de Y sin control que cambia el flag justo antes de que el balón
+  salga** (un despeje o un desvío a córner o a banda). Cuenta para 2g aunque no esté intercalado. Se da
+  qué fracción de las posesiones cortas antes de un `D` son así, y en cuántas reanuda X (lo esperable si
+  el último toque fue de Y).
+- **Después de un `D`** (`D` → y → X): si hay un toque de Y entre 5 frames antes del inicio de y y 25
+  frames después, si Y tiene control y quién es X. Es descriptivo: un reinicio de Y que se pierde
+  enseguida.
+
+**Nuevo: dos modas.** Histograma de las duraciones de posesión en escala logarítmica, con intervalos de
+la misma anchura (0,2 décadas, de 0,04 s a 400 s), por partido y con los 7 juntos. Se dice que hay dos
+modas si hay dos máximos locales separados por un intervalo con como mucho el 70 % del menor de los dos.
+Es descriptivo.
+
+**Detalles de implementación** (concretan lo fijado; no cambian ningún corte):
+
+- **velocidad por frame:** v_t = (p_t − p_{t−1}) × 25;
+- **toque:** módulo de la diferencia entre la velocidad media de los frames t+1…t+4 y la de los frames
+  t−3…t, de 3 m/s o más y máximo local en ±4 frames. Se atribuye al equipo del jugador más cercano si
+  está a 1,5 m o menos; si no, el toque no es de nadie;
+- **jugador más cercano:** entre los dos equipos, en cada frame;
+- **control:** rachas de 12 frames o más en las que el mismo `PersonId` es el más cercano y está a 1,0 m
+  o menos;
+- **retención:** rachas de 5 frames o más en las que el más cercano es del mismo equipo y está a 1,0 m o
+  menos;
+- **2c, momento:** se toma el control del equipo nuevo cuyo inicio cae en ±2 s del cambio y está más
+  cerca de él. Los cambios sin ningún control así se cuentan aparte;
+- **placebo de 2b, 2c y de las medidas de `PASOS.md`:** hasta 2.000 frames activos por partido elegidos
+  al azar, con semilla 20261111 + número del partido (0–6). Ninguno tiene un cambio a menos de 50
+  frames, todos tienen el balón activo y el mismo flag en su ventana, y se usa la misma ventana que en
+  la medida real;
+- **2g:** el toque tiene el balón activo y no hay ningún `D` entre el toque y el siguiente control de X.
+  Si lo hay, el caso va a "posesiones cortas antes de un `D`";
+- **1a:** la hora del evento (`EventTime`) se pasa al frame cuya `T` es la más cercana. Se excluyen los
+  saques iniciales a 5 s o menos del primer frame de la parte (abren la parte y no vienen de un `D`).
+  El fin de un `D` es el primer frame activo tras un tramo inactivo. Los balones a tierra se dan aparte.
+  El placebo usa el mismo número de instantes por parte, al azar y uniformes dentro de la parte;
+- **1b:** campo de 105 × 68 m (metadatos): fuera si \|x\| > 52,5 + margen o \|y\| > 34 + margen;
+- **2d, tipo de parada:** fuera por banda si \|y\| > 34; fuera por fondo si \|x\| > 52,5; dentro del
+  campo en otro caso. Se mira en el inicio del `D` o, si cruzó una línea en los 3 s anteriores, en el
+  primer frame fuera;
+- **sensibilidad:** cada parámetro se varía de uno en uno, con el resto en su valor principal.
