@@ -337,7 +337,11 @@ ciegas (D18).
   - jugadores localizados por frame y duración de los tramos de los slots: cuantiles 10, 50 y 90;
   - porcentaje de saltos imposibles o de balón fuera de [0, 1];
   - temblor de las posiciones: una mediana;
-  - porcentaje de frames con balón en los 10 s previos a los `SET PIECES`, todos juntos.
+  - porcentaje de frames con balón en los 10 s previos a los `SET PIECES`, todos juntos;
+  - *(propuesta del experimento 0)* balón congelado: porcentaje de frames con balón cuya posición es
+    idéntica a la del frame anterior, y duración de esas rachas en pocos intervalos gruesos (< 1 s,
+    1–5 s, 5–30 s, > 30 s), solo totales del partido. En la DFL el balón se congela durante todo el
+    balón muerto; esto dice si el ATD hace lo mismo.
 - **Nunca** números de frame, instantes, jugadas concretas ni valores por frame.
 - **Si hay duda** de si un agregado es demasiado fino para pegarlo a Claude o para publicarlo, se
   pregunta antes a la organización.
