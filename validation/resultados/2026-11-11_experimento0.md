@@ -12,14 +12,18 @@
    - Acaba en el golpeo del reinicio o pocos frames después: en el primer frame activo, el jugador del
      equipo del flag está a 0,75 m del balón (mediana) y el 87 % a 2 m o menos.
 2. **Cambio de posesión no:** el flag pasa al rival en su primer toque, haya control o no **[medido]**:
-   - toques sin control del rival entre dos controles del mismo equipo: el flag marca al rival en el
-     85 %, frente al 10 % del placebo;
-   - en el 81 % de los casos en que el flag era del otro equipo justo antes, cambia en ese toque.
+   - toques sin control del rival entre dos controles del mismo equipo: el flag marca al rival entre
+     el 72 % (réplica independiente de la orquestadora, placebo 14 %) y el 85 % (esta medida, placebo
+     10 %);
+   - en el partido más bajo (J03WQQ en las dos) queda alrededor de la mitad (52 % en la réplica) o en
+     el 74 % (aquí);
+   - en el 81 % de los casos en que el flag era del otro equipo justo antes, cambia en ese toque (66 %
+     en la réplica).
 
    Se parece a una regla de "último toque" **[inferencia]**.
 3. **Sorpresa:** mientras el flag dice inactivo, la posición del balón está congelada (100 % de los
-   frames `D`) y salta al reanudar (mediana de 6,2 m). En la DFL, la posición del balón delata el `D`.
-   Los jugadores no se congelan **[medido]**.
+   frames `D`) y salta al reanudar (mediana de 6,2 m). En la DFL, la posición del balón delata el `D`,
+   también en los primeros frames activos. Los jugadores no se congelan **[medido]**.
 
 - **Código:** rama `exp/experimento-0`, carpeta `validation/experimento0/`. Las cifras de este
   fichero salen del commit `65d552f` (solo commits locales; sin push).
@@ -36,6 +40,9 @@
   - `python validation/experimento0/diagnostico_congelado.py` (cuánto toca el balón congelado a
     toques, controles y 2g)
   - `python validation/experimento0/parada3_tablas.py` (las tablas de este fichero)
+- **Reproducible:** dos ejecuciones seguidas de `parada3.py` y `parada3_tablas.py` dan el mismo JSON y
+  las mismas tablas. Solo cambian el tiempo y la memoria, porque los placebos llevan semilla fija
+  **[medido]**.
 - **kloppy:** 3.18.0. Solo se usó para comprobar el lector propio, con `coordinates="sportec"` para
   tener metros.
 
@@ -63,11 +70,16 @@
   banda, de puerta y córners. Sirve tal cual.
 - **El cambio de posesión no es como el del reto.** La DFL da la posesión al rival en cuanto la toca,
   aunque sea un toque sin control: un despeje, un desvío o un rechace. El reto dice que eso no cambia la
-  posesión. Pasa en los 7 partidos y con cualquier ajuste de los parámetros: en esos toques, el flag
-  marca al rival en el 85 % de los casos, frente al 10 % del placebo.
+  posesión. Pasa en los 7 partidos y con cualquier ajuste de los parámetros. En esos toques, el flag
+  marca al rival:
+  - entre el 72 % y el 85 % de las veces, según el detector (el 72 % es la réplica independiente de la
+    orquestadora); en el placebo, el 10–14 %;
+  - en el partido más bajo, más o menos la mitad de las veces.
 - **Sorpresa: mientras el balón está muerto, la DFL lo deja quieto donde estaba y lo hace saltar al
   reanudar.** Si se entrena o se prueba un detector de balón muerto con estos datos sin tapar el balón
-  en esos frames, el balón le chiva la respuesta. Los jugadores sí se mueven con normalidad.
+  en esos frames, el balón le chiva la respuesta. Y no basta con tapar los frames muertos: el salto al
+  reanudar también se ve en los primeros frames activos, así que hay que tapar los bordes. Los
+  jugadores sí se mueven con normalidad.
 
 **Qué hay que decidir (tú):** si usamos la posesión de la DFL tal cual o corregida. Hay dos lecturas:
 
@@ -75,10 +87,16 @@
 - la GT del reto se generó de forma parecida a la DFL (sale del flag de un tracking corregido), y
   entonces corregirla nos alejaría de la GT.
 
-Con estos datos no se puede saber cuál es. La propuesta es generar las dos versiones de etiquetas,
-medir con las dos y, si te parece, preguntar a la organización si su GT cambia de equipo con un toque
-sin control. Quitar solo las posesiones de menos de 1 s no bastaría: la mayoría de las rachas que crea
-un toque duran más (mediana de 2 s).
+Con estos datos no se puede saber cuál es. La propuesta es generar las dos versiones de etiquetas y
+medir con las dos. Para decidir hay dos caminos, los dos tuyos:
+
+- preguntar a la organización si su GT cambia de equipo con un toque sin control;
+- mirar la ventana pública. `CHALLENGE.md` la da como referencia de cómo se etiquetan estos casos, pero
+  `PASOS.md` dice que no se use para comparar. Si la miras, que sea una persona y solo para responder
+  sí o no: ¿un despeje o un desvío cambia la etiqueta?
+
+Quitar solo las posesiones de menos de 1 s no bastaría: la mayoría de las rachas que crea un toque
+duran más (mediana de 2 s).
 
 **Qué falta:**
 
@@ -259,6 +277,36 @@ Lectura **[medido]**:
   variaciones de las dos variantes.
 - **Duración de la racha del rival que crea el toque:** mediana de 2,0 s (p10 0,64 s, p90 4,1 s). Solo
   el 17,9 % dura menos de 1 s.
+
+### Réplica independiente de la orquestadora
+
+La sesión orquestadora repitió tres medidas leyendo el XML en crudo, sin este código. Son cifras suyas,
+no vueltas a ejecutar aquí **[medido por la orquestadora]**:
+
+- **Balón congelado:** el 100,00 % de los frames `D` de los 7 partidos tiene la misma posición que el
+  frame anterior. Salto al reanudar (699 casos): p10 1,63 m, mediana 6,22 m, p90 23,98 m. Idéntico a
+  lo de aquí.
+- **Flag durante las 696 paradas que acaban en un reinicio:**
+  - constante en el 100 %;
+  - igual al del primer frame activo siguiente en el 99,7 %;
+  - igual al del último frame activo anterior en el 29,5 %.
+
+  Aquí sale el 30,8 % porque se cuentan las 710 paradas, también las del final de cada parte.
+- **2g con detectores propios, distintos y más toscos:**
+  - control por equipo: 12 frames o más con un jugador del equipo como el más cercano a 1,0 m o menos;
+  - toque breve: una racha así de 2 a 8 frames con un cambio de velocidad del balón de 3 m/s o más
+    entre los 4 frames anteriores y los 4 posteriores;
+  - los mismos 5 s y sin `D` entre medias.
+
+  Resultados:
+  - 226 toques del rival; el flag pasa al rival en el **71,7 %**;
+  - con el flag del otro equipo 3 frames antes, el 66,3 % de 169;
+  - placebo con toques propios, el 14,0 % de 924;
+  - por partido, del 51,6 % (J03WQQ) al 81,1 % (J03WN1).
+
+  Todos los partidos quedan por encima del corte de "no cumple" (30 %). **La conclusión es la misma;
+  la magnitud, algo menor.** El rango honrado es del 72 % al 85 %, según el detector.
+- **No repitió:** la cobertura uno a uno de los reinicios (1a) ni la regeneración de las tablas.
 
 ## 2d. Paso a inactivo (D5, D6)
 
@@ -560,7 +608,7 @@ inactivo de los toques, controles y contactos. Se añadió al ver el balón cong
 | 2 | 2a medida R | entre medias (6,89 %) | 0 / 6 / 1 (J03WMX, 10,76 %) | — |
 | 2 | 2b control del equipo nuevo | entre medias (42,9 %) | 0 / 5 / 2 (solo en juego: 0 / 4 / 3) | no: control de 20 frames o ventana de ±1 s → no cumple |
 | 2 | 2c momento del control | "al controlar" (mediana −2 frames) | 7 al controlar | sí, pero ver la lectura |
-| 2 | 2g toque del rival sin control | **no cumple** (85,2 %) | 0 / 0 / 7 | sí: 80–87 % en todas las variaciones |
+| 2 | 2g toque del rival sin control | **no cumple** (85,2 %; réplica independiente 71,7 %) | 0 / 0 / 7 (también en la réplica) | sí: 80–87 % en todas las variaciones |
 | 3 | 3a cambio en el aire | cumple (0,2 %) | 7 / 0 / 0 | sí |
 | 3 | 3b pases fallados (2f) | sin medir | — | — |
 
@@ -622,7 +670,7 @@ veredictos ha cambiado.
 
 | id | estado | respuesta y evidencia |
 |---|---|---|
-| D2 | a medias | **`D` sí** (1a y 1b cumplen en 7/7; 2d, 2e). **El cambio de posesión no:** cambia en el primer toque del rival aunque no controle (2g no cumple en 7/7, 85 % frente a un placebo del 10 %). |
+| D2 | a medias | **`D` sí** (1a y 1b cumplen en 7/7; 2d, 2e). **El cambio de posesión no:** cambia en el primer toque del rival aunque no controle (2g no cumple en 7/7: entre el 72 % y el 85 % según el detector, frente a placebos del 10–14 %). |
 | D3 | resuelta | **En el primer toque del rival.** Desfase cambio − toque: mediana 0 frames (p10 −6, p90 +2); el 87,5 % de los cambios tiene un toque del equipo nuevo a ±2 s, frente al 2,3 % del placebo. No espera al control (2g) ni cambia en el aire (3a: 0,2 %). |
 | D4 | a medias | Mientras el balón viaja, el flag se queda con el último equipo (3a cumple). En un toque sin control del rival, cambia (2g). Los pases fallados de los eventos (3b) no se han medido: falta 2f. |
 | D5 | resuelta | Inactivo es todo balón fuera de juego: banda, fondo y paradas dentro del campo. El 66 % de los `D` empieza con el balón fuera de las líneas; el 99,4–100 % de los saques de banda, de puerta y córners tiene su fin de `D` a ±5 s; con el balón fuera ≥ 1 s solo hay 2 episodios activos en 7 partidos. |
@@ -641,9 +689,12 @@ veredictos ha cambiado.
   - **Cuidado:** en la DFL, la posición del balón está congelada durante el `D` y salta al reanudar
     (mediana 6,2 m). Si se entrena o se valida un detector de `D` con la DFL sin tapar el balón en esos
     frames, el balón le da la respuesta. Los jugadores no se congelan: la fuga es solo del balón.
-  - Al degradar la DFL para que se parezca al ATD, hay que enmascarar o reemplazar el balón en los `D`.
-    Si el ATD hace lo mismo con el balón muerto, **[sin verificar]**; lo diría el perfil del ATD
-    (paso 5, solo una persona).
+  - Tapar solo los frames `D` no basta: el balón se para en seco al empezar el `D` y salta al reanudar (mediana 6,2 m), así que cualquier ventana de velocidad o de desplazamiento que cruce un borde de `D` ve ese salto, y los primeros frames activos también delatan la etiqueta. La máscara tiene que cubrir también las ventanas que tocan la entrada y la salida de cada `D`.
+  - Al degradar la DFL para que se parezca al ATD, hay que enmascarar o reemplazar el balón en los `D` y
+    en esas ventanas de borde.
+    Si el ATD hace lo mismo con el balón muerto, **[sin verificar]**. Lo diría el perfil del ATD (paso
+    5, solo una persona); se ha propuesto un agregado de "balón congelado" para ese perfil en
+    `PASOS.md`.
 - **Para el cambio de posesión, no tal cual.** El punto 2 no cumple (2g en 7/7, robusto). El 2b queda
   entre medias y el 2c dice que el flag cambia en el primer contacto. Hay dos lecturas, y con estos datos
   no se puede elegir entre ellas:
@@ -662,15 +713,29 @@ veredictos ha cambiado.
     - saber si el flag de posesión del tracking corregido del reto cambia con un toque sin control (lo
       sabe la organización);
     - saber qué proveedor y qué regla generan ese flag.
+  - **Lo que dice `CHALLENGE.md`, que apunta a las dos sin decidir:**
+    - **Hacia la lectura b** (líneas 42–45): el tracking del reto nombra un equipo también con el balón
+      muerto, *"whoever will restart, or touched it last"*. Es lo que se ha medido en la DFL: el flag de
+      la parada es el del equipo que reanuda (99,7 %; 97,8 % igual al equipo del evento). Que el
+      tracking del reto lleve el mismo tipo de flag sugiere un flag de proveedor parecido al de la DFL
+      **[inferencia]**.
+    - **Hacia la lectura a** (líneas 76–80): un toque sin control, un desvío que no intercepta el pase o
+      un duelo aéreo ganado sin control posterior no cuentan como cambio de posesión. Es justo lo que la
+      DFL sí cuenta (2g).
   - **Qué no podemos saber:**
     - la GT completa;
-    - la ventana pública no se usa para decidir;
     - la huella de retrasos no decide (D21).
+  - **La ventana pública, opción pendiente de Ismael:**
+    - `CHALLENGE.md` (líneas 82–87 y 102–103) la nombra como la referencia de cómo se etiquetan estos
+      casos. Choca con la regla de `PASOS.md` de no usarla para comparar, así que la decide él.
+    - Si la toma, la hace una persona y es cualitativa: ¿un despeje o un desvío cambia la etiqueta, sí o
+      no? Se deja apuntado.
 - **Propuesta:** no elegir todavía y no presentar ninguna corrección como la opción por defecto.
   1. Generar las dos versiones de etiquetas DFL: el flag tal cual y el flag corregido con el control
      del tracking.
   2. Medir con las dos cuánto cambia el método.
-  3. Decidir con la respuesta a la pregunta anterior, si Ismael decide hacerla.
+  3. Decidir con la respuesta a la pregunta anterior, si Ismael decide hacerla, o con la ventana
+     pública, si decide mirarla.
 
 **¿Cuándo debe cambiar nuestra etiqueta de equipo y cuándo empieza y acaba un `D`?**
 
@@ -684,7 +749,7 @@ veredictos ha cambiado.
 **¿Qué cambia en el plan?**
 
 1. **Detector de `D`:** las etiquetas `D` de la DFL son buenas para entrenarlo y validarlo, siempre que
-   se tape el balón en los frames `D`.
+   se tape el balón en los frames `D` y en las ventanas que tocan sus bordes.
 2. **Modelo de posesión:** hay que tener las dos versiones de etiquetas antes de elegir umbrales con la
    DFL.
 3. **Pendiente:** 2f (eventos DFL con reglas fijadas antes) y el paso 3, que dependen de D15 y D16.

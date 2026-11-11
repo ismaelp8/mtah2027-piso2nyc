@@ -691,3 +691,37 @@ con 3b.
 - qué son los 21 fines de `D` sin reinicio;
 - la causa de la diferencia de R entre 1ª y 2. Bundesliga;
 - 2f y 3b.
+
+### 8. Retoques tras la revisión de la parada 3
+
+La sesión orquestadora aceptó la parada 3 y repitió por su cuenta tres medidas desde el XML en crudo,
+sin este código:
+
+- **Balón congelado:** idéntico (100,00 % de los frames `D`; salto al reanudar de 6,22 m de mediana).
+- **Flag durante las paradas:** igual que aquí.
+- **2g con detectores propios, más toscos:**
+  - el flag marca al rival en el 71,7 % de 226 toques;
+  - placebo, 14,0 %;
+  - por partido, del 51,6 % al 81,1 %.
+
+  La conclusión es la misma; la magnitud, algo menor.
+
+Cambios en los documentos (no cambia ninguna cifra medida aquí):
+
+- **2g se da como rango** (72–85 % según el detector, placebos del 10–14 %) en la lectura en tres
+  líneas y en el resumen para Ismael. El fichero de resultados tiene una sección con la réplica.
+- **La máscara del balón tiene que cubrir también las ventanas de los bordes de cada `D`,** no solo
+  los frames `D`: el salto al reanudar se ve en los primeros frames activos.
+- **Propuesto un agregado de "balón congelado" para el perfil del ATD:** una viñeta en el paso 5 de
+  `PASOS.md`, marcada como propuesta del experimento 0.
+- **La ventana pública pasa a ser una opción pendiente de Ismael.** No se da por excluida: la cita
+  `CHALLENGE.md` (líneas 82–87 y 102–103) y choca con `PASOS.md`. Si se usa, la mira una persona, de
+  forma cualitativa.
+- **Evidencias de `CHALLENGE.md` para las dos lecturas,** juntas y sin elegir:
+  - líneas 42–45, hacia la b: el flag del balón muerto es el del equipo que reanuda o el que tocó el
+    último;
+  - líneas 76–80, hacia la a.
+
+**Reproducibilidad** **[medido]**: `parada3.py` y `parada3_tablas.py` se ejecutaron dos veces seguidas.
+El JSON sin los campos de tiempo y memoria es idéntico (193.935 caracteres), las tablas son idénticas
+salvo la línea de tiempo y coinciden con las del fichero de resultados.
