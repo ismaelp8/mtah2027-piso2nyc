@@ -105,4 +105,89 @@ hubiera que cambiar alguno, se dirá aquí y por qué.
 
 ## Registro
 
-(Se añade cada ejecución: comando, tiempo, memoria y resultado.)
+### 1. Lector propio, probado con datos sintéticos
+
+- **Script:** `dfl_lector.py` (lxml en streaming). Guarda una caché `.npz` por partido en
+  `~/mtah2027-datos-abiertos/dfl_cache/`, fuera del repo.
+- **Prueba sintética** (`pruebas_sinteticas.py`): un XML inventado con el formato de la DFL, con un
+  frame del balón perdido, un flag ausente, un salto de 80 ms en `T`, un jugador con un frame fuera de
+  la rejilla del balón, un árbitro y dos partes. El lector detecta exactamente cada cosa **[medido]**.
+  La misma prueba cubre después las etiquetas y su perfil: con flags inventados de 5 posesiones y 2
+  paradas conocidas, salen 5 y 2 **[medido]**.
+
+### 2. J03WMX (Köln–Bayern) con el lector propio
+
+`python validation/experimento0/dfl_lector.py J03WMX`: 17 s, memoria pico 765 MB, caché de 16 MB.
+
+| criterio | resultado | veredicto |
+|---|---|---|
+| C1 frames de balón por parte | 70.708 y 75.259, un frame más por parte que `TotalTime` / 40 (70.707 y 75.258) | cumple |
+| C2 total frente al artículo | 145.967 = 145.967 | cumple |
+| C3 pasos de `N` y de `T` | todos de 1 frame y de 40 ms; `N` ordenado; sin repetidos | cumple |
+| C4 frames de jugador fuera de la rejilla del balón | 0 | cumple |
+| C5 valores de los flags | `BallStatus` ∈ {0, 1} y `BallPossession` ∈ {1, 2} en todos los frames; ninguno ausente | cumple |
+
+Además **[medido]**: siempre hay exactamente 22 jugadores por frame (11 + 11; con los cambios, 16
+jugadores distintos por equipo en la 2ª parte). Hay 3 árbitros por parte, que el lector aparta. Las dos
+partes empiezan con el balón activo (el tracking arranca en el saque inicial) y acaban inactivas.
+
+`python validation/experimento0/comprobaciones_lector.py J03WMX`:
+
+| criterio | resultado | veredicto |
+|---|---|---|
+| C6 fracción activa frente al tiempo neto oficial | 66,789 % frente a 66,788 % y 50,684 % frente a 50,683 %; los frames activos son `PlayingTime` / 40 + 1 en las dos partes | cumple, pero **no es independiente**: el tiempo neto oficial sale del mismo flag **[inferencia]**. Valida el lector, no lo que cuenta como inactivo |
+| C7 tramos inactivos frente a reinicios de los eventos | 103 tramos (41 + 62) frente a 104 reinicios en el XML de eventos: 52 saques de banda, 20 faltas, 14 saques de puerta, 10 córners, 5 saques iniciales, 1 penalti y 2 balones a tierra. Cociente 0,99. Ningún tramo inactivo de menos de 1 s | cumple: primer indicio de que `D` incluye saques de banda, de puerta y córners (D5). Se comprobará caso a caso en 2d |
+| C8 unidades de `S` | `S` / velocidad de las posiciones: p10 2,5–2,8, mediana 3,72–3,74, p90 4,4–4,6 | cumple: km/h. La dispersión indica que `S` está suavizada **[inferencia]** |
+| C9 origen | primer frame activo a 0,25 m y 0,47 m de (0, 0) | cumple: origen en el centro |
+| C10 escala | p99,9 de \|x\| = 52,2–52,9 y de \|y\| = 34,6–34,8; máximos 55,1 y 36,8 (balón fuera del campo) | cumple: metros |
+| C11 sentido de `BallPossession` | 7.814 frames estables; el jugador cercano es del equipo del flag en el 98,9 % (flag 1: 97,4 % y 99,3 %; flag 2: 99,6 % y 98,6 %) | cumple: 1 = local en este partido. Falta comprobarlo en los otros 6 |
+
+Informativo **[medido]**: con el balón inactivo, el flag sigue al equipo del jugador cercano en el 85 %
+de los frames estables. El flag de posesión no se apaga en las paradas.
+
+Los 108 eventos `Delete` del XML de eventos no apuntan a ningún evento que siga en el fichero: no anulan
+ningún reinicio **[medido]**.
+
+### 3. kloppy frente al lector propio (C12 y D9)
+
+- **Balón** (`comprobar_kloppy.py J03WMX balon`): la función interna `_unstack_framesets` de kloppy,
+  leyendo solo el balón, da los mismos frames y los mismos dos flags que el lector propio, frame a frame,
+  con 0 diferencias en las dos partes **[medido]**. **C12 cumple.**
+- **Mapeo** (`comprobar_kloppy.py J03WMX mapeo --limite 3000`) **[medido]**:
+  - `teams[0]` es el local (`HomeTeamId`) aunque en el XML vaya primero el visitante;
+  - `ball_state` solo toma `alive` y `dead`, y en 3.000 frames no discrepa del XML ni en `ball_state` ni
+    en el poseedor;
+  - 25 fps;
+  - cuando falta `BallPossession`, kloppy pone el visitante (lo dice su código). En la DFL no falta
+    nunca (C5), así que aquí no afecta.
+- **Contradicción con el plan: las coordenadas por defecto de kloppy no son metros.** `PASOS.md` 2a dice
+  que las de por defecto son "metros, origen en el centro". En kloppy 3.18 el sistema por defecto es el
+  de kloppy: x = X/105 + 0,5 e y = −Y/68 + 0,5 (de 0 a 1, origen arriba a la izquierda y eje `y`
+  invertido; residuo de 1e-15). Con `coordinates="sportec"` devuelve exactamente los metros del XML
+  **[medido]**. El lector propio no se ve afectado (trabaja en metros: C9 y C10), pero el fragmento de
+  `PASOS.md` lo tiene mal.
+
+### 4. 2a de J03WMX
+
+`python validation/experimento0/etiquetas_dfl.py J03WMX` (CSV fuera del repo) y
+`python validation/scripts/perfil_etiquetas.py ~/mtah2027-datos-abiertos/dfl_etiquetas/J03WMX.csv`
+**[medido]**:
+
+| medida | valor |
+|---|---|
+| reparto de frames | H 26,8 %, A 31,7 %, D 41,5 % |
+| paradas | 103; duración p10 5,0 s, mediana 15,5 s, p90 48,9 s |
+| posesiones | 511 (8,98 por minuto de balón vivo); duración p10 0,7 s, p25 1,4 s, mediana 3,0 s, p75 7,9 s, p90 15,3 s |
+| posesiones cortas | 6 % de menos de 0,5 s, 17 % de menos de 1 s, 37 % de menos de 2 s, 50 % de menos de 3 s |
+| cambios directos de equipo con el balón vivo | 408 (H→A 209, A→H 199) |
+| rachas de 2 frames o menos | 3 en todo el partido: no hay parpadeo de frame a frame |
+| huella de retrasos (**solo informativa, D21**) | 0,9898 / 0,9503 / 0,8184 / 0,4943 con 1 / 3 / 8 / 25 frames; la tabla oficial dice 1,0000 / 0,9818 / 0,8933 / 0,6539 |
+
+**Lectura (sin decidir nada todavía):**
+- El 41,5 % de `D` y las 103 paradas encajan con un balón inactivo que incluye todos los reinicios
+  (D5, a confirmar caso a caso en 2d).
+- El flag de posesión cambia mucho: 408 cambios directos y un 17 % de posesiones de menos de 1 s, sin
+  parpadeo de frame a frame. Puede ser que cambie con cada toque del rival y no solo con un control, que
+  es justo lo que el reto dice que no debe pasar. **No está medido:** es la pregunta de 2c (D3, D4).
+  Otras explicaciones posibles, que 2c tiene que distinguir: pases cortos de verdad del rival
+  (posesiones reales y cortas), duelos con balón dividido, o un flag por jugador más cercano.
