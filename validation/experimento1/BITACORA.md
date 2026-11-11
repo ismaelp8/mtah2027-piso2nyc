@@ -309,3 +309,43 @@ equipo nuevo) y el primer frame de control del equipo nuevo según la definició
 parte y la mitad de los cambios se moverían más de 8 frames. Es la escala en que el `spellF1` ya pierde
 (0,89 con 8 frames de retraso). La fecha es una pregunta tan importante como la definición de control,
 y solo la GT pública con el vídeo puede responderla.
+
+## 10. Búsqueda de métodos implementados (subagente, verificado en parte a mano)
+
+Un subagente revisó métodos publicados con código. Lo verificado aquí en la fuente primaria está
+marcado **[fuente]**.
+
+- **Bassek et al. 2025** (artículo del dataset, texto completo en Europe PMC, PMC11787359) **[fuente]**:
+  - dice que la posesión "is defined by the player in control of the ball", y remite al catálogo de
+    definiciones de la DFL (versión 5.1, 2020);
+  - el flag, en cambio, cambia en el primer toque (2g y sección 4).
+
+  **Un proveedor llama "control" a algo que en la práctica es "último toque".** Lo mismo podría pasar
+  con el tracking corregido del reto: su texto habla de control, pero su GT sale de un flag de
+  proveedor **[inferencia]**.
+- **`databallpy`** (MIT, activo) **[fuente: código]**:
+  - posesión por jugador al estilo de Vidal-Codina: zona de `pz_radius` y una ganancia válida si cambia
+    la velocidad (`bv_threshold`) o la dirección (`ba_threshold`), con `min_frames_pz` = 0 por
+    defecto. Un desvío cuenta como ganancia: es por toque;
+  - `add_team_possession` cambia de equipo solo en un pase, regate o tiro con éxito
+    (`is_successful`) del rival: se parece al control, pero fecha el cambio tarde;
+  - lee los datos abiertos de la DFL (según el subagente).
+- **ELASTIC** (Kim et al.; código MPL-2.0, datos CC BY 4.0) **[fuente: README]**:
+  - en `benchmark/gt/` hay eventos corregidos (quitados falsos positivos, añadidos los que faltaban) de
+    J03WMX, J03WN1 y J03WPY, con `frame_id` (cuándo ocurre) y `receive_frame_id` (cuándo se recibe);
+  - cada momento es la mediana de tres anotadores.
+
+  Es una referencia de tiempo humana, frame a frame, en 3 de nuestros 7 partidos.
+- **Sin verificar aquí** (solo lo dice el subagente):
+  - Link y Hoernig 2017: definen el control con una red bayesiana, sin código y sin umbrales
+    publicados;
+  - Vidal-Codina et al. 2022: sin código público;
+  - PathCRF trae los eventos sincronizados con ELASTIC en los 7 partidos;
+  - el resto de cifras de validación.
+- **Conclusión del subagente:** ningún método abierto da una etiqueta de equipo por frame con criterio
+  de control. Lo realista es combinar piezas (eventos DFL, tiempos de ELASTIC, detectores propios) con
+  una regla de equipo propia y documentada.
+- **Un hallazgo que no se ha mirado:** el subagente encontró el repositorio público de otro equipo de
+  este mismo reto, con ficheros derivados del partido. No se ha abierto (regla nº 1 y juego limpio); lo
+  decide Ismael.
+
