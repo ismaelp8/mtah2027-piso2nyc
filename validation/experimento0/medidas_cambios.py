@@ -23,6 +23,9 @@ PARAMETROS = {
     "velocidad_aire": 5.0, "margen_fuera": 0.5, "ventana_cobertura": 125, "ventana_reanudar": 75,
     "radio_cercania": 1.5, "ventana_cercania": 25, "ventana_toque": 50, "margen_placebo": 50,
     "max_placebo": 1000,  # por parte: hasta 2.000 por partido, como se fijó
+    # Añadido en la parada 3 al ver que el balón se congela mientras el flag dice inactivo: si es True,
+    # toques, controles, retenciones y contactos solo usan frames con el balón en juego.
+    "solo_activos": False,
 }
 
 
@@ -103,6 +106,19 @@ def toques(prep, umbral, radio):
     return elegidos, equipo.astype(int), dv[elegidos]
 
 
+def toques_en_juego(t_toq, eq_toq, estado):
+    """Quita los toques cuya ventana (t−4…t+5) toca algún frame con el balón inactivo.
+
+    Con el balón congelado durante `D`, la parada y el salto al reanudar parecen toques.
+    """
+    estado = np.asarray(estado)
+    n = len(estado)
+    inactivos = np.concatenate(([0], np.cumsum(estado != 1)))
+    lo, hi = np.clip(t_toq - 4, 0, n), np.clip(t_toq + 6, 0, n)
+    ok = inactivos[hi] - inactivos[lo] == 0
+    return t_toq[ok], eq_toq[ok]
+
+
 def cambios(estado, poss):
     """(frames f, equipo nuevo, equipo anterior) de los cambios H↔A con el balón activo en f−1 y f."""
     estado, poss = np.asarray(estado), np.asarray(poss)
@@ -173,10 +189,15 @@ def frames_placebo(estado, poss, f_cambios, rng, maximo, antes, despues, margen=
     return candidatos
 
 
-def toques_sin_control(t_toques, eq_toques, segs_control, estado, poss, z, ventana=125):
+def toques_sin_control(t_toques, eq_toques, segs_control, estado, poss, z, ventana=125, propio=False):
     """2g: toques del rival sin control y si el flag pasa a ese rival antes del siguiente control propio.
 
-    Devuelve una lista de (frame, equipo_toque, cambio_del_flag (bool), aereo (bool)).
+    Devuelve una lista de (frame, equipo_toque, cambio_del_flag (bool), aereo (bool), desfase), con el
+    desfase en frames desde el toque hasta el primer frame en que el flag marca al equipo del toque
+    (None si no lo marca).
+
+    Con `propio=True` es el placebo: toques sin control del mismo equipo que tiene los dos controles, y
+    si el flag pasa al otro equipo entre el toque y el siguiente control.
     """
     segs = sorted(segs_control)
     inicios = np.array([s[0] for s in segs], int)
@@ -194,12 +215,13 @@ def toques_sin_control(t_toques, eq_toques, segs_control, estado, poss, z, venta
         p, s = segs[prev[-1]], segs[sig[0]]
         if t - p[1] > ventana or s[0] - t > ventana:
             continue
-        if p[2] != s[2] or p[2] == y_eq:
+        if p[2] != s[2] or (p[2] == y_eq) != propio:
             continue
         if np.any(np.asarray(estado[t:s[0] + 1]) != 1):
             continue  # hay un D entre medias: va a "posesiones cortas antes de un D"
-        cambia = bool(np.any(np.asarray(poss[t:s[0] + 1]) - 1 == y_eq))
-        salida.append((int(t), int(y_eq), cambia, bool(z[t] > 1.5)))
+        otro = 1 - p[2]
+        marca = np.flatnonzero(np.asarray(poss[t:s[0] + 1]) - 1 == otro)
+        salida.append((int(t), int(y_eq), bool(len(marca)), bool(z[t] > 1.5), int(marca[0]) if len(marca) else None))
     return salida
 
 
@@ -235,9 +257,15 @@ def medir_parte(parte, prm, rng, eventos_parte=None, prep=None, campo=(105.0, 68
     prep = preparar(parte) if prep is None else prep
     n = prep["n"]
     largo, ancho = campo
+    t_toq, eq_toq, _ = toques(prep, prm["umbral_toque"], prm["radio_toque"])
+    if prm.get("solo_activos"):
+        activo = estado == 1
+        prep = dict(prep)
+        prep["d1"] = np.where(activo, prep["d1"], np.inf)
+        prep["d_equipo"] = np.where(activo[None, :], prep["d_equipo"], np.inf)
+        t_toq, eq_toq = toques_en_juego(t_toq, eq_toq, estado)
     segs = controles(prep, prm["radio"], prm["frames_control"])
     rets = retenciones(prep, prm["radio"], prm["frames_retencion"])
-    t_toq, eq_toq, _ = toques(prep, prm["umbral_toque"], prm["radio_toque"])
     f, nuevo, viejo = cambios(estado, poss)
     r = {"cambios": int(len(f)), "toques": int(len(t_toq)), "toques_atribuidos": int(np.sum(eq_toq >= 0)),
          "controles": int(len(segs)), "minutos_vivos": float(np.sum(estado == 1)) / FPS / 60}
@@ -288,6 +316,7 @@ def medir_parte(parte, prm, rng, eventos_parte=None, prep=None, campo=(105.0, 68
     r["placebo_desfase_toque_otro"] = [desfase_toque(g, o) for g, o in zip(g_pl, otro_pl)]
     # 2g
     r["toques_sin_control"] = toques_sin_control(t_toq, eq_toq, segs, estado, poss, prep["z"])
+    r["toques_propios_sin_control"] = toques_sin_control(t_toq, eq_toq, segs, estado, poss, prep["z"], propio=True)
     # 1b: balón fuera durante 1 s o más
     fu = fuera(prep["x"], prep["y"], prm["margen_fuera"], largo, ancho)
     frames_fuera = [(a, b) for a, b, val in rachas(fu.astype(int), FPS) if val == 1]
@@ -327,7 +356,12 @@ def medir_parte(parte, prm, rng, eventos_parte=None, prep=None, campo=(105.0, 68
         a, b = max(0, e - prm["ventana_reanudar"]), min(n, e + prm["ventana_reanudar"] + 1)
         mov = np.flatnonzero(np.nan_to_num(prep["v"][a:b]) > 2.0)
         lag = int(a + mov[0] - e) if len(mov) else None
-        reanudar.append({"desfase_movimiento": lag, "mismo_equipo": bool(poss[e - 1] == poss[e])})
+        # con el balón congelado en D, la velocidad centrada salta siempre en e − 2; esta otra solo usa
+        # frames activos: primer t >= e con (p[t+1] − p[t]) · 25 > 2 m/s
+        avance = np.hypot(np.diff(prep["x"][e:b]), np.diff(prep["y"][e:b])) * FPS
+        mov2 = np.flatnonzero(avance > 2.0)
+        reanudar.append({"desfase_movimiento": lag, "desfase_movimiento_activo": int(mov2[0]) if len(mov2) else None,
+                         "mismo_equipo": bool(poss[e - 1] == poss[e])})
     r["pasos_a_activo"] = reanudar
     # posesiones cortas junto a un D
     lab = np.where(estado == 0, 2, poss - 1)  # 0 local, 1 visitante, 2 D

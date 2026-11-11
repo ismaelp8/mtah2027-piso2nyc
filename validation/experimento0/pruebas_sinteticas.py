@@ -223,7 +223,11 @@ def prueba_logica_cambios():
     t_toq = np.array([40, 155, 195])
     eq_toq = np.array([1, 1, 1])
     res = mc.toques_sin_control(t_toq, eq_toq, [s for s in segs if s[2] == 0], estado, poss, np.zeros(n))
-    assert res == [(40, 1, True, False), (155, 1, False, False)], res
+    assert res == [(40, 1, True, False, 1), (155, 1, False, False, None)], res
+    # placebo: un toque local en 40 entre los dos controles locales; el flag pasa al visitante en 41
+    res = mc.toques_sin_control(np.array([40]), np.array([0]), [s for s in segs if s[2] == 0], estado, poss,
+                                np.zeros(n), propio=True)
+    assert res == [(40, 0, True, False, 1)], res
     # Emparejamiento uno a uno: dos eventos y un solo fin cerca.
     desf, usados = mc.emparejar([100, 104], [101], 5)
     assert desf == [-1, None] and usados == {0}, (desf, usados)
@@ -283,11 +287,26 @@ def prueba_medir_parte():
     assert p["fuera_en_inicio"] and p["tipo"] == "banda" and 3 <= p["desfase_cruce"] <= 10 and p["duracion"] == 120, p
     assert len(r["pasos_a_activo"]) == 1, r["pasos_a_activo"]
     q = r["pasos_a_activo"][0]
-    assert q["mismo_equipo"] is False and -2 <= q["desfase_movimiento"] <= 2, q
+    assert q["mismo_equipo"] is False and -2 <= q["desfase_movimiento"] <= 2 and q["desfase_movimiento_activo"] == 0, q
     assert r["fuera_frames"] >= 100 and 0 < r["fuera_activos"] <= 12, (r["fuera_frames"], r["fuera_activos"])
     assert r["cobertura"] == {"ThrowIn": [2]} and r["fines_d_emparejados"] == 1 and r["fines_d_sin_reinicio"] == []
     assert r["placebo_n"] > 0
-    print("medir_parte: OK (pase con control, desvío a banda, saque de banda; {} placebos)".format(r["placebo_n"]))
+    # con solo_activos sale lo mismo: aquí no hay nada junto al balón durante el D
+    r2 = mc.medir_parte(parte, dict(mc.PARAMETROS, solo_activos=True), np.random.default_rng(1), [("ThrowIn", 552)])
+    assert r2["grupos"] == r["grupos"] and r2["cortas_antes_de_D"] == r["cortas_antes_de_D"], r2["grupos"]
+
+    # Balón congelado durante un D (frames 50–149) con un jugador a 0,5 m del 60 al 140: un control
+    # falso si se miran todos los frames; ninguno con solo_activos.
+    n = 200
+    bx, by = np.zeros(n), np.zeros(n)
+    jx = np.where((np.arange(n) >= 60) & (np.arange(n) < 140), 0.0, 30.0)
+    estado = np.ones(n, np.int8)
+    estado[50:150] = 0
+    parte = _parte(bx, by, [(jx, np.full(n, 0.5))], [(np.full(n, 30.0), np.full(n, 20.0))], estado)
+    assert mc.medir_parte(parte, dict(mc.PARAMETROS), np.random.default_rng(2))["controles"] == 1
+    assert mc.medir_parte(parte, dict(mc.PARAMETROS, solo_activos=True), np.random.default_rng(2))["controles"] == 0
+    print("medir_parte: OK (pase con control, desvío a banda, saque de banda; {} placebos; balón congelado en D)".format(
+        r["placebo_n"]))
 
 
 def main():
