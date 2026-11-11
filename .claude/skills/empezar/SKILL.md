@@ -1,6 +1,6 @@
 ---
 name: empezar
-description: Empieza una tarea nueva en este repo. Actualiza main desde GitHub y crea una rama con nombre convencional (tipo/descripcion). Úsala cuando alguien diga que va a empezar algo ("voy a hacer el detector de D", "quiero probar un HMM", "nueva tarea") o cuando vaya a escribir código estando en main.
+description: Empieza una tarea nueva en este repo. Actualiza main desde GitHub y crea una rama con nombre convencional (tipo/descripcion). Úsala cuando alguien diga que va a empezar algo ("voy a hacer el detector de D", "quiero probar un HMM", "nueva tarea") o cuando vaya a escribir código estando en main. Ismael puede trabajar directo en main sin rama.
 argument-hint: "[qué vas a hacer]"
 ---
 
@@ -29,11 +29,14 @@ Tarea: $ARGUMENTS (si viene vacío, pregunta qué va a hacer).
    ```
    Si el `pull --ff-only` falla, el `main` local tiene commits que no están en GitHub. Para, explícalo y
    no hagas `reset` sin su permiso.
-4. **Nombre de la rama:** `tipo/descripcion-corta`, con los tipos de `CONTRIBUTING.md` §2 (`feat`, `exp`,
+4. **¿Rama o `main`?** Si es Ismael (`gh api user --jq .login` devuelve `ismaelp8`), pregúntale en una
+   línea si quiere rama o seguir directo en `main` (`CONTRIBUTING.md` §5). Si elige `main`, para aquí:
+   dile que `main` está al día y que suba con `/subir`. Con cualquier otra persona, siempre rama.
+5. **Nombre de la rama:** `tipo/descripcion-corta`, con los tipos de `CONTRIBUTING.md` §2 (`feat`, `exp`,
    `fix`, `docs`, `infra`, `sync`).
    - Minúsculas, guiones, sin tildes y de unos 40 caracteres como mucho.
    - Propón el nombre en una línea. Si no está claro el tipo, pregunta.
    - Comprueba que no existe: `git branch -a --list "*<descripcion>*"`.
-5. **Crear la rama:** `git switch -c <rama>`. No la subas todavía: se sube con `/subir`.
-6. **Cierre:** dile en dos líneas en qué rama está y que, cuando quiera subir lo que haga, diga
+6. **Crear la rama:** `git switch -c <rama>`. No la subas todavía: se sube con `/subir`.
+7. **Cierre:** dile en dos líneas en qué rama está y que, cuando quiera subir lo que haga, diga
    `/subir`. Si la tarea es una decisión de método, recuérdale `/decision`.

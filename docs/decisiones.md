@@ -149,3 +149,21 @@ Abierto:
 Descartado:
 - **`X` en las oclusiones largas dentro de una posesión,** que era la política anterior.
 - **Metrica sample-data como dataset principal.**
+
+### 2026-11-11 · infraestructura · Ismael sube directo a `main`
+
+Quién: Ismael
+
+Qué cambia:
+- **Ismael (`ismaelp8`) puede hacer commit y push directo a `main`,** sin rama ni PR.
+- **Para el resto no cambia nada:** rama por tarea y PR revisada por Ismael o David.
+- Sustituye a la norma «nunca commit a `main`» de la entrada de normas de este mismo día.
+
+Decisión y por qué:
+- Ismael es quien más cambios hace y quien mejor conoce git. Pasar cada cambio suyo por una PR solo
+  añade espera.
+- Sus commits pasan las mismas comprobaciones que una PR: datos, notebooks, ficheros oficiales y
+  autoría. Nunca con `--force`.
+- Si quiere que David le revise algo, usa rama y PR.
+- Está en `CONTRIBUTING.md` §5, en `CLAUDE.md` y en las skills `/subir`, `/empezar`, `/actualizar` y
+  `/decision`.

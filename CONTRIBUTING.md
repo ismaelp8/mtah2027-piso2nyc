@@ -8,7 +8,7 @@ Estas normas las sigue todo el equipo, y Claude también. Si delegas el git en C
 
 ## Lo esencial
 
-1. **Nunca se hace commit ni push a `main`.** Una rama por tarea y siempre por PR.
+1. **Solo Ismael (`ismaelp8`) sube directo a `main`.** Los demás, una rama por tarea y siempre por PR.
 2. **Cada PR lleva la plantilla y pide revisión** a Ismael (`ismaelp8`) y a David (`ortegafer`). Nadie
    aprueba su propia PR, y basta con una aprobación para mergear.
 3. **El commit es de quien sube los cambios,** con su propia identidad de git. Nunca aparece como hecho
@@ -68,7 +68,7 @@ Contenido de ejemplo:
 ## 2. Ramas
 
 - **Una rama por tarea,** creada desde un `main` actualizado (`/empezar`). Ramas cortas: mejor mergear
-  cada día que acumular.
+  cada día que acumular. Ismael puede saltarse la rama y trabajar directo en `main` (§5).
 - **Nombre:** `tipo/descripcion-corta`, en minúsculas, con guiones, sin tildes ni espacios.
 
 | tipo | para qué | ejemplo |
@@ -114,8 +114,9 @@ Contenido de ejemplo:
 
 ## 5. Pull requests
 
-- **Todo entra en `main` por PR,** con la plantilla de `.github/pull_request_template.md` rellena. Si
-  todavía es trabajo en curso, se abre como borrador (`--draft`).
+- **Todo entra en `main` por PR, salvo lo que sube Ismael** (último punto de esta sección), con la
+  plantilla de `.github/pull_request_template.md` rellena. Si todavía es trabajo en curso, se abre como
+  borrador (`--draft`).
 - **Reviewers:**
 
   | abre la PR | revisa |
@@ -135,6 +136,17 @@ Contenido de ejemplo:
   - todo ello en agregados, sin valores por frame.
 - **Si `gh` no deja pedir revisión a dos personas a la vez,** se crea la PR y se añade a cada reviewer
   por separado con `gh pr edit <n> --add-reviewer <usuario>`.
+- **Ismael (`ismaelp8`) puede hacer commit y push directo a `main`,** sin rama ni PR: es quien más
+  cambios hace y quien mejor conoce git. Lo demás no cambia:
+  - sus commits pasan las mismas comprobaciones que una PR: nada de lo de §7, notebooks sin outputs,
+    ficheros oficiales sin tocar y su propia autoría;
+  - antes del push, `git fetch origin`. Si GitHub tiene commits nuevos,
+    `git pull --rebase --autostash origin main`, que solo recoloca sus commits aún no subidos, y después
+    `git push origin main`;
+  - nunca `--force`;
+  - si quiere que David le revise algo, usa rama y PR como el resto.
+
+  Para los demás, `main` se moverá más a menudo: `/actualizar` trae esos cambios a su rama.
 
 ---
 
@@ -214,7 +226,7 @@ Antes de subir nada te enseña un resumen y te pide confirmación.
 | escribe | y Claude… |
 |---|---|
 | `/empezar detector de balón muerto` | actualiza `main` y te crea la rama `feat/detector-balon-muerto` |
-| `/subir` | limpia notebooks, revisa los ficheros, hace el commit a tu nombre, lo sube y abre la PR con reviewers |
+| `/subir` | limpia notebooks, revisa los ficheros, hace el commit a tu nombre, lo sube y abre la PR con reviewers (Ismael puede subir directo a `main`) |
 | `/actualizar` | trae lo último de `main` a tu rama; si tu PR ya se mergeó, te devuelve a `main` limpio |
 | `/revisar-pr 12` | (Ismael y David) revisa la PR 12, te propone aprobar o pedir cambios, y mergea si se lo dices |
 | `/sincronizar-upstream` | (Ismael) trae las correcciones de Metrica en una rama `sync/` con su PR |

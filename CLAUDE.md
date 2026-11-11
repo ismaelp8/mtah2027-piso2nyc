@@ -102,7 +102,7 @@ La protección de verdad es esta regla, no la configuración.
    - si está montando su máquina, guíale por `docs/GUIA_EQUIPO.md` §7 paso a paso y espera su
      confirmación en cada uno.
 3. **Antes de tocar nada,** mira `git status` y `git branch --show-current`. Si va a escribir algo y está
-   en `main`, propón `/empezar`.
+   en `main`, propón `/empezar`, salvo que sea Ismael: él puede trabajar directo en `main`.
 
 ---
 
@@ -354,7 +354,12 @@ validation/                  validación externa con datos abiertos: pasos, scri
 
 Las normas completas están en `CONTRIBUTING.md`. Esto es lo que Claude no se salta nunca:
 
-- **Nunca commit ni push a `main`.** Cada tarea va en su rama `tipo/descripcion` (`/empezar`).
+- **Solo Ismael (`ismaelp8`) hace commit y push directo a `main`** (`CONTRIBUTING.md` §5). Compruébalo
+  con `gh api user --jq .login`.
+  - Con cualquier otra persona, nunca: cada tarea va en su rama `tipo/descripcion` (`/empezar`) y entra
+    por PR.
+  - Con Ismael, antes del push: `git fetch origin` y, si GitHub va por delante,
+    `git pull --rebase --autostash origin main`. Si quiere que le revise David, rama y PR.
 - **Ficheros siempre por nombre:** `git add <ficheros>`. Nunca `git add -A`, `git add .` ni
   `git commit -a`.
 - **Antes de cada commit:**
@@ -397,7 +402,7 @@ Las normas completas están en `CONTRIBUTING.md`. Esto es lo que Claude no se sa
 | skill | para qué |
 |---|---|
 | `/empezar <tarea>` | actualiza `main` y crea la rama con nombre convencional |
-| `/subir` | limpia notebooks, revisa, hace el commit con tu autoría, push y PR con plantilla y reviewers |
+| `/subir` | limpia notebooks, revisa, hace el commit con tu autoría, push y PR con plantilla y reviewers; Ismael puede subir directo a `main` |
 | `/actualizar` | trae lo último de `main` a tu rama; si tu PR ya está mergeada, vuelve a `main` y borra la rama |
 | `/revisar-pr <n>` | para Ismael y David: revisa una PR con el agente `revisor`, aprueba o pide cambios, y mergea |
 | `/sincronizar-upstream` | trae las correcciones de Metrica en una rama `sync/` con su PR |

@@ -47,7 +47,7 @@ Quien resuelva una, apunta la respuesta en su fichero de resultados con el núme
   que nadie ajuste contra ellas. La comparación con la tabla se apunta como información y ningún
   parámetro ni la elección de dataset dependen de ella. Ismael lo ha preguntado a la organización y,
   hasta que conteste, es una medida descriptiva más (D21).
-- **Git como siempre:** rama y PR (`/empezar`, `/subir`). Nada directo a `main`.
+- **Git como siempre:** rama y PR (`/empezar`, `/subir`). Solo Ismael sube directo a `main`.
 
 ---
 

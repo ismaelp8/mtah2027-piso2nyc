@@ -366,10 +366,10 @@ se combinan solas.
 ### Cómo se trabaja en el repo
 
 Las normas completas están en **`CONTRIBUTING.md`**. En resumen:
-- nunca se hace commit a `main`;
+- solo Ismael sube directo a `main`; los demás, nunca;
 - una rama `tipo/descripcion` por tarea;
 - cada commit sale con tu identidad;
-- siempre hay PR con plantilla, con revisión de Ismael (`ismaelp8`) o David (`ortegafer`);
+- cada rama entra por PR con plantilla, con revisión de Ismael (`ismaelp8`) o David (`ortegafer`);
 - basta una aprobación y se mergea con squash.
 
 Lo que **nunca entra en git** (datos, vídeos, cachés, CSV de entregas, outputs de notebooks, PDFs,

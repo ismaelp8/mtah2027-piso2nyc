@@ -15,8 +15,11 @@ Quien te habla puede no saber git: explica cada paso en una frase sencilla. Nada
    git status --short
    ```
 2. **Si está en `main`:** `git pull --ff-only origin main`. Si falla, el `main` local tiene commits que
-   no están en GitHub. Para y explícalo: lo normal es moverlos a una rama con
-   `git switch -c <tipo/descripcion>` y abrir PR.
+   no están en GitHub.
+   - **Si es Ismael** (`gh api user --jq .login` devuelve `ismaelp8`), son commits suyos directos a
+     `main`: `git pull --rebase --autostash origin main` y, con su sí, `git push origin main`.
+   - **Si es otra persona,** para y explícalo: lo normal es moverlos a una rama con
+     `git switch -c <tipo/descripcion>` y abrir PR.
 3. **Si está en una rama, mira si su PR ya se mergeó:**
    `gh pr view --json number,state,mergedAt,url`.
    - **Mergeada** (`state` = `MERGED`):

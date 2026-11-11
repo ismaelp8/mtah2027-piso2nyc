@@ -1,6 +1,6 @@
 ---
 name: subir
-description: Termina una tarea y la manda a revisión. Limpia los outputs de los notebooks, revisa que no se cuele nada prohibido, hace el commit con la autoría de quien sube, hace push y abre la PR con la plantilla y los reviewers correctos. Úsala cuando alguien diga "sube esto", "ya he terminado", "haz la PR" o "/subir".
+description: Termina una tarea y la manda a revisión. Limpia los outputs de los notebooks, revisa que no se cuele nada prohibido, hace el commit con la autoría de quien sube, hace push y abre la PR con la plantilla y los reviewers correctos; si es Ismael, puede subirlo directo a main sin PR. Úsala cuando alguien diga "sube esto", "ya he terminado", "haz la PR" o "/subir".
 argument-hint: "[resumen opcional del cambio]"
 ---
 
@@ -13,9 +13,11 @@ Resumen que da la persona: $ARGUMENTS
 
 ## 1. Rama e identidad
 
-- Ejecuta `git branch --show-current`.
-  - **Si está en `main`, no hagas commit ahí.** Propón una rama (`CONTRIBUTING.md` §2) y créala con
-    `git switch -c <rama>`: los cambios se vienen con ella.
+- Ejecuta `git branch --show-current` y `gh api user --jq .login`.
+  - **Si es Ismael (`ismaelp8`) y está en `main`,** puede subir directo a `main` (`CONTRIBUTING.md` §5):
+    sigue ahí salvo que pida rama y PR. Los pasos marcados «directo a `main`» son para este caso.
+  - **Si es otra persona y está en `main`, no hagas commit ahí.** Propón una rama
+    (`CONTRIBUTING.md` §2) y créala con `git switch -c <rama>`: los cambios se vienen con ella.
 - Ejecuta `git config user.name` y `git config user.email`. Tienen que ser los de la persona que te
   habla. Si no lo son, para y ayúdale a configurarlos. Nunca uses la identidad de otra persona.
 
@@ -66,8 +68,12 @@ El script solo imprime recuentos.
 - Ejecuta `git fetch origin` y `git rev-list --count HEAD..origin/main`.
 - Si es mayor que 0, mergea `origin/main` en la rama (`git merge origin/main`) y resuelve los conflictos
   con la persona. Nunca uses `rebase` sobre algo ya subido ni `--force`.
+- **Directo a `main`:** si es mayor que 0, `git pull --rebase --autostash origin main`. Solo recoloca los
+  commits de Ismael que aún no están en GitHub. Si hay conflictos, resuélvelos con él.
 
 ## 6. Datos de la PR
+
+**Directo a `main`:** sin PR, sáltate este paso.
 
 - **Título:** la frase del commit, o un resumen si hay varios commits.
 - **Cuerpo:** la plantilla de `.github/pull_request_template.md` rellena.
@@ -89,14 +95,16 @@ El script solo imprime recuentos.
 ## 7. Confirmación (obligatoria)
 
 Enséñale en pocas líneas y espera su sí:
-- la rama;
+- la rama (o `main`, si sube directo);
 - los commits (`git log --oneline origin/main..HEAD`);
 - los ficheros;
-- el título;
-- los reviewers.
+- el título y los reviewers, si hay PR.
 
 ## 8. Push y PR
 
+**Directo a `main`:** `git push origin main`, sin PR. Nunca `--force`.
+
+Con rama:
 ```
 git push -u origin <rama>
 gh pr create --base main --head <rama> --title "<título>" --body-file <fichero-temporal> --reviewer <login>
@@ -112,5 +120,7 @@ Dale el enlace de la PR y explícale lo que sigue:
 - revisa Ismael o David;
 - con una aprobación, quien aprueba la mergea;
 - después, `/actualizar` le devuelve a `main` limpio.
+
+**Directo a `main`:** dale el hash del commit subido. Los demás lo reciben con `/actualizar`.
 
 No mergees tú.

@@ -12,7 +12,7 @@ Título: $ARGUMENTS
 día, es corta y tiene números agregados.
 
 1. **Rama.** Si está en `main`, propón `/empezar` antes: la entrada viaja en la PR de la tarea, o en una
-   rama `docs/` si va sola.
+   rama `docs/` si va sola. Ismael puede apuntarla directo en `main`.
 2. **Campos** de la plantilla del fichero. Sácalos de la conversación y pregunta solo lo que falte:
    ```
    ### AAAA-MM-DD · <módulo> · <título corto>
