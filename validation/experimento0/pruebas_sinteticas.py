@@ -286,7 +286,7 @@ def prueba_medir_parte():
     assert c == {"toque": True, "control": False, "fuera": True, "reanuda_el_otro": True}, c
     assert len(r["pasos_a_inactivo"]) == 1, r["pasos_a_inactivo"]
     p = r["pasos_a_inactivo"][0]
-    assert p["fuera_en_inicio"] and p["tipo"] == "banda" and 3 <= p["desfase_cruce"] <= 10 and p["duracion"] == 120, p
+    assert p["fuera_en_inicio"] and p["tipo"] == "banda" and 3 <= p["desfase_cruce"] <= 10 and p["duracion"] == 120 and p["flag_constante"] and p["flag_igual_al_anterior"], p
     assert len(r["pasos_a_activo"]) == 1, r["pasos_a_activo"]
     q = r["pasos_a_activo"][0]
     assert q["mismo_equipo"] is False and -2 <= q["desfase_movimiento"] <= 2 and q["desfase_movimiento_activo"] == 0, q

@@ -254,6 +254,8 @@ def resumir(r, calib=None):
     s["inactivo"] = {
         "n": len(pa), "tipos": dict(tipos),
         "fuera_en_inicio_pct": pct([p["fuera_en_inicio"] for p in pa]),
+        "flag_constante_pct": pct([p["flag_constante"] for p in pa]),
+        "flag_igual_al_anterior_pct": pct([p["flag_igual_al_anterior"] for p in pa]),
         "dist_linea_p10_p50_p90": q([p["dist_linea"] for p in pa]),
         "con_cruce_3s_pct": pct([p["desfase_cruce"] is not None for p in pa]),
         "desfase_cruce_por_tipo": {t: q([p["desfase_cruce"] for p in pa if p["tipo"] == t]) for t in tipos},

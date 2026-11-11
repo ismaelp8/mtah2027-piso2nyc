@@ -374,8 +374,11 @@ def medir_parte(parte, prm, rng, eventos_parte=None, prep=None, campo=(105.0, 68
         dur = int(fin[0] - o) if len(fin) else None
         # en el inicio del D: > 0 fuera; < 0 dentro, a esa distancia de la línea más cercana
         dist_linea = float(max(abs(prep["x"][o]) - largo / 2, abs(prep["y"][o]) - ancho / 2))
+        # flag durante el D: si es constante y si es el mismo que en el último frame activo
+        flag_d = poss[o:fin[0]] if len(fin) else poss[o:]
         pasos.append({"fuera_en_inicio": bool(fu0[o]), "dist_linea": dist_linea, "desfase_cruce": desfase,
-                      "tipo": tipo, "duracion": dur})
+                      "tipo": tipo, "duracion": dur, "flag_constante": bool(np.all(flag_d == flag_d[0])),
+                      "flag_igual_al_anterior": bool(poss[o] == poss[o - 1])})
     r["pasos_a_inactivo"] = pasos
     # 2e: pasos a activo
     reanudar = []
