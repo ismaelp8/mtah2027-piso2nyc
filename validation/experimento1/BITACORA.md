@@ -464,47 +464,75 @@ descriptiva y no se fijó antes.
 
   Es una candidata con un compromiso, no una ganadora.
 
-## 16. Recuento del vídeo — ventana pública · Manuel Herrero · 12/11/2026 [medido]
+## 16. Recuento del vídeo — ventana pública · Manuel Herrero · 12/11/2026 (corregido el 13/11/2026)
 
-Revisión visual de los momentos señalados en la sección 6 del resultado del experimento 1,
-usando el vídeo táctico `BAR-ATH_tactical.mp4`.
+Revisión visual, por una sola persona, de los momentos de la sección 6 del resultado del experimento 1
+en el vídeo táctico. Los momentos salen de la GT pública y se miraron con tiempos al segundo.
 
-### Pregunta 1 — las 3 posesiones cortas entre dos del rival
+**Aquí van solo recuentos**, como pide la sección 6 ("las respuestas se apuntan como recuentos").
 
-| Tiempo | Frames | Equipo | Observación | Veredicto |
-|---|---|---|---|---|
-| 07:42 | 71 | Athletic | Recibe el balón y lo pasa a un compañero | **Control** |
-| 10:13 | 19 | Barça | 3 jugadores lo tocan consecutivamente sin dominarlo; el Athletic lo recupera | **Sin control — disputa** |
-| 10:30 | 33 | Barça | Lo rozan con la cabeza; el balón sale hacia un lado y el Athletic lo recupera | **Sin control — disputa** |
+**Nota sobre la versión del 12/11:** traía dos tablas con el tiempo y la observación de cada momento, y
+una conclusión que nombraba dos de esos tiempos.
+- Se han quitado porque la regla pide solo recuentos y prohíbe etiquetar a mano momentos del partido.
+- Los tiempos se pueden sacar de la GT pública oficial. Las observaciones de cada momento del vídeo, no.
+- Están en el commit `c90449a`, que está en GitHub, en la PR #1. No desaparecen al hacer squash ni al
+  borrar la rama, y las normas prohíben reescribir historia ya subida.
+- Qué hacer antes de publicar el repo lo decide Ismael.
 
-Recuento: 1 de 3 es control real. Las otras 2 son disputas donde el Barça toca el balón sin dominarlo.
+### Pregunta 1 — las 3 posesiones cortas entre dos del rival (19, 33 y 71 frames)
+
+- **[medido]** En 1 de las 3 hay control.
+- **[medido]** En 1 de las 3 no hay control: un toque de cabeza, el balón sale a un lado y lo recupera
+  el rival. Aun así, la GT le da la posesión. Es el caso que `CHALLENGE.md` (línea 78) pone de ejemplo de
+  lo que no cambia la posesión: un toque sin control.
+- **[medido]** 1 de las 3 es discutible: tres toques seguidos de tres jugadores del mismo equipo sin
+  dominarlo, y lo recupera el rival.
+  - Con la candidata "C0-12 o dos toques" (sección 3 del resultado: dos toques seguidos del mismo equipo
+    en 2 s o menos) podría contar como control.
+  - **[inferencia]** La racha dura 19 frames (menos de 1 s), así que si los tres toques caen dentro de
+    ella, caen en menos de 2 s. Que caigan dentro está **[sin verificar]**.
 
 ### Pregunta 2 — los 12 cambios directos H↔A
 
-| Tiempo | Cambio | Observación |
-|---|---|---|
-| 07:34 | Athletic → Barça | Primer toque no es control; el control llega 1-2 contactos después |
-| 07:42 | Barça → Athletic | El Athletic controla brevemente y pasa |
-| 07:44 | Athletic → Barça | El Barça lo roza; luego el portero lo agarra |
-| 08:26 | Barça → Athletic | El Athletic lo toca un momento sin controlarlo, luego sí lo controla |
-| 09:08 | Barça → Athletic | Primer toque no es posesión; el control llega después |
-| 09:11 | Athletic → Barça | Lo tocan en la disputa; consiguen el control justo después |
-| 09:53 | Barça → Athletic | Un Athletic lo toca defendiendo; otro del Athletic lo recoge |
-| 10:13 | Athletic → Barça | 3 toques del Barça sin control |
-| 10:14 | Barça → Athletic | El Athletic recupera el balón tras los toques del Barça |
-| 10:30 | Athletic → Barça | Cabezazo; el balón sale hacia un lado |
-| 10:31 | Barça → Athletic | El Athletic recupera |
-| 11:31 | Athletic → Barça | Intento de caño; el balón rebota en las piernas del Barça; segundo toque al portero; el balón sale fuera |
+- **[medido]** Lo que se vio en cada cambio:
 
-Recuento: en **ninguno** de los 12 cambios el primer toque es ya control. En todos los casos hay
-1-2 contactos previos antes de que el equipo domine el balón de verdad.
+  | qué se vio | cambios |
+  |---|---|
+  | al menos un toque previo del equipo nuevo y control después | 6 |
+  | uno sin control y uno discutible (las dos rachas sin control claro de la pregunta 1) | 2 |
+  | dudoso: rebote y balón fuera, sin que conste control | 1 |
+  | sin información sobre el primer toque | 3 |
+- **Sin responder: en qué frame cambia la etiqueta,** en el primer toque o cuando ya hay control.
+  - Los tiempos iban al segundo. Con un segundo de desfase el `spellF1` de una posesión baja a 0,65
+    (`CLAUDE.md`, tabla de retrasos), así que esa resolución no basta.
+  - Lo apuntado describe cómo fue cada jugada, no el frame del cambio.
 
-### Conclusión [medido]
+### Conclusión (corregida el 13/11/2026)
 
-La GT usa **control establecido** (lectura 3), que es la convención decidida el 12/11. El primer
-toque aislado no cuenta como posesión. El cambio de etiqueta se fecha unos fotogramas después del
-primer contacto, cuando el jugador ya domina el balón.
+**Qué se retira:** la conclusión del 12/11 decía que la GT usa control establecido (lectura 3) y que el
+cambio se fecha unos fotogramas después del primer contacto. Se retira porque la pregunta 2 no se pudo
+responder con la precisión necesaria y porque la pregunta 1 tiene un caso claro en contra.
 
-Los momentos de 10:13 y 10:30 son disputas donde la GT asigna posesión al Barça sin que haya
-control real, posiblemente porque es el último equipo que lo tocó antes de que saliera.
+**Qué queda:**
+
+- **[inferencia]** En al menos una disputa, la GT da la posesión con un toque sin control.
+  - Eso encaja con la lectura 1 (último toque) o con la 2 (toque con impacto), no con la 3 (control
+    establecido).
+  - Es 1 caso claro y 1 discutible, de un solo observador y con tiempos al segundo: una señal, no una
+    medida firme.
+- **[inferencia] La regla escrita antes de mirar** no prevé un resultado mixto como este (1 control,
+  1 toque claro y 1 discutible).
+  - La sección 6 del resultado dice: "**Si las rachas cortas son toques que dejan el balón suelto:** la
+    GT sigue la lectura 2 (Metrica) o la 1, y hay que revisar la decisión del 12/11 con Ismael".
+  - Se aplica la rama prudente: con al menos un caso claro de toque, toca revisar esa decisión con
+    Ismael.
+- **[inferencia]** Gana peso el riesgo apuntado en `docs/decisiones.md`: que la GT siga al toque.
+- **Pendiente:** estas observaciones no separan la lectura 1 de la 2. Para separarlas habría que contar
+  toques del rival que **no** cambian la etiqueta.
+
+**Cómo responder la pregunta 2:** repetirla frame a frame, con el frame exacto de cada cambio sacado de la
+GT pública. Antes de mirar, se fija aquí por escrito:
+- qué cuenta como "primer toque" y qué como "control";
+- la tolerancia en frames;
+- que en el repo solo se apuntan recuentos, sin números de frame ni momentos.
 
