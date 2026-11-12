@@ -27,8 +27,8 @@
    frames `D`) y salta al reanudar (mediana de 6,2 m). En la DFL, la posición del balón delata el `D`,
    también en los primeros frames activos. Los jugadores no se congelan **[medido]**.
 
-- **Código:** rama `exp/experimento-0`, carpeta `validation/experimento0/`. Las cifras de este
-  fichero salen del commit `65d552f` (solo commits locales; sin push).
+- **Código:** carpeta `validation/experimento0/`. Las cifras de este fichero salen del commit
+  `ec8a7f3`.
 - **Datos:** Bundesliga (Bassek, Rein, Weber y Memmert, 2025), figshare
   10.6084/m9.figshare.28196177.v1, CC BY 4.0, 7 partidos.
 - **Comandos** (todos imprimen solo agregados; los detalles van en JSON junto a la caché, fuera del
@@ -104,9 +104,8 @@ organización o mirar la ventana pública (una persona, solo sí o no: ¿un desp
 
 - 2f (etiquetas a partir de los eventos de la DFL), que necesita reglas fijadas antes de medir;
 - el paso 3 (Barça como local), que depende de D15 y D16;
-- en la rama hay dos commits antiguos (`844a358` y `ac7a3d7`) con la ruta local del entorno virtual en
-  la bitácora. Se quitó después, pero sigue en el historial. No se ha subido nada; decides tú si se
-  reescribe antes del push.
+- los dos primeros commits de la bitácora llevaban la ruta local del entorno virtual. Por decisión de
+  Ismael (12/11), la historia se reescribió antes de subir y la ruta ya no está en ningún commit.
 
 ## Comprobaciones de lectura (D8, D9)
 

@@ -633,7 +633,7 @@ cifras a mano.
    - Además, el desfase toque–cambio se da con el signo de `PASOS.md` en el fichero de resultados.
 
    Ejecución final: 46,1 s y 457 MB de pico para las dos variantes, con las 21 variaciones cada una.
-   Cifras del commit `65d552f`.
+   Cifras del commit `ec8a7f3`.
 
 **Cambios de criterio en esta parada:**
 
@@ -749,3 +749,14 @@ medida del siguiente paso.
 
 Una tercera ejecución de `parada3.py` y `parada3_tablas.py` da el mismo JSON (sin tiempos) y las mismas
 tablas que las dos anteriores **[medido]**.
+
+### 10. Historia reescrita antes de subir (12/11)
+
+Por decisión de Ismael, antes del primer push se reescribió la historia local de la rama para quitar la
+ruta del entorno virtual de los dos primeros commits de la bitácora.
+
+- Se hizo con comandos de bajo nivel (`git mktree` y `git hash-object`) y sin tocar el índice.
+- Solo cambió esa línea en esos dos commits. El estado final, la autoría, las fechas y los mensajes son
+  idénticos.
+- Los hashes citados en esta bitácora y en los ficheros de resultados son ya los nuevos.
+
