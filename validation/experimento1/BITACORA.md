@@ -464,3 +464,47 @@ descriptiva y no se fijó antes.
 
   Es una candidata con un compromiso, no una ganadora.
 
+## 16. Recuento del vídeo — ventana pública · Manuel Herrero · 12/11/2026 [medido]
+
+Revisión visual de los momentos señalados en la sección 6 del resultado del experimento 1,
+usando el vídeo táctico `BAR-ATH_tactical.mp4`.
+
+### Pregunta 1 — las 3 posesiones cortas entre dos del rival
+
+| Tiempo | Frames | Equipo | Observación | Veredicto |
+|---|---|---|---|---|
+| 07:42 | 71 | Athletic | Recibe el balón y lo pasa a un compañero | **Control** |
+| 10:13 | 19 | Barça | 3 jugadores lo tocan consecutivamente sin dominarlo; el Athletic lo recupera | **Sin control — disputa** |
+| 10:30 | 33 | Barça | Lo rozan con la cabeza; el balón sale hacia un lado y el Athletic lo recupera | **Sin control — disputa** |
+
+Recuento: 1 de 3 es control real. Las otras 2 son disputas donde el Barça toca el balón sin dominarlo.
+
+### Pregunta 2 — los 12 cambios directos H↔A
+
+| Tiempo | Cambio | Observación |
+|---|---|---|
+| 07:34 | Athletic → Barça | Primer toque no es control; el control llega 1-2 contactos después |
+| 07:42 | Barça → Athletic | El Athletic controla brevemente y pasa |
+| 07:44 | Athletic → Barça | El Barça lo roza; luego el portero lo agarra |
+| 08:26 | Barça → Athletic | El Athletic lo toca un momento sin controlarlo, luego sí lo controla |
+| 09:08 | Barça → Athletic | Primer toque no es posesión; el control llega después |
+| 09:11 | Athletic → Barça | Lo tocan en la disputa; consiguen el control justo después |
+| 09:53 | Barça → Athletic | Un Athletic lo toca defendiendo; otro del Athletic lo recoge |
+| 10:13 | Athletic → Barça | 3 toques del Barça sin control |
+| 10:14 | Barça → Athletic | El Athletic recupera el balón tras los toques del Barça |
+| 10:30 | Athletic → Barça | Cabezazo; el balón sale hacia un lado |
+| 10:31 | Barça → Athletic | El Athletic recupera |
+| 11:31 | Athletic → Barça | Intento de caño; el balón rebota en las piernas del Barça; segundo toque al portero; el balón sale fuera |
+
+Recuento: en **ninguno** de los 12 cambios el primer toque es ya control. En todos los casos hay
+1-2 contactos previos antes de que el equipo domine el balón de verdad.
+
+### Conclusión [medido]
+
+La GT usa **control establecido** (lectura 3), que es la convención decidida el 12/11. El primer
+toque aislado no cuenta como posesión. El cambio de etiqueta se fecha unos fotogramas después del
+primer contacto, cuando el jugador ya domina el balón.
+
+Los momentos de 10:13 y 10:30 son disputas donde la GT asigna posesión al Barça sin que haya
+control real, posiblemente porque es el último equipo que lo tocó antes de que saliera.
+
