@@ -431,9 +431,13 @@ etiquetas. El plan completo (datos, etiquetas, degradación, protocolo) está en
   - Son 7 partidos a 25 Hz, con licencia CC-BY 4.0.
   - Trae en cada frame qué equipo posee el balón y si está vivo: el mismo tipo de etiqueta que la GT
     del reto. Las etiquetas salen de forma mecánica: `D` si el balón está inactivo y, si no, `H` o `A`.
-  - **Está pendiente del «experimento 0»** (`validation/PASOS.md`), que comprueba con agregados si esas
-    etiquetas se comportan como pide la definición de posesión de `CHALLENGE.md`. Hasta que se haga, es
-    una propuesta y no una decisión cerrada.
+  - **El experimento 0 ya está hecho** (12/11, `validation/resultados/2026-11-11_experimento0.md`):
+    - su balón muerto (`D`) vale tal cual, tapando la posición del balón en los `D` y en sus bordes
+      (la DFL la congela mientras el balón está muerto);
+    - su flag de equipo cambia en el primer toque del rival aunque no controle. Por decisión de Ismael,
+      las etiquetas de equipo se derivan con el criterio de control del reto
+      (`docs/decisiones.md`, 12/11);
+    - cómo elegir ese control está en `validation/resultados/2026-11-12_criterio_posesion.md`.
 - **Dataset secundario: Metrica sample-data** (https://github.com/metrica-sports/sample-data).
   - Son 3 partidos anonimizados con tracking y eventos sincronizados. `Sample_Game_3` viene en formato
     FIFA/EPTS, el mismo que nuestro ATD, así que se carga con el mismo

@@ -103,6 +103,68 @@ La protección de verdad es esta regla, no la configuración.
      confirmación en cada uno.
 3. **Antes de tocar nada,** mira `git status` y `git branch --show-current`. Si va a escribir algo y está
    en `main`, propón `/empezar`, salvo que sea Ismael: él puede trabajar directo en `main`.
+4. **Ponte al día con «Dónde estamos»** (justo debajo) antes de proponer trabajo. Si la persona no lo
+   conoce, resúmeselo en unas líneas: qué está hecho, qué falta y qué hace falta de ella.
+
+---
+
+## Dónde estamos (actualizado el 12/11/2026)
+
+Lee esto para saber en qué punto está el equipo. El detalle está en los ficheros enlazados.
+
+**Hecho:**
+
+- **Experimento 0** (`validation/resultados/2026-11-11_experimento0.md`; bitácora en
+  `validation/experimento0/`): el flag de la Bundesliga (DFL) frente a `CHALLENGE.md`.
+  - **`D` de la DFL: vale tal cual.** Hay que tapar el balón en los frames `D` y en las ventanas que
+    tocan sus bordes: la DFL congela su posición mientras está muerto y la hace saltar al reanudar.
+  - **Equipo (H/A): no vale tal cual.** El flag cambia en el primer toque del rival, aunque no controle.
+  - **Decisión de Ismael** (12/11, `docs/decisiones.md`): se siguen las normas del reto. Las etiquetas
+    de equipo de la DFL se derivan con un criterio de control.
+- **Experimento 1** (`validation/resultados/2026-11-12_criterio_posesion.md`; bitácora en
+  `validation/experimento1/`): cuándo cambia la posesión y con qué control corregir la DFL.
+  - **Hay tres lecturas:**
+    - último toque (el flag de la DFL);
+    - toque con impacto significativo (las definiciones de eventos de Metrica);
+    - control establecido (el texto del reto y StatsBomb).
+
+    El texto del reto apunta a la tercera.
+  - **Referencia sin circularidad:** los eventos humanos de la DFL (pases completados, recuperaciones y
+    duelos con `PossessionChange`).
+  - **Cuánto pesa:** la definición de control mueve entre un tercio y dos tercios de las posesiones.
+    Hay una candidata, "control de 12 frames o dos toques seguidos", con un compromiso medido; no es una
+    ganadora.
+  - **Fuera no hay nada hecho:** ningún método abierto da posesión de equipo por frame con criterio de
+    control. Se construye con piezas propias.
+
+**Lo siguiente, en este orden:**
+
+1. **Recuento manual del vídeo de la ventana pública.** Lo hace una persona del equipo (ya avisada);
+   Claude no ve el vídeo.
+   - Las 3 posesiones cortas entre dos del rival: ¿control o solo toque?
+   - Los 12 cambios directos: ¿la etiqueta cambia en el primer toque o cuando ya hay control?
+
+   Solo recuentos; los momentos están en la sección 6 del resultado del experimento 1. De ahí sale la
+   convención de las etiquetas (qué lectura y cuándo se fecha el cambio). No salen etiquetas,
+   constantes ni ajustes.
+2. **Con el recuento:** fijar la convención y escribir, antes de medir, el protocolo para elegir la
+   definición de control.
+3. **Después:**
+   - el generador de etiquetas de la DFL, con la convención como opción;
+   - la degradación DFL→ATD, con el balón tapado en los `D`;
+   - los candidatos N1–N5 y el modelo temporal (`docs/investigacion_metodos.md`).
+
+**Pendiente de permiso de Ismael:**
+
+- descargar los tiempos humanos de ELASTIC, en 3 partidos de la DFL;
+- instalar `databallpy`.
+
+**Cómo se trabaja en `validation/`:**
+
+- los criterios se escriben antes de medir;
+- placebos y sensibilidad;
+- resultados por partido y con los 7 juntos;
+- cada afirmación con [medido], [inferencia] o [sin verificar].
 
 ---
 
@@ -328,9 +390,12 @@ validation/                  validación externa con datos abiertos: pasos, scri
     - Son 7 partidos a 25 Hz con licencia CC-BY 4.0.
     - Trae en cada frame quién posee el balón y si está vivo, el mismo tipo de etiqueta que la GT del
       reto: `D` si el balón está inactivo y, si no, `H` o `A`.
-    - **Está pendiente del «experimento 0»** (`validation/PASOS.md`), que comprueba si esas etiquetas
-      se comportan como pide la definición de posesión de `CHALLENGE.md`. Hasta entonces es una
-      propuesta, no una decisión cerrada.
+    - **Experimento 0 hecho** (12/11):
+      - su `D` vale tal cual, tapando el balón en los `D` y en sus bordes;
+      - su flag de equipo cambia en el primer toque del rival, así que las etiquetas de equipo se
+        derivan con un criterio de control.
+
+      Ver «Dónde estamos».
   - **Dataset secundario: Metrica sample-data** (https://github.com/metrica-sports/sample-data).
     - Son 3 partidos con tracking y eventos sincronizados, que también se cargan con kloppy.
     - No trae posesión por frame: las etiquetas `H`/`A`/`D` hay que derivarlas de los eventos.
