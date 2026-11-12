@@ -12,15 +12,22 @@
    - **Toque con impacto significativo:** las definiciones de eventos de Metrica, la organizadora.
    - **Control establecido:** el texto de `CHALLENGE.md` y StatsBomb.
 
-   El texto apunta a la tercera (un duelo aéreo ganado sin control no es cambio). La GT sale de un flag
-   de proveedor y tiene dos posesiones cortas entre dos del rival, algo que encaja mejor con la segunda.
-   Las dos se separan en el 70 % de los toques sin control **[medido]**.
+   El texto apunta a la tercera (un duelo aéreo ganado sin control no es cambio), y es la que decidió
+   Ismael. El riesgo de que la GT se parezca a la segunda ha subido por dos cosas **[fuente]**:
+   - es la definición de posesión escrita por la propia organizadora para sus eventos;
+   - la GT sale de un flag de proveedor, y el de la DFL se describe como "control" pero cambia en el
+     primer toque.
+
+   Las dos rachas cortas de la GT pública no distinguen nada: caben en las dos lecturas. En la DFL, la
+   segunda y la tercera se separan hasta en el 70 % de los toques sin control **[inferencia]**.
 2. **Con lo que tenemos podemos seguir.** El tracking de la DFL tiene el balón siempre, y sus eventos
    humanos (pases completados, recuperaciones y duelos con `PossessionChange`) sirven de referencia sin
    circularidad.
    - Elegir la definición de control mueve entre un tercio y dos tercios de las posesiones.
-   - Para la lectura del texto, la más equilibrada es "control de 12 frames o dos toques seguidos": no
-     queda por detrás de C0-8 ni de C0-12 en ninguna referencia **[medido]**.
+   - Para la lectura del texto hay una **candidata**, "control de 12 frames o dos toques seguidos". En
+     las referencias con horizonte de 2 s, nunca queda significativamente por detrás de C0-8 ni de C0-12.
+     Pero con horizonte de 3 s queda por detrás de C0-12 en los duelos sin cambio: es un compromiso, no
+     una ganadora **[medido]**.
 3. **Fuera no hay nada que lo resuelva hecho.** Ningún método abierto da posesión de equipo por frame
    con criterio de control. Lo realista es lo que ya tenemos (detectores propios, eventos humanos y una
    regla documentada). Como extras opcionales, que necesitan permiso: los tiempos humanos de ELASTIC en
@@ -30,8 +37,9 @@
    - ¿Las 3 rachas cortas son toques o controles?
    - ¿Los 12 cambios se fechan en el primer toque o cuando ya hay control?
 
-   Decide qué lectura sigue la GT y cuándo fecha los cambios; esto último mueve más de 8 frames entre
-   un cuarto y la mitad de los cambios.
+   Decide qué lectura sigue la GT y cuándo fecha los cambios. La fecha mueve más de 8 frames **al
+   menos** un cuarto de los cambios. De ahí saldrá la convención de las etiquetas: es la comprobación
+   del significado de las etiquetas que permiten `CHALLENGE.md` (82–87) y `RULES.md`.
 
 - **Código:** `validation/experimento1/` (`duelos_dfl.py`, `duelos_sincronizados.py`, `correccion.py`,
   `peso_correccion.py`, `comparar_definiciones.py`, `fecha_del_cambio.py`, `lecturas_toque.py`), sobre
@@ -151,12 +159,24 @@ Las cuatro referencias, explicadas:
   - C0-50, el proxy "unos segundos", quita el 16 % de las posesiones de pases completados y el 41 % de
     las recuperaciones: demasiado;
   - el flag tal cual y Ret-5 dejan demasiados cambios falsos.
-- **"C0-12 o dos toques" no queda por detrás de C0-8 ni de C0-12 en ninguna de las cuatro
-  referencias,** y en tres va por delante. Las diferencias con C0-12 son significativas en tres
-  referencias (bootstrap emparejado, intervalo del 95 %): +1,7 a +2,8 puntos en pases, +3,6 a +10,3 en
-  recuperaciones y +4,4 a +11,8 en duelos con cambio. En duelos sin cambio es un empate (−6,6 a +0,5).
+- **Las recuperaciones son el punto débil de todas,** y son la cifra que de verdad mide cuántas
+  posesiones reales se quitan (59–88 %). Los pases completados (84–99 %) caen casi siempre dentro de
+  posesiones largas que ninguna corrección toca: dicen poco.
+- **"C0-12 o dos toques" es una candidata, no una ganadora.** Diferencias con bootstrap emparejado,
+  intervalo del 95 %:
+
+  | frente a | pases | recuperaciones | duelos con cambio (2 s) | duelos sin cambio (2 s) | duelos sin cambio (3 s) |
+  |---|---|---|---|---|---|
+  | C0-12 | +1,7 a +2,8 | +3,6 a +10,3 | +4,8 a +11,4 | −6,6 a 0,0 (empate) | **−8,1 a −1,5 (peor)** |
+  | C0-8 | +0,9 a +1,8 | +0,5 a +6,2 | −0,9 a +6,1 (empate) | −0,9 a +7,6 (empate) | −5,1 a +2,5 (empate) |
+
   Corresponde a los dos proxies del reto: un jugador retiene el balón, o el equipo encadena toques.
-- **Las recuperaciones son el punto débil de todas** (59–88 %).
+- **Comprobaciones de la referencia de duelos [medido]:**
+  - Quitando los 80 duelos contradictorios (el rival se hace con el balón, `ballClaimed`, pero el
+    anotador no marca cambio), el orden se mantiene. Con el flag tal cual, el 44,8 % de los duelos sin
+    cambio sigue en el equipo que tenía el balón; con las correcciones, el 60–85 %.
+  - Con horizonte de 1 s y de 3 s, el flag tal cual sigue claramente peor en los duelos sin cambio
+    (28,9 % y 54,8 %, frente al 58–81 % y el 61–80 % de las correcciones).
 - **No se elige aquí:**
   - el significado de `PossessionChange` está sin verificar;
   - la fecha del cambio está abierta;
@@ -164,10 +184,13 @@ Las cuatro referencias, explicadas:
 
 **La fecha del cambio pesa tanto como la definición [medido].** La corrección deja cada cambio donde
 lo puso el flag, en el primer toque. Si la GT lo fecha al empezar el control, se moverían más de 8
-frames:
+frames **al menos**:
 
 - el 24,5 % de los cambios con "C0-12 o dos toques";
 - el 52,7 % con C0-12.
+
+Son mínimos: con "dos toques", el control empieza por construcción en el primer toque. Esta medida se
+escribió después de mirar; es descriptiva.
 
 Con 8 frames de retraso el `spellF1` ya baja a 0,89.
 
@@ -237,16 +260,16 @@ Resumen de un subagente. Lo verificado aquí en la fuente está marcado.
 - **Los eventos humanos de la DFL dan referencias sin circularidad:** pases completados, recuperaciones y
   duelos con `PossessionChange`. Miden los dos fallos posibles: dejar cambios falsos y quitar posesiones
   reales.
-- **La corrección R(c) está escrita y probada,** y una definición ("C0-12 o dos toques") no queda por
-  detrás de C0-8 ni de C0-12 en ninguna referencia.
+- **La corrección R(c) está escrita y probada,** y hay una candidata equilibrada ("C0-12 o dos toques"),
+  con un compromiso medido frente a C0-8 y C0-12.
 
 **Lo que falta, por orden de importancia:**
 
 1. **Qué lectura sigue la GT (2 o 3).** Cambia mucho la corrección: con la lectura 2 se quitaría solo una
    parte pequeña de las rachas creadas por un toque; con la 3, casi todas. Solo lo dice el vídeo de la
    ventana pública (sección 6).
-2. **Cuándo se fecha el cambio** (primer toque o control establecido): mueve más de 8 frames entre un
-   cuarto y la mitad de los cambios. También solo lo dice el vídeo.
+2. **Cuándo se fecha el cambio** (primer toque o control establecido): mueve más de 8 frames al menos
+   un cuarto de los cambios. También solo lo dice el vídeo.
 3. **Qué significa exactamente `PossessionChange`:** el catálogo de la DFL no es público. Su
    comportamiento encaja con "el equipo se queda con el balón", pero es una inferencia.
 4. **Las recuperaciones son el punto débil de todas las correcciones** (59–88 % de acierto). Hay margen
@@ -270,8 +293,9 @@ Resumen de un subagente. Lo verificado aquí en la fuente está marcado.
 ## 6. Lo que solo puede hacer una persona: mirar la ventana pública
 
 `CHALLENGE.md` dice que la GT pública es donde se ve qué significa "poseer" (líneas 82–87 y
-102–103), y `CLAUDE.md` permite usarla para el significado de las etiquetas, nunca para elegir
-versiones. Mirar el vídeo para entenderlo está permitido; convertir lo que se ve en etiquetas, no.
+102–103). `RULES.md` y `CLAUDE.md` permiten usarla para comprobar que las etiquetas significan lo que
+creemos, nunca para elegir versiones. Mirar el vídeo para entenderlo está permitido; convertir lo que se
+ve en etiquetas, no.
 
 **Propuesta: Ismael mira el vídeo táctico en los momentos de la ventana pública y responde solo con
 recuentos.** Los momentos los da `evaluation/gt/BAR-ATH_possession_gt_public.csv`.
@@ -286,11 +310,26 @@ Con eso se sabe:
 - si la GT sigue al control (lo decidido) o al toque, como la DFL;
 - cuándo fecha el cambio. Es lo que más pesa en el `spellF1` y no se puede medir de otra forma.
 
-Las respuestas se apuntan como recuentos en la bitácora. Ninguna etiqueta, constante ni parámetro sale
-de ahí.
+Las respuestas se apuntan como recuentos en la bitácora.
+
+- **De ahí sí saldrán la convención y la fecha:** qué lectura sigue la GT y cuándo cambia. Es la
+  comprobación del significado de las etiquetas que permiten las reglas.
+- **No saldrán** etiquetas, constantes ligadas a frames ni parámetros ajustados contra la ventana.
+- **Antes de mirar, Ismael decide** si prefiere preguntar primero a la organización.
+- **Para el documento técnico:** se apunta que se hizo y con qué alcance.
 
 **Cómo leer las respuestas:**
 
 - **Si las rachas cortas son toques que dejan el balón suelto:** la GT sigue la lectura 2 (Metrica) o la
   1, y hay que revisar la decisión del 12/11 con Ismael.
 - **Si son controles breves:** encaja con la lectura 3, la decidida.
+
+## 7. Sin verificar
+
+- Qué significa exactamente `PossessionChange`: el catálogo de la DFL no es público.
+- El reparto de la sección 4.1 entre "pase que llega" y "balón suelto": depende de encontrar el pase en
+  los eventos, así que el 70 % es un máximo. Que la lectura 2 llame cambio a esos casos es una
+  interpretación de una definición de eventos, no del flag que genera la GT.
+- Lo que el subagente no pudo verificar en fuente primaria: Opta, Wyscout, FIFA EFI, Link y Hoernig,
+  Vidal-Codina, PathCRF y las cifras de validación de terceros.
+- Si el ATD congela el balón en el balón muerto, como la DFL (paso 5).

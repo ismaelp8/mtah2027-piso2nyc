@@ -433,3 +433,34 @@ De los 203 casos de 2g:
   la lectura 2, y con la 3 solo si son controles muy breves. Con 17 posesiones no prueba nada
   **[inferencia]**. El vídeo lo decide.
 
+## 14. Antes de repetir la comparación (fijado antes de calcular)
+
+Tras la revisión, se repite `comparar_definiciones.py` con tres añadidos, sin cambiar nada más:
+
+- **el bootstrap emparejado también contra C0-8,** no solo contra C0-12;
+- **la referencia de duelos sin cambio, quitando los 80 `ballClaimed` con `PossessionChange` = false,**
+  que contradicen la lectura simple del atributo. Se mira si se mantiene el orden;
+- **la referencia de duelos con horizonte de 1 s y 3 s,** además de 2 s.
+
+Además, se deja constancia de que la sección 9 (fecha del cambio) se escribió después de medir: es
+descriptiva y no se fijó antes.
+
+## 15. Resultado de la comparación repetida [medido]
+
+- **Sin los 80 `ballClaimed` contradictorios,** la referencia de duelos sin cambio mantiene el orden:
+  - el flag tal cual acierta el 44,8 %;
+  - C0-8 el 69,9 %, C0-12 el 77,9 % y C0-20 el 82,2 %;
+  - dos toques el 79,1 % y la unión el 76,1 %.
+
+  Lo que justifica corregir no depende de esos casos.
+- **Con horizonte de 1 s y de 3 s,** el flag tal cual sigue claramente peor en los duelos sin cambio
+  (28,9 % y 54,8 %).
+- **"C0-12 o dos toques" frente a C0-8** (intervalo del 95 %):
+  - mejor en pases (+0,9 a +1,8) y en recuperaciones (+0,5 a +6,2);
+  - empate en los duelos (con cambio, −0,9 a +6,1; sin cambio, −0,9 a +7,6);
+  - mejor en los duelos sin cambio quitando los `ballClaimed` (+1,2 a +11,7).
+- **Frente a C0-12, con horizonte de 3 s, queda peor en los duelos sin cambio** (−8,1 a −1,5). A 1 s y
+  2 s es un empate.
+
+  Es una candidata con un compromiso, no una ganadora.
+

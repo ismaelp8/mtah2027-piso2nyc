@@ -119,12 +119,20 @@ def main():
             f3 = f + 2 * FPS
             if f - 10 < 0 or f3 >= len(estado) or estado[f - 10] != 1 or poss[f - 10] - 1 != x or estado[f3] != 1:
                 continue
-            clave = "duelo PC=" + str(a.get("PossessionChange"))
+            pc = a.get("PossessionChange")
+            clave = "duelo PC=" + str(pc)
             cuenta[clave] += 1
             for d in DEFINICIONES:
-                ok = labs[d][f3] == (1 - x) if a.get("PossessionChange") == "true" else labs[d][f3] == x
+                ok = labs[d][f3] == (1 - x) if pc == "true" else labs[d][f3] == x
                 aciertos[d][clave].append(bool(ok))
                 por_partido[d][p][clave].append(bool(ok))
+                if pc == "false" and a.get("WinnerResult") != "ballClaimed":
+                    aciertos[d][clave + " sin ballClaimed"].append(bool(ok))
+                for h in (1, 3):  # sensibilidad del horizonte (fijada en la sección 14)
+                    fh = f + h * FPS
+                    if fh < len(estado) and estado[fh] == 1:
+                        okh = labs[d][fh] == (1 - x) if pc == "true" else labs[d][fh] == x
+                        aciertos[d]["{} h={}s".format(clave, h)].append(bool(okh))
         # fallo de quitar: pases completados y recuperaciones
         pases, recs = eventos_guardia(dfl_lector.rutas_partido(p)["eventos"], meta)
         for ms, pasador, receptor, eq in pases:
@@ -167,12 +175,14 @@ def main():
     for d in DEFINICIONES:
         salida["acierto_pct"][d] = {c: round(100.0 * float(np.mean(v)), 1) for c, v in sorted(aciertos[d].items())}
         salida["en_el_frame_del_pase_pct"][d] = round(100.0 * float(np.mean(en_el_pase[d])), 1)
-    ref = "C0-12"
-    for d in DEFINICIONES:
-        if d == ref:
-            continue
-        salida["diferencias_con_C0-12_IC95"][d] = {c: bootstrap_dif(aciertos[d][c], aciertos[ref][c], rng)
-                                                   for c in sorted(aciertos[d])}
+    for ref in ("C0-12", "C0-8"):
+        clave_ref = "diferencias_con_{}_IC95".format(ref)
+        salida.setdefault(clave_ref, {})
+        for d in DEFINICIONES:
+            if d == ref:
+                continue
+            salida[clave_ref][d] = {c: bootstrap_dif(aciertos[d][c], aciertos[ref][c], rng)
+                                    for c in sorted(aciertos[d]) if len(aciertos[d][c]) == len(aciertos[ref][c])}
     print(json.dumps(salida, ensure_ascii=False, indent=1))
     print("Por partido (G-pase / G-recuperación / duelo PC=true / duelo PC=false, %):")
     for d in ("flag tal cual", "C0-12", "dos toques", "C0-12 o dos toques"):
