@@ -536,3 +536,92 @@ GT pública. Antes de mirar, se fija aquí por escrito:
 - la tolerancia en frames;
 - que en el repo solo se apuntan recuentos, sin números de frame ni momentos.
 
+## 17. Protocolo del recuento frame a frame — ventana pública · Antonio Azuero · 13/11/2026
+
+**Borrador.** Se escribe antes de mirar, como pide la sección 16. Lo mira una persona en local; Claude no
+ve el vídeo. Objetivo: saber qué lectura sigue la GT (1, 2 o 3 de la sección 3 del resultado) y en qué
+momento fecha el cambio.
+
+**Hipótesis de partida (Antonio, 13/11)** **[sin verificar]**: la posesión pasa al último equipo que
+toca el balón **con intención** (pase, corte o despeje dirigido), con un margen de unos frames después del
+toque. Los rebotes involuntarios no la cambian. Es la lectura 2. Salió de una primera mirada a velocidad
+normal, sin ir frame a frame, así que no cuenta como medida: este recuento la pone a prueba. Lo que no
+está claro son los rebotes: un despeje propio que rebota en un rival y vuelve a mi equipo.
+
+### Qué se mira
+
+- **Pregunta 2 (repetida):** los 12 cambios directos H↔A de la GT pública. Para cada uno, `F` es el
+  primer frame con la etiqueta nueva, sacado de `evaluation/gt/BAR-ATH_possession_gt_public.csv`.
+  - Se mira el vídeo táctico de `F − 50` a `F + 50` (2 s a cada lado), frame a frame, con un
+    reproductor que enseñe el número de frame. El frame del vídeo es el de la entrega (`DATA.md`).
+- **Pregunta 3 (nueva, separa la lectura 1 de la 2):** en los tramos `H` y `A` de la ventana, cada toque
+  del rival que **no** termina con el rival controlando el balón (rebotes, desvíos, cortes que dejan el
+  balón suelto). Para cada uno: ¿la etiqueta cambia, aunque sea unos frames, o no?
+
+### Definiciones
+
+- **Toque (`T`):** primer frame en que un jugador del equipo nuevo toca el balón (pie, cabeza o cuerpo)
+  y cambia su dirección o su velocidad, después del último toque del equipo anterior.
+- **Intención:** cada toque se clasifica antes de mirar la etiqueta de la GT.
+  - **Intencionado:** el jugador va a por el balón y lo dirige: pase, corte, intercepción o despeje.
+  - **No intencionado:** el balón le da sin que lo busque: rebote en el cuerpo, desvío de un tiro o de un
+    despeje.
+  - **Dudoso:** no se puede decidir a simple vista.
+- **Control (`C`):** primer frame de la segunda acción del equipo nuevo con el balón: segundo toque del
+  mismo jugador, conducción o pase a un compañero que le llega.
+- **Tolerancia:** ±5 frames (0,2 s). Con 3 frames de desfase el `spellF1` de una posesión es 0,98 y con
+  8, 0,89 (`CLAUDE.md`), así que ±5 separa bien "en el toque" de "en el control".
+
+### Cómo se clasifica cada cambio (pregunta 2)
+
+Cada cambio se clasifica dos veces.
+
+**Cuándo cambia la etiqueta respecto al toque** (`Δ = F − T`):
+
+| clase | condición |
+|---|---|
+| antes del toque | `Δ < −5` |
+| en el toque | `−5 ≤ Δ ≤ 5` |
+| poco después (margen) | `5 < Δ ≤ 25` (hasta 1 s) |
+| en el control | `Δ > 25` y `\|F − C\| ≤ 5` |
+| más tarde | `Δ > 25` y lejos del control |
+| sin información | `T` no se ve (oclusión, cámara) |
+
+Si `C − T ≤ 10`, no se puede separar toque de control: el caso se clasifica igual, pero se apunta aparte
+cuántos hay.
+
+**De qué tipo es el toque `T`:** intencionado, no intencionado o dudoso.
+
+### Cómo se clasifica cada toque del rival de la pregunta 3
+
+| tipo de toque del rival | la etiqueta cambia | no cambia |
+|---|---|---|
+| intencionado (corte o despeje que deja el balón suelto) | | |
+| no intencionado (rebote, desvío) | | |
+| dudoso | | |
+
+El caso de los rebotes: un despeje propio que rebota en un rival y vuelve a mi equipo es un toque **no
+intencionado** del rival.
+
+### Cómo se leen los resultados (fijado antes de mirar)
+
+- **Lectura 1 (último toque, como la DFL):** los rebotes no intencionados del rival también cambian la
+  etiqueta, aunque sea unos frames. Los cambios caen "en el toque".
+- **Lectura 2 (toque con intención, la hipótesis de partida):** los toques intencionados del rival cambian
+  la etiqueta y los no intencionados casi nunca. Los cambios caen "en el toque" o "poco después".
+- **Lectura 3 (control establecido):** los cambios caen sobre todo "en el control", y los toques del
+  rival sin control no cambian la etiqueta, sean intencionados o no.
+- **Mezcla, o mayoría "sin información" o "dudoso":** no se decide con el vídeo. Se lleva a Ismael con la
+  propuesta de preguntar a la organización.
+- **El margen:** aunque muchos cambios caigan "poco después", de aquí no sale un número de frames para el
+  pipeline. Solo sale la convención de que el cambio se fecha después del toque. El valor del margen se
+  fija con la DFL, nunca con la ventana pública.
+
+### Qué se apunta
+
+- En el repo, **solo los recuentos** de cada clase. Ni frames, ni tiempos, ni descripciones de jugadas.
+- Las notas de trabajo (frame a frame) se toman fuera del repo, no se pegan a Claude y se borran al
+  terminar el recuento.
+- **No sale** ningún desfase en frames para usar en el pipeline: solo la convención (qué lectura y si el
+  cambio se fecha en el toque o en el control).
+
