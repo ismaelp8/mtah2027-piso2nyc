@@ -16,6 +16,9 @@ que faltan, los scripts y los resultados. El porqué está en
 |---|---|---|
 | `scripts/perfil_etiquetas.py` | perfil de un CSV `frame,label`: posesiones, paradas y huella de retrasos frente a la tabla oficial | GT pública o etiquetas de datos abiertos |
 | `scripts/sensibilidad_metrica.py` | cuánto cuesta cada tipo de error en `spellF1`, con una GT sintética | ninguno del partido |
+| `scripts/silbato.py` | biblioteca: detector de silbatos en el audio de un vídeo, alineado a sus frames (B6) | ninguno: lo decide quien la llama |
+| `scripts/prueba_silbato.py` | prueba el detector de silbatos con audio sintético | ninguno del partido |
+| `partido/silbato_audio.py` | **lee el partido** (vídeo y Smart Tagging): ¿se oye el silbato? Solo agregados. Lo ejecuta una persona | vídeo táctico y Smart Tagging |
 | `scripts/descargar_datos_abiertos.py` | descarga la Bundesliga, los eventos del Barça como local y el Clásico de 2019, con versiones fijadas, fuera del repo | datos abiertos de otros partidos |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
