@@ -552,7 +552,8 @@ Resultado (14/11; `validation/resultados/2026-11-14_apuesta_b.md`, código `b633
 
 Decisión y por qué: **pendiente de Ismael.** Con la regla, B2 sustituiría a N1. Antes de cambiar
 `pipeline.PIECES` hace falta:
-- medir B2 con los jugadores degradados como el ATD;
+- medir B2 con los jugadores degradados como el ATD. Hecho el 14/11, en la entrada siguiente: sigue
+  ganando a `main`, aunque sin voto;
 - decidir qué se hace con su escala frente al `D`.
 
 Corte: lunes 16 a las 14:00.
@@ -665,4 +666,24 @@ Añadido tras calibrar y mirar el perfil, antes de puntuar ninguna versión (14/
   puntúan sin voto, con la calibración de `60fc9fb` (ausencias de 1 s en las aglomeraciones), como
   descripción y como cota.
 
-Resultado: pendiente.
+Resultado (14/11; `validation/resultados/2026-11-14_apuesta_b.md` §7) [medido, sin voto]:
+- **B2 gana a `main` con §5.8 en las tres variantes,** con las dos convenciones y en las dos condiciones
+  del balón, en 7 de 7 partidos.
+- **Con el flag**, frente a `main` («como el ATD» y «sin bloques»):
+
+  | jugadores | margen |
+  |---|---|
+  | «al azar» | +0,093 y +0,080 |
+  | «en las aglomeraciones» | +0,103 y +0,096 |
+  | «lejos de la jugada» | +0,067 y +0,050 |
+
+- **Quitar jugadores cerca del balón** baja a N1 entre 0,03 y 0,06, y a B2 como mucho 0,01.
+- **B1** gana a `main` en las dos primeras variantes y empata en la tercera.
+
+Decisión y por qué:
+- **La medida no concluye por la regla,** porque ninguna variante vota.
+- **Como descripción,** no hay ninguna señal de que la ventaja de B2 dependa de tener a los jugadores
+  perfectos de la DFL: también gana en «lejos de la jugada», el caso difícil para sus rasgos de forma.
+- **Lo que queda para decidir si B2 entra** es la escala frente al `D`. Lo decide Ismael.
+
+Descartado: retocar más la degradación hasta que una variante vote. Sería buscar hasta que algo pase.
