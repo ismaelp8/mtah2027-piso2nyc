@@ -578,6 +578,65 @@ Decisión y por qué:
 Descartado:
 - **E1,** porque E3 le gana, y **E3,** porque no gana a E2 y es más complejo.
 
+### 2026-11-14 · `D` · el estado con jugadores (E2) entra por defecto: los jugadores del ATD se mueven como los de la DFL
+
+Quién: Ismael
+
+Qué se probó: si el modelo de estado de `D` (E2, `possession/dead_state.py`), entrenado con los jugadores
+de la DFL, se traslada al ATD, y qué hace si faltan jugadores.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica):
+- los agregados de los jugadores del ATD en los 158.857 frames evaluados
+  (`validation/partido/agregados_jugadores.py`, ejecutado por Ismael), leídos con una regla de cinco
+  condiciones fijada antes de ejecutar;
+- la referencia de la DFL partido a partido y la pieza con jugadores que faltan a ratos, en los 7
+  partidos (713 paradas), con `validation/scripts/d_estado/traslado_atd.py`.
+
+Detalle en `validation/resultados/2026-11-14_agregados_jugadores_atd.md`.
+
+Resultado:
+- **[medido] Se cumplen las cinco condiciones:** el 35,4 % de los frames con la velocidad media por
+  debajo de 1,2 m/s (DFL, por partido: 27–38 %), un p10 de 0,70 m/s (0,62–0,76), algún jugador fuera del
+  campo en el 11,0 % (12,6–17,7 %), tres o más en el 0,7 % (0–1,2 %) y 22 slots vistos de mediana.
+- **[medido en la DFL] Que falten jugadores a ratos no rompe la pieza:** con 20 vistos de 22 detecta el
+  86 % de las paradas, igual que con todos. Con 18, el `spellF1` con equipo oráculo baja de 0,813 a 0,789
+  y sigue por encima de no opinar (0,770).
+- **[observación] Antes de los saques de banda y de puerta la velocidad media de los jugadores no baja:**
+  queda por debajo de 1,2 m/s en el 44 % y el 36 % de los frames, frente al 91 % antes de un córner. Son
+  36 de los 59 reinicios.
+
+Decisión y por qué:
+- **E2 queda por defecto en `possession/dead_state.py`** (PR 5). Gana a no opinar con la regla de §5.8
+  con el equipo oráculo, y lo que quedaba sin verificar, que se trasladara al ATD, se cumple.
+- **No se da por cumplido el criterio del 13/11.** La pieza da el estado y llega tarde al instante. El
+  instante lo pone la pieza de fronteras (Manuel), sobre todo en los saques de banda y de puerta.
+- **Los umbrales de la regla los puso la revisión de la PR** y se escribieron en la conversación antes de
+  ejecutar, no en el repo.
+- **La elección entre candidatos no depende del desempate.** El desempate de la entrada anterior («entra
+  el más simple al que ningún otro gana») se fijó tras probar el script con 2 de los 7 partidos, y está
+  declarado. Sin él, el más simple sería E1, que no gana a no opinar con el flag (+0,006, en 3 de 7): la
+  elección real era E2 o no opinar.
+- **La escala de la puntuación está sin ajustar:** va tal cual (escala 1, recortada a ±8), frente al 1 de
+  la evidencia de equipo y los costes de 25. En la medida de la PR, a la mitad sale algo mejor y al doble
+  deja de cumplir §5.8 con el flag.
+- **La entrega regenerada queda dentro de la banda fijada antes** (orden de magnitud [inferencia de la
+  DFL]: `D` entre el 15 y el 60 % de los frames evaluados y 250 paradas como mucho): 43,4 % de `D` y 111
+  paradas [medido]. Fuera de ella se habría vuelto atrás con un commit que dejara `evidence` sin opinar.
+  En la ventana pública no está rota (ninguna `X` evaluada, 19 posesiones frente a 17, F1 de `D` 0,767);
+  eso no elige ni mide la mejora.
+- **Pendiente (Ana):** apuntar la versión de `scikit-learn` con la que se entrenó.
+- **Sin medir:**
+  - que el `D` acierte en este partido: no se puede. La ventana pública solo dice si algo está roto;
+  - los rasgos de forma de los equipos en el ATD (centroides, dispersión, cada equipo en su mitad y
+    jugadores en un área): la regla no los cubre. Su única comprobación es la entrega regenerada;
+  - las piezas juntas. Los costes `to_dead` y `from_dead` y la escala de esta pieza son el mismo ajuste,
+    y el harness, con el `D` oráculo, no lo ve. Quien cambie esos costes repite
+    `validation/scripts/d_estado/medir.py`.
+
+Descartado:
+- **Dejar la pieza sin opinar por defecto y el modelo con otro nombre:** era la alternativa si fallaba
+  alguna condición.
+
 ### 2026-11-14 · `D` · fronteras y anclas: capas, candidatos y regla de lectura, escritos antes de medir
 
 Quién: Manuel
