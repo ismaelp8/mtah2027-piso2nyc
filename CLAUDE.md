@@ -183,6 +183,10 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     evaluados, 111 paradas y sha256 `c7d3dd31…647d`.
   - En la ventana pública ya marca el `D` (F1 de `D` 0,77). La ventana solo dice que no está rota; no
     elige.
+- **Evidencia de equipo y limpieza de Antonio en `main`** (PR 6, 14/11): N2 y la retención pierden
+  frente a `main` con el flag, así que se quedan como opciones (`candidates.evidence(trk, method=...)`). La
+  limpieza va como variante (`ball.clean_v1`): empata en el harness, que no puede ver los saltos falsos del
+  ATD, y tiene un fallo conocido que hay que arreglar antes de usarla. La entrega no cambia.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.
