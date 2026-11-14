@@ -564,3 +564,72 @@ Descartado:
   módulo con solo numpy.
 - **Entrenar con las etiquetas `control`:** son circulares con los rasgos de proximidad (README del
   harness).
+
+### 2026-11-14 · validación · apuesta B con los jugadores como el ATD (antes de medir)
+
+Quién: Ismael (pidió la medida: «Sí, mídelo»); Claude la escribe y mide.
+
+Qué se prueba: si la ventaja de B2 sobre `main` aguanta con los jugadores degradados como los del ATD. El
+harness no los degrada y la ventaja de B2 sobre B1 sale de los jugadores
+(`validation/resultados/2026-11-14_apuesta_b.md`). Es una medida de sensibilidad en `validation/apuesta_b/`:
+las condiciones del harness no cambian.
+
+De dónde se parte: R6 de `validation/perfil_atd/BITACORA.md`, escrita antes de medir el ATD, con una sola
+desviación (el paso 1). Lo medido de los jugadores:
+
+| | localizados por equipo: media / p10 / p50 / p90 | tramos de un slot: p50 | temblor |
+|---|---|---|---|
+| ATD | 10,20 y 10,29 / 9 / 11 / 11 | 35,5 s | 0,136 cm |
+| DFL sin degradar | 11,0 y 10,8 | 2.765 s | 1,0 cm |
+
+Cómo se degradan, por jugador, antes de barajar los slots y con un generador aparte (el balón queda
+idéntico al del harness):
+1. **Suavizado, en lugar del ruido de R6,** porque el ATD tiembla menos que la DFL: una media móvil
+   centrada de k frames. k sale de {1, 5, 9, 13, 25}, el que deje el temblor más cerca de 0,136 cm.
+2. **Los que faltan, en tres variantes,** porque no se sabe dónde le faltan los jugadores al ATD. Cada
+   variante calibra un parámetro para que la media de localizados por equipo **en los frames de juego**
+   quede en 10,25 ± 0,1. Se hace en juego porque con el `D` oráculo una ausencia en una parada no cambia
+   ninguna etiqueta.
+   - **«al azar»** (R6 tal cual): rachas presentes y ausentes que se alternan, de longitud geométrica. La
+     media de las presentes se fija para que la mediana de los tramos dé 35,5 s; la de las ausentes es el
+     parámetro que se calibra.
+   - **«en las aglomeraciones»:** un jugador a 1,5 m o menos de otro y a 15 m o menos del balón (el limpio)
+     desaparece con una probabilidad por frame, que es lo que se calibra. Vuelve tras una racha geométrica
+     de media 1 s.
+   - **«lejos de la jugada»:** falta todo jugador a más de W m del balón (el limpio) a lo largo del campo.
+     W es lo que se calibra. Es el caso difícil para B2: `main` apenas lo nota, y los rasgos de forma de
+     B2 sí.
+
+Qué variantes votan, decidido por el perfil y no por la nota de B2. Se mide con `perfil._jugadores`, el
+mismo código que midió el ATD, en los frames evaluados como en el ATD. Una variante vota si cumple las tres
+cosas:
+- media de localizados por equipo a 0,5 o menos de 10,25 (la tolerancia de R6);
+- p50 = 11, p10 entre 8 y 10 y p90 = 11;
+- mediana de los tramos entre 17,8 y 71 s (de ×½ a ×2, como R6).
+
+Las que no pasan se puntúan sin voto. Además se apuntan, como descripción:
+- qué parte de las ausencias cae en juego;
+- los saltos de más de 12 m/s por minuto (0,689 en el ATD).
+
+Qué se mide: B2 con los coeficientes ya escritos (entrenados con los jugadores limpios), B1, `main` y el
+control, con `validation/harness/versiones/apuesta_b.json` sin cambios. Se mide en las dos condiciones del
+balón que votan, con las dos convenciones y en cada variante de jugadores.
+
+Comprobación del instrumento: sin degradar a los jugadores, el tracking es idéntico al de
+`dfl.tracking_de`, y `main` repite 0,428 y 0,456 con el flag.
+
+Regla de lectura, fijada antes de medir:
+- **«B2 aguanta»:** B2 gana a `main` con §5.8 (las dos condiciones del balón que votan y las dos
+  convenciones) en todas las variantes de jugadores que votan.
+- **«depende de dónde falten»:** gana en alguna, pero no en todas.
+- **«no aguanta»:** no gana en ninguna.
+- **Si no aguanta o depende, B2 no entra tal cual.** Reentrenarla con los jugadores degradados sería un
+  candidato nuevo, declarado como tal y con el corte del lunes 16 a las 14:00.
+- **Descriptivo:** B2 frente a B1 en cada variante, para ver si la ventaja de los jugadores se mantiene.
+
+Sin modelar:
+- slots con el equipo cambiado;
+- slots de más (el ATD tiene 24 y 22 por equipo);
+- detecciones falsas de jugadores.
+
+Resultado: pendiente.
