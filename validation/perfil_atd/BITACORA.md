@@ -672,10 +672,12 @@ apunta aquí, con fecha, y se sube antes de ejecutar `validation/partido/perfil_
 la sección 8 por defecto, con R1'' incluida?». Cubre los puntos 1, 2 y 4 con sus valores por defecto, y la
 sección 7.8 tal como estaba entonces: solo R1''.
 
-**Pendiente de su confirmación, antes de subir:** lo que vino después de su sí, que es R2'' y la distancia
-(sección 7.8) y la sección 7.9 entera.
+**Lo que vino después de su sí, confirmado (14/11), antes de ver ningún número del ATD:** R2'' y la
+distancia (sección 7.8) y la sección 7.9 entera. Su respuesta: «Sí, súbelo», a la pregunta «¿Confirmas los
+cambios de la regla posteriores a tu sí, para subirlo?». Con eso, la regla queda fijada en el commit que lo
+apunta, antes de ejecutar `validation/partido/perfil_atd.py`.
 
-1. **Los cambios de las secciones 7.1 a 7.8.** Sí, hasta R1'' (lo demás, pendiente: arriba).
+1. **Los cambios de las secciones 7.1 a 7.9.** Sí.
 2. **Las celdas «< 5» que se pueden deducir de los totales** (sección 7.6, punto 2). Son recuentos del
    partido entero, sin frame ni instante. Sí: se aceptan, con los agregados 2 y 3b más gruesos (sección
    7.7).
@@ -689,8 +691,8 @@ sección 7.8 tal como estaba entonces: solo R1''.
      queda 0,03 o más por debajo del control. Apúntalo en la bitácora antes de que yo ejecute el script.»
    - **Cuál se parece más al ATD**, fijado antes de medir. La primera versión era el `DISPUTAS` cuyo % de
      disputas en la DFL está más cerca del del ATD, y en J03WR9 elegía mal. La definición vale ahora la
-     distancia de la sección 7.8, que usa también R4'. Está pendiente de su confirmación, con lo demás que
-     vino después de su sí (arriba).
+     distancia de la sección 7.8, que usa también R4'. Confirmada por Ismael con lo demás que vino después
+     de su sí (arriba).
    - Lo de exigir las dos convenciones de etiquetas es del plan (`docs/PLAN_ENTREGA.md` §4) y no cambia.
 4. **Qué condiciones del balón votan en la regla de §5.8 cuando el harness use la degradación nueva.**
    Sí, el valor por defecto, que es la propuesta de la sección 5:
