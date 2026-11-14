@@ -221,8 +221,10 @@ equipo anterior a través de una parada. Los tres están descartados con medidas
 
 ### Ana: `D`, estado (`possession/dead_state.py`) y documento técnico
 
-**Qué hay:** una versión que no opina. Solo usa el `Tracking`, así que corre igual en el partido y en la
-DFL.
+**Qué hay (14/11 por la noche):** tu modelo E2, en `main` desde la PR 5. Opina en la columna `D` con
+los jugadores, y los agregados del ATD dicen que se traslada (`validation/resultados/2026-11-14_d_estado.md`
+y `2026-11-14_agregados_jugadores_atd.md`). La entrega `equipo_v1` ya lo lleva. Los puntos de abajo son
+el plan con el que se hizo.
 
 **Qué tienes que hacer:**
 

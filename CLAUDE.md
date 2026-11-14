@@ -175,6 +175,14 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - Se comprueba sin datos del partido con `python validation/scripts/prueba_pipeline.py`.
   - La entrega la genera una persona con `python -m possession.pipeline`.
   - Los valores por defecto están sin ajustar.
+  - **Reproducible:** Ismael (Windows) y un compañero (Linux) sacaron el mismo sha256 de `equipo_v0`.
+- **Pieza de `D` de estado de Ana en `main`** (PR 5, 14/11; `validation/resultados/2026-11-14_d_estado.md`
+  y `2026-11-14_agregados_jugadores_atd.md`).
+  - El modelo E2, con los jugadores, opina en la columna `D`. Los agregados del ATD dicen que se traslada.
+  - **Entrega `equipo_v1`** (Ismael, con `main` en `4738082`): válida, con el 43,4 % de `D` en los frames
+    evaluados, 111 paradas y sha256 `c7d3dd31…647d`.
+  - En la ventana pública ya marca el `D` (F1 de `D` 0,77). La ventana solo dice que no está rota; no
+    elige.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.
