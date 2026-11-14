@@ -498,3 +498,39 @@ Descartado (antes de medir):
   una dependencia nueva.
 - **Ajustar la escala de la puntuación o los costes del decodificador para que el `D` salga mejor:**
   los costes son la pieza de David. Aquí la escala solo se mira como sensibilidad.
+
+### 2026-11-14 · `D` · estado con jugadores: resultado de la medida
+
+Quién: Ana
+
+Qué se probó: los tres candidatos y el control de la entrada anterior, con su regla de lectura.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): los 7 partidos de la DFL dejando uno
+fuera (713 paradas; 3.061 posesiones con el flag y 1.736 con control), con
+`validation/scripts/d_estado/medir.py`. Detalle en `validation/resultados/2026-11-14_d_estado.md`.
+
+Resultado:
+- **[medido] Ningún candidato cumple él solo el criterio del 13/11.** E2: 86 % de las paradas
+  detectadas, inicio a 25 frames o menos en el 35 % y fin en el 40 % (se pide el 70 %), sesgo mediano
+  de +14 y +17 frames, 0,26 `D` espurios por minuto y ninguna racha corta. E3 solo falla la latencia
+  (37 % y 41 %). E1 falla cuatro de las cinco condiciones.
+- **[medido] Frente a no opinar, con el equipo oráculo:** E2 gana con la regla de §5.8 (+0,039 y
+  +0,032 con el flag, en 6 de 7 partidos; +0,175 y +0,172 con control, en 7 de 7). E3 también; E1 no.
+- **[medido] Entre candidatos:** E3 empata con E2 (+0,002 a +0,010) y gana a E1; E2 empata con E1.
+  Entra el más simple al que ningún otro gana: E2.
+- **[medido] Placebo:** con la puntuación desplazada 60 s, AUC 0,52 y `spellF1` 0,28 por debajo del
+  control.
+- **[medido] Sensibilidad:** con la escala a la mitad sale algo mejor (+0,007) y con el doble deja de
+  cumplir §5.8 con el flag (+0,020). Con un temblor de 0,1 m en los jugadores detecta el 61 % de las
+  paradas; con 0,2 m, el 3 %, aunque el AUC sigue en 0,95.
+
+Decisión y por qué:
+- **El candidato escrito en `possession/dead_state.py` es E2.**
+- **No se da por cumplido el criterio.** La pieza da el estado, no el instante: si entra, y cómo,
+  lo decide Ismael, junto a las fronteras de Manuel.
+- **Antes de usarla en el partido hace falta el agregado 4** (Manuel), comparado con la tabla de
+  `referencia_agregado4.py`. Si los jugadores del ATD tiemblan, la pieza votaría contra el `D` [inferencia].
+- **Para David:** los costes `to_dead` y `from_dead` y la escala de esta pieza son el mismo ajuste.
+
+Descartado:
+- **E1,** porque E3 le gana, y **E3,** porque no gana a E2 y es más complejo.
