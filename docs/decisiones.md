@@ -416,3 +416,84 @@ Descartado:
   hay que congelar.
 - **Comparar variantes de limpieza del balón:** su árbitro sería una degradación que aún no imita al
   balón del ATD. Se fija la de §2.1 (filtro de validez e interpolar huecos cortos).
+
+### 2026-11-14 · candidatos · limpieza fija del balón y candidatos N2 y retención frente a N1, escritos antes de medir
+
+Quién: Antonio Azuero
+
+Qué se probó: **escrito antes de medir; todavía no se ha medido nada.** Es la pieza de
+`docs/PLAN_ENTREGA.md` §3 (Antonio): `possession/ball.py` y `possession/candidates.py`.
+
+- **Limpieza del balón (`ball.py`): una sola versión, fija y sin variantes** (plan, §3 y §8). Se aplica en
+  este orden:
+  1. **salto imposible:** se quita un punto si, para llegar a él desde el punto visto anterior **y** para
+     ir de él al siguiente, el balón tendría que ir a más de 40 m/s. Se exigen los dos lados para no
+     borrar el primer punto bueno después de un salto;
+  2. **detección aislada:** se quita una racha de 1 o 2 frames con balón que tiene huecos a los dos lados;
+  3. **hueco corto:** se interpola en línea recta un hueco de 12 frames o menos (menos de 0,5 s) entre dos
+     puntos vistos, salvo en dos casos:
+     - el hueco obliga a ir a más de 40 m/s: el balón no reaparece donde se le espera;
+     - el balón reaparece junto a un jugador del otro equipo: en el primer frame tras el hueco, el más
+       cercano es del equipo contrario al más cercano del último frame antes del hueco, y está a 2 m o
+       menos. Ahí puede haber un cambio de posesión, y decide el decodificador.
+- **Evidencia de equipo (`candidates.py`): tres versiones.** Las tres dan 1 a favor de un equipo en los
+  frames en que opinan y 0 («no opino») en el resto, la misma unidad que la v0:
+  - **N1, la referencia:** el equipo del jugador más cercano al balón. Es la v0, lo mismo que el baseline;
+  - **N2, más cercano con radio y margen:** opina solo si el más cercano está a 1,5 m o menos y el más
+    cercano del otro equipo está al menos 1 m más lejos que él;
+  - **Ret, control por retención:** opina en los frames de una racha de 12 frames seguidos o más (0,48 s)
+    en la que el más cercano es siempre del mismo equipo y está a 1,5 m o menos. Va por equipo y no por
+    jugador, porque un slot no es un jugador. Es la traducción de «un toque sin control no cambia la
+    posesión».
+- **De dónde salen los valores** (ninguno sale del partido ni de la ventana pública):
+  - 40 m/s, las rachas de 1 o 2 frames y los huecos de menos de 0,5 s son los cortes que ya mide el perfil
+    del ATD (`validation/perfil_atd/BITACORA.md` §4, filas 1 y 6). Así, la medida del balón del partido
+    dirá cuánto toca cada regla en el ATD. Los golpeos más fuertes publicados rondan 18–35 m/s
+    (`docs/investigacion_metodos.md` §2.1);
+  - 1,5 m es el radio de control «ampliado» del experimento 2 (por si el ATD es más ruidoso) y el de los
+    toques del experimento 0. El margen de 1 m y Ret-12 también los mide el perfil (filas 5 y 4a);
+  - 2 m es el radio de toque «ampliado» del experimento 2.
+- **Ret se parece a la regla que fabricó las etiquetas `control`** del harness (C0-12: el mismo jugador a
+  1 m o menos durante 12 frames, o dos toques). Ganará con ellas por construcción. Se mantiene así porque
+  traduce la convención decidida el 12/11 («exigir control»). La circularidad la resuelve la regla:
+  solo cuenta lo que gane también con el `flag`.
+
+Cómo se medirá (dataset, nº de partidos/posesiones, métrica):
+
+- **Harness de la DFL** (`validation/harness/puntuar.py`): los 7 partidos de la Bundesliga (Bassek et
+  al., 2025), con el `D` oráculo, las dos convenciones (`flag` y `control`) y las tres condiciones del
+  balón. `spellF1` oficial y bootstrap pareado de 1.000 remuestreos con semilla fija.
+- **Lo único que cambia entre versiones es la evidencia:** las tres con la limpieza nueva y el
+  decodificador v0 (Viterbi con coste 25).
+- **Comparación principal: cada candidato frente a N1.** Gana con la regla de §5.8 si, en las tres
+  condiciones y con las dos convenciones, gana en 6 de los 7 partidos o más, la diferencia es de 0,03 o
+  más y el intervalo del 5 al 95 % no incluye el cero.
+  - Si no gana, es un empate y se queda N1, que es el más simple.
+  - Si ganan los dos, se comparan entre sí con la misma regla. Si empatan, entra N2, que no tiene ventana
+    temporal.
+- **Además, frente al control del harness** (baseline, voto de ±50), que es la tabla que pide el plan en
+  cada PR. No cambia la regla de arriba.
+- **Sensibilidad a la escala, que no decide:** las tres evidencias también con costes 12 y 50. N2 y Ret
+  opinan en menos frames que N1, así que con el mismo coste son más conservadoras. Si el orden cambia con
+  el coste, se apunta: la ventaja sería de la escala, que es cosa del decodificador, y no de la evidencia.
+- **La limpieza se comprueba, no se elige:** N1 con y sin la limpieza nueva. Si con ella N1 pierde 0,03 o
+  más en alguna condición o convención, se avisa a Ismael antes de la PR y no se retocan sus valores. En
+  la DFL, los pasos 1 y 2 casi no harán nada, porque la degradación no mete detecciones falsas. Su efecto
+  en el ATD no se puede medir fuera.
+- **Diagnóstico, que no decide:** acierto de equipo y posesiones predichas frente a reales.
+- **Aviso del plan (§3 y §4):** el orden entre evidencias no se da por bueno hasta que la degradación de
+  la DFL esté comprobada con la medida del balón del ATD. Con esta medida se implementa y se mide; la
+  decisión llega después.
+
+Resultado: pendiente.
+
+Decisión y por qué: pendiente.
+
+Descartado (antes de medir):
+- **N4, toques por cambios de velocidad del balón:** el experimento 2 apunta a que el balón del ATD viene
+  suavizado, y el detector calibrado en la DFL casi no ve toques en él (plan, §3).
+- **N3, las zonas de FIFA:** su ganancia exige un cambio de dirección o de velocidad del balón, y tiene el
+  mismo problema que N4.
+- **Variantes de la limpieza y barridos de radios o de frames:** con muchas variantes gana el azar (plan,
+  §4 y §8).
+- **L2, las reglas de puente en los huecos:** se dejan para después, si hay tiempo, con su propia entrada.
