@@ -848,26 +848,38 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
   - **placebo:** esa cobertura es al menos el doble de la de los mismos inicios desplazados 4, 6 y 8
     minutos a cada lado;
   - **el modelo de jugadores de Ana** (`possession/dead_state.py`, entrenado en la DFL e independiente del
-    balón) ve `D` en los huecos al menos tanto como el punto medio entre el partido entero y el control.
-    Es decir, los huecos se parecen más al `D` seguro que al partido medio. Se cuenta solo en los frames
-    en que el modelo opina. Si en el control no ve más `D` que en el partido entero, el instrumento no
-    separa y la capa no entra.
+    balón) ve `D` en la mayoría de los frames de los huecos de córner y falta, contando solo los frames en
+    que opina. Hacen falta 5 huecos de esos dos tipos o más; si hay menos, no decide y la capa no entra.
+    - **Por qué solo córner y falta:** son los tipos antes de los que los jugadores ya frenan. Ismael
+      midió que la velocidad media queda por debajo de 1,2 m/s en el 91 % y el 73 % de los 10 s previos.
+      Antes de los saques de banda y de puerta no frenan (44 % y 36 %), así que ahí el modelo no ve la
+      parada y no puede juzgar el hueco. Lo midió antes de esta regla, con otro script
+      (`validation/resultados/2026-11-14_agregados_jugadores_atd.md`).
+    - **Cambio antes de medir:** la primera versión de esta condición comparaba todos los huecos con el
+      punto medio entre el partido y el control. Se cambió al ver esa medida de Ismael, que llegó a
+      `main` mientras se escribía la regla, y antes de ejecutar este script.
+    - **Lo que no comprueba:** que el hueco empiece justo en la parada. El modelo llega tarde al instante
+      (entrada anterior de Ismael), así que solo dice si el hueco es sobre todo `D`. **[sin verificar]**
+      Con lo que hay, la precisión del inicio no se puede medir: la DFL tapa el balón a partir de sus
+      propias etiquetas de `D`, y medirla ahí sería circular.
 - **Si algo no pasa,** la capa se queda fuera. Con esta salida no se reajusta ningún número: ni los topes
-  (180 s, 5 s, 60 s), ni los umbrales (5 m/s, la mitad, el 50 %, el doble, el punto medio), ni los
-  desplazamientos.
+  (180 s, 5 s, 60 s), ni los umbrales (5 m/s, la mitad, el 50 %, el doble, la mayoría, los 5 huecos), ni
+  los tipos que juzga el modelo de Ana, ni los desplazamientos.
 - **El script imprime la regla aplicada** (las líneas «regla: … -> la capa entra»). Se comprobó con un
   partido inventado en el que todo entra y con dos variantes que tienen que fallar: un gol falso (falla
   gol a saque) y huecos con los jugadores corriendo (falla la capa 4). Si lo impreso y este texto no
   cuadran, manda este texto.
 - **Descriptivo, no decide:** el desglose por tipo, la duración de los huecos, la velocidad de los
-  jugadores, el modelo de Ana en lo anclado y en los primeros 5 s de los huecos, y el recuento de equipos
-  del Smart Tagging que coinciden con los nombres del ATD (para la capa del equipo que reanuda).
+  jugadores, el modelo de Ana en lo anclado, en los huecos de banda y saque de puerta, en los primeros 5 s
+  de los huecos, en el partido y en el control, y el recuento de equipos del Smart Tagging que coinciden
+  con los nombres del ATD (para la capa del equipo que reanuda).
 - **De dónde sale cada número, ninguno del partido:**
   - 5 m/s y el suavizado de 1 s: los de `agregados_balon_reinicios.py`;
   - 5 s de hueco: el umbral de los huecos largos del perfil del ATD;
   - 60 s: una parada antes de un saque de banda, un córner o un saque de puerta suele durar menos de un
     minuto **[sin verificar]**;
-  - la mitad, el doble, el punto medio y el 50 %: se fijan aquí;
+  - la mitad, el doble, la mayoría, los 5 huecos y el 50 %: se fijan aquí;
+  - córner y falta: la medida de Ismael citada arriba;
   - los desplazamientos de 4, 6 y 8 minutos: los tramos de gol a saque duran 3 minutos como mucho, así
     que desplazados no se pisan consigo mismos.
 

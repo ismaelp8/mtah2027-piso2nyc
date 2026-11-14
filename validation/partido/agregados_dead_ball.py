@@ -21,7 +21,9 @@ Responde, con la regla apuntada en docs/decisiones.md (14/11, «fronteras y ancl
 3. Para la capa del equipo que reanuda: cuántos `SET PIECES` traen equipo y cuántos coinciden con el
    nombre del local o del visitante de los metadatos del ATD.
 4. La capa del hueco sin balón antes de cada reinicio (idea de Ismael): cuántas ventanas lo tienen,
-   frente a un placebo, y si ahí dentro el modelo de jugadores de Ana ve el juego parado.
+   frente a un placebo, y si ahí dentro el modelo de jugadores de Ana ve el juego parado. Esto último,
+   solo antes de córners y faltas: antes de los saques de banda y de puerta los jugadores no frenan y el
+   modelo no ve la parada.
 """
 
 import os
@@ -58,6 +60,12 @@ EDGE_S = 5
 PLACEBO_SHIFTS_S = (-480, -360, -240, 240, 360, 480)
 # Sección 4: intervalos de duración de los huecos (de 5 a 60 s).
 GAP_LENGTH_EDGES_S = (10, 20, 40)
+# El modelo de Ana solo juzga los huecos de los reinicios antes de los que los jugadores ya frenan: córner
+# y falta, con la velocidad media por debajo de 1,2 m/s en el 91 % y el 73 % de los 10 s previos. Antes de
+# los saques de banda y de puerta no frenan (44 % y 36 %), así que ahí el modelo no ve la parada. Lo midió
+# Ismael antes de esta regla (validation/resultados/2026-11-14_agregados_jugadores_atd.md).
+JUDGED_TYPES = ("corner kick", "free kick")
+MIN_JUDGED_GAPS = 5
 
 PASS, FAIL, UNDECIDED = "pasa", "falla", "no decide"
 
@@ -122,14 +130,19 @@ def dead_share(odds, region):
     return float((opinion & (odds > 0)).sum()) / n if n else float("nan")
 
 
+def share(value):
+    """Una fracción como porcentaje, o «—» si es NaN (no hay frames)."""
+    return "—" if np.isnan(value) else "{:.1f} %".format(100 * value)
+
+
 def describe(label, region, visible, fast, players, odds):
     n = int(region.sum())
     seen = int((region & visible).sum())
     quick = int((region & fast).sum())
     print("   {:<46} {:>7} frames   balón visto {}   deprisa {} de los vistos".format(
         label, n, pct(seen, n), pct(quick, seen)))
-    print("   {:<46} jugadores (m/s) {}   modelo de Ana: D en el {:.1f} %".format(
-        "", quantiles(players[region]), 100 * dead_share(odds, region)))
+    print("   {:<46} jugadores (m/s) {}   modelo de Ana: D en el {}".format(
+        "", quantiles(players[region]), share(dead_share(odds, region))))
 
 
 def yes(flag):
@@ -210,7 +223,7 @@ def main():
                for lo, hi in shifted_spans(spans, trk.blocks, hard, fps)]
     deciding = [v for v in placebo if v != UNDECIDED]
     placebo_fail = sum(v == FAIL for v in deciding)
-    power = len(deciding) >= 2 * len(spans) and placebo_fail >= 0.5 * len(deciding)
+    power = bool(spans) and len(deciding) >= 2 * len(spans) and placebo_fail >= 0.5 * len(deciding)
     print("   placebo (desplazados {} s): {} tramos, deciden {}, fallan {} ({} de los que deciden)".format(
         "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), len(placebo), len(deciding), placebo_fail,
         pct(placebo_fail, len(deciding))))
@@ -255,27 +268,32 @@ def main():
         "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), len(shifted), placebo_gaps,
         pct(placebo_gaps, len(shifted))))
     gap_region = np.zeros(n_frames, dtype=bool)
+    judged_region = np.zeros(n_frames, dtype=bool)
     first_seconds = np.zeros(n_frames, dtype=bool)
-    for _, _, (start, stop) in with_gap:
+    for window, _, (start, stop) in with_gap:
         gap_region[start:stop] = True
+        judged_region[start:stop] |= window["type"] in JUDGED_TYPES
         first_seconds[start:min(start + EDGE_S * fps, stop)] = True
+    n_judged = sum(window["type"] in JUDGED_TYPES for window, _, _ in with_gap)
     print_bins("duración de los huecos", [(stop - start) / fps for _, _, (start, stop) in with_gap],
                GAP_LENGTH_EDGES_S, indent="   ")
     n_gap = int((gap_region & graded).sum())
     print("   frames de hueco (evaluados), sumados: {} ({} de los evaluados)".format(n_gap, pct(n_gap, n_graded)))
-    g_match, g_ctrl = dead_share(odds, graded), dead_share(odds, pre)
-    g_gap = dead_share(odds, gap_region & graded)
-    print("   modelo de Ana, D en: partido {:.1f} %   control {:.1f} %   huecos {:.1f} %   primeros {} s de los"
-          " huecos {:.1f} %".format(100 * g_match, 100 * g_ctrl, 100 * g_gap, EDGE_S,
-                                    100 * dead_share(odds, first_seconds & graded)))
+    g_judged = dead_share(odds, judged_region & graded)
+    print("   modelo de Ana, D en: huecos de córner y falta (n={}) {}   resto de huecos {}   todos {}   primeros"
+          " {} s de los huecos {}".format(
+              n_judged, share(g_judged), share(dead_share(odds, gap_region & ~judged_region & graded)),
+              share(dead_share(odds, gap_region & graded)), EDGE_S, share(dead_share(odds, first_seconds & graded))))
+    print("   modelo de Ana, D en: partido {}   control {}".format(
+        share(dead_share(odds, graded)), share(dead_share(odds, pre))))
     print("   jugadores (m/s) en los huecos: {}".format(quantiles(players[gap_region & graded])))
     covers = coverage >= 0.5
     beats_placebo = coverage >= 2 * coverage_placebo  # False si el placebo es NaN
-    instrument = g_ctrl > g_match
-    looks_dead = instrument and g_gap >= (g_match + g_ctrl) / 2
-    print("   regla: cobertura ≥ 50 % {}   ≥ 2 veces el placebo {}   el modelo de Ana separa el control del"
-          " partido {}   los huecos, más cerca del control que del partido {}   -> la capa entra: {}".format(
-              yes(covers), yes(beats_placebo), yes(instrument), yes(looks_dead),
+    enough = n_judged >= MIN_JUDGED_GAPS
+    looks_dead = enough and g_judged >= 0.5  # False si g_judged es NaN
+    print("   regla: cobertura ≥ 50 % {}   ≥ 2 veces el placebo {}   ≥ {} huecos de córner y falta {}   el modelo"
+          " de Ana ve D en la mayoría de sus frames {}   -> la capa entra: {}".format(
+              yes(covers), yes(beats_placebo), MIN_JUDGED_GAPS, yes(enough), yes(looks_dead),
               yes(covers and beats_placebo and looks_dead)))
 
     print("\n   tiempo {:.0f} s".format(time.time() - started))
