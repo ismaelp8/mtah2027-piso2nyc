@@ -417,6 +417,49 @@ Descartado:
 - **Comparar variantes de limpieza del balón:** su árbitro sería una degradación que aún no imita al
   balón del ATD. Se fija la de §2.1 (filtro de validez e interpolar huecos cortos).
 
+### 2026-11-14 · validación · el harness tapa el balón «como el ATD» y decide frente a `main`
+
+Quién: Ismael (las dos decisiones), con el perfil del ATD delante; Claude midió.
+
+Qué se probó:
+- **El perfil del balón del ATD en todo el partido,** con la regla de lectura fijada antes de medir
+  (`validation/perfil_atd/BITACORA.md`). Ismael ejecutó el script del partido y pegó solo agregados.
+- **Dos formas de tapar el balón de la DFL:**
+  - la de antes: el 41 % del juego, con la mitad de las disputas y bloques de 1 s;
+  - la ley de huecos del ATD: microcortes de hasta 0,5 s y bloques de 5 a 15 s.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): el ATD del partido (agregados) frente a los 7
+partidos de la Bundesliga (Bassek et al., 2025) degradados. Huecos por duración, visibilidad, disputas,
+toques y controles por minuto, y proximidad. Después, la tabla del harness (`spellF1` oficial con las
+dos convenciones, 3.061 y 1.736 posesiones) y los eventos humanos de la DFL.
+
+Resultado:
+- **Con la forma de antes no queda ningún `DISPUTAS`** [medido]. El ATD casi no tiene huecos cortos y se
+  parece a la DFL con solo los `D` tapados: 111 huecos de 5 s o más por 90 minutos frente a 88, y 59,3 %
+  de balón visible frente a 54,5 % [medido]. La mayor parte de su 41 % sin balón sería balón muerto
+  [inferencia]. La condición de antes era mucho más dura que el ATD.
+- **Con la ley de huecos del ATD queda `DISPUTAS` 0, con suavizado de 25 frames** y el 11,3 % del juego en
+  bloques de 5 a 15 s [medido].
+- **Con el flag, el Viterbi de `main` gana al baseline** por +0,022 en 7 de 7 partidos con la condición
+  nueva, y perdía por −0,022 con la de antes [medido]. No llega al +0,03 de §5.8: es empate.
+
+Decisión y por qué:
+- **Votan «como el ATD» y «como el ATD, sin bloques».** Acotan lo que no se puede medir sin etiquetas: si
+  los huecos largos del ATD caen en juego o en paradas. «limpio» y la de antes se puntúan sin voto. Así
+  el harness juzga con un balón como el que tendrá el pipeline en el partido.
+- **Para sustituir a lo que hay en `main`, un candidato tiene que ganar al control y a `main`** con la
+  regla de §5.8. Si empata con `main`, se queda lo de `main`. Es la regla del empate aplicada a lo que ya
+  hay.
+- **Los eventos humanos de la DFL (`--eventos`) son descriptivos.** No entran en §5.8. Si vetan a un
+  candidato, lo decide Ismael caso a caso.
+
+Descartado:
+- **Los dos candidatos fijados antes de medir tal cual** (la ley de huecos aplicada al 41 %, `dilatar` y
+  `aire`): seguían tapando el juego que el ATD sí ve. Se usó la ley de huecos del ATD con `OBJETIVO`
+  calibrado por la regla.
+- **Tomar `OBJETIVO` de las severidades baja y media:** con bloques de 5 a 15 s no lo identifican
+  (bitácora §9.2).
+
 ### 2026-11-14 · `D` · estado con jugadores: candidatos y regla de lectura, escritos antes de medir
 
 Quién: Ana

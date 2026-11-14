@@ -70,6 +70,13 @@ posteriores al reinicio.
 etiqueta por frame: 0 `H`, 1 `A`, 2 `D` y 3 `X` fuera de los tramos evaluados. La histéresis, las
 duraciones mínimas y la poda van aquí, no en las piezas de evidencia.
 
+**Para comparar variantes de una pieza** (14/11): escríbela como otra función de tu módulo, con la misma
+firma. El harness la usa en lugar de la de siempre con `pipeline.run(..., pieces=...)`, que se rellena
+desde el fichero de `--versiones` (README del harness). La entrega usa siempre las de siempre:
+`ball.clean`, `candidates.evidence`, `dead_state.evidence` y `temporal.decode`, que son las que nombra
+`pipeline.PIECES`. Todas las versiones reciben el mismo tracking, de solo lectura: una pieza devuelve una
+copia (`trk._replace(...)`), nunca lo cambia.
+
 **Lo que da error a propósito,** para que no pase en silencio: una puntuación con `NaN` o infinito en un
 frame evaluado, una pieza que no devuelve arrays de forma (n, 3), un parámetro del decodificador mal
 escrito, y dos piezas que se contradicen en lo que prohíben. Todas las piezas, también `dead_ball`,
@@ -241,9 +248,10 @@ la DFL casi no ve toques en él.
 control del harness (el más cercano a 1 m durante 12 frames). Con esas etiquetas ganará por construcción.
 Solo cuenta lo que gane también con el flag.
 
-**Aviso:** el orden entre candidatos no se puede dar por bueno hasta que la degradación de la DFL esté
-comprobada con la medida del balón del ATD (sección 4). Mientras tanto, implementa y mide; la decisión
-llega después.
+**Aviso (actualizado el 14/11 por la noche):** la degradación de la DFL ya está comprobada con la medida
+del balón del ATD (sección 4). El orden entre candidatos se decide en el harness con las condiciones que
+votan, frente al control y frente a la versión de `main`. Ojo con lo que dependa de la velocidad del
+balón: en el ATD viene suavizado unos 25 frames.
 
 ## 4. Cómo se decide qué entra
 
@@ -255,30 +263,49 @@ con el scorer oficial. Lo puede ejecutar Claude, porque no son datos del partido
 python validation/harness/puntuar.py
 ```
 
+**Cambio del 14/11 por la noche: la degradación imita al balón del ATD.**
+- El perfil del balón del ATD en todo el partido (`validation/resultados/2026-11-14_perfil_atd.md`)
+  dice que casi no tiene huecos cortos: pierde el balón en bloques de 5 s o más, como la DFL con solo
+  los `D` tapados. La condición de antes, con el 41 % del balón en juego tapado en bloques de 1 s, era
+  mucho más dura.
+- Por decisión de Ismael, el harness tapa ahora el balón «como el ATD», calibrado con la regla fijada
+  antes de medir (`validation/resultados/2026-11-14_harness_como_el_atd.md`).
+- **Votan dos condiciones:** «como el ATD» y «como el ATD, sin bloques».
+- **Se puntúan sin voto** «limpio» y la de antes («huecos y suavizado»).
+- Los números de la tabla de referencia cambian: hay que medir de nuevo lo que se midió antes.
+
 **Qué puede decidir y qué no:**
 
 | | qué |
 |---|---|
-| **hoy** | la familia del decodificador y sus costes, con el `D` oráculo; el `D` con el equipo oráculo |
-| **todavía no** | el orden entre evidencias de equipo y la apuesta B: dependen de que la degradación imite al balón del ATD |
+| **hoy** | la familia del decodificador y sus costes, con el `D` oráculo; el orden entre evidencias de equipo y lo que use la velocidad del balón (degradación «como el ATD», 14/11); la apuesta B. Ojo: la DFL tiene más disputas que el ATD (20 % frente a 14,5 %), y es donde más se separan las evidencias por proximidad |
+| **todavía no** | el `D` en el harness: no tiene el modo con el equipo copiado de las etiquetas, y con el `D` oráculo una pieza de `D` no cambia nada. El `D` se mide con sus propios scripts (los de Ana traen ese modo) y el criterio del 13/11 |
 | **nunca** | lo que usa el Smart Tagging, que la DFL no tiene |
 
 **Cómo se mide siempre:**
 
 - **Con las dos convenciones de etiquetas:** el flag de la DFL tal cual y el corregido con control. La
   convención de la GT sigue sin medir.
-- **En tres condiciones del tracking:** limpio, con huecos de balón, y con huecos y el balón suavizado.
+- **En las condiciones del balón que votan:** «como el ATD» (microcortes, bloques de 5 a 15 s en el
+  11,3 % del juego y el balón suavizado 25 frames) y «como el ATD, sin bloques». Acotan si los huecos
+  largos del ATD caen en juego o en paradas.
 - **Frente al control:** el baseline (jugador más cercano y voto por mayoría), con el mismo tratamiento
   del `D`.
+- **Frente a la versión de `main`:** para sustituir a lo que hay, un candidato tiene que ganar al control
+  **y** a `main` con la misma regla. Si empata con `main`, se queda lo de `main` (decisión de Ismael,
+  14/11).
 
 **Cuándo gana un candidato** (`docs/investigacion_metodos.md` §5.8):
 
 - gana en al menos 6 de los 7 partidos;
 - el intervalo de la diferencia no incluye el cero;
-- el orden se mantiene en las tres condiciones y con las dos convenciones;
+- el orden se mantiene en las condiciones del balón que votan y con las dos convenciones;
 - la diferencia de `spellF1` es de 0,03 o más. Por debajo es un empate, y entra el más simple.
 
-**Dos o tres candidatos por pieza, escritos antes de medir.** Con muchas variantes, gana el azar.
+**Dos o tres candidatos por pieza, escritos antes de medir.** Con muchas variantes, gana el azar. Se
+escriben en un fichero de `validation/harness/versiones/` y se miden con
+`python validation/harness/puntuar.py --versiones <fichero>`, sin tocar `puntuar.py` (el README del
+harness dice cómo).
 
 **La ventana pública** se mira siempre (`/evaluar`) y nunca elige: sirve para ver si algo está roto.
 
@@ -322,7 +349,7 @@ python validation/scripts/descargar_datos_abiertos.py dfl
 - **Una PR por mejora de tu pieza,** pequeña. No esperes al lunes para abrir la primera.
 - **Cada PR que cambia una pieza lleva:**
   - `python validation/scripts/prueba_pipeline.py` en verde;
-  - la tabla del harness, con el control al lado;
+  - la tabla del harness, con el control al lado, y el fichero de versiones con el que se midió;
   - la entrada en `docs/decisiones.md` (`/decision`) con los candidatos que escribiste antes de medir.
 - **Antes de empezar cada día:** `/actualizar`, para traer lo que hayan mergeado los demás.
 - **Si te bloqueas más de una hora,** dilo en el grupo. Quedan dos días y medio.

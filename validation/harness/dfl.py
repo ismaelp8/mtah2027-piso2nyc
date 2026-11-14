@@ -11,15 +11,19 @@ Qué hace con cada partido:
 - **Tracking en el formato de `possession/tracking.py`:** metros con el origen en una esquina, las dos
   partes seguidas con un hueco sin datos en medio, y los slots de cada equipo barajados a trozos, para
   que ningún código pueda apoyarse en que un slot sea un jugador.
-- **Balón degradado, en tres condiciones.** En las tres se tapa el balón en los frames `D` y en sus
+- **Balón degradado, en cuatro condiciones.** En todas se tapa el balón en los frames `D` y en sus
   bordes, porque la DFL lo congela mientras está muerto y eso delataría la etiqueta (experimento 0).
-  - "limpio": nada más;
-  - "huecos": además falta en el 41 % de los frames vivos, con la mitad de las disputas y de los balones
-    altos tapados y el resto en bloques al azar (la condición elegida en el experimento 2);
-  - "huecos y suavizado": los mismos huecos, sobre un balón suavizado con una media móvil de 25 frames
-    (lo que el experimento 2 apunta que hace el ATD; es una inferencia).
+  Desde el 14/11 se calibran con el perfil del balón del ATD en todo el partido
+  (validation/resultados/2026-11-14_perfil_atd.md y la bitácora del perfil, §9):
+  - "como el ATD" (vota): microcortes de hasta 0,5 s al ritmo del ATD, el 11,3 % de los frames vivos en
+    bloques de 5 a 15 s y el balón suavizado con una media móvil de 25 frames;
+  - "como el ATD, sin bloques" (vota): lo mismo sin los bloques, como si todos los huecos largos del ATD
+    fueran paradas;
+  - "limpio" (sin voto): nada más;
+  - "huecos y suavizado" (sin voto): la condición de antes del perfil, con el 41 % de los frames vivos sin
+    balón (la mitad de las disputas y de los balones altos, y bloques de 1 s de media) y el balón
+    suavizado. Es mucho más dura que el ATD: se queda como prueba de estrés.
 
-  La degradación es provisional: falta comprobarla contra la medida del balón del ATD en todo el partido.
   Los jugadores no se degradan.
 
 Todo con semilla fija: dos ejecuciones dan lo mismo.
@@ -52,7 +56,33 @@ DISPUTAS = 0.5  # fracción de disputas y balones altos tapados (experimento 2)
 MEDIA_BLOQUE = 25  # frames de media de los bloques al azar (experimento 2)
 SUAVIZADO = 25  # frames de la media móvil del balón (experimento 2, inferencia)
 MEDIA_BARAJADO = 750  # frames de media entre dos barajados de los slots
-CONDICIONES = ("limpio", "huecos", "huecos y suavizado")
+# La forma «atd» (perfil del ATD del 14/11, validation/resultados/2026-11-14_perfil_atd.md): el ATD casi no
+# tiene huecos cortos. Los 15 de hasta 0,5 s suman 51 frames en 94.214 frames con balón; el 82,6 % de los
+# de hasta 15 s dura de 5 a 15 s.
+MICROCORTES = 1000.0 * 15 / 94214  # por cada 1.000 frames vivos
+MEDIA_MICROCORTE = 51 / 15  # frames
+MAX_MICROCORTE = 12  # frames (0,5 s)
+BLOQUE_ATD = (125, 375)  # frames (de 5 a 15 s)
+# Lo que salió de volver a leer el ATD con la forma «atd» (validation/perfil_atd/BITACORA.md §9): queda
+# `DISPUTAS` 0, el suavizado es de 25 frames y la severidad alta pide tapar el 11,3 % de los frames vivos
+# en bloques de 5 a 15 s.
+OBJETIVO_ATD = 0.113
+CONDICIONES = ("como el ATD", "como el ATD, sin bloques", "limpio", "huecos y suavizado")
+# Las dos que votan acotan lo que el perfil no puede medir: si los huecos de 5 a 15 s que el ATD tiene de
+# más son juego («como el ATD») o paradas («sin bloques»). «limpio» y la condición de antes del perfil (41 %
+# de los vivos en bloques de 1 s) se puntúan sin voto.
+VOTAN = ("como el ATD", "como el ATD, sin bloques")
+PARAMETROS_DE = {
+    "como el ATD": {"forma": "atd", "objetivo": OBJETIVO_ATD, "disputas": 0.0, "media_bloque": MEDIA_BLOQUE,
+                    "microcortes": MICROCORTES, "suavizado": SUAVIZADO},
+    "como el ATD, sin bloques": {"forma": "atd", "objetivo": 0.0, "disputas": 0.0, "media_bloque": MEDIA_BLOQUE,
+                                 "microcortes": MICROCORTES, "suavizado": SUAVIZADO},
+    "limpio": None,
+    "huecos y suavizado": {"objetivo": OBJETIVO, "disputas": DISPUTAS, "media_bloque": MEDIA_BLOQUE,
+                           "suavizado": SUAVIZADO},
+    # Ya no se puntúa, pero `tracking_de(cargado, "huecos")` sigue valiendo para los scripts que la usen.
+    "huecos": {"objetivo": OBJETIVO, "disputas": DISPUTAS, "media_bloque": MEDIA_BLOQUE, "suavizado": 1},
+}
 CONVENCIONES = ("flag", "control")
 DEFINICION_CONTROL = "C0-12 o dos toques"
 H, A, D, X = tracking.H, tracking.A, tracking.D, tracking.X
@@ -88,24 +118,72 @@ def media_movil(valores, ancho):
 
 def degradar_parte(parte, condicion, rng):
     """Copia de una parte de la caché con el balón como en `condicion`. Los jugadores no cambian."""
-    if condicion not in CONDICIONES:
+    if condicion not in PARAMETROS_DE:
         raise ValueError("condición desconocida: {}".format(condicion))
+    return degradar_con(parte, PARAMETROS_DE[condicion], rng)[0]
+
+
+def mascara_como_el_atd(n, activo, objetivo, microcortes, rng, base=None):
+    """Huecos con la ley del ATD (validation/resultados/2026-11-14_perfil_atd.md, forma «atd»).
+
+    - Microcortes: `microcortes` por cada 1.000 frames vivos, de longitud geométrica de media
+      `MEDIA_MICROCORTE` frames y como mucho `MAX_MICROCORTE` (0,5 s), que empiezan en un frame vivo.
+    - Bloques de 5 a 15 s (longitud uniforme en `BLOQUE_ATD`) hasta tapar `objetivo` de los frames vivos,
+      con el inicio al azar como en `instrumento.mascara_bloques`.
+    """
+    m = np.zeros(n, bool) if base is None else base.copy()
+    vivos = np.flatnonzero(activo)
+    if len(vivos) == 0:
+        return m
+    k = int(rng.poisson(microcortes * len(vivos) / 1000.0))
+    for inicio, largo in zip(rng.choice(vivos, size=k),
+                             np.minimum(rng.geometric(1.0 / MEDIA_MICROCORTE, size=k), MAX_MICROCORTE)):
+        m[inicio:inicio + largo] = True
+    tapados = int(np.sum(m & activo))
+    while tapados < objetivo * len(vivos):
+        inicio = int(rng.integers(0, n))
+        largo = int(rng.integers(BLOQUE_ATD[0], BLOQUE_ATD[1] + 1))
+        nuevo = ~m[inicio:inicio + largo]
+        tapados += int(np.sum(nuevo & activo[inicio:inicio + largo]))
+        m[inicio:inicio + largo] = True
+    return m
+
+
+def degradar_con(parte, prm, rng):
+    """(parte con el balón degradado, frames vivos, % de vivos tapados solo por la parte dirigida).
+
+    `prm=None` es "limpio": solo se tapa el balón en los `D` y en sus bordes. Si no, sus claves son
+    `objetivo`, `disputas`, `media_bloque` y `suavizado` y, opcionales, `forma` ("dirigida", la de antes del
+    perfil del ATD, o "atd") y `microcortes` (solo con la forma "atd").
+    - "dirigida": la parte dirigida tapa `disputas` de los episodios de disputa y de balón alto, y bloques de
+      longitud geométrica (media `media_bloque`) completan `objetivo`.
+    - "atd": la misma parte dirigida, y luego `mascara_como_el_atd` con `objetivo` y `microcortes`.
+    El balón se suaviza (media móvil de `suavizado` frames) antes de tapar, sin el balón congelado del `D`.
+    """
     estado = np.asarray(parte["estado"])
     activo = estado == 1
     x, y = np.array(parte["x"], dtype=float), np.array(parte["y"], dtype=float)
     tapado = np.convolve((~activo).astype(int), np.ones(2 * BORDE + 1, dtype=int), mode="same") > 0
-    if condicion != "limpio":
+    dirigida_pct = 0.0
+    if prm is not None:
+        forma = prm.get("forma", "dirigida")
+        if forma not in ("dirigida", "atd"):
+            raise ValueError("forma desconocida: {}".format(forma))
         prep = ins.preparar_en_juego(parte, estado)
-        huecos, _ = ins.mascara_dirigida(prep, np.asarray(parte["z"], dtype=float), activo, OBJETIVO, rng,
-                                         fraccion=DISPUTAS, media=MEDIA_BLOQUE)
-        if condicion == "huecos y suavizado":
+        huecos, dirigida_pct = ins.mascara_dirigida(
+            prep, np.asarray(parte["z"], dtype=float), activo, prm["objetivo"] if forma == "dirigida" else 0.0,
+            rng, fraccion=prm["disputas"], media=prm["media_bloque"])
+        if forma == "atd":
+            huecos = mascara_como_el_atd(len(activo), activo, prm["objetivo"], prm.get("microcortes", 0.0), rng,
+                                         base=huecos)
+        if prm["suavizado"] > 1:
             x[tapado], y[tapado] = np.nan, np.nan  # el balón congelado del `D` no entra en la media
-            x, y = media_movil(x, SUAVIZADO), media_movil(y, SUAVIZADO)
+            x, y = media_movil(x, prm["suavizado"]), media_movil(y, prm["suavizado"])
         tapado = tapado | huecos
     x[tapado], y[tapado] = np.nan, np.nan
     nueva = dict(parte)
     nueva["x"], nueva["y"] = x, y
-    return nueva
+    return nueva, int(activo.sum()), dirigida_pct
 
 
 def barajar_slots(px, py, team, rng):
@@ -158,7 +236,7 @@ def a_tracking(partes, campo, rng):
 
 
 def cargar(partido):
-    """Un partido de la caché con sus etiquetas: {"partido", "indice", "partes", "campo", "gt"}.
+    """Un partido de la caché con sus etiquetas: {"partido", "indice", "partes", "campo", "meta", "gt"}.
 
     `gt` es {convención: códigos por frame}, con `X` en el hueco entre las dos partes, alineado con el
     `Tracking` que devuelve `tracking_de`.
@@ -169,14 +247,14 @@ def cargar(partido):
     hueco = np.full(HUECO, X, dtype=np.int8)
     gt = {c: np.concatenate([por_parte[1][c], hueco, por_parte[2][c]]) for c in CONVENCIONES}
     return {"partido": partido, "indice": PARTIDOS.index(partido), "partes": partes,
-            "campo": tuple(datos["meta"]["campo"]), "gt": gt}
+            "campo": tuple(datos["meta"]["campo"]), "meta": datos["meta"], "gt": gt}
 
 
 def tracking_de(cargado, condicion):
     """El `Tracking` de un partido cargado, con el balón como en `condicion`.
 
-    Los huecos son los mismos en "huecos" y en "huecos y suavizado", y los slots se barajan igual en las
-    tres condiciones: lo único que cambia entre ellas es el balón.
+    Cada condición sortea sus huecos con la misma semilla por parte, y los slots se barajan igual en todas:
+    lo único que cambia entre ellas es el balón.
     """
     partes = {k: degradar_parte(cargado["partes"][k], condicion,
                                 np.random.default_rng([SEMILLA, cargado["indice"], k]))

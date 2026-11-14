@@ -1,0 +1,13 @@
+{
+  "Viterbi, coste 25 (v0)": {
+    "nota": "lo que hay en main: sin params ni piezas, el pipeline tal cual"
+  },
+  "Viterbi, coste 50": {
+    "nota": "solo cambian los costes del decodificador (temporal.DEFAULTS)",
+    "params": {"switch": 50, "to_dead": 50, "from_dead": 50}
+  },
+  "v0 pieza a pieza": {
+    "nota": "las funciones de v0 escritas una a una: tiene que dar lo mismo que la primera",
+    "piezas": {"ball": "clean", "candidates": "evidence", "dead_state": "evidence", "temporal": "decode"}
+  }
+}

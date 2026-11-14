@@ -23,7 +23,9 @@ que faltan, los scripts y los resultados. El porqué está en
 | `scripts/descargar_datos_abiertos.py` | descarga la Bundesliga, los eventos del Barça como local y el Clásico de 2019, con versiones fijadas, fuera del repo | datos abiertos de otros partidos |
 | `harness/puntuar.py` | **harness de la DFL:** ejecuta el pipeline (`possession/`) en los 7 partidos abiertos y lo puntúa con el scorer oficial, con dos convenciones de etiquetas, tres condiciones del balón y el baseline de control; aplica la regla de §5.8. Su `README.md` dice cómo se usa | DFL |
 | `harness/dfl.py` | biblioteca del harness: un partido de la DFL en el formato de `possession/tracking.py`, con sus etiquetas y el balón degradado | DFL |
-| `scripts/prueba_pipeline.py` | prueba el esqueleto del pipeline (`possession/`) con un partido inventado: interfaz de las piezas, tramos evaluados, tramo antes del saque, decodificador contra la búsqueda exhaustiva, determinismo, CSV y lector del ATD | ninguno del partido |
+| `harness/versiones/` | ficheros JSON con las versiones que compara cada uno (`puntuar.py --versiones`); `ejemplo.json` es el de muestra | — |
+| `scripts/prueba_harness.py` | prueba la lectura de los ficheros de versiones del harness: el ejemplo, las opciones de una función y que cada errata da error antes de medir | ninguno |
+| `scripts/prueba_pipeline.py` | prueba el esqueleto del pipeline (`possession/`) con un partido inventado: interfaz de las piezas, cambiar una pieza por otra función, tramos evaluados, tramo antes del saque, decodificador contra la búsqueda exhaustiva, determinismo, CSV y lector del ATD | ninguno del partido |
 | `scripts/comprobar_balon_muerto.py` | comprueba `possession/dead_ball.py`: interfaz, que no abre ficheros, dónde marca `D`, que no contradice la GT pública, determinismo, que los frames de saque del FAQ y de `games.py` cuadran y que con otro partido da error | GT pública |
 | `partido/diagnostico_balon_muerto.py` | ¿sirve el balón del ATD para el detector de `D`? Balón fuera del campo, en los reinicios y en los saques iniciales | **datos del partido: solo una persona** |
 | `partido/diagnostico_coordenadas.py` | ¿separa x = 0,5 a los dos equipos? Temblor del balón y tramos con el balón quieto | **datos del partido: solo una persona** |
@@ -51,6 +53,7 @@ python validation/scripts/comprobar_balon_muerto.py
 python validation/scripts/revision_balon_muerto/coste_errores_D.py
 python validation/scripts/prueba_perfil_atd.py
 python validation/perfil_atd/perfil_dfl.py --seco
+python validation/scripts/prueba_harness.py
 ```
 
 ## Reglas
