@@ -217,3 +217,130 @@ Abierto:
 
 Descartado:
 - **Usar el flag de posesión de la DFL tal cual como etiqueta de equipo.**
+
+### 2026-11-12 · `D` · versión 1 del detector: el tramo antes del saque; con la regla probada, el balón del ATD no fecha reinicios
+
+Quién: Manuel
+
+Qué se probó:
+- Fechar el saque inicial de cada parte y cada reanudación de los `SET PIECES` del Smart Tagging con el
+  balón del ATD: el balón visto quieto (5 frames dentro de 0,5 m) que empieza a moverse, buscándolo
+  desde 10 s antes de la etiqueta. En los saques iniciales, además, quieto a menos de 2 m del centro.
+- Antes de eso, medir si el ATD ve el balón fuera del campo, en los reinicios y quieto, y si x = 0,5 es
+  la mitad del campo.
+
+Cómo se midió: agregados del partido entero (ATD y Smart Tagging), con
+`validation/partido/diagnostico_balon_muerto.py` y `validation/partido/diagnostico_coordenadas.py`,
+ejecutados por Manuel en local. Salida completa y lectura en
+`validation/resultados/2026-11-12_balon_muerto_atd.md`. La GT pública solo se usa para comprobar que la
+máscara no la contradice (`validation/scripts/comprobar_balon_muerto.py`), no para elegir nada.
+
+Resultado (cada punto con su etiqueta, como en el fichero de resultados):
+- **[medido]** De los frames con balón, solo el 4,2 % lo tiene fuera del campo. Antes de un córner el
+  balón no se ve fuera en ninguno de 12, pero solo se ve en 2.
+- **[inferencia]** Cuando el balón sale, el ATD casi siempre lo pierde.
+- **[medido]** En los saques iniciales no se encuentra el golpeo con el balón quieto en el centro: 0 de
+  6. En 4 de los 6 se ve balón, pero menos de 5 frames a menos de 2 m del centro.
+- **[sin verificar]** Por qué en esos 4 saques: el ATD solo ve el balón después del golpeo, queda tapado,
+  o sigue otro objeto.
+- **[medido]** En los 6 saques iniciales los equipos quedan a lados opuestos de x = 0,5.
+- **[sin verificar]** Que x = 0,5 sea exactamente la línea de medio campo.
+- **[medido]** La "reanudación" sale en los 53 saques de banda, córners, saques de puerta y faltas. En 51
+  el balón llevaba quieto menos de 1 s, en 2 entre 1 y 3 s, y en ninguno 3 s o más. La regla cubriría
+  466 frames (0,3 %).
+- **[inferencia]** No son los reinicios reales.
+- **[medido]** El ATD ve el balón quieto 3 s o más en 17 tramos de los frames evaluados (radio 0,5 m),
+  aunque se toleren huecos sin balón de hasta 1 s.
+- **[inferencia]** No congela el balón en el tiempo muerto, al revés que la DFL.
+- **[medido]** La columna de velocidad del balón no se comporta como m/s: mediana de 1,1 frente a 5,1 m/s
+  calculados con las posiciones.
+
+Decisión y por qué:
+- **Versión 1: solo el tramo previo al saque de cada parte.** Son 2.934 frames en la 2ª parte y 0 en la
+  1ª, con los frames de saque que publica `FAQ.md` (`KICKOFF_VIDEO_FRAMES` de
+  `starter/load_smart_tagging.py`). Con la regla probada no se encontró el golpeo en ninguno de los 6
+  saques iniciales.
+- **Las anclas de `games.py` difieren de esos frames en ±1, en sentidos opuestos en cada parte.**
+  `games.py` las describe como el frame en que se golpea el balón, así que puede ser una diferencia de
+  convención. Se usan los frames del FAQ porque coinciden con los 2.934 frames `D` que publica la
+  organización. Con las anclas saldrían 2.933 en la 2ª parte y 1 en la 1ª, justo en el primer frame
+  evaluado, que el FAQ y la GT pública dan como balón en juego.
+- **Con las dos reglas probadas, el balón del ATD no da el resto del `D`** [medido]. Son "balón fuera del
+  campo → `D`" y "balón quieto que empieza a moverse".
+- **Otras reglas con el balón no se han probado**: por ejemplo, combinarlo con la posición en el campo,
+  con el tiempo que lleva sin verse o con los jugadores.
+- **La vía que parece más prometedora** [inferencia] es el enfoque con jugadores (B3 o B4 de
+  `docs/investigacion_metodos.md` §2.2), entrenado y validado con la Bundesliga degradada.
+
+Abierto:
+- Que Ismael confirme que usar los frames publicados que guarda `starter/` cumple la regla de
+  "ninguna constante de frames salvo las de `games.py`".
+- **Pregunta para `ball.py`:** si el ATD sigue a veces objetos que no son el balón de juego. El fichero de
+  resultados dice qué agregado lo separaría.
+- Que Ismael diga si los reinicios por tipo (5 casos o más por tipo) cumplen la regla de agregados, o
+  si se juntan todos.
+
+Descartado:
+- **La variante de B1 y B2 de §2.2 que fecha los reinicios con el balón** ("balón quieto que empieza a
+  moverse"). Lo que detecta apunta a no ser los reinicios [inferencia]. B2 en sí, los `SET PIECES` como
+  fin del `D`, sigue abierto.
+- **"Balón fuera del campo → `D`" como regla principal:** cubriría muy poco, porque el ATD casi nunca ve
+  el balón fuera [inferencia, a partir de lo medido].
+- **Las otras dos vías de B5 para fechar el saque:**
+  - la etiqueta `Kick Off (Start)`: es una ventana de unos 5 s, no un instante;
+  - "todos los jugadores en su campo": dice que aún no se ha sacado, pero no en qué frame se saca.
+
+  Las etiquetas de saque contienen los frames del FAQ, así que son coherentes con ellos. Que esos frames
+  sean exactos es lo que dice la organización [fuente].
+
+### 2026-11-13 · `D` · revisión del detector v1: el `D` suma por sus fronteras; dos descartes vuelven a abrirse
+
+Quién: Ana (revisión pedida a Claude; lo que se reabre lo confirman Manuel e Ismael)
+
+Qué se probó:
+- Cuánto cuesta en `spellF1` cada error propio de un detector de `D`: paradas no detectadas, bordes tarde
+  o pronto, `D` que parpadea dentro de una parada, `D` sin fin, equipo equivocado al reanudar.
+- Si los jugadores solos (sin balón) sirven para detectar `D` y con qué precisión en las fronteras: AUC
+  por rasgo, umbral con histéresis y regresión logística, con el umbral elegido en una parte y evaluado
+  en la otra.
+- `possession/io.py` con un ATD sintético del mismo tamaño.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): scorer oficial sobre la GT sintética del repo
+(6 partes, 142 paradas por 332 posesiones), la GT pública con el equipo perfecto (17 posesiones, 4
+paradas; solo lectura de la métrica) y el partido abierto `J03WMX` de la DFL (103 paradas, 511
+posesiones) con el equipo perfecto. Detalle y scripts en
+`validation/resultados/2026-11-13_revision_balon_muerto.md`.
+
+Resultado:
+- **[medido]** En la DFL, con equipo perfecto: sin `D` 0,82; todas las paradas con los dos bordes 2 s tarde
+  0,83; la mitad de las paradas con bordes exactos 0,92; todas con ruido de ±1 s 0,90.
+- **[medido]** En la sintética: `D` que parpadea cada 4 s 0,62; equipo equivocado 0,5 s tras cada reinicio
+  0,80; fin del `D` 1 s tarde 0,92; inicio 1 s tarde 0,95.
+- **[medido]** Jugadores solos en la DFL: AUC 0,93–0,97 por frame; la logística detecta 43 de 62 y 35 de
+  41 paradas, pero el inicio llega 1 s tarde de mediana (p90 de 4–7 s) y el `spellF1` no mejora frente a
+  no poner `D` (0,775 frente a 0,781; 0,864 frente a 0,852).
+- **[medido]** `io.py` rompía con un balón o slot escrito como un solo `NaN`; corregido en esta rama.
+
+Decisión y por qué:
+- **El criterio de aceptación de cualquier detector de `D`, medido en la DFL antes de integrarlo:**
+  |latencia| ≤ 25 frames en el inicio y en el fin en al menos el 70 % de las paradas, sesgo mediano dentro
+  de ±12 frames, `D` espurios ≤ 0,3 por minuto de juego y ninguna racha de `D` ni de vivo por debajo de la
+  duración mínima. Por debajo de eso, el detector no mejora el ranking [inferencia a partir de lo medido].
+- **El tiempo del `D` sale del balón y del Smart Tagging; el estado, de los jugadores.** El modelo de estado
+  se entrena con los 7 partidos de la DFL con rasgos de equipo sin identidad, sin esperar a la degradación.
+- **Se reabren dos descartes de la entrada del 12/11**, que quedan como «sin evaluar» hasta que Manuel
+  ejecute `validation/partido/agregados_balon_reinicios.py`:
+  - fechar los reinicios con el balón («quieto que empieza a moverse»): sus 53 detecciones con menos de
+    1 s de balón quieto son lo esperable si el ATD solo recupera el balón cuando se mueve; hay que
+    cruzarlas con el fin de la ventana `SET PIECES` y con la subida de velocidad de los jugadores;
+  - «balón fuera del campo» como disparo del inicio del `D`: cubre pocos frames, pero son 2–3 s de balón
+    visible por cada salida, y falta medir el balón que desaparece saliendo.
+- Los agregados por tipo de reinicio se imprimen con 5 casos o más por tipo (los saques iniciales siempre
+  juntos), el criterio que Manuel dejó preguntado a Ismael; si Ismael prefiere juntarlos, es una constante
+  en `validation/partido/comun.py`.
+
+Descartado:
+- **Suavizar el `D` con un voto por mayoría o usar la ausencia del balón como `D`:** introducen justo el
+  retraso o el parpadeo que anulan el `D` en `spellF1` [medido en la sintética y la DFL].
+- **Arrastrar el equipo anterior a través de una parada:** en `J03WMX` el equipo cambia en el 90 % de las
+  paradas [medido].

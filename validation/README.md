@@ -9,6 +9,7 @@ que faltan, los scripts y los resultados. El porqué está en
 | pasos para completar el experimento 0 y siguientes, con las dudas abiertas (D1…D21) | [`PASOS.md`](PASOS.md) |
 | resultados, uno por fichero, con su índice | [`resultados/`](resultados/README.md) |
 | scripts | [`scripts/`](scripts/) |
+| scripts que leen datos del partido (solo los ejecuta una persona) | [`partido/`](partido/) |
 
 ## Scripts
 
@@ -16,7 +17,18 @@ que faltan, los scripts y los resultados. El porqué está en
 |---|---|---|
 | `scripts/perfil_etiquetas.py` | perfil de un CSV `frame,label`: posesiones, paradas y huella de retrasos frente a la tabla oficial | GT pública o etiquetas de datos abiertos |
 | `scripts/sensibilidad_metrica.py` | cuánto cuesta cada tipo de error en `spellF1`, con una GT sintética | ninguno del partido |
+| `scripts/silbato.py` | biblioteca: detector de silbatos en el audio de un vídeo, alineado a sus frames (B6) | ninguno: lo decide quien la llama |
+| `scripts/prueba_silbato.py` | prueba el detector de silbatos con audio sintético | ninguno del partido |
+| `partido/silbato_audio.py` | **lee el partido** (vídeo, Smart Tagging y ATD): ¿se oye el silbato?, ¿cuadra con los goles, las faltas y los saques?, ¿frenan los jugadores después? Solo agregados. Lo ejecuta una persona | vídeo táctico, Smart Tagging y ATD |
 | `scripts/descargar_datos_abiertos.py` | descarga la Bundesliga, los eventos del Barça como local y el Clásico de 2019, con versiones fijadas, fuera del repo | datos abiertos de otros partidos |
+| `scripts/comprobar_balon_muerto.py` | comprueba `possession/dead_ball.py`: interfaz, que no abre ficheros, dónde marca `D`, que no contradice la GT pública, determinismo, que los frames de saque del FAQ y de `games.py` cuadran y que con otro partido da error | GT pública |
+| `partido/diagnostico_balon_muerto.py` | ¿sirve el balón del ATD para el detector de `D`? Balón fuera del campo, en los reinicios y en los saques iniciales | **datos del partido: solo una persona** |
+| `partido/diagnostico_coordenadas.py` | ¿separa x = 0,5 a los dos equipos? Temblor del balón y tramos con el balón quieto | **datos del partido: solo una persona** |
+| `partido/comun.py` | constantes y utilidades de los dos diagnósticos (no se ejecuta solo) | — |
+| `partido/agregados_smart_tagging.py` | ventanas `SET PIECES` por tipo (duración, `Team N/A`), cobertura de los frames evaluados por las fases, huecos entre fases, goles → saque posterior | **datos del partido: solo una persona** |
+| `partido/agregados_balon_reinicios.py` | ¿las "reanudaciones" del detector de golpeo caen donde acaba la ventana `SET PIECES` y donde suben los jugadores? Balón que desaparece saliendo del campo; columna de velocidad del ATD frente al desplazamiento suavizado | **datos del partido: solo una persona** |
+| `partido/agregados_jugadores.py` | velocidad media de los jugadores (en todo el partido, antes y después de cada reinicio, al principio y al final de cada parte) frente a la DFL; jugadores fuera de los límites | **datos del partido: solo una persona** |
+| `scripts/revision_balon_muerto/` | pruebas de la revisión del detector de `D` (13/11): coste de cada error de `D`, `io.py` con un ATD sintético, jugadores solos en la DFL; su `README.md` dice cómo repetirlas | GT pública, GT sintética, DFL |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
 
@@ -24,6 +36,8 @@ Se ejecutan desde la raíz del repo, con el entorno de siempre:
 python validation/scripts/perfil_etiquetas.py evaluation/gt/BAR-ATH_possession_gt_public.csv
 python validation/scripts/sensibilidad_metrica.py
 python validation/scripts/descargar_datos_abiertos.py dfl --solo-ligeros
+python validation/scripts/comprobar_balon_muerto.py
+python validation/scripts/revision_balon_muerto/coste_errores_D.py
 ```
 
 ## Reglas
