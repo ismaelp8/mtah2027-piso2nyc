@@ -686,6 +686,16 @@ Decisión y por qué:
   perfectos de la DFL: también gana en «lejos de la jugada», el caso difícil para sus rasgos de forma.
 - **Lo que queda para decidir si B2 entra** es la escala frente al `D`. Lo decide Ismael.
 
+Añadido después (14/11, `validation/apuesta_b/d_propio.py`) [medido, descriptivo]:
+- **Con la pieza de `D` de `main` dentro** (E2 de Ana, PR 5) y sin oráculo, B2 tal cual solo ve el
+  31,6 % de las 713 paradas reales, frente al 87,8 % de N1 y el 84,7 % de B1.
+- **Por eso pierde contra `main` en `spellF1`:** 0,309 frente a 0,366 con el flag, y 0,477 frente a
+  0,505 con el control («como el ATD»).
+- **El número favorece a N1,** porque la DFL tapa el balón en los `D`. Pero el mecanismo es real: B2
+  opina con los jugadores, haya balón o no, y en las paradas le gana a la pieza de Ana.
+- **B2 no puede entrar tal cual.** Haría falta un candidato nuevo que no pese en las paradas, medido otra
+  vez. Lo decide Ismael.
+
 Descartado: retocar más la degradación hasta que una variante vote. Sería buscar hasta que algo pase.
 
 ### 2026-11-14 · `D` · estado con jugadores: candidatos y regla de lectura, escritos antes de medir
