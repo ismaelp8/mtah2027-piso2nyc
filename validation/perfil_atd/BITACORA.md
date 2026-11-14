@@ -714,3 +714,31 @@ Ismael ejecutó `validation/partido/perfil_atd.py` el 14/11, con todo lo anterio
   juego. Lo que pide el perfil es tapar menos.
 - **El cambio de forma del paso 3 lo decide Ismael.** Lo que se elija se apunta aquí como cambio posterior
   a medir, y se vuelve a leer con esta misma regla.
+
+### 9.1 La forma nueva, escrita antes de volver a leer (14/11)
+
+**Decisión de Ismael (14/11), con el resultado delante:** «Como el ATD». La condición principal pasa a
+parecerse al ATD: el balón tapado en los `D`, casi nada más en juego, y suavizado. La de antes (41 % de los
+vivos) queda como prueba de estrés, sin voto. Se vuelve a leer con esta misma regla.
+
+**Cómo se tapa (forma «atd», `dfl.degradar_con` y `dfl.mascara_como_el_atd`).** Es el primer candidato de
+la sección 7.4, la ley de huecos del ATD, con sus dos partes medidas:
+
+- **la misma parte dirigida** (`DISPUTAS`), sin cambios;
+- **microcortes al ritmo del ATD:** 15 por cada 94.214 frames vivos, con longitud geométrica de media 3,4
+  frames (51 frames en 15 huecos) y como mucho 12 (0,5 s);
+- **bloques de 5 a 15 s** (longitud uniforme) para completar `OBJETIVO`, en vez de los de 1 s de media.
+
+**La regla no cambia.** `leer_atd.py --forma atd` recorre los mismos `DISPUTAS` y `OBJETIVO` con las mismas
+R0 a R7'. Sin `--forma`, la lectura es la de antes, byte a byte.
+
+**Qué entra en el harness, según lo que salga** (punto 4 de la sección 8):
+
+- **votan** las condiciones de la forma «atd» con el `DISPUTAS` que decida, el `OBJETIVO` de cada
+  severidad y el suavizado de R4'. Las severidades con el mismo `OBJETIVO` son la misma condición y se
+  juntan;
+- **se puntúan sin voto** «limpio» y «huecos y suavizado» (la de antes);
+- **si con la forma «atd» tampoco queda ningún `DISPUTAS`,** se para y decide Ismael.
+
+**Ensayo:** J03WR9, degradado con la forma «atd» (`objetivo` 0,05, `disputas` 0 y suavizado 25), hace de
+ATD. La regla tiene que devolver `DISPUTAS` 0 y suavizado 25. Se lanza a la vez que la lectura.

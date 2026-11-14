@@ -52,7 +52,20 @@ DISPUTAS = 0.5  # fracción de disputas y balones altos tapados (experimento 2)
 MEDIA_BLOQUE = 25  # frames de media de los bloques al azar (experimento 2)
 SUAVIZADO = 25  # frames de la media móvil del balón (experimento 2, inferencia)
 MEDIA_BARAJADO = 750  # frames de media entre dos barajados de los slots
+# La forma «atd» (perfil del ATD del 14/11, validation/resultados/2026-11-14_perfil_atd.md): el ATD casi no
+# tiene huecos cortos. Los 15 de hasta 0,5 s suman 51 frames en 94.214 frames con balón; el 82,6 % de los
+# de hasta 15 s dura de 5 a 15 s.
+MICROCORTES = 1000.0 * 15 / 94214  # por cada 1.000 frames vivos
+MEDIA_MICROCORTE = 51 / 15  # frames
+MAX_MICROCORTE = 12  # frames (0,5 s)
+BLOQUE_ATD = (125, 375)  # frames (de 5 a 15 s)
 CONDICIONES = ("limpio", "huecos", "huecos y suavizado")
+PARAMETROS_DE = {
+    "limpio": None,
+    "huecos": {"objetivo": OBJETIVO, "disputas": DISPUTAS, "media_bloque": MEDIA_BLOQUE, "suavizado": 1},
+    "huecos y suavizado": {"objetivo": OBJETIVO, "disputas": DISPUTAS, "media_bloque": MEDIA_BLOQUE,
+                           "suavizado": SUAVIZADO},
+}
 CONVENCIONES = ("flag", "control")
 DEFINICION_CONTROL = "C0-12 o dos toques"
 H, A, D, X = tracking.H, tracking.A, tracking.D, tracking.X
@@ -90,22 +103,70 @@ def degradar_parte(parte, condicion, rng):
     """Copia de una parte de la caché con el balón como en `condicion`. Los jugadores no cambian."""
     if condicion not in CONDICIONES:
         raise ValueError("condición desconocida: {}".format(condicion))
+    return degradar_con(parte, PARAMETROS_DE[condicion], rng)[0]
+
+
+def mascara_como_el_atd(n, activo, objetivo, microcortes, rng, base=None):
+    """Huecos con la ley del ATD (validation/resultados/2026-11-14_perfil_atd.md, forma «atd»).
+
+    - Microcortes: `microcortes` por cada 1.000 frames vivos, de longitud geométrica de media
+      `MEDIA_MICROCORTE` frames y como mucho `MAX_MICROCORTE` (0,5 s), que empiezan en un frame vivo.
+    - Bloques de 5 a 15 s (longitud uniforme en `BLOQUE_ATD`) hasta tapar `objetivo` de los frames vivos,
+      con el inicio al azar como en `instrumento.mascara_bloques`.
+    """
+    m = np.zeros(n, bool) if base is None else base.copy()
+    vivos = np.flatnonzero(activo)
+    if len(vivos) == 0:
+        return m
+    k = int(rng.poisson(microcortes * len(vivos) / 1000.0))
+    for inicio, largo in zip(rng.choice(vivos, size=k),
+                             np.minimum(rng.geometric(1.0 / MEDIA_MICROCORTE, size=k), MAX_MICROCORTE)):
+        m[inicio:inicio + largo] = True
+    tapados = int(np.sum(m & activo))
+    while tapados < objetivo * len(vivos):
+        inicio = int(rng.integers(0, n))
+        largo = int(rng.integers(BLOQUE_ATD[0], BLOQUE_ATD[1] + 1))
+        nuevo = ~m[inicio:inicio + largo]
+        tapados += int(np.sum(nuevo & activo[inicio:inicio + largo]))
+        m[inicio:inicio + largo] = True
+    return m
+
+
+def degradar_con(parte, prm, rng):
+    """(parte con el balón degradado, frames vivos, % de vivos tapados solo por la parte dirigida).
+
+    `prm=None` es "limpio": solo se tapa el balón en los `D` y en sus bordes. Si no, sus claves son
+    `objetivo`, `disputas`, `media_bloque` y `suavizado` y, opcionales, `forma` ("dirigida", la de antes del
+    perfil del ATD, o "atd") y `microcortes` (solo con la forma "atd").
+    - "dirigida": la parte dirigida tapa `disputas` de los episodios de disputa y de balón alto, y bloques de
+      longitud geométrica (media `media_bloque`) completan `objetivo`.
+    - "atd": la misma parte dirigida, y luego `mascara_como_el_atd` con `objetivo` y `microcortes`.
+    El balón se suaviza (media móvil de `suavizado` frames) antes de tapar, sin el balón congelado del `D`.
+    """
     estado = np.asarray(parte["estado"])
     activo = estado == 1
     x, y = np.array(parte["x"], dtype=float), np.array(parte["y"], dtype=float)
     tapado = np.convolve((~activo).astype(int), np.ones(2 * BORDE + 1, dtype=int), mode="same") > 0
-    if condicion != "limpio":
+    dirigida_pct = 0.0
+    if prm is not None:
+        forma = prm.get("forma", "dirigida")
+        if forma not in ("dirigida", "atd"):
+            raise ValueError("forma desconocida: {}".format(forma))
         prep = ins.preparar_en_juego(parte, estado)
-        huecos, _ = ins.mascara_dirigida(prep, np.asarray(parte["z"], dtype=float), activo, OBJETIVO, rng,
-                                         fraccion=DISPUTAS, media=MEDIA_BLOQUE)
-        if condicion == "huecos y suavizado":
+        huecos, dirigida_pct = ins.mascara_dirigida(
+            prep, np.asarray(parte["z"], dtype=float), activo, prm["objetivo"] if forma == "dirigida" else 0.0,
+            rng, fraccion=prm["disputas"], media=prm["media_bloque"])
+        if forma == "atd":
+            huecos = mascara_como_el_atd(len(activo), activo, prm["objetivo"], prm.get("microcortes", 0.0), rng,
+                                         base=huecos)
+        if prm["suavizado"] > 1:
             x[tapado], y[tapado] = np.nan, np.nan  # el balón congelado del `D` no entra en la media
-            x, y = media_movil(x, SUAVIZADO), media_movil(y, SUAVIZADO)
+            x, y = media_movil(x, prm["suavizado"]), media_movil(y, prm["suavizado"])
         tapado = tapado | huecos
     x[tapado], y[tapado] = np.nan, np.nan
     nueva = dict(parte)
     nueva["x"], nueva["y"] = x, y
-    return nueva
+    return nueva, int(activo.sum()), dirigida_pct
 
 
 def barajar_slots(px, py, team, rng):
