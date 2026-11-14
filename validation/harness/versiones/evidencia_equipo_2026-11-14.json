@@ -1,0 +1,17 @@
+{
+  "N1 (main)": {
+    "nota": "lo que hay en main: el balón tal cual y el jugador más cercano"
+  },
+  "limpieza v1": {
+    "nota": "ball.clean_v1: quita saltos de más de 40 m/s a la ida y a la vuelta y rachas aisladas de 1 o 2 frames, e interpola huecos de hasta 12 frames salvo con un rival a 2 m al reaparecer (docs/decisiones.md, 14/11)",
+    "piezas": {"ball": "clean_v1"}
+  },
+  "N2": {
+    "nota": "el más cercano solo opina a 1,5 m o menos y con el rival al menos 1 m más lejos (docs/decisiones.md, 14/11)",
+    "piezas": {"candidates": {"opciones": {"method": "N2"}}}
+  },
+  "Ret": {
+    "nota": "opina en rachas de 12 frames o más con el más cercano del mismo equipo a 1,5 m o menos (docs/decisiones.md, 14/11)",
+    "piezas": {"candidates": {"opciones": {"method": "Ret"}}}
+  }
+}
