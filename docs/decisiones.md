@@ -1012,8 +1012,9 @@ Cambios antes de volver a medir (14/11 por la noche, escritos antes de la segund
     Ismael.
   - **La sensibilidad con costes 12 y 50 no se repite:** no decidía y ya se midió.
 - **Mensaje de Ismael (14/11 por la noche):**
-  - hay que priorizar `ball.py`, porque quitar los ~200 saltos imposibles del ATD ayuda a cualquier
-    evidencia;
+  - hay que priorizar `ball.py`, porque quitar los saltos imposibles del ATD ayuda a cualquier evidencia.
+    El perfil cuenta 216 **pares** de frames seguidos a más de 40 m/s, no puntos que la regla quite
+    (corregido el 14/11 por la noche, tras la revisión de Ismael);
   - N2 y Ret tendrían que ganar también a la apuesta B (B2), que ya gana a `main`.
   - Lo que sabemos del ATD (perfil del 14/11, agregados): 216 pares de frames seguidos a más de 40 m/s,
     149 rachas con balón, menos de 5 rachas de 1 o 2 frames y 15 huecos de hasta 0,5 s que suman 51
@@ -1054,7 +1055,10 @@ Decisión y por qué:
   pipeline no cambia.
 - **La limpieza v1 no entra todavía:** `ball.clean` sigue siendo lo de `main`.
   - En la DFL empata, como se esperaba: no hay saltos falsos que quitar y casi no hay huecos cortos.
-  - Lo que puede aportar está en los 216 saltos del ATD, y el harness no lo ve. [inferencia]
+  - Lo que puede aportar está en los saltos del ATD, y el harness no lo ve. [inferencia] El perfil cuenta
+    216 pares de frames seguidos a más de 40 m/s, no puntos que la regla quite: un salto que se queda o una
+    excursión de varios frames no los toca. Cuánto quita en el partido: **sin medir**. (Corregido el 14/11
+    por la noche, tras la revisión de Ismael.)
   - Hace falta saber qué hace con el ATD antes de decidir, con un script de `validation/partido/` que
     ejecuta una persona.
   - Si entra con una prueba que no es el harness, lo decide Ismael, porque su regla dice que un empate con
@@ -1294,3 +1298,73 @@ Consecuencias:
 Descartado: el envoltorio en `candidates.py`. Habría tocado la pieza de Antonio y creaba una importación
 circular.
 
+
+### 2026-11-14 · balón · corrección del paso 2 de la limpieza y recuento en el partido, escritos antes de ejecutarlo
+
+Quién: Antonio Azuero
+
+Qué se probó: **escrito antes de ejecutar el recuento en el partido y antes de la comprobación del
+harness.** Sale de la revisión de Ismael de la PR 6: la limpieza entra fija, sin competir, si no empeora
+(plan, §3 y §8). El harness no puede juzgarla, porque la DFL no tiene saltos falsos; la juzga el recuento
+del partido.
+
+- **Corrección de un fallo de `clean_v1`, no una variante nueva.** La limpieza sigue siendo una sola
+  versión, con los mismos pasos y valores.
+  - **El fallo (lo vio Ismael):** el paso 2 (rachas aisladas) se calculaba después de quitar los saltos
+    del paso 1. Contaba como hueco el agujero que acababa de abrir el paso 1 y borraba balón bueno pegado
+    a un pico. Ejemplo: con un hueco largo, 2 frames buenos, un pico de 1 frame y más balón bueno, se
+    perdían 3 frames en vez de 1. En espejo, igual.
+  - **El arreglo:** los pasos 1 y 2 se calculan los dos sobre el balón de entrada y se quitan juntos.
+  - **Prueba:** `validation/scripts/prueba_limpieza.py`, con 62 comprobaciones sin datos del partido:
+    los 36 casos de la PR 6, el caso del fallo en los dos sentidos y el recuento con un tracking
+    inventado. Los 5 casos del fallo dan error con el `ball.py` de `main` y pasan con el arreglo.
+    [medido, sintético]
+- **Recuento en el partido:** `validation/partido/limpieza_balon.py`. Lo ejecuta Antonio en local y pega
+  solo agregados. Cuenta en los frames evaluados, con las dos partes juntas:
+  - **paso 1:** puntos que quita, y los pares de frames seguidos a más de 40 m/s del perfil, por clase. Un
+    **tramo** son pares imposibles seguidos, del frame p (antes del primero) al q (después del último).
+    Las clases son:
+    - **pico:** dos pares o más, con el balón de p a q a 40 m/s o menos. El paso 1 quita todo su
+      interior;
+    - **excursión:** un tramo que no es pico y otro que empieza como mucho 25 frames (1 s) después, en el
+      mismo tramo evaluado, con el balón de vuelta donde se le espera (40 m/s o menos de p del primero a
+      q del segundo). El paso 1 no la toca;
+    - **salto que se queda:** el resto;
+  - **paso 2:** puntos y rachas que quita;
+  - **paso 3:** huecos cortos tras los pasos 1 y 2, cuántos rellena y cuántos frames;
+  - **en total:** los frames que cambian, en número y en % de los frames evaluados con balón;
+  - **saltos imposibles entre dos puntos con balón seguidos**, haya un hueco en medio o no, antes y
+    después de limpiar. Esta cuenta, y no la de pares, dice si se quitan saltos: al abrir un hueco
+    desaparece un par, aunque el salto siga ahí;
+  - **descriptivo:** los frames en que cambia el equipo del más cercano.
+  - Las celdas de 1 a 4 casos salen como «< 5». Antes de contar, el script comprueba que reproduce
+    `clean_v1` exactamente.
+- **Comprobación en el harness:** `validation/harness/versiones/limpieza_balon_2026-11-14.json`, con
+  `{}` (lo de `main`: B5 sin limpieza) y la limpieza corregida.
+  - **No empeora** si, en ninguna de las cuatro combinaciones que votan (dos condiciones del balón por dos
+    convenciones), pierde frente a `main` por 0,03 o más.
+  - Si empeora, no se propone y se avisa a Ismael.
+
+Cómo se lee el recuento (fijado antes de ejecutarlo):
+
+- **0, controles:** 158.857 frames evaluados, 94.214 con balón y 216 pares a más de 40 m/s, como en el
+  perfil del ATD. Si alguno no cuadra, no se lee nada más y se revisa el script.
+- **Sale como se esperaba si se cumplen las dos condiciones:**
+  - (a) los saltos imposibles entre puntos con balón seguidos bajan a la mitad o menos;
+  - (b) los frames que cambian son el 1 % o menos de los frames evaluados con balón, unos 940 como mucho.
+
+  Entonces se propone en la PR que `clean` pase a ser `clean_v1`. Eso cambia la entrega: la regenera y la
+  valida Ismael.
+- **Si falla (a):** la regla no quita la mayoría de los saltos, que serían sobre todo saltos que se quedan
+  o excursiones. `clean_v1` no pasa a la entrega en esta PR. Una regla para esos saltos sería una variante
+  nueva, con su propia entrada antes de medir.
+- **Si falla (b):** la limpieza toca mucho más de lo que promete. No pasa a la entrega y se revisa por qué.
+- **No deciden:** las clases de los pares, los pasos 2 y 3 y el equipo más cercano, que son descriptivos.
+- **Lo que espero, sin mucha seguridad** [inferencia]: que se cumplan las dos. Con el balón del ATD
+  suavizado unos 25 frames, un pico de un solo frame debería verse amortiguado, así que una parte de los
+  216 pares podrían ser saltos que se quedan, que la regla no quita. Por eso (a) no está garantizada.
+- **Después de ver los números no se retoca ningún umbral.**
+
+Resultado: pendiente. Antonio ejecuta el recuento.
+
+Decisión y por qué: pendiente.
