@@ -12,6 +12,9 @@ def load_ball(atd_raw_path, n_frames, pitch):
 
     El frame_id del ATD empieza en 1 y el frame de vídeo en 0 (DATA.md). `speed` es la columna tal cual
     viene: no se comporta como m/s del balón (validation/resultados/2026-11-12_balon_muerto_atd.md).
+
+    Un balón ausente puede venir como `NaN,NaN,NaN` o como un solo `NaN`; las dos formas quedan como NaN,
+    igual que en starter/baseline.py, que solo mira el primer carácter del grupo.
     """
     length, width = pitch
     x = np.full(n_frames, np.nan)
@@ -25,8 +28,11 @@ def load_ball(atd_raw_path, n_frames, pitch):
             frame = int(parts[0]) - 1
             if not 0 <= frame < n_frames:
                 continue
-            # float("NaN") ya da nan, así que un balón ausente queda como NaN sin caso especial.
+            # float("NaN") ya da nan, así que "NaN,NaN,NaN" queda como NaN sin caso especial; el caso
+            # especial es el balón escrito como un solo "NaN", que se deja en el NaN ya reservado.
             values = parts[2].split(VALUE_SEP)
+            if len(values) < 2:
+                continue
             x[frame] = float(values[0]) * length
             y[frame] = float(values[1]) * width
             if len(values) > 2:
@@ -61,6 +67,8 @@ def load_players(atd_raw_path, n_frames, pitch):
                     len(groups), x.shape[1]))
             for slot, group in enumerate(groups):
                 values = group.split(VALUE_SEP)
+                if len(values) < 2:
+                    continue  # un solo "NaN": slot vacío
                 x[frame, slot] = float(values[0]) * length
                 y[frame, slot] = float(values[1]) * width
     return x, y
