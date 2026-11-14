@@ -485,6 +485,11 @@ Decisión y por qué (la regla de lectura, fijada antes de medir):
   y se decide con Ismael si la pieza entra como estado, junto a las fronteras de Manuel.
 - **Sin verificar:** que se traslade al ATD. Depende del agregado 4 del partido (velocidad media de
   los jugadores), que ejecuta Manuel.
+- **Aclaración, añadida antes de medir con los 7 partidos:** el script de medida se probó con los dos
+  partidos que ya estaban bajados, solo para ver que funcionaba. Ahí se vio que la regla de arriba no
+  dice qué hacer si el orden no es transitivo (E3 gana a E1, pero E3 empata con E2 y E2 con E1). Se
+  lee así: **entra el candidato más simple al que ningún otro gana.** Los números de esa prueba no se
+  usan para nada más.
 
 Descartado (antes de medir):
 - **Usar el balón en esta pieza,** por lo dicho arriba.
