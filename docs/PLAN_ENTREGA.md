@@ -70,6 +70,11 @@ posteriores al reinicio.
 etiqueta por frame: 0 `H`, 1 `A`, 2 `D` y 3 `X` fuera de los tramos evaluados. La histéresis, las
 duraciones mínimas y la poda van aquí, no en las piezas de evidencia.
 
+**Para comparar variantes de una pieza** (14/11): escríbela como otra función de tu módulo, con la misma
+firma. El harness la usa en lugar de la de siempre con `pipeline.run(..., pieces=...)`, que se rellena
+desde el fichero de `--versiones` (README del harness). La entrega usa siempre las funciones de
+`pipeline.PIECES`: `ball.clean`, `candidates.evidence`, `dead_state.evidence` y `temporal.decode`.
+
 **Lo que da error a propósito,** para que no pase en silencio: una puntuación con `NaN` o infinito en un
 frame evaluado, una pieza que no devuelve arrays de forma (n, 3), un parámetro del decodificador mal
 escrito, y dos piezas que se contradicen en lo que prohíben. Todas las piezas, también `dead_ball`,

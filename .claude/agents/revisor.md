@@ -106,9 +106,11 @@ Los datos del partido no pasan por Claude.
   - toca ficheros de otra pieza, o cambia `possession/tracking.py` o `possession/pipeline.py` sin
     anunciarlo en la sección 2 del plan. Dueños: `temporal.py`, David; `dead_ball.py`, Manuel;
     `dead_state.py`, Ana; `candidates.py` y `ball.py`, Antonio; el resto, Ismael;
-  - sube cambios de `validation/harness/`. El harness es el árbitro de todos y lo cambia Ismael;
+  - sube cambios de `validation/harness/`, salvo su propio fichero de versiones en
+    `validation/harness/versiones/`. El harness es el árbitro de todos y lo cambia Ismael;
   - no trae `python validation/scripts/prueba_pipeline.py` en verde, la tabla del harness con el control
-    al lado, o los candidatos escritos en `docs/decisiones.md` antes de medir;
+    al lado y el fichero de versiones con el que se midió, o los candidatos escritos en
+    `docs/decisiones.md` antes de medir;
   - deja un valor por defecto que no se ha ajustado y no lo marca como «sin ajustar»;
   - usa en el pipeline algo más que numpy y pandas, o un modelo entrenado cuyos coeficientes no están
     escritos en el módulo o cuyo script de entrenamiento no está en `validation/` con semilla fija.
