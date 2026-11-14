@@ -35,6 +35,11 @@ que faltan, los scripts y los resultados. El porqué está en
 | `experimento2/calibrar_dfl.py` | calibra ese instrumento en la DFL degradada para parecerse al ATD (`--tabla` da las tablas de la bitácora) | DFL |
 | `experimento2/pruebas_sinteticas.py` | prueba el instrumento y el lector de `recuento_ventana.py` con datos inventados | GT pública y datos sintéticos |
 | `scripts/revision_balon_muerto/` | pruebas de la revisión del detector de `D` (13/11): coste de cada error de `D`, `io.py` con un ATD sintético, jugadores solos en la DFL; su `README.md` dice cómo repetirlas | GT pública, GT sintética, DFL |
+| `perfil_atd/perfil.py` | biblioteca: el perfil del balón y de los jugadores de un `Tracking` (huecos, dónde se pierde, suavizado, proximidad, detecciones falsas, jugadores, `SET PIECES`), el mismo para el ATD y para la DFL. Agregados y regla de lectura en `perfil_atd/BITACORA.md` | ninguno: lo decide quien la llama |
+| `perfil_atd/perfil_dfl.py` | el perfil en los 7 partidos de la DFL con la degradación del harness parametrizada: la medida en seco (`--seco`), las condiciones de hoy (`--harness`) o una condición (`--condicion`) | DFL |
+| `perfil_atd/leer_atd.py` | la regla de lectura de la bitácora como código: lee la salida del perfil del ATD, mide la DFL y dice qué degradación sale y qué puede decidir el harness; con `--ensayo`, un partido de la DFL hace de ATD | salida pegada del ATD (agregados) y DFL |
+| `partido/perfil_atd.py` | **lee el partido** (ATD y Smart Tagging): el perfil del balón del ATD en todos los frames evaluados, con las dos partes juntas y las celdas de menos de 5 casos suprimidas. Lo ejecuta una persona | **datos del partido: solo una persona** |
+| `scripts/prueba_perfil_atd.py` | prueba el perfil con trackings inventados de resultado conocido, la supresión de celdas, que no abre ficheros y que el script del partido no imprime valores al fallar | ninguno del partido |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
 
@@ -44,6 +49,8 @@ python validation/scripts/sensibilidad_metrica.py
 python validation/scripts/descargar_datos_abiertos.py dfl --solo-ligeros
 python validation/scripts/comprobar_balon_muerto.py
 python validation/scripts/revision_balon_muerto/coste_errores_D.py
+python validation/scripts/prueba_perfil_atd.py
+python validation/perfil_atd/perfil_dfl.py --seco
 ```
 
 ## Reglas
