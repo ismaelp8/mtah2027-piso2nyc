@@ -730,7 +730,8 @@ la sección 7.4, la ley de huecos del ATD, con sus dos partes medidas:
 - **bloques de 5 a 15 s** (longitud uniforme) para completar `OBJETIVO`, en vez de los de 1 s de media.
 
 **La regla no cambia.** `leer_atd.py --forma atd` recorre los mismos `DISPUTAS` y `OBJETIVO` con las mismas
-R0 a R7'. Sin `--forma`, la lectura es la de antes, byte a byte.
+R0 a R7'. Sin `--forma`, la lectura es la de antes: comprobado después (14/11), sale idéntica desde R0, y
+solo añade una línea de cabecera con la forma.
 
 **Qué entra en el harness, según lo que salga** (punto 4 de la sección 8):
 
