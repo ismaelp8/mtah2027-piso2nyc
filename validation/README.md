@@ -28,6 +28,7 @@ que faltan, los scripts y los resultados. El porqué está en
 | `apuesta_b/entrenar.py` | apuesta B: entrena la evidencia de equipo aprendida (`possession/aprendida.py`) en los 7 partidos de la DFL, un pliegue por partido, y escribe sus coeficientes en el módulo | DFL |
 | `apuesta_b/escala.py` | apuesta B, descriptivo: cuánto pesa la evidencia de equipo por frame (N1 frente a la aprendida) en juego con balón, sin balón y en los `D` | DFL |
 | `apuesta_b/jugadores.py` | apuesta B con los jugadores degradados como el ATD (suavizado y tres variantes de ausencias), calibrado con el perfil del ATD; medida de sensibilidad que no cambia el harness | DFL y los agregados ya publicados del perfil del ATD |
+| `apuesta_b/d_propio.py` | apuesta B, descriptivo: con la pieza de `D` de `main` dentro y sin oráculo, cuántas paradas reales ve cada versión (N1, B1, B2) | DFL |
 | `apuesta_b/comprobar_camino_nuevo.py` | comprobación del instrumento: N1 por el camino nuevo del harness («aprendida.…» con «dejar_fuera») da lo mismo que `{}` | DFL |
 | `scripts/prueba_aprendida.py` | prueba la evidencia aprendida con el partido inventado: interfaz, determinismo, simetría, orden de los slots y los 16 juegos de coeficientes | ninguno |
 | `scripts/prueba_pipeline.py` | prueba el esqueleto del pipeline (`possession/`) con un partido inventado: interfaz de las piezas, cambiar una pieza por otra función, tramos evaluados, tramo antes del saque, decodificador contra la búsqueda exhaustiva, determinismo, CSV y lector del ATD | ninguno del partido |
