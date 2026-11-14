@@ -262,7 +262,12 @@ def check_pieces(rng):
         seen.append(len(t.bx))
         return t._replace(bx=np.full_like(t.bx, np.nan), by=np.full_like(t.by, np.nan))
 
-    out = pipeline.run(trk, pieces={"ball": no_ball})
+    # Cada comprobación cambia una pieza y deja callada la de `D` de estado: así prueba solo lo que dice,
+    # opine lo que opine `dead_state.evidence` (con un modelo, el partido inventado puede salir todo `D`).
+    def silent(t):
+        return tracking.no_evidence(len(t.bx))
+
+    out = pipeline.run(trk, pieces={"ball": no_ball, "dead_state": silent})
     check("la limpieza cambiada se usa, y las demás piezas reciben su tracking",
           seen == [len(trk.bx)] and bool(np.all(out[block] == H)))
 
@@ -271,7 +276,7 @@ def check_pieces(rng):
         score[:, A] = 1.0
         return score, allowed
 
-    out = pipeline.run(trk, pieces={"candidates": always_a})
+    out = pipeline.run(trk, pieces={"candidates": always_a, "dead_state": silent})
     check("la evidencia de equipo cambiada se usa", bool(np.all(out[block] == A)) and bool(np.all(out[:50] == X)))
     out = pipeline.run(trk, pieces={"temporal": lambda score, allowed, blocks, params: np.full(len(score), D)})
     check("el decodificador cambiado se usa", bool(np.all(out == D)))
