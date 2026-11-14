@@ -3,7 +3,9 @@
 `clean` es la que usa el pipeline: hoy, la versión 0, que devuelve el balón tal cual. Pasa a ser `clean_v1`
 con el recuento del partido (validation/partido/limpieza_balon.py), y no por ganar en el harness: en la DFL
 no hay saltos falsos que quitar, así que el harness no los ve. Ahí solo tiene que no empeorar frente a
-main. La limpieza entra fija, sin competir (docs/PLAN_ENTREGA.md §3 y §8; docs/decisiones.md, 14/11).
+main. La limpieza entra fija, sin competir (docs/PLAN_ENTREGA.md §3 y §8; docs/decisiones.md, 14/11). El
+recuento salió como se esperaba; para hacer el cambio falta reentrenar la evidencia B5, que se entrenó con
+`clean` tal cual (validation/apuesta_b/entrenar.py, la pieza de Ismael).
 
 `clean_v1` (docs/investigacion_metodos.md §2.1, A1 + A2) es una sola versión, sin variantes. Los pasos 1 y 2
 se calculan los dos sobre el balón de entrada y se quitan juntos; después va el 3:

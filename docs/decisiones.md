@@ -1365,6 +1365,54 @@ Cómo se lee el recuento (fijado antes de ejecutarlo):
   216 pares podrían ser saltos que se quedan, que la regla no quita. Por eso (a) no está garantizada.
 - **Después de ver los números no se retoca ningún umbral.**
 
-Resultado: pendiente. Antonio ejecuta el recuento.
+Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado):
 
-Decisión y por qué: pendiente.
+- **Harness** (código b0625fa, antes de ejecutar el recuento): la limpieza corregida da ±0,000 frente a
+  `main` (B5 sin limpieza) en las cuatro combinaciones que votan. **No empeora.** [medido]
+- **Recuento en el partido** (`python validation/partido/limpieza_balon.py`; lo ejecutó Antonio en local,
+  4 s; solo agregados): [medido]
+
+  | qué | cuánto |
+  |---|---|
+  | controles: frames evaluados, con balón, pares a más de 40 m/s | 158.857, 94.214 y 216: cuadran |
+  | paso 1: puntos quitados | 201 |
+  | pares por clase (pares / tramos): pico | 0 / 0 |
+  | excursión | 95 / 6 |
+  | salto que se queda | 121 / 9 |
+  | paso 2: puntos quitados | 0 |
+  | paso 3: huecos cortos tras los pasos 1 y 2, rellenos y frames | 22, < 5 y 14 |
+  | frames que cambian | 215 (0,23 % de los frames evaluados con balón) |
+  | saltos imposibles entre puntos con balón seguidos | 227 antes y 26 después |
+  | pares a más de 40 m/s después | 0 |
+
+- **Con la regla fijada antes, sale como se esperaba:** los controles cuadran, (a) los saltos bajan de 227
+  a 26 y (b) cambia el 0,23 % de los frames. [medido]
+- **Lo que dicen las clases, y por qué (a) no significa lo que se esperaba:** [inferencia, cuadra exacto
+  con los recuentos]
+  - **Los 216 pares no son picos.** Son 15 tramos largos de pares seguidos, de unos 14 pares de media: 6
+    tramos que forman 3 excursiones de menos de 1 s y 9 saltos que se quedan. Parece un salto grande del
+    balón (más de 40 m) suavizado en unos 25 frames.
+  - **El paso 1 quita el interior de los 15 tramos:** 201 = 216 − 15 puntos, los del tránsito a más de
+    40 m/s.
+  - **Los 15 saltos siguen ahí,** entre los dos extremos de cada tramo: 26 = 15 + los 11 saltos a través de
+    un hueco que ya había antes. El balón sigue apareciendo en el sitio equivocado al final de cada salto
+    que se queda y durante cada excursión.
+  - **(a) baja tanto porque antes cada tramo contaba unas 14 veces y después cuenta una.** Al escribir la
+    regla supuse que los saltos serían cortos. Se apunta y el veredicto no cambia: la regla estaba fijada
+    antes y no se retoca.
+  - Los 215 frames con otro equipo como el más cercano son casi todos frames que se quedan sin balón: esa
+    línea no informa.
+- **El paso 2 no hace nada en el partido** (0 puntos), como decía el perfil (menos de 5 rachas cortas). El
+  paso 3 rellena 14 frames y deja sin rellenar los huecos de los 15 tramos, porque el salto que los cruza
+  es imposible. Es lo que pide la regla. [medido]
+
+Decisión y por qué:
+- **Con la regla, se propone que `clean` pase a ser `clean_v1`.** No empeora en el harness, y en el partido
+  quita los 201 frames de tránsito imposible tocando el 0,23 % de los frames con balón.
+- **No se hace en esta PR.** B5 se entrenó con `ball.clean` tal cual, y `validation/scripts/prueba_aprendida.py`
+  lo comprueba. Cambiar `clean` obliga a reentrenarla con `validation/apuesta_b/entrenar.py`, que escribe
+  en `possession/aprendida.py`, la pieza de Ismael. Lo decide y lo hace él.
+- **Lo que no arregla, para que Ismael lo sepa al decidir:** los 15 saltos grandes (3 excursiones y 9
+  saltos que se quedan) siguen. Una regla para ellos sería una variante nueva, con su propia entrada antes
+  de medir. Afecta a muy pocos frames del partido, así que solo merece la pena si sobra tiempo antes del
+  corte. [inferencia]
