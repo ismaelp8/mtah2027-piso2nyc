@@ -21,6 +21,9 @@ Lo que hace es lo que se fijó antes de medir (docs/decisiones.md, 14/11, «apue
   convenciones, sobre los partidos de entrenamiento del pliegue, con el decodificador de `main` y el `D`
   oráculo, igual que el harness. Si empatan, la más pequeña.
 - **Pliegues:** uno por partido, entrenado y escalado sin él, y el de los 7, que es el de la entrega.
+- **B3 y B4** (15/11): los pesos de B2 de cada pliegue, sin reentrenar. Su α se elige de
+  `ALFAS_D_PROPIO` igual que la de B2, pero con la pieza de `D` de `main` (`dead_state.evidence`) dentro y
+  sin oráculo.
 
 Además enseña, como descripción, el acierto por frame de cada pliegue en el partido que dejó fuera, frente
 a N1 (el jugador más cercano). No decide nada: decide el harness.
@@ -41,7 +44,7 @@ sys.path.insert(0, os.path.join(ROOT, "validation", "harness"))
 sys.path.insert(0, ROOT)
 import dfl  # noqa: E402
 import puntuar  # noqa: E402
-from possession import aprendida, candidates, temporal  # noqa: E402
+from possession import aprendida, candidates, dead_state, temporal  # noqa: E402
 
 H, A = puntuar.H, puntuar.A
 # Fijados antes de medir y sin ajustar (docs/decisiones.md, 14/11): `PASO`, la condición y `ALFAS` en la
@@ -51,6 +54,10 @@ PASO = 5
 LAMBDA = 1.0
 ITERACIONES = 25
 ALFAS = (1 / 16, 1 / 8, 1 / 4, 1 / 2, 1.0, 2.0)
+# B3 y B4 (docs/decisiones.md, 15/11, antes de medir): los pesos de B2 y α elegida con la pieza de `D` de
+# `main` dentro, sin oráculo, en esta rejilla.
+ALFAS_D_PROPIO = (1 / 8, 1 / 4, 1 / 2, 1.0, 2.0, 4.0, 8.0)
+CON_PESOS_DE_B2 = ("b3", "b4")
 CIFRAS = 6
 MODULO = os.path.join(ROOT, "possession", "aprendida.py")
 INICIO, FIN = "# >>> COEFICIENTES", "# <<< COEFICIENTES"
@@ -64,7 +71,8 @@ def preparar(partido):
     for condicion in dfl.VOTAN:
         trk = dfl.tracking_de(cargado, condicion)
         condiciones[condicion] = {"rasgos": aprendida.rasgos(trk, "b2"), "blocks": trk.blocks,
-                                  "visible": ~np.isnan(trk.bx), "n1": candidates.nearest_team(trk)}
+                                  "visible": aprendida.balon_visible(trk), "n1": candidates.nearest_team(trk),
+                                  "estado_d": dead_state.evidence(trk)[0][:, puntuar.D]}
         if partido == dfl.PARTIDOS[0] and condicion == CONDICION_ENTRENAMIENTO:
             # B1 son las primeras columnas de B2: se comprueba una vez con el código del módulo.
             b1 = aprendida.rasgos(trk, "b1")
@@ -110,6 +118,30 @@ def elegir_alfa(datos, partidos, pesos, k):
                     recuentos[(c, convencion)].append(puntuar.contar(datos[p]["gt"][convencion], pred))
         medias.append(float(np.mean([puntuar.spell_f1(*puntuar.juntar(r)) for r in recuentos.values()])))
     return ALFAS[int(np.argmax(medias))], medias
+
+
+def elegir_alfa_d_propio(datos, partidos, pesos, conjunto):
+    """α de ALFAS_D_PROPIO con más spellF1 medio en `partidos`, con la pieza de `D` de `main` dentro.
+
+    Es lo que hace `pipeline.run` sin oráculo: la evidencia del conjunto más la de `dead_state`, todo
+    permitido (ninguna de las dos prohíbe nada), y el decodificador de `main`.
+    """
+    k = len(aprendida.NOMBRES[conjunto])
+    logits = {(p, c): aprendida.logit(datos[p]["condiciones"][c]["rasgos"][:, :k], pesos)
+              for p in partidos for c in dfl.VOTAN}
+    medias = []
+    for alfa in ALFAS_D_PROPIO:
+        recuentos = collections.defaultdict(list)
+        for p in partidos:
+            for c in dfl.VOTAN:
+                cond = datos[p]["condiciones"][c]
+                score, permitido = aprendida.puntuacion_de(conjunto, logits[(p, c)], cond["visible"], alfa)
+                score[:, puntuar.D] += cond["estado_d"]
+                pred = temporal.decode(score, permitido, cond["blocks"])
+                for convencion in dfl.CONVENCIONES:
+                    recuentos[(c, convencion)].append(puntuar.contar(datos[p]["gt"][convencion], pred))
+        medias.append(float(np.mean([puntuar.spell_f1(*puntuar.juntar(r)) for r in recuentos.values()])))
+    return ALFAS_D_PROPIO[int(np.argmax(medias))], medias
 
 
 def acierto_fuera(dato, pesos, k):
@@ -179,6 +211,23 @@ def main():
     for conjunto in aprendida.CONJUNTOS:
         k = len(aprendida.NOMBRES[conjunto])
         modelos[conjunto] = collections.OrderedDict()
+        if conjunto in CON_PESOS_DE_B2:
+            print()
+            print("### {} (los pesos de B2; α con la pieza de `D` de main dentro, sin oráculo)".format(
+                conjunto.upper()))
+            print()
+            print("| pliegue | α | spellF1 medio en entrenamiento por α ({}) |".format(
+                ", ".join("{:g}".format(a) for a in ALFAS_D_PROPIO)))
+            print("|---|---|---|")
+            for clave in ["todos"] + list(dfl.PARTIDOS):
+                entrena = [p for p in dfl.PARTIDOS if p != clave]
+                pesos = modelos["b2"][clave][1]
+                alfa, medias = elegir_alfa_d_propio(datos, entrena, pesos, conjunto)
+                modelos[conjunto][clave] = (alfa, pesos)
+                print("| {} | {:g} | {} |".format("los 7" if clave == "todos" else "sin " + clave, alfa,
+                                                  " / ".join("{:.3f}".format(m).replace(".", ",") for m in medias)))
+                print("  hecho {} {} en {:.0f} s".format(conjunto, clave, time.time() - inicio), file=sys.stderr)
+            continue
         print()
         print("### {} ({} rasgos)".format(conjunto.upper(), k))
         print()

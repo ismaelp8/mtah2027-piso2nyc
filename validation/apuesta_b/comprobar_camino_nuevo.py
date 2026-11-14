@@ -7,6 +7,9 @@ El camino nuevo es una función de otro módulo («aprendida.…») con «dejar_
 ser idénticas a las de `{}`, y la pieza tiene que recibir los 7 partidos de la DFL al puntuar. Se ejecutó
 el 14/11 antes de medir la apuesta B.
 
+Desde el 15/11 comprueba también que B4 con la α de B2 y el `D` oráculo da las mismas etiquetas que B2:
+solo cambia cuánto pesa cada equipo frente a `D`, y con el oráculo eso no cambia ninguna etiqueta.
+
 Datos abiertos de la DFL: lo puede ejecutar cualquiera, Claude incluido. Solo imprime agregados. Tarda un
 minuto.
 """
@@ -16,6 +19,8 @@ import os
 import shutil
 import sys
 import tempfile
+
+import numpy as np
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(AQUI))
@@ -56,8 +61,33 @@ def main():
     todos = sorted(set(recibidos)) == sorted(dfl.PARTIDOS)
     print("la pieza recibió los {} partidos al puntuar: {} ({} llamadas)".format(
         len(dfl.PARTIDOS), "sí" if todos else "no", len(recibidos)))
-    if iguales != len(celdas) or not todos:
+    b4_igual = comprobar_b4()
+    if iguales != len(celdas) or not todos or not b4_igual:
         sys.exit(1)
+
+
+def comprobar_b4():
+    """B4 (15/11) con la α de B2 y el `D` oráculo da las mismas etiquetas que B2 en los 7 partidos."""
+    def b4_con_alfa_de_b2(trk, fuera=None):
+        juego = aprendida.coeficientes("b2", fuera)
+        z = aprendida.logit(aprendida.rasgos(trk, "b2"), juego["pesos"])
+        return aprendida.puntuacion_de("b4", z, aprendida.balon_visible(trk), juego["alfa"])
+
+    iguales, total = 0, 0
+    for partido in dfl.PARTIDOS:
+        cargado = dfl.cargar(partido)
+        for condicion in dfl.VOTAN:
+            trk = puntuar.solo_lectura(dfl.tracking_de(cargado, condicion))
+            extra = [puntuar.d_oraculo(cargado["gt"]["flag"])]
+            b2 = puntuar.pipeline.run(trk, extra=extra, pieces={
+                "candidates": lambda t, p=partido: aprendida.evidence_b2(t, fuera=p)})
+            b4 = puntuar.pipeline.run(trk, extra=extra, pieces={
+                "candidates": lambda t, p=partido: b4_con_alfa_de_b2(t, fuera=p)})
+            iguales += int(np.array_equal(b2, b4))
+            total += 1
+    print("B4 con la α de B2 y el D oráculo da las mismas etiquetas que B2: {} de {} (partido × condición)".format(
+        iguales, total))
+    return iguales == total
 
 
 if __name__ == "__main__":

@@ -9,8 +9,11 @@ Con el partido inventado del harness (`puntuar.partido_de_prueba`) comprueba:
 - el determinismo: dos ejecuciones dan lo mismo;
 - la simetría: cambiar los equipos intercambia `H` y `A` exactamente;
 - que no depende del orden de los slots: una permutación fija da la misma puntuación tras redondear;
-- los coeficientes: los 16 juegos (B1 y B2; los 7 partidos y un pliegue sin cada partido), con tantos
-  pesos como rasgos, y el bloque del módulo es el que escribe `validation/apuesta_b/entrenar.py`.
+- los coeficientes: los 32 juegos (B1 a B4; los 7 partidos y un pliegue sin cada partido), con tantos
+  pesos como rasgos, y el bloque del módulo es el que escribe `validation/apuesta_b/entrenar.py`;
+- B3 y B4 (15/11): con la misma α, B3 con el balón a la vista en todos los frames es B2, B3 no opina sin
+  balón, B4 da la misma diferencia `H` − `A` que B2 y su ganador nunca supera a `D`; B3 y B4 llevan los
+  pesos de B2.
 
 No usa datos del partido ni de la DFL. Sale con código 1 si falla alguna comprobación. Claude puede
 ejecutarlo.
@@ -44,7 +47,8 @@ def main():
     fuera_de_tramos = np.ones(len(trk.bx), bool)
     for inicio, fin in trk.blocks:
         fuera_de_tramos[inicio:fin] = False
-    for nombre, funcion in (("B1", aprendida.evidence_b1), ("B2", aprendida.evidence_b2)):
+    for nombre, funcion in (("B1", aprendida.evidence_b1), ("B2", aprendida.evidence_b2),
+                            ("B3", aprendida.evidence_b3), ("B4", aprendida.evidence_b4)):
         print(nombre)
         score, allowed = funcion(trk)
         comprobar("arrays (n, 3), puntuación finita y todo permitido",
@@ -52,7 +56,7 @@ def main():
                   and np.isfinite(score).all() and allowed.all())
         comprobar("la columna D a cero y cero fuera de los tramos",
                   (score[:, tracking.D] == 0).all() and (score[fuera_de_tramos] == 0).all())
-        comprobar("opina en los tramos", bool((score[~fuera_de_tramos, :2] > 0).any()))
+        comprobar("opina en los tramos", bool((score[~fuera_de_tramos, :2] != 0).any()))
         otra, _ = funcion(trk)
         comprobar("dos ejecuciones dan lo mismo", np.array_equal(score, otra))
         cambiado, _ = funcion(trk._replace(team=(1 - trk.team).astype(np.int8)))
@@ -66,6 +70,24 @@ def main():
         for partido in dfl.PARTIDOS:
             if not np.isfinite(funcion(trk, fuera=partido)[0]).all():
                 comprobar("el pliegue sin {} da una puntuación finita".format(partido), False)
+    print("B3 y B4 frente a B2, con la misma α")
+    juego = aprendida.coeficientes("b2")
+    z = aprendida.logit(aprendida.rasgos(trk, "b2"), juego["pesos"])
+    visible = aprendida.balon_visible(trk)
+    b2, _ = aprendida.puntuacion_de("b2", z, visible, juego["alfa"])
+    b3_todo, _ = aprendida.puntuacion_de("b3", z, np.ones(len(z), bool), juego["alfa"])
+    b3, _ = aprendida.puntuacion_de("b3", z, visible, juego["alfa"])
+    b4, _ = aprendida.puntuacion_de("b4", z, visible, juego["alfa"])
+    comprobar("B3 con el balón a la vista en todos los frames es B2", np.array_equal(b3_todo, b2))
+    comprobar("B3 no opina donde no se ve el balón y es B2 donde se ve",
+              (b3[~visible] == 0).all() and np.array_equal(b3[visible], b2[visible]) and (~visible).any())
+    comprobar("B4 da la misma diferencia H − A que B2",
+              np.array_equal(b4[:, tracking.H] - b4[:, tracking.A], b2[:, tracking.H] - b2[:, tracking.A]))
+    comprobar("el ganador de B4 nunca supera a D (margen cero)",
+              (np.max(b4[:, :2], axis=1) == b4[:, tracking.D]).all() and (b4[:, tracking.D] == 0).all())
+    comprobar("B3 y B4 llevan los pesos de B2 en todos los pliegues",
+              all(aprendida.COEFICIENTES[c][k]["pesos"] == aprendida.COEFICIENTES["b2"][k]["pesos"]
+                  for c in ("b3", "b4") for k in aprendida.COEFICIENTES["b2"]))
     print("Coeficientes")
     claves = {"todos"} | set(dfl.PARTIDOS)
     for conjunto in aprendida.CONJUNTOS:

@@ -1,6 +1,7 @@
 """Apuesta B frente al `D` de la pieza de estado: cuántas paradas se pierden con B2 y con N1. Descriptivo.
 
     python validation/apuesta_b/d_propio.py
+    python validation/apuesta_b/d_propio.py --versiones validation/harness/versiones/apuesta_b_paradas.json
 
 Con el `D` oráculo del harness, lo que la pieza de equipo puntúa en las paradas no cambia nada. Aquí cada
 versión pone su `D` con las piezas de `main` (`dead_state.evidence`, el modelo E2 de Ana, que puntúa hasta
@@ -12,9 +13,14 @@ una parada y le deja el sitio a la pieza de `D`. En el ATD el balón puede verse
 N1 también empujaría contra el `D`. B2 opina con los jugadores, haya balón o no. La comparación favorece a
 N1.
 
+Además, una segunda tabla, también descriptiva, con el balón de la DFL **a la vista en los `D`** (el
+limpio, congelado) en vez de tapado. Es el caso que el tapado esconde: en el ATD el balón se ve en el 68 %
+de los frames de las ventanas `SET PIECES`. Su límite es que el balón de la DFL está quieto en las paradas.
+
 Datos abiertos de la DFL: lo puede ejecutar cualquiera, Claude incluido. Solo imprime agregados.
 """
 
+import argparse
 import collections
 import os
 import sys
@@ -43,16 +49,30 @@ def paradas(gt, blocks):
     return salida
 
 
-def main():
-    versiones = puntuar.leer_versiones(VERSIONES)[0]
-    nombres = [n for n, v in versiones.items() if v["tipo"] == "pipeline"]
+def con_balon_en_d(cargado, condicion):
+    """Como `dfl.tracking_de`, pero con el balón limpio (congelado) a la vista en los `D` y sus bordes."""
+    partes = {}
+    for k in (1, 2):
+        limpia = cargado["partes"][k]
+        parte = dfl.degradar_parte(limpia, condicion, np.random.default_rng([dfl.SEMILLA, cargado["indice"], k]))
+        parado = np.asarray(limpia["estado"]) != 1
+        borde = np.convolve(parado.astype(int), np.ones(2 * dfl.BORDE + 1, dtype=int), mode="same") > 0
+        for eje in ("x", "y"):
+            valores = np.array(parte[eje], dtype=float)
+            valores[borde] = np.asarray(limpia[eje], dtype=float)[borde]
+            parte[eje] = valores
+        partes[k] = parte
+    return dfl.a_tracking(partes, cargado["campo"], np.random.default_rng([dfl.SEMILLA, cargado["indice"], 99]))
+
+
+def medir(versiones, nombres, hacer_tracking):
     acumulado = collections.defaultdict(lambda: np.zeros(5, dtype=np.int64))
     recuentos = collections.defaultdict(list)
     for partido in dfl.PARTIDOS:
         cargado = dfl.cargar(partido)
         gt = cargado["gt"]
         for condicion in dfl.VOTAN:
-            trk = puntuar.solo_lectura(dfl.tracking_de(cargado, condicion))
+            trk = puntuar.solo_lectura(hacer_tracking(cargado, condicion))
             evaluado = np.zeros(len(trk.bx), bool)
             for a, b in trk.blocks:
                 evaluado[a:b] = True
@@ -66,9 +86,10 @@ def main():
                 for convencion in dfl.CONVENCIONES:
                     recuentos[(nombre, condicion, convencion)].append(puntuar.contar(gt[convencion], pred))
         print("hecho {}".format(partido), file=sys.stderr)
-    print("Con el `D` de las piezas de main (dead_state E2), sin oráculo. DFL, 7 partidos juntos. Descriptivo: "
-          "la DFL tapa el balón en los `D`, y eso favorece a N1.")
-    print()
+    return acumulado, recuentos
+
+
+def tabla(nombres, acumulado, recuentos):
     print("| balón | versión | frames `D` reales vistos como `D` | de lo que dice `D`, es `D` | paradas vistas "
           "(≥ mitad de sus frames) | spellF1 flag / control |")
     print("|---|---|---|---|---|---|")
@@ -79,6 +100,28 @@ def main():
             print("| {} | {} | {:.1f} % | {:.1f} % | {} de {} ({:.1f} %) | {:.3f} / {:.3f} |".format(
                 condicion, nombre, 100.0 * bien / max(reales, 1), 100.0 * bien / max(dichos, 1), vistas, n,
                 100.0 * vistas / max(n, 1), f1[0], f1[1]).replace(".", ","))
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Cuántas paradas ve cada versión con la pieza de D de main.")
+    parser.add_argument("--versiones", default=VERSIONES, help="fichero de versiones del harness")
+    args = parser.parse_args()
+    versiones = puntuar.leer_versiones(args.versiones)[0]
+    nombres = [n for n, v in versiones.items() if v["tipo"] == "pipeline"]
+    print("versiones: {}".format(os.path.relpath(args.versiones, ROOT)))
+    print()
+    print("### El balón tapado en los `D`, como en el harness")
+    print()
+    print("Con el `D` de las piezas de main (dead_state E2), sin oráculo. DFL, 7 partidos juntos. Descriptivo: "
+          "la DFL tapa el balón en los `D`, y eso favorece a N1.")
+    print()
+    tabla(nombres, *medir(versiones, nombres, dfl.tracking_de))
+    print()
+    print("### El balón a la vista en los `D` (descriptivo, no es criterio)")
+    print()
+    print("El balón limpio de la DFL, congelado, en los `D` y sus bordes. Lo demás, igual.")
+    print()
+    tabla(nombres, *medir(versiones, nombres, con_balon_en_d))
 
 
 if __name__ == "__main__":
