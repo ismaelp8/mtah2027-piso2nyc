@@ -815,3 +815,63 @@ Decisión y por qué:
 
 Descartado:
 - **E1,** porque E3 le gana, y **E3,** porque no gana a E2 y es más complejo.
+
+### 2026-11-15 · candidatos · apuesta B: B2 que no pesa en las paradas (candidatos, antes de medir)
+
+Quién: Ismael aprobó probarlo («Sí, pruébalo»), con estas condiciones para entrar. Claude escribe los
+candidatos y mide.
+
+Por qué: con la pieza de `D` de `main` dentro (E2 de Ana), B2 tal cual solo ve el 31,6 % de las paradas y
+pierde contra `main` (entrada del 14/11 y `validation/resultados/2026-11-14_apuesta_b.md` §4). B2 empuja de
+media 4,2 por frame hacia un equipo en las paradas, y gana a los ±8 de Ana.
+
+Lo común: el mismo logit que B2 (mismos rasgos y mismos pesos de cada pliegue, sin reentrenar). La
+columna `D` sigue a cero.
+- **Escala α:** se elige en cada pliegue con sus partidos de entrenamiento, **con la pieza de `D` de
+  `main` dentro y sin oráculo**, y con el decodificador de `main`.
+  - Criterio: más `spellF1` medio en las dos condiciones que votan y con las dos convenciones.
+  - Rejilla: 1/8, 1/4, 1/2, 1, 2, 4 y 8, más ancha que la de B2, que salió en el borde.
+  - Si empatan, la más pequeña.
+
+Candidatos:
+- **B3, B2 con puerta de balón** (el que se le explicó a Ismael): puntúa como B2 en los frames en que se ve
+  el balón, y cero en los demás. La puerta es la de N1: el balón visible en ese frame, sin ventana. Una
+  ventana de ±12 frames dejaría unos 7 frames ruidosos en cada borde de cada parada.
+  - **Cuánto baja la voz sin balón: a cero, fijado.** Con el `D` propio de la DFL, «sin balón» es casi
+    «`D`», así que cualquier ajuste se elegiría por ese artefacto.
+  - Lo que cuesta: B2 pierde su evidencia en los huecos de juego, que era el 84,7 % de acierto sin balón.
+- **B4, B2 que castiga al perdedor** (añadido; no es lo que se le explicó a Ismael): cero para el equipo
+  que da el modelo, −α·|z| para el otro y cero para `D`.
+  - La diferencia `H` − `A` es la de B2, así que con el `D` oráculo y la α de B2 da las mismas etiquetas.
+  - El margen del ganador sobre `D` es siempre cero: el `D` lo decide solo la pieza de Ana.
+  - Riesgo: sin el +1 que da N1 al ganador, puede decir `D` de más.
+
+Criterios para entrar, fijados antes de medir:
+1. **En el harness, con el `D` oráculo:** gana al control y a `main` con §5.8, en las condiciones que votan
+   y con las dos convenciones.
+2. **Con `validation/apuesta_b/d_propio.py`** (pieza de `D` de `main`, balón tapado en los `D` como en el
+   harness), en las dos condiciones que votan:
+   - ve al menos tantas paradas como `main` (87,8 % en las dos);
+   - la precisión de su `D` no queda más de 2 puntos por debajo de la de `main` (93,8 % y 94,7 %), para que
+     no gane diciendo `D` de más;
+   - su `spellF1` con el `D` propio no queda por debajo del de `main` en las cuatro celdas (0,366 / 0,505 y
+     0,394 / 0,536).
+
+   Se lee con su límite de siempre: el tapado del balón en los `D` favorece a lo que solo opina con balón.
+
+Si cumplen los dos, entra el más simple (B3). Si no cumple ninguno el lunes 16 a las 14:00, la apuesta B se
+abandona.
+
+Descriptivo, no es criterio: una segunda tabla de `d_propio.py` con el balón de la DFL a la vista en los
+`D` (congelado). Es el caso que el tapado esconde: en el ATD, el balón se ve en el 68 % de los frames de
+las ventanas `SET PIECES`.
+
+Comprobaciones del instrumento:
+- B4 con la α de B2 y el `D` oráculo da las mismas etiquetas que B2;
+- B3 con la puerta abierta y la α de B2 es B2;
+- tras entrenar, los coeficientes de `b1` y `b2` no cambian: el diff solo añade.
+
+La terquedad en los robos (los eventos) no se resuelve aquí: la ajustará David con los costes, encima de la
+evidencia que entre.
+
+Resultado: pendiente.

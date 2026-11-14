@@ -1,0 +1,13 @@
+{
+  "main: N1 y coste 25": {
+    "nota": "lo que hay en main: sin params ni piezas"
+  },
+  "B3: B2 con puerta de balón": {
+    "nota": "B2 solo donde se ve el balón en ese frame y cero en el resto; α elegida con la pieza de D de main dentro (docs/decisiones.md, 15/11)",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b3", "dejar_fuera": true}}
+  },
+  "B4: B2 que castiga al perdedor": {
+    "nota": "la diferencia H − A de B2, puesta como −α·|z| al equipo que pierde; el ganador y D a cero; α elegida con la pieza de D de main dentro",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b4", "dejar_fuera": true}}
+  }
+}
