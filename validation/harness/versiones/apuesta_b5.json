@@ -1,0 +1,9 @@
+{
+  "main: N1 y coste 25": {
+    "nota": "lo que hay en main: sin params ni piezas"
+  },
+  "B5: B4 más el +1 de N1": {
+    "nota": "la diferencia H − A de B2 (−α·|z| al que pierde) más el +1 de N1 donde se ve el balón; α elegida con la pieza de D de main dentro (docs/decisiones.md, 15/11)",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b5", "dejar_fuera": true}}
+  }
+}

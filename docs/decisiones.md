@@ -962,3 +962,49 @@ margen de 1 de N1 donde se ve el balón. Corte: lunes 16 a las 14:00.
 
 Descartado: B3 y B4 tal cual.
 
+
+### 2026-11-15 · candidatos · apuesta B: B5, B4 más el +1 de N1 (candidato, antes de medir)
+
+Quién: Ismael aprobó probarlo con un tercer criterio («Sí, prueba B5»). Claude lo escribe y lo mide.
+
+Por qué: en B3 y B4, la ventaja en `H` frente a `A` aguanta, y lo difícil es el margen del ganador sobre `D`
+(entrada anterior):
+- B3 lo daba con el balón y se comía las paradas en las que se ve el balón;
+- en B4 era cero y sobraba `D`;
+- N1 da un margen de 1 donde se ve el balón, y su `D` sale bien.
+
+**B5:** la puntuación de B4 más la de N1.
+- **B4:** los pesos de B2 y −α·|z| al equipo que no da el modelo.
+- **N1:** +1 al equipo del jugador más cercano donde se ve el balón, con
+  `candidates.nearest_team`, que es lo que hace `candidates.evidence` hoy. Se escribe aparte para que B5 no
+  cambie si cambia `candidates.evidence`.
+- **Frente a `H` y `A`:** decide la diferencia de B2 más la de N1.
+- **Frente a `D`:** empuja como `main`, con 1 donde se ve el balón y 0 donde no.
+- **α:** se elige en cada pliegue igual que en B3 y B4, con la pieza de `D` de `main` dentro y sin oráculo,
+  con la rejilla 1/8 a 8. Si empatan, la más pequeña.
+
+Criterios para entrar, los tres, fijados antes de medir:
+1. **En el harness, con el `D` oráculo:** gana al control y a `main` con §5.8, en las condiciones que votan
+   y con las dos convenciones.
+2. **Con `validation/apuesta_b/d_propio.py`, con el balón tapado en los `D` como en el harness,** en las dos
+   condiciones que votan, como en B3 y B4:
+   - al menos tantas paradas vistas como `main` (626 de 713);
+   - una precisión del `D` a 2 puntos o menos de la de `main` (93,8 % y 94,7 %);
+   - un `spellF1` con el `D` propio no por debajo del de `main` en las cuatro celdas (0,366 / 0,505 y
+     0,394 / 0,536).
+3. **Con `d_propio.py` y el balón de la DFL a la vista en los `D`** (congelado; lo que pasa en el ATD con
+   los balones parados), en las dos condiciones que votan: las paradas vistas no pueden quedar más de 1
+   punto por debajo de las de `main` (537 de 713, el 75,3 %), es decir, al menos 530 de 713.
+   - **Por qué ese margen:** un punto son 7 paradas. Es la mitad del ruido de una proporción de 713
+     (±1,6 puntos) y deja fuera lo que le pasó a B3 (6,9 %).
+   - **Va con margen y el criterio 2 no:** el 2 se fijó estricto y así se mantiene.
+
+Si cumple los tres, B5 es el candidato de la apuesta B para entrar, y la decisión de cambiar
+`pipeline.PIECES` es de Ismael. Si no, la apuesta B se abandona el lunes 16 a las 14:00.
+
+Comprobaciones del instrumento:
+- B5 menos B4 es exactamente la puntuación de N1;
+- con el `D` oráculo, la diferencia `H` − `A` de B5 es la de B2 más la de N1;
+- los coeficientes de B1 a B4 no cambian al reentrenar.
+
+Resultado: pendiente.
