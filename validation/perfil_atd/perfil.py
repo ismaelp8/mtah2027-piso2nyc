@@ -52,12 +52,11 @@ PRM = {
     # Cortes de las tres severidades (regla R1): tienen que ser cortes de `cortes_s`.
     "severidades": (("baja", 2.0), ("media", 5.0), ("alta", 15.0)),
     "cortes_salto_m": (3.0, 15.0),  # < 3 m, 3–15 m, ≥ 15 m
+    # 2 y 3b. Huecos cortos y largos (bitácora §7.7: con unos 150 huecos en el partido, más intervalos
+    # dejarían celdas de menos de 5 casos que se pueden deducir de los totales).
+    "hueco_corto_s": 5.0,
     # 3. Dónde se pierde.
     "radio_disputa": ins.PRM["radio_disputa"],  # 3 m: un jugador de cada equipo a esta distancia o menos
-    "radio_densidad": 5.0,
-    "cortes_densidad": (2, 4),  # 0–1, 2–3, 4 o más jugadores a 5 m
-    "margen_linea": 5.0,
-    "hueco_corto_s": 5.0,
     "semilla_placebo": 20261114,
     # Balón parado: el diagnóstico del 12/11, con radio 2 m.
     "parado_radio": 2.0,
@@ -92,8 +91,6 @@ PRM = {
 
 INTERVALOS = ("≤ 0,5 s", "0,5–2 s", "2–5 s", "5–15 s", "> 15 s")
 DISTANCIAS = ("< 3 m", "3–15 m", "≥ 15 m")
-DENSIDADES = ("0–1 jugadores a 5 m", "2–3 jugadores a 5 m", "4 o más jugadores a 5 m")
-ZONAS = ("a 5 m o menos de una línea, o fuera del campo", "tercio central", "tercios de fondo")
 IDENTICAS = ("< 1 s", "1–5 s", "5–30 s", "30 s o más")
 VARIANTES = ("todo", "sin_parado")
 
@@ -199,7 +196,6 @@ def medidas(trk, set_pieces=None, jugadores=True, prm=PRM):
     team = np.asarray(trk.team).astype(int)
     if team.shape != (px.shape[1],):
         raise ValueError("el tracking tiene {} slots y {} equipos".format(px.shape[1], team.size))
-    largo, ancho = (float(v) for v in trk.pitch)
     visible = np.isfinite(bx) & np.isfinite(by)
     # El balón se analiza del primer al último frame con balón de cada tramo. Los huecos de los bordes
     # están cortados y no se sabe cuánto duran; además, contarlos diría si el ATD ve el balón en el primer
@@ -239,10 +235,12 @@ def medidas(trk, set_pieces=None, jugadores=True, prm=PRM):
     m["rachas_n"] = np.bincount(clase_r, minlength=5)
     m["rachas_frames"] = np.bincount(clase_r, weights=largo_r, minlength=5).astype(np.int64)
 
-    # 2. Salto del balón a través de cada hueco, entre el último frame con balón y el primero después.
+    # 2. Salto del balón a través de cada hueco, entre el último frame con balón y el primero después, en
+    # huecos de hasta 5 s y de más.
     salto = np.hypot(bx[h_fin] - bx[h_ini - 1], by[h_fin] - by[h_ini - 1])
-    tabla = np.zeros((5, 3), dtype=np.int64)
-    np.add.at(tabla, (clase_h, np.searchsorted(np.asarray(prm["cortes_salto_m"]), salto, side="right")), 1)
+    largo_salto = (largo_h > prm["hueco_corto_s"] * fps).astype(int)
+    tabla = np.zeros((2, 3), dtype=np.int64)
+    np.add.at(tabla, (largo_salto, np.searchsorted(np.asarray(prm["cortes_salto_m"]), salto, side="right")), 1)
     m["salto"] = tabla
 
     # 3a, 4 y 5, con los dos denominadores.
@@ -255,7 +253,7 @@ def medidas(trk, set_pieces=None, jugadores=True, prm=PRM):
     del equipos, xs, ys
 
     # 3b, 6, 7 y 8.
-    m["perdidas"] = _perdidas(bx, by, px, py, visible, disputa, h_ini, largo_h, (largo, ancho), fps, prm)
+    m["perdidas"] = _perdidas(visible, disputa, h_ini, largo_h, fps, prm)
     m["detecciones"] = _detecciones(bx, by, visible, largo_r, fps, prm)
     if jugadores:
         m["jugadores"] = _jugadores(px, py, team, evaluado, fps, prm)
@@ -315,25 +313,14 @@ def _medir_balon(x, y, equipos, activo, fps, prm):
     return r, disputa
 
 
-def _perdidas(bx, by, px, py, visible, disputa, h_ini, largo_h, pitch, fps, prm):
-    """3b: frames con balón y pérdidas (inicios de hueco) según lo que había en el último frame visto.
+def _perdidas(visible, disputa, h_ini, largo_h, fps, prm):
+    """3b: frames con balón y pérdidas (inicios de hueco), según si el último frame visto era una disputa.
 
     Todos los huecos tienen balón en el frame anterior: el análisis del balón empieza en el primer frame
-    con balón de cada tramo.
+    con balón de cada tramo. Sin densidad ni zona (bitácora §7.7).
     """
-    largo, ancho = pitch
-    n = len(bx)
+    n = len(visible)
     vidx = np.flatnonzero(visible)
-    with np.errstate(invalid="ignore"):
-        cerca = np.sum(np.hypot(px[vidx] - bx[vidx, None], py[vidx] - by[vidx, None]) <= prm["radio_densidad"],
-                       axis=1)
-    densidad = np.searchsorted(np.asarray(prm["cortes_densidad"]), cerca, side="right")
-    x, y = bx[vidx], by[vidx]
-    junto_a_linea = np.minimum(np.minimum(x, largo - x), np.minimum(y, ancho - y)) <= prm["margen_linea"]
-    central = (x >= largo / 3.0) & (x <= 2.0 * largo / 3.0)
-    zona = np.where(junto_a_linea, 0, np.where(central, 1, 2))
-    estrato = np.full(n, -1, dtype=np.int64)
-    estrato[vidx] = densidad * 3 + zona
     en_disputa = disputa.astype(np.int64)
     grupo = np.full(n, -1, dtype=np.int64)
     grupo[vidx] = (np.random.default_rng(prm["semilla_placebo"]).random(vidx.size) < 0.5).astype(np.int64)
@@ -341,13 +328,11 @@ def _perdidas(bx, by, px, py, visible, disputa, h_ini, largo_h, pitch, fps, prm)
     # Una pérdida es el inicio de un hueco; el último frame visto es el anterior.
     ultimo = h_ini - 1
     corto = largo_h <= prm["hueco_corto_s"] * fps
-    r = {"frames_estrato": np.bincount(estrato[vidx], minlength=9),
-         "frames_disputa": np.bincount(en_disputa[vidx], minlength=2),
+    r = {"frames_disputa": np.bincount(en_disputa[vidx], minlength=2),
          "frames_placebo": np.bincount(grupo[vidx], minlength=2),
          "placebo_cortos": np.bincount(grupo[ultimo[corto]], minlength=2)}
     for nombre, sel in (("cortos", corto), ("largos", ~corto)):
-        r[nombre] = {"estrato": np.bincount(estrato[ultimo[sel]], minlength=9),
-                     "disputa": np.bincount(en_disputa[ultimo[sel]], minlength=2)}
+        r[nombre] = {"disputa": np.bincount(en_disputa[ultimo[sel]], minlength=2)}
     return r
 
 
@@ -521,13 +506,8 @@ def _bloque_perdidas(p, prm, c):
     salida = {}
     for clave, nombre in (("cortos", "huecos de hasta " + corte), ("largos", "huecos de más de " + corte)):
         q = p[clave]
-        bloque = {"fuera de disputa": celda(int(q["disputa"][0]), int(p["frames_disputa"][0])),
-                  "en disputa": celda(int(q["disputa"][1]), int(p["frames_disputa"][1]))}
-        for i, densidad in enumerate(DENSIDADES):
-            for j, zona in enumerate(ZONAS):
-                bloque["{} · {}".format(densidad, zona)] = celda(int(q["estrato"][3 * i + j]),
-                                                                 int(p["frames_estrato"][3 * i + j]))
-        salida[nombre] = bloque
+        salida[nombre] = {"fuera de disputa": celda(int(q["disputa"][0]), int(p["frames_disputa"][0])),
+                          "en disputa": celda(int(q["disputa"][1]), int(p["frames_disputa"][1]))}
     salida["placebo: dos mitades al azar, huecos de hasta " + corte] = {
         "mitad A": celda(int(p["placebo_cortos"][0]), int(p["frames_placebo"][0])),
         "mitad B": celda(int(p["placebo_cortos"][1]), int(p["frames_placebo"][1]))}
@@ -584,9 +564,11 @@ def resumir(parciales, minimo_celda=0, prm=PRM):
         "s_pct": {"todo": s_todo, "sin_parado": s_sp},
         "reparto_de_los_huecos_pct": {"sin_parado": reparto_sp},
     }
+    corte = "{:g} s".format(prm["hueco_corto_s"])
     salida["2_salto_tras_hueco"] = {
         "distancias": list(DISTANCIAS),
-        "huecos_n": {INTERVALOS[i]: [c.caso(n) for n in m["salto"][i]] for i in range(5)}}
+        "huecos_n": {nombre: [c.caso(n) for n in m["salto"][i]]
+                     for i, nombre in enumerate(("huecos de hasta " + corte, "huecos de más de " + corte))}}
 
     bloques = {v: _bloque_balon(m[v], fps, prm, c) for v in VARIANTES}
     salida["3a_disputas"] = {v: bloques[v]["3a"] for v in VARIANTES}

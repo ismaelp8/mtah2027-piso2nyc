@@ -38,6 +38,8 @@ SEVERIDADES = tuple(nombre for nombre, _ in pf.PRM["severidades"])
 DECIDEN = ("baja", "media")  # §7.6: la severidad alta mezcla en la DFL paradas cortas tapadas; se apunta y no decide
 BASE = {"objetivo": 0.2, "disputas": 0.5, "media_bloque": 25, "suavizado": 1}
 CASOS_MAX_SUPRIMIDOS = 4  # una celda "< 5" tiene como mucho 4 casos
+TOLERANCIA_R2 = 10.0  # puntos
+ERRORES_TIPICOS_R2 = 2.5  # §7.7: con pocos huecos, la tolerancia de R2 crece con el ruido del ATD
 
 
 def num(v, d=2):
@@ -111,13 +113,34 @@ def s_del_atd(salida, nombre, segundos):
 
 
 def reparto_del_atd(salida, nombre, segundos):
-    """{intervalo: (valor, cota)} del reparto de una severidad del ATD. Una celda suprimida vale como mucho
-    4 huecos entre los que sí salen más esos 4."""
+    """({intervalo: (valor, cota)}, huecos impresos) del reparto de una severidad del ATD. Una celda
+    suprimida vale como mucho 4 huecos entre los que sí salen más esos 4. Los huecos impresos (sin contar
+    los de las celdas suprimidas) son el tamaño de muestra con que se mide el ruido del reparto."""
     reparto = salida["1_huecos_y_rachas"]["reparto_de_los_huecos_pct"]["sin_parado"][pf.etiqueta_severidad(nombre, segundos)]
     huecos = salida["1_huecos_y_rachas"]["sin_parado"]["huecos_n"][:len(reparto)]
     impresos = sum(n for n in huecos if not suprimida(n))
     cota = 100.0 * CASOS_MAX_SUPRIMIDOS / (impresos + CASOS_MAX_SUPRIMIDOS)
-    return collections.OrderedDict((k, (None, cota) if suprimida(v) else (v, v)) for k, v in reparto.items())
+    celdas = collections.OrderedDict((k, (None, cota) if suprimida(v) else (v, v)) for k, v in reparto.items())
+    return celdas, impresos
+
+
+def r2_cuadra(valor, cota, dfl, huecos):
+    """(¿cuadra?, tolerancia) de una celda del reparto (§7.7).
+
+    - La tolerancia es la mayor de ±10 puntos y 2,5 errores típicos del reparto del ATD, √(p·(1 − p)/n),
+      con p la proporción de la DFL y n los huecos impresos del ATD en esa severidad. Con muchos huecos es
+      ±10, como en la sección 5; con pocos, crece, porque el reparto del ATD es ruido.
+    - Una celda del ATD suprimida cuadra si la DFL no pasa de su cota más la tolerancia.
+    - Si la DFL no tiene ningún hueco en la severidad (su reparto sale vacío), cuadra solo si el ATD tampoco
+      tiene 5 o más.
+    """
+    if dfl is None:
+        return huecos == 0, None
+    p = dfl / 100.0
+    tolerancia = max(TOLERANCIA_R2, ERRORES_TIPICOS_R2 * 100.0 * math.sqrt(p * (1.0 - p) / huecos)) if huecos else 100.0
+    if valor is None:
+        return dfl <= cota + tolerancia, tolerancia
+    return abs(dfl - valor) <= tolerancia, tolerancia
 
 
 def tasas_suprimidas(salida_atd, atd):
@@ -163,13 +186,14 @@ def leer(salida_atd, dfl, ensayo=False):
             # Cuadra si queda a ±5 puntos del ATD; con el ATD suprimido, del intervalo [0, cota].
             r1 = s is not None and (abs(s - s_atd) <= 5.0 if s_atd is not None else s <= cota + 5.0)
             repartos = []
-            for intervalo, (valor, cota_r) in reparto_del_atd(salida_atd, sev, segundos).items():
+            celdas, huecos = reparto_del_atd(salida_atd, sev, segundos)
+            for intervalo, (valor, cota_r) in celdas.items():
                 dfl_r = res["juntos"]["reparto_{} {}".format(sev, intervalo)]
-                ok = dfl_r is not None and (abs(dfl_r - valor) <= 10.0 if valor is not None else dfl_r <= cota_r + 10.0)
-                repartos.append((intervalo, valor, cota_r, dfl_r, ok))
+                ok, tolerancia = r2_cuadra(valor, cota_r, dfl_r, huecos)
+                repartos.append((intervalo, valor, cota_r, dfl_r, ok, tolerancia))
             fila["severidades"][sev] = {
                 "objetivo": objetivo, "como": como, "suelo": ys[0], "s_atd": s_atd, "cota": cota, "s_dfl": s,
-                "r1": r1, "repartos": repartos, "r2": all(ok for *_, ok in repartos), "decide": sev in DECIDEN}
+                "r1": r1, "repartos": repartos, "r2": all(r[4] for r in repartos), "decide": sev in DECIDEN}
         media = dfl.medir(dict(BASE, objetivo=fila["severidades"]["media"]["objetivo"], disputas=d))
         lo, hi = rango(media, "disputa_pct")
         margen = (hi - lo) / 2.0 if lo is not None else None  # el ATD es otro partido: el rango se ensancha
@@ -256,13 +280,16 @@ def imprimir(informe):
                 sino(f["r3"]) if sev == "media" else "", sino(f["queda"]) if sev == "media" else ""))
     quedan = informe["quedan"]
     out += ["", "Quedan: {}.".format(", ".join("{:g}".format(d) for d in quedan) if quedan else "ninguno")]
-    out += ["", "**Reparto de los huecos (R2)**, ATD frente a DFL, con el `OBJETIVO` de cada severidad:", "",
-            "| `DISPUTAS` | severidad | intervalo | ATD | DFL | ¿cuadra? |", "|---|---|---|---|---|---|"]
+    out += ["", "**Reparto de los huecos (R2)**, ATD frente a DFL, con el `OBJETIVO` de cada severidad y la "
+            "tolerancia de cada celda (§7.7):", "",
+            "| `DISPUTAS` | severidad | intervalo | ATD | DFL | tolerancia (puntos) | ¿cuadra? |",
+            "|---|---|---|---|---|---|---|"]
     for d, f in informe["R1_R2_R3"].items():
         for sev, s in f["severidades"].items():
-            for intervalo, valor, cota, dfl_r, ok in s["repartos"]:
+            for intervalo, valor, cota, dfl_r, ok, tolerancia in s["repartos"]:
                 atd_txt = num(valor) if valor is not None else "[≤ {}]".format(num(cota))
-                out.append("| {:g} | {} | {} | {} | {} | {} |".format(d, sev, intervalo, atd_txt, num(dfl_r), sino(ok)))
+                out.append("| {:g} | {} | {} | {} | {} | {} | {} |".format(
+                    d, sev, intervalo, atd_txt, num(dfl_r), num(tolerancia, 1), sino(ok)))
     r4 = informe["R4"]
     out += ["", "### R4'. Suavizado (con `DISPUTAS` {:g} y `OBJETIVO` {})".format(r4["disputas"], num(r4["objetivo"], 3)), "",
             "ATD: {} toques/min, {} controles/min, {} cm de temblor (descriptivo).".format(

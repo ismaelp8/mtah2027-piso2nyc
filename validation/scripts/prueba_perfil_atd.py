@@ -122,15 +122,14 @@ def comprobar_huecos():
           and cerca(rep["2–5 s"], 25.0), str(rep))
 
     x, y = camino(np.arange(2000))
-    tabla = np.zeros((5, 3), int)
+    tabla = np.zeros((2, 3), int)
     for a, b in HUECOS:
         if a in (100, 1300) or b in (1100, 1900):
             continue
-        clase = int(np.searchsorted(np.array(pf.PRM["cortes_s"]) * 25, b - a, side="left"))
         d = float(np.hypot(x[b] - x[a - 1], y[b] - y[a - 1]))
-        tabla[clase, 0 if d < 3 else 1 if d < 15 else 2] += 1
-    obtenida = np.array([s["2_salto_tras_hueco"]["huecos_n"][i] for i in pf.INTERVALOS])
-    check("salto tras el hueco: solo huecos con balón a los dos lados del mismo tramo",
+        tabla[0 if b - a <= 125 else 1, 0 if d < 3 else 1 if d < 15 else 2] += 1
+    obtenida = np.array([s["2_salto_tras_hueco"]["huecos_n"][k] for k in ("huecos de hasta 5 s", "huecos de más de 5 s")])
+    check("salto tras el hueco: hasta 5 s y más, sin los huecos de los bordes",
           np.array_equal(obtenida, tabla) and obtenida.sum() == 6, str(obtenida.tolist()))
 
     otra = pf.perfil(caso_huecos(fuera="basura"))
@@ -254,7 +253,7 @@ def comprobar_instrumento():
 # -- 3b: pérdidas por estrato --------------------------------------------------------------------------
 
 def comprobar_perdidas():
-    print("3b. Pérdidas por 1.000 frames con balón, por estrato")
+    print("3b. Pérdidas por 1.000 frames con balón, dentro y fuera de disputa")
     n = 1000
     t = np.arange(n)
     bx, by = 50.0 + 5.0 * np.sin(t / 30.0), 34.0 + 5.0 * np.cos(t / 30.0)  # tercio central, lejos de las líneas
@@ -267,11 +266,6 @@ def comprobar_perdidas():
     check("frames con balón fuera y dentro de disputa", p["frames_disputa"].tolist() == [335, 360])
     check("pérdidas de huecos de hasta 5 s: 2 fuera y 1 en disputa", p["cortos"]["disputa"].tolist() == [2, 1])
     check("pérdidas de huecos de más de 5 s: 1 y 1", p["largos"]["disputa"].tolist() == [1, 1])
-    esperado = np.zeros(9, int)
-    esperado[1], esperado[4] = 335, 360  # 0–1 y 2–3 jugadores a 5 m, tercio central
-    check("frames por densidad y zona", p["frames_estrato"].tolist() == esperado.tolist(), str(p["frames_estrato"]))
-    check("pérdidas por densidad y zona", p["cortos"]["estrato"][1] == 2 and p["cortos"]["estrato"][4] == 1
-          and p["largos"]["estrato"][1] == 1 and p["largos"]["estrato"][4] == 1)
     check("el placebo reparte todos los frames y las pérdidas cortas",
           int(p["frames_placebo"].sum()) == 695 and int(p["placebo_cortos"].sum()) == 3)
     celda = pf.resumir(m)["3b_perdidas_por_1000_frames_con_balon"]["huecos de hasta 5 s"]["en disputa"]
@@ -421,8 +415,16 @@ def comprobar_lectura():
     con_balon = s["0_control"]["balon_parado"]["frames_con_balon_fuera_de_ellos"]
     check("una s(T) suprimida es una cota: 4 huecos de T segundos", valor is None
           and cerca(cota, 100.0 * 200 / (con_balon + 200)), "{:.2f}".format(cota))
-    reparto = la.reparto_del_atd(s, "media", 5.0)
-    check("un reparto suprimido es una cota", all(v is None and c > 0 for v, c in reparto.values()), str(reparto))
+    celdas, impresos = la.reparto_del_atd(s, "media", 5.0)
+    check("un reparto suprimido es una cota", impresos == 0 and all(v is None and c > 0 for v, c in celdas.values()),
+          str(celdas))
+    check("R2, vacío contra vacío: sin huecos en la DFL cuadra solo si el ATD no tiene 5 o más",
+          la.r2_cuadra(None, 100.0, None, 0)[0] and not la.r2_cuadra(40.0, 40.0, None, 30)[0])
+    ok_pocos, tol_pocos = la.r2_cuadra(56.0, 56.0, 41.0, 66)
+    ok_muchos, tol_muchos = la.r2_cuadra(56.0, 56.0, 41.0, 2000)
+    check("R2 con pocos huecos: la tolerancia crece con el ruido del ATD (66 huecos frente a 2.000)",
+          ok_pocos and not ok_muchos and tol_pocos > 15.0 and tol_muchos == 10.0,
+          "{:.1f} y {:.1f} puntos".format(tol_pocos, tol_muchos))
     check("la interpolación de OBJETIVO respeta el suelo y la rejilla",
           la.interpolar((0, 0.1, 0.2), (5.0, 5.0, 15.0), 3.0) == (0, "por debajo del suelo")
           and cerca(la.interpolar((0, 0.1, 0.2), (5.0, 5.0, 15.0), 10.0)[0], 0.15)

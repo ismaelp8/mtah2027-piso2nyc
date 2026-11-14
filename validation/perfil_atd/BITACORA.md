@@ -316,7 +316,7 @@ antes de ver el ATD: `validation/perfil_atd/leer_atd.py`, que lee la salida del 
     huecos de `T` segundos: `OBJETIVO` es el más bajo, y cuadra si la DFL no pasa de esa cota más 5
     puntos. En R2, un intervalo suprimido vale como mucho 4 huecos entre los que sí salen más esos 4.
 - **R2,** como en la sección 5, con el `OBJETIVO` de R1' de cada severidad. El reparto es por número de
-  huecos.
+  huecos. Con pocos huecos en el ATD, la tolerancia crece con su ruido (R2', sección 7.7).
 - **R3'. El % de disputas acota `DISPUTAS`; no lo ajusta.**
   - Cabe si queda dentro del rango por partido de la DFL, con el `OBJETIVO` de la severidad media,
     ensanchado a cada lado con la mitad de su anchura.
@@ -395,6 +395,10 @@ partidos y otros parámetros. [medido]
 - **R5 cuadra en los 4,** también en las severidades baja y alta, que se apuntan. [medido]
 - **Lo que el ensayo no puede ver:** el falso ATD es la DFL, que tapa todo el `D`. Si el ATD pierde el balón
   de otra manera (por ejemplo, en huecos largos con el juego vivo), el ensayo no lo cubre. [inferencia]
+- **Un fallo que habría pasado con el ATD,** arreglado antes de medir: con suavizado 51, el falso ATD tiene
+  menos de 5 toques en todo el partido. La tasa sale suprimida («< 5») y la regla se rompía. Ahora un
+  recuento suprimido con 10 minutos con balón o más cuenta como el suelo de R4 (0,5 por minuto), porque
+  es menos que eso.
 
 ### 7.6 Cambios tras la revisión del código (14/11, antes de medir)
 
@@ -449,16 +453,70 @@ esto:
     - También el tramo antes del saque de la 2ª parte: 2.934 frames, el 1,85 % de los evaluados.
     - Está acotado y cae dentro de las tolerancias. [inferencia]
 
-Lo demás salió limpio. [medido, revisión]
+**Lo demás** [medido, revisión]:
 
 - **Reimplementación independiente:** en Python puro, coincide número a número en 36 casos principales,
   6 extremos y 200 al azar, salvo las dos etiquetas de los puntos 9 y 10.
 - **Paridad:** la degradación parametrizada reproduce las tres condiciones del harness en los 7 partidos.
 - **Escala real:** con un tracking inventado de la forma del ATD (199.319 × 46), el perfil tarda 3,4 s y el
   script entero, 7 s, con unos 540 MB de pico y sin avisos.
-- **Regla nº 1:** ningún número es un valor por frame. El script no escribe nada, solo lee los tres
-  ficheros, y al fallar no imprime valores.
-- **Un fallo que habría pasado con el ATD,** arreglado antes de medir: con suavizado 51, el falso ATD tiene
-  menos de 5 toques en todo el partido. La tasa sale suprimida («< 5») y la regla se rompía. Ahora un
-  recuento suprimido con 10 minutos con balón o más cuenta como el suelo de R4 (0,5 por minuto), porque
-  es menos que eso.
+- **Regla nº 1:** fuera de los bordes del punto 1, ningún número es un valor por frame. El script no escribe
+  nada, solo lee los tres ficheros y, al fallar, no imprime valores.
+
+**El arreglo de los bordes, comprobado contra el código arreglado:** se repite el ataque del revisor con 200
+trackings al azar y los 16 estados posibles de los bordes. Lo que se deduce de la salida (bordes sin balón,
+tramos que empiezan sin balón, huecos sin salto) es siempre lo mismo. [medido] El verificador de la regla
+nº 1 lo confirma con su propio atacante: con el código arreglado, la cuenta de bordes sin balón sale
+siempre 0 en 60 sorteos. [medido, revisión]
+
+**Lo que la revisión deja aceptado, a falta del sí de Ismael** (punto 2):
+
+- las celdas «< 5» que se deducen de los totales: un intervalo de huecos (por el reparto y `s(T)`), una
+  fila de rachas y una del salto;
+- el verificador las rebaja de «bloqueantes» a importantes o menores: son recuentos exactos pequeños del
+  partido entero, sin frame ni instante. [medido, revisión]
+
+### 7.7 Pocos huecos: menos celdas pequeñas y la regla ensayada así (14/11, antes de medir)
+
+**Cuántos huecos tendrá el ATD.** Con las cifras del 12/11, el balón del ATD tiene unas 149 rachas en los
+frames evaluados: 94.214 frames con balón menos 94.065 pares de frames seguidos. Son, por tanto, unos 150
+huecos en todo el partido. [medido, es una cuenta] Los ensayos de la sección 7.5 tenían cientos o miles de
+huecos cortos.
+
+**Menos celdas pequeñas.** Con unos 150 huecos, el agregado 2 (5 duraciones × 3 distancias) y el 3b (18
+estratos) tendrían muchas celdas de menos de 5 casos, y algunas se podrían deducir de los totales. Los dos
+son descriptivos, y el 3b no informa con la degradación de hoy (sección 7.3). Se dejan más gruesos:
+
+- **2:** huecos de hasta 5 s y de más, por las 3 distancias;
+- **3b:** solo dentro o fuera de disputa, sin densidad ni zona.
+
+**La regla con pocos huecos.** Ensayo con J03WR9 haciendo de ATD, sin parte dirigida y con `objetivo` 0 y
+0,02: unos 0 y 60 huecos de hasta 2 s. Con la regla de la sección 7.4 no queda ningún `DISPUTAS`, ni
+siquiera el verdadero (0). [medido] Hay dos causas:
+
+- **Vacío contra vacío:** con `objetivo` 0, la DFL no tiene huecos de hasta 2 s y su reparto sale vacío.
+  R2 lo contaba como «no cuadra».
+- **Ruido:** con 0,02, el reparto del falso ATD se separa del de la DFL hasta 15 puntos solo por azar. Con
+  unos 60 huecos, un error típico de la proporción es de unos 6 puntos. [inferencia]
+
+**Cambio (R2'):**
+
+- La tolerancia de cada celda es la mayor de ±10 puntos y 2,5 errores típicos del reparto del ATD,
+  √(p·(1 − p)/n). Aquí p es la proporción de la DFL y n, los huecos impresos del ATD en esa severidad.
+- Con 157 huecos o más es ±10, como antes. Los cuatro ensayos de la sección 7.5 tienen 204 o más en las
+  severidades que deciden, así que no cambian. [medido]
+- Si la DFL no tiene ningún hueco en una severidad, cuadra solo si el ATD tampoco tiene 5 o más.
+
+**Resultado con R2'** [medido]:
+
+| partido que hace de ATD | plantado: `objetivo` · `disputas` · suavizado | `DISPUTAS` que quedan | suavizado elegido |
+|---|---|---|---|
+| J03WR9 | 0 · 0 · 25 | 0 | 25 |
+| J03WR9 | 0,02 · 0 · 25 | 0 | 25 |
+| J03WPY | 0,02 · 0 · 25 | 0 | 25 |
+
+- **Queda solo el `DISPUTAS` verdadero** en los tres.
+- **Con pocos huecos, R1' apenas separa:** una `s` de pocos puntos queda a ±5 del suelo de casi todo. Lo que
+  separa es R2: la parte dirigida deja otro reparto de duraciones que los bloques al azar. [inferencia]
+- **Límite:** sigue sin ensayarse un ATD que pierda el balón en huecos largos con el juego vivo, que la
+  degradación de la DFL no sabe producir (sección 7.5).
