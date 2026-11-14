@@ -723,7 +723,45 @@ Cambios antes de volver a medir (14/11 por la noche, escritos antes de la segund
     frames. [medido, por Ismael] **En el partido, el paso 1 es el único que puede hacer algo.** En la DFL
     no hay saltos que quitar, así que el harness no lo puede ver. [inferencia]
 
-Decisión y por qué: pendiente de la segunda medida.
+Segunda medida (14/11 por la noche, harness «como el ATD»; la que decide):
+
+- **Comando:**
+  `python validation/harness/puntuar.py --versiones validation/harness/versiones/evidencia_equipo_2026-11-14.json`
+  (huella fe8bc4f406cf, código 41b1431). 7 partidos, `D` oráculo, bootstrap de 1.000 remuestreos.
+- **Con qué se mide:** 3.061 posesiones con el `flag` y 1.736 con `control`. El balón es visible en el
+  87,3 % de los frames de juego «como el ATD» y en el 98,7 % «como el ATD, sin bloques». [medido]
+- **Frente a `main`** (N1, sin limpieza): diferencia de `spellF1`, intervalo del 5 al 95 % y en cuántos
+  partidos gana, en las dos condiciones que votan. [medido]
+
+  | etiquetas | balón | `main` | limpieza v1 | N2 | Ret |
+  |---|---|---|---|---|---|
+  | flag | como el ATD | 0,428 | +0,000 [+0,000 a +0,001], 1 de 7 | −0,095 [−0,107 a −0,083], 0 de 7 | −0,082 [−0,095 a −0,070], 0 de 7 |
+  | flag | como el ATD, sin bloques | 0,456 | +0,000 [+0,000 a +0,001], 1 de 7 | −0,105 [−0,117 a −0,092], 0 de 7 | −0,088 [−0,100 a −0,076], 0 de 7 |
+  | control | como el ATD | 0,580 | +0,001 [+0,000 a +0,002], 1 de 7 | −0,017 [−0,035 a −0,000], 3 de 7 | +0,006 [−0,011 a +0,024], 5 de 7 |
+  | control | como el ATD, sin bloques | 0,602 | +0,001 [+0,000 a +0,002], 1 de 7 | −0,014 [−0,033 a +0,004], 2 de 7 | +0,016 [−0,001 a +0,033], 5 de 7 |
+
+- **Frente al control** (baseline, voto de ±50), en las condiciones que votan: `main` y la limpieza v1
+  ganan por +0,022 con el `flag` (7 de 7 y 6 de 7) y por +0,108 a +0,117 con `control`. N2 y Ret pierden
+  con el `flag` (de −0,060 a −0,083, 0 de 7) y ganan con `control` (de +0,094 a +0,125). [medido]
+- **Ninguna de las tres gana a `main`** con la regla de §5.8. [medido]
+  - N2 y Ret pierden con el `flag` en las dos condiciones y en los 7 partidos. Con `control` empatan.
+  - La limpieza v1 empata en todo: no cambia ni una posesión predicha (1.782 y 1.920, igual que `main`).
+- **Las dos condiciones sin voto** dan lo mismo que la primera medida: N2 y Ret pierden con el `flag`, y la
+  limpieza mueve menos de 0,003. [medido]
+
+Decisión y por qué:
+- **Se queda N1** (`METHOD = "N1"`). N2 y Ret pierden frente a `main` con el `flag`, en las dos medidas,
+  en todas las condiciones y en los 7 partidos. Con la regla, que exige las dos convenciones, no hay más
+  que discutir. Además, para entrar tendrían que ganar también a la apuesta B (B2).
+- **N2 y Ret se quedan en el código, sin usar,** como posibles variables de la apuesta B. Lo que entrega el
+  pipeline no cambia.
+- **La limpieza v1 no entra todavía:** `ball.clean` sigue siendo lo de `main`.
+  - En la DFL empata, como se esperaba: no hay saltos falsos que quitar y casi no hay huecos cortos.
+  - Lo que puede aportar está en los 216 saltos del ATD, y el harness no lo ve. [inferencia]
+  - Hace falta saber qué hace con el ATD antes de decidir, con un script de `validation/partido/` que
+    ejecuta una persona.
+  - Si entra con una prueba que no es el harness, lo decide Ismael, porque su regla dice que un empate con
+    `main` deja lo de `main`.
 
 Descartado (antes de medir):
 - **N4, toques por cambios de velocidad del balón:** el experimento 2 apunta a que el balón del ATD viene
