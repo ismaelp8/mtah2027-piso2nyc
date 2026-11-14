@@ -149,10 +149,28 @@ tenía dueño.
 **Candidatos,** escritos aquí antes de medir: (a) Viterbi con los costes ajustados; (b) el mismo con
 duraciones mínimas; (c) el mismo con poda. El control es el voto por mayoría de ±50 frames del baseline.
 
-**De dónde partes** (`validation/resultados/2026-11-14_harness_dfl.md`, con el `D` oráculo): con las
-etiquetas corregidas por control, el Viterbi con coste 25 gana al voto del baseline por más de 0,10 en
-los 7 partidos; con el flag tal cual, empata o pierde por poco. El coste que conviene cambia con la
-convención, y la de la GT sigue sin medir: lo que elijas tiene que aguantar con las dos.
+**El orden importa (14/11 por la noche).** Los costes se miden en las unidades de la evidencia de equipo.
+- **Qué evidencia hay:** la de `main` es el jugador más cercano, con un empujón fijo por frame. La apuesta
+  B de Ismael (B2, evidencia aprendida con la proximidad y la forma de los equipos) va ganando a `main` y
+  da empujones de tamaño variable, con una escala ajustada para el coste 25 de hoy. Falta comprobarla con
+  jugadores como los del ATD.
+- **Ya, sobre `main`:** escribe el código de (b) y (c) y el fichero de versiones con los candidatos.
+- **Cuando se decida B2 (entra o se descarta):** ajusta los costes encima de la evidencia que quede en
+  `main`. Ismael avisa. Si entra B2 y cambias los costes, hay que volver a mirar su escala: coordínalo con
+  Ismael.
+- **La pieza de `D` de estado de Ana ya está en `main`.** Con el `D` oráculo no cambia nada en tu medida.
+
+**De dónde partes** (`validation/resultados/2026-11-14_harness_como_el_atd.md`, con el `D` oráculo y la
+degradación «como el ATD» del 14/11):
+- **Contra el baseline:** el Viterbi con coste 25 le gana en los 7 partidos. Con las etiquetas corregidas
+  por control gana por más de 0,10. Con el flag gana por +0,022, por debajo del 0,03 de §5.8.
+- **Contra el coste 25:** 12 y 50 empatan, y 100 pierde. Con el flag, 50 pierde; con las etiquetas de
+  control, queda casi igual.
+- **Las dos convenciones:** el coste que conviene cambia con la convención, y la de la GT sigue sin medir.
+  Lo que elijas tiene que aguantar con las dos.
+- **Para sustituir lo de `main`:** hay que ganar al control y a `main`. Con `--eventos` ves los aciertos en
+  los eventos humanos de la DFL. Son descriptivos, pero enseñan el precio de subir el coste: aciertas más
+  duelos sin cambio y pierdes recuperaciones.
 
 **Ojo con ese +0,10:** las etiquetas de control salen de una regla de proximidad, y el Viterbi sobre el
 jugador más cercano se parece a ella, así que parte de la ventaja es por construcción. El flag es el
