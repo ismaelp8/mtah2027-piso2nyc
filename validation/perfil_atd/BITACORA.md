@@ -316,16 +316,18 @@ antes de ver el ATD: `validation/perfil_atd/leer_atd.py`, que lee la salida del 
     huecos de `T` segundos: `OBJETIVO` es el más bajo, y cuadra si la DFL no pasa de esa cota más 5
     puntos. En R2, un intervalo suprimido vale como mucho 4 huecos entre los que sí salen más esos 4.
 - **R2,** como en la sección 5, con el `OBJETIVO` de R1' de cada severidad. El reparto es por número de
-  huecos. Con pocos huecos en el ATD, la tolerancia crece con su ruido (R2', sección 7.7).
+  huecos. Con pocos huecos en el ATD, la tolerancia crece con su ruido (R2', sección 7.7). R1' y R2 se
+  juzgan juntos, con todos los `OBJETIVO` que cumplen R1' (R1''), y una celda también cuadra dentro del
+  rango por partido ensanchado (R2''), las dos en la sección 7.8.
 - **R3'. El % de disputas acota `DISPUTAS`; no lo ajusta.**
   - Cabe si queda dentro del rango por partido de la DFL, con el `OBJETIVO` de la severidad media,
-    ensanchado a cada lado con la mitad de su anchura.
+    ensanchado a cada lado con toda su anchura (sección 7.9; antes, la mitad).
   - El margen es porque el ATD es otro partido, y el rango de 6 o 7 partidos no cubre con seguridad a uno
     nuevo (sección 7.5).
 - **Queda un `DISPUTAS` si cuadran R1' y R2 en las severidades baja y media, y R3'.** La alta se apunta y
   no decide (sección 7.6).
 - **R4'. `SUAVIZADO`,** como en R4 pero solo con los toques y los controles por minuto, sin el temblor. Se
-  mide con el `DISPUTAS` que queda más cerca del ATD en % de disputas. Una tasa del ATD suprimida (menos de
+  mide con el `DISPUTAS` que queda y más se parece al ATD (la distancia de la sección 7.8). Una tasa del ATD suprimida (menos de
   5 casos), con 10 minutos con balón o más, cuenta como el suelo de 0,5 por minuto.
 - **R5,** con cada `DISPUTAS` que queda y el suavizado de R4', en la severidad media. El que no cuadra,
   sale. En la baja y en la alta se apunta y no decide, como decía la sección 5.
@@ -529,15 +531,154 @@ siquiera el verdadero (0). [medido] Hay dos causas:
 - **Límite:** sigue sin ensayarse un ATD que pierda el balón en huecos largos con el juego vivo, que la
   degradación de la DFL no sabe producir (sección 7.5).
 
+### 7.8 R1' y R2 juntos, el reparto con el rango por partido y cuál se parece más (14/11, antes de medir)
+
+**Lo que encontró la sesión planificadora** con un ensayo propio. Con J03WOY haciendo de ATD (`objetivo` 0,1,
+`disputas` 0,25 y suavizado 25) no queda ningún `DISPUTAS`, tampoco el verdadero. [medido, revisión] Con el
+código de `3d0bf73` sale lo mismo: `OBJETIVO` 0,111 en la severidad media, y R2 falla en ≤ 0,5 s (5,17 frente
+a 16,88) y en 2–5 s (42,24 frente a 23,12). [medido]
+
+- El `objetivo` plantado queda por debajo del suelo de `DISPUTAS` 0,25, así que el falso ATD solo tiene la
+  parte dirigida.
+- Su `s` media (8,04) pasa del suelo de los otros seis (6,58). Es variación entre partidos y queda dentro
+  de los ±5 puntos de R1'. Pero R1' interpolaba hasta igualarla y devolvía un `OBJETIVO` de 0,111, justo
+  por encima del suelo.
+- Ese poco de más mete bloques al azar, muchos y cortos. Como R2 cuenta huecos, el reparto cambia mucho y
+  deja de cuadrar. Con el `OBJETIVO` del suelo, cuadraría. [inferencia, de la sesión planificadora]
+- Los ensayos con pocos huecos de la sección 7.7 no lo vieron: todos usaban `DISPUTAS` 0, sin parte
+  dirigida.
+
+**Primer cambio (R1''): R1' y R2 se juzgan juntos,** como propuso la sesión planificadora.
+
+- En cada severidad, los candidatos son los `OBJETIVO` de la rejilla (0; 0,05; 0,1; 0,15; 0,2; 0,25; 0,3;
+  0,35; 0,41 y 0,5) y el interpolado de R1', si no cae en ella.
+- La severidad cuadra si alguno cumple R1' (la `s` a ±5 puntos del ATD) y R2 (el reparto, con R2').
+- De los que cumplen las dos, se queda el de `s` más cercana al ATD; si empatan, el de menor `OBJETIVO`.
+- Motivo: R1' acepta cualquier `OBJETIVO` que deje la `s` a ±5 puntos, así que no tiene sentido juzgar R2
+  solo con el que la iguala exactamente.
+
+**Solo con R1'' no basta.** [medido] Con los nueve ensayos de `--ensayos`, ocho recuperan el `DISPUTAS`
+plantado, pero J03WOY sigue sin dejar ninguno.
+
+- En la severidad media no cuadra con el 0,25 ningún `OBJETIVO` de la rejilla, tampoco el del suelo.
+- La causa es el reparto. Con solo la parte dirigida (el suelo de 0,25), J03WOY tiene un 42,2 % de huecos
+  de 2–5 s, y los otros seis juntos, un 28,7 %. La diferencia, 13,6 puntos, pasa de la tolerancia de R2'
+  (10,5). [medido]
+- Es variación entre partidos, la misma que llevó a R3' a ensanchar el rango del % de disputas.
+  [inferencia]
+
+**Segundo cambio (R2''):** una celda del reparto también cuadra si el ATD cae dentro del rango por partido
+de la DFL, ensanchado a cada lado con la mitad de su anchura. Si la celda del ATD está suprimida, cuadra si
+ese rango ensanchado baja de su cota.
+
+**Tercer cambio: cuál se parece más al ATD** (R4' y R7').
+
+- Con R1'', en J03WR9 (plantado 0,25) quedan el 0,25 y el 0,5, y el % de disputas elige el 0,5. [medido]
+- J03WR9 tiene menos disputas que los demás: ese % mezcla la degradación con el estilo del partido.
+  [inferencia]
+- Ahora «el que más se parece» es el de menor distancia. Es la suma, en las severidades baja y media, de
+  |ATD − DFL| de la `s` dividido por 5 puntos y de cada celda del reparto dividido por su tolerancia de R2',
+  más |ATD − DFL| del % de disputas dividido por 3 puntos (la tolerancia de R3 en la sección 5). Lo que el
+  ATD tiene suprimido («< 5») no cuenta. Si empatan, el menor `DISPUTAS`.
+- Sustituye a la definición que se apuntó en la sección 8, punto 3, a falta del sí de Ismael.
+
+**Los ensayos, con los tres cambios** (`python validation/perfil_atd/leer_atd.py --ensayos`). [medido]
+
+| partido que hace de ATD | plantado: `objetivo` · `disputas` · suavizado | `DISPUTAS` que quedan | decide | `OBJETIVO` con el plantado (baja / media / alta) | suavizado elegido |
+|---|---|---|---|---|---|
+| J03WR9 | 0,3 · 0,25 · 25 | 0,25 y 0,5 | 0,25 | 0,326 / 0,313 / 0,303 | 25 |
+| J03WR9 | 0 · 0 · 25 | 0 | 0 | 0 / 0 / 0 | 25 |
+| J03WR9 | 0,02 · 0 · 25 | 0 | 0 | 0,024 / 0,017 / 0,050 | 25 |
+| J03WPY | 0,2 · 0 · 5 | 0 y 0,25 | 0 | 0,185 / 0,192 / 0,189 | 5 |
+| J03WPY | 0,02 · 0 · 25 | 0 | 0 | 0,018 / 0,020 / 0 | 25 |
+| J03WMX | 0,15 · 0,5 · 11 | 0,25 y 0,5 | 0,5 | 0,203 / 0,201 / 0,238 | 5 |
+| J03WQQ | 0,41 · 0,75 · 51 | 0,75 | 0,75 | 0,500 / 0,445 / 0,419 | 51 |
+| J03WOH | 0,02 · 0 · 25 | 0 | 0 | 0,021 / 0,019 / 0,018 | 25 |
+| J03WOY | 0,1 · 0,25 · 25 | 0,25 | 0,25 | 0 / 0 / 0 | 25 |
+
+- **En los nueve queda el `DISPUTAS` plantado y es el que decide.** Con R7' tal como estaba (el más cercano
+  en % de disputas), en J03WR9 decidía el 0,5.
+- **J03WOY se recupera:** con el 0,25, el `OBJETIVO` sale en el suelo, que es donde está el plantado (0,1
+  queda por debajo del suelo).
+- **La regla es algo más permisiva:** en J03WMX queda también el 0,25, que solo veta.
+- **El suavizado acierta en 8 de 9;** en J03WMX elige 5 en vez de 11, como antes.
+- **Dos fallos de código** encontrados al ensayar, y arreglados antes de medir:
+  - un nombre de variable que tapaba la función de la distancia;
+  - una tasa suprimida que rompía R4' con menos de 10 minutos con balón.
+
+  La prueba recorre ahora la regla entera con una DFL inventada, para que un fallo así no pase en silencio.
+
+### 7.9 R3' con el margen entero y la severidad alta solo con R1' (14/11, antes de medir)
+
+Una revisión independiente de los cambios de la 7.8 (el código frente a la bitácora, y un ensayo con
+J03WN1, que no había hecho nunca de ATD) encontró esto. [medido, revisión]
+
+- **Un falso negativo de R3'.** Con J03WN1 haciendo de ATD (`objetivo` 0,05, `disputas` 0,25 y suavizado
+  25) no queda ningún `DISPUTAS`.
+  - El 0,25 plantado cumple R1'' y R2'' y es el de menor distancia, pero R3' lo descarta. El falso ATD
+    tiene un 22,01 % de disputas, y el rango de los otros seis, [14,75–19,38] ± 2,32, llega hasta 21,70.
+  - J03WN1 es el partido de la DFL con más disputas (26,43 % sin parte dirigida; los otros seis van de 17,68
+    a 22,41).
+  - **Dejando un partido fuera, en los 7:** con el margen de la mitad, R3' solo descarta el valor
+    verdadero en J03WN1 (de +0,81 a +1,66 puntos con `DISPUTAS` 0, y de +0,31 a +0,99 con 0,25). Con un
+    margen igual a toda la anchura del rango caben los 7.
+- **La severidad alta elegía su `OBJETIVO` con su propio R2,** que no es fiable (sección 7.6) y no decide.
+- **Detalles:**
+  - el informe no enseñaba el rango por partido de R2'' ni el % de disputas del ATD, así que no se podía
+    comprobar el veredicto desde la salida;
+  - el recuento de candidatos contaba dos veces el `OBJETIVO` interpolado cuando caía en la rejilla;
+  - un JSON guardado con `>` en PowerShell lleva BOM y no se leía;
+  - la prueba nueva no comprobaba R2'' ni la distancia.
+
+**Cambios:**
+
+- **R3' se ensancha a cada lado con toda la anchura del rango por partido** (antes, la mitad). R2'' se
+  queda con la mitad: en ningún ensayo ha dejado fuera el valor verdadero.
+- **En la severidad alta, `OBJETIVO` sale solo de R1'** (el de `s` más cercana al ATD entre los que la dejan
+  a ±5 puntos).
+- **Los detalles, arreglados:** el informe enseña el rango y el % de disputas, el interpolado ya no se cuenta
+  dos veces, el JSON se lee con o sin BOM y la prueba comprueba R2'' y la distancia (68 comprobaciones).
+
+**Los ensayos, con la regla definitiva** (`python validation/perfil_atd/leer_atd.py --ensayos`: los 9 de la
+sección 7.8 y los dos de J03WN1). [medido]
+
+| partido que hace de ATD | plantado: `objetivo` · `disputas` · suavizado | % de disputas del ATD | `DISPUTAS` que quedan | decide | `OBJETIVO` con el plantado (baja / media / alta) | suavizado elegido |
+|---|---|---|---|---|---|---|
+| J03WR9 | 0,3 · 0,25 · 25 | 14,70 | 0, 0,25 y 0,5 | 0,25 | 0,326 / 0,313 / 0,303 | 25 |
+| J03WR9 | 0 · 0 · 25 | 16,64 | 0 | 0 | 0 / 0 / 0 | 25 |
+| J03WR9 | 0,02 · 0 · 25 | 16,65 | 0 | 0 | 0,024 / 0,017 / 0 | 25 |
+| J03WPY | 0,2 · 0 · 5 | 20,91 | 0 y 0,25 | 0 | 0,185 / 0,192 / 0,189 | 5 |
+| J03WPY | 0,02 · 0 · 25 | 20,14 | 0 | 0 | 0,018 / 0,020 / 0 | 25 |
+| J03WN1 | 0,05 · 0,25 · 25 | 22,01 | 0,25 | 0,25 | 0,104 / 0,100 / 0,117 | 25 |
+| J03WN1 | 0,3 · 0,5 · 11 | 17,04 | 0,5 | 0,5 | 0,254 / 0,275 / 0,305 | 11 |
+| J03WMX | 0,15 · 0,5 · 11 | 14,90 | 0,25 y 0,5 | 0,5 | 0,203 / 0,201 / 0,238 | 5 |
+| J03WQQ | 0,41 · 0,75 · 51 | 6,89 | 0,75 | 0,75 | 0,500 / 0,445 / 0,419 | 51 |
+| J03WOH | 0,02 · 0 · 25 | 21,54 | 0 | 0 | 0,021 / 0,019 / 0,018 | 25 |
+| J03WOY | 0,1 · 0,25 · 25 | 18,89 | 0,25 | 0,25 | 0 / 0 / 0 | 25 |
+
+- **En los 11 queda el `DISPUTAS` plantado y es el que decide.** J03WN1 con 0,25, que fallaba, se recupera.
+- **Precio del margen entero:** en J03WR9 con 0,25 queda también el 0, que solo veta. En cuatro de los once
+  quedan dos o tres `DISPUTAS`: el harness medirá con todos, y los vecinos solo vetan (R7').
+- **`OBJETIVO`:** a ±0,05 del plantado cuando está por encima del suelo, salvo con suavizado 51 (sección
+  7.5). Por debajo del suelo sale en el suelo o cerca (J03WOY, J03WN1 con 0,05).
+- **El suavizado acierta en 10 de 11;** en J03WMX elige 5 en vez de 11, como antes.
+
 ## 8. Lo que decide Ismael antes de ejecutar nada en el partido
 
 Cada punto pendiente tiene un valor por defecto, y un «sí» sin más quiere decir ese valor. La respuesta se
 apunta aquí, con fecha, y se sube antes de ejecutar `validation/partido/perfil_atd.py`.
 
-1. **Los cambios de las secciones 7.1 a 7.7.** Pendiente. Por defecto: sí.
+**Su respuesta (14/11), antes de ver ningún número del ATD:** «Sí, y súbelo», a la pregunta «¿Das el sí a
+la sección 8 por defecto, con R1'' incluida?». Cubre los puntos 1, 2 y 4 con sus valores por defecto, y la
+sección 7.8 tal como estaba entonces: solo R1''.
+
+**Pendiente de su confirmación, antes de subir:** lo que vino después de su sí, que es R2'' y la distancia
+(sección 7.8) y la sección 7.9 entera.
+
+1. **Los cambios de las secciones 7.1 a 7.8.** Sí, hasta R1'' (lo demás, pendiente: arriba).
 2. **Las celdas «< 5» que se pueden deducir de los totales** (sección 7.6, punto 2). Son recuentos del
-   partido entero, sin frame ni instante. Pendiente. Por defecto: se aceptan, con los agregados 2 y 3b
-   más gruesos (sección 7.7).
+   partido entero, sin frame ni instante. Sí: se aceptan, con los agregados 2 y 3b más gruesos (sección
+   7.7).
 3. **R7', con qué `DISPUTAS` se decide: decidido por Ismael el 14/11, antes de ver ningún número del ATD.**
    - Se lo planteó la sesión planificadora, en otra conversación, como dos opciones:
      - A: ganar con todos los `DISPUTAS` que queden;
@@ -546,15 +687,13 @@ apunta aquí, con fecha, y se sube antes de ejecutar `validation/partido/perfil_
    - El texto que aceptó: «Para R7': decide el valor de DISPUTAS que más se parezca al ATD. Los demás que
      queden se puntúan y se enseñan al lado, y solo le quitan la victoria a un candidato si con alguno
      queda 0,03 o más por debajo del control. Apúntalo en la bitácora antes de que yo ejecute el script.»
-   - **Cuál se parece más al ATD**, fijado antes de medir: el `DISPUTAS` que queda tras R5 cuyo % de
-     disputas en la DFL (los 7 partidos juntos, con el `OBJETIVO` de la severidad media) está más cerca del
-     del ATD. Es el mismo criterio con que R4' elige con qué `DISPUTAS` se mide el suavizado. Si empatan, el
-     menor.
-   - `leer_atd.py` lo aplica. En el ensayo de J03WPY (plantado 0,2 · 0 · 5) quedan el 0 y el 0,25: decide el
-     0, que es el verdadero, y el 0,25 solo veta. [medido]
+   - **Cuál se parece más al ATD**, fijado antes de medir. La primera versión era el `DISPUTAS` cuyo % de
+     disputas en la DFL está más cerca del del ATD, y en J03WR9 elegía mal. La definición vale ahora la
+     distancia de la sección 7.8, que usa también R4'. Está pendiente de su confirmación, con lo demás que
+     vino después de su sí (arriba).
    - Lo de exigir las dos convenciones de etiquetas es del plan (`docs/PLAN_ENTREGA.md` §4) y no cambia.
 4. **Qué condiciones del balón votan en la regla de §5.8 cuando el harness use la degradación nueva.**
-   Pendiente. Por defecto, la propuesta de la sección 5:
-   - votan las tres severidades, con el `DISPUTAS` del punto 3, el `OBJETIVO` de R1' de cada una y el
-     suavizado de R4';
+   Sí, el valor por defecto, que es la propuesta de la sección 5:
+   - votan las tres severidades, con el `DISPUTAS` del punto 3, el `OBJETIVO` que sale para cada una (R1''
+     en la baja y la media, R1' en la alta) y el suavizado de R4';
    - «limpio» y la condición de hoy (41 % de los frames vivos) se siguen puntuando, sin voto.

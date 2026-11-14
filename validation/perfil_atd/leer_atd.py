@@ -124,13 +124,16 @@ def reparto_del_atd(salida, nombre, segundos):
     return celdas, impresos
 
 
-def r2_cuadra(valor, cota, dfl, huecos):
-    """(¿cuadra?, tolerancia) de una celda del reparto (§7.7).
+def r2_cuadra(valor, cota, dfl, huecos, rango_por_partido=(None, None)):
+    """(¿cuadra?, tolerancia) de una celda del reparto (§7.7 y §7.8).
 
     - La tolerancia es la mayor de ±10 puntos y 2,5 errores típicos del reparto del ATD, √(p·(1 − p)/n),
       con p la proporción de la DFL y n los huecos impresos del ATD en esa severidad. Con muchos huecos es
       ±10, como en la sección 5; con pocos, crece, porque el reparto del ATD es ruido.
-    - Una celda del ATD suprimida cuadra si la DFL no pasa de su cota más la tolerancia.
+    - También cuadra si el ATD cae dentro del rango por partido de la DFL ensanchado a cada lado con la mitad
+      de su anchura, como en R3': el ATD es otro partido, y el reparto varía de un partido a otro (§7.8).
+    - Una celda del ATD suprimida cuadra si la DFL no pasa de su cota más la tolerancia, o si el rango
+      ensanchado baja de la cota.
     - Si la DFL no tiene ningún hueco en la severidad (su reparto sale vacío), cuadra solo si el ATD tampoco
       tiene 5 o más.
     """
@@ -138,9 +141,33 @@ def r2_cuadra(valor, cota, dfl, huecos):
         return huecos == 0, None
     p = dfl / 100.0
     tolerancia = max(TOLERANCIA_R2, ERRORES_TIPICOS_R2 * 100.0 * math.sqrt(p * (1.0 - p) / huecos)) if huecos else 100.0
+    lo, hi = rango_por_partido
+    margen = (hi - lo) / 2.0 if lo is not None and hi is not None else None
     if valor is None:
-        return dfl <= cota + tolerancia, tolerancia
-    return abs(dfl - valor) <= tolerancia, tolerancia
+        en_rango = margen is not None and lo - margen <= cota
+        return dfl <= cota + tolerancia or en_rango, tolerancia
+    en_rango = margen is not None and lo - margen <= valor <= hi + margen
+    return abs(dfl - valor) <= tolerancia or en_rango, tolerancia
+
+
+def distancia_al_atd(fila, atd):
+    """Cuánto se separa un `DISPUTAS` del ATD (§7.8), para elegir el que más se parece (R4' y R7').
+
+    Suma, en las severidades que deciden, |ATD − DFL| de la `s` dividido por 5 puntos y de cada celda del
+    reparto dividido por su tolerancia de R2', y |ATD − DFL| del % de disputas dividido por 3 puntos (la
+    tolerancia de R3 en la sección 5). Lo suprimido del ATD no cuenta.
+    """
+    total = 0.0
+    for sev in DECIDEN:
+        s = fila["severidades"][sev]
+        if s["s_atd"] is not None and s["s_dfl"] is not None:
+            total += abs(s["s_dfl"] - s["s_atd"]) / 5.0
+        for _, valor, _, dfl_r, _, tolerancia, _ in s["repartos"]:
+            if valor is not None and dfl_r is not None and tolerancia:
+                total += abs(dfl_r - valor) / tolerancia
+    if atd["disputa_pct"] is not None and fila["disputas_dfl"][0] is not None:
+        total += abs(fila["disputas_dfl"][0] - atd["disputa_pct"]) / 3.0
+    return total
 
 
 def tasas_suprimidas(salida_atd, atd):
@@ -172,44 +199,67 @@ def leer(salida_atd, dfl, ensayo=False):
     if informe["parar"]:
         return informe
 
-    # R1', R2 y R3': para cada DISPUTAS, el OBJETIVO de cada severidad y si el % de disputas cabe.
+    # R1'' y R3': para cada DISPUTAS, el OBJETIVO de cada severidad y si el % de disputas cabe. R1' y R2 se
+    # juzgan juntos (§7.8): cualquier OBJETIVO que deje la s a ±5 puntos del ATD vale para R1', así que R2 se
+    # mira con todos ellos (los de la rejilla y el interpolado), no solo con el interpolado.
     por_disputas = collections.OrderedDict()
     for d in DISPUTAS:
         curva = [dfl.medir(dict(BASE, objetivo=o, disputas=d)) for o in REJILLA_OBJETIVO]
         fila = {"severidades": collections.OrderedDict()}
         for sev, segundos in pf.PRM["severidades"]:
             s_atd, cota = s_del_atd(salida_atd, sev, segundos)
+            meta = s_atd if s_atd is not None else 0.0
             ys = [r["juntos"]["s_" + sev] for r in curva]
-            objetivo, como = interpolar(REJILLA_OBJETIVO, ys, s_atd if s_atd is not None else 0.0)
-            res = dfl.medir(dict(BASE, objetivo=objetivo, disputas=d))
-            s = res["juntos"]["s_" + sev]
-            # Cuadra si queda a ±5 puntos del ATD; con el ATD suprimido, del intervalo [0, cota].
-            r1 = s is not None and (abs(s - s_atd) <= 5.0 if s_atd is not None else s <= cota + 5.0)
-            repartos = []
+            interpolado, como = interpolar(REJILLA_OBJETIVO, ys, meta)
+            candidatos = list(zip(REJILLA_OBJETIVO, curva))
+            if not any(abs(interpolado - o) < 1e-9 for o in REJILLA_OBJETIVO):  # si cae en la rejilla, ya está
+                candidatos.append((interpolado, dfl.medir(dict(BASE, objetivo=interpolado, disputas=d))))
             celdas, huecos = reparto_del_atd(salida_atd, sev, segundos)
-            for intervalo, (valor, cota_r) in celdas.items():
-                dfl_r = res["juntos"]["reparto_{} {}".format(sev, intervalo)]
-                ok, tolerancia = r2_cuadra(valor, cota_r, dfl_r, huecos)
-                repartos.append((intervalo, valor, cota_r, dfl_r, ok, tolerancia))
-            fila["severidades"][sev] = {
-                "objetivo": objetivo, "como": como, "suelo": ys[0], "s_atd": s_atd, "cota": cota, "s_dfl": s,
-                "r1": r1, "repartos": repartos, "r2": all(r[4] for r in repartos), "decide": sev in DECIDEN}
+            evaluados = []
+            for objetivo, res in candidatos:
+                s = res["juntos"]["s_" + sev]
+                # R1': a ±5 puntos del ATD; con el ATD suprimido, del intervalo [0, cota].
+                r1 = s is not None and (abs(s - s_atd) <= 5.0 if s_atd is not None else s <= cota + 5.0)
+                repartos = []
+                for intervalo, (valor, cota_r) in celdas.items():
+                    clave = "reparto_{} {}".format(sev, intervalo)
+                    dfl_r = res["juntos"][clave]
+                    por_partido = rango(res, clave)
+                    ok, tolerancia = r2_cuadra(valor, cota_r, dfl_r, huecos, por_partido)
+                    repartos.append((intervalo, valor, cota_r, dfl_r, ok, tolerancia, por_partido))
+                evaluados.append({"objetivo": objetivo, "s_dfl": s, "r1": r1, "repartos": repartos,
+                                  "r2": all(r[4] for r in repartos),
+                                  "como": como if abs(objetivo - interpolado) < 1e-9 else "rejilla"})
+            # De los que cumplen R1' y R2, el de s más cercana al ATD (si empatan, el menor OBJETIVO). En la
+            # severidad que no decide (la alta), solo R1': su R2 no es fiable (§7.6). Si no cumple ninguno, se
+            # apunta el interpolado, que es el de R1' (y la severidad no cuadra).
+            validos = [e for e in evaluados if e["r1"] and (e["r2"] or sev not in DECIDEN)]
+            el_de_r1 = min(evaluados, key=lambda e: abs(e["objetivo"] - interpolado))
+            elegido = (min(validos, key=lambda e: (abs(e["s_dfl"] - meta), e["objetivo"])) if validos
+                       else el_de_r1)
+            fila["severidades"][sev] = dict(elegido, suelo=ys[0], s_atd=s_atd, cota=cota, decide=sev in DECIDEN,
+                                            validos=len(validos))
         media = dfl.medir(dict(BASE, objetivo=fila["severidades"]["media"]["objetivo"], disputas=d))
         lo, hi = rango(media, "disputa_pct")
-        margen = (hi - lo) / 2.0 if lo is not None else None  # el ATD es otro partido: el rango se ensancha
+        # El ATD es otro partido: el rango se ensancha a cada lado con toda su anchura (§7.9; con la mitad, la
+        # comprobación dejando un partido fuera dejaba fuera a J03WN1).
+        margen = (hi - lo) if lo is not None else None
         fila["disputas_dfl"] = (media["juntos"]["disputa_pct"], lo, hi, margen)
         fila["r3"] = (atd["disputa_pct"] is not None and lo is not None
                       and lo - margen <= atd["disputa_pct"] <= hi + margen)
         fila["r1"] = all(fila["severidades"][s]["r1"] for s in DECIDEN)
         fila["r2"] = all(fila["severidades"][s]["r2"] for s in DECIDEN)
         fila["queda"] = fila["r1"] and fila["r2"] and fila["r3"]
+        fila["distancia"] = distancia_al_atd(fila, atd)
         por_disputas[d] = fila
     informe["R1_R2_R3"] = por_disputas
+    informe["disputa_atd"] = atd["disputa_pct"]
     quedan = [d for d, f in por_disputas.items() if f["queda"]]
     informe["quedan"] = quedan
 
     def cerca_del_atd(d):
-        return abs(por_disputas[d]["disputas_dfl"][0] - (atd["disputa_pct"] or 0.0))
+        """El que más se parece al ATD (§7.8): menor distancia; si empatan, el menor `DISPUTAS` (va primero)."""
+        return por_disputas[d]["distancia"]
 
     # R4': el suavizado, con el DISPUTAS que quede más cerca del ATD (si no queda ninguno, el más cercano,
     # solo para apuntarlo).
@@ -218,10 +268,13 @@ def leer(salida_atd, dfl, ensayo=False):
     filas, mejor = [], None
     for s in SUAVIZADOS:
         res = dfl.medir(dict(BASE, objetivo=o_r4, disputas=d_r4, suavizado=s))["juntos"]
-        distancia = sum(abs(math.log(max(atd[k], pdfl.SUELO_TASA) / max(res[k], pdfl.SUELO_TASA)))
-                        for k in ("toques_por_min", "controles_por_min"))
-        filas.append((s, res["toques_por_min"], res["controles_por_min"], res["temblor_cm"], distancia))
-        if mejor is None or distancia < mejor[-1]:
+        # Solo las tasas que hay en los dos lados (una tasa del ATD suprimida con menos de 10 minutos con balón
+        # no se puede leer como el suelo); sin ninguna, R4' no decide.
+        claves = [k for k in ("toques_por_min", "controles_por_min") if atd[k] is not None and res[k] is not None]
+        separacion = (sum(abs(math.log(max(atd[k], pdfl.SUELO_TASA) / max(res[k], pdfl.SUELO_TASA))) for k in claves)
+                      if claves else float("inf"))
+        filas.append((s, res["toques_por_min"], res["controles_por_min"], res["temblor_cm"], separacion))
+        if mejor is None or separacion < mejor[-1]:
             mejor = filas[-1]
     informe["R4"] = {"disputas": d_r4, "objetivo": o_r4, "filas": filas, "suavizado": mejor[0],
                      "atd": (atd["toques_por_min"], atd["controles_por_min"], atd["temblor_cm"]),
@@ -247,8 +300,8 @@ def leer(salida_atd, dfl, ensayo=False):
     informe["R5"] = r5
 
     # R7' (decisión de Ismael del 14/11, bitácora §8.3): queda un DISPUTAS con R1', R2 y R3', y con él cuadra
-    # R5. Decide el que queda más cerca del ATD en % de disputas (si empatan, el menor: `min` se queda con el
-    # primero y `finales` va de menor a mayor); los demás se puntúan al lado y solo vetan.
+    # R5. Decide el que más se parece al ATD, con la distancia de §7.8 (si empatan, el menor: `min` se queda
+    # con el primero y `finales` va de menor a mayor); los demás se puntúan al lado y solo vetan.
     finales = [d for d in quedan if r5[d]["cuadra"]]
     decide = min(finales, key=cerca_del_atd) if finales else None
     informe["R7"] = {"quedan": quedan, "finales": finales, "decide": decide,
@@ -270,6 +323,7 @@ def imprimir(informe):
     out += ["", "### R1', R2 y R3'", "",
             "Deciden las severidades baja y media; la alta se apunta (bitácora §7.6). Entre corchetes, la cota de "
             "un valor del ATD suprimido.", "",
+            "% de disputas del ATD (R3'): {}.".format(num(informe["disputa_atd"])), "",
             "| `DISPUTAS` | severidad | `OBJETIVO` | cómo | suelo de s (%) | s ATD | s DFL | R1' | R2 | % disputas DFL [mín–máx] ± margen | R3' | ¿queda? |",
             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for d, f in informe["R1_R2_R3"].items():
@@ -278,22 +332,27 @@ def imprimir(informe):
             s_atd = num(s["s_atd"]) if s["s_atd"] is not None else "[≤ {}]".format(num(s["cota"]))
             marca = "" if s["decide"] else " (se apunta)"
             out.append("| {:g} | {}{} | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} |".format(
-                d, sev, marca, num(s["objetivo"], 3), s["como"], num(s["suelo"]), s_atd, num(s["s_dfl"]),
+                d, sev, marca, num(s["objetivo"], 3), "{} ({} con R1' y R2)".format(s["como"], s["validos"]),
+                num(s["suelo"]), s_atd, num(s["s_dfl"]),
                 sino(s["r1"]), sino(s["r2"]),
                 "{} [{}–{}] ± {}".format(num(disp), num(lo), num(hi), num(margen)) if sev == "media" else "",
                 sino(f["r3"]) if sev == "media" else "", sino(f["queda"]) if sev == "media" else ""))
     quedan = informe["quedan"]
-    out += ["", "Quedan: {}.".format(", ".join("{:g}".format(d) for d in quedan) if quedan else "ninguno")]
-    out += ["", "**Reparto de los huecos (R2)**, ATD frente a DFL, con el `OBJETIVO` de cada severidad y la "
-            "tolerancia de cada celda (§7.7):", "",
-            "| `DISPUTAS` | severidad | intervalo | ATD | DFL | tolerancia (puntos) | ¿cuadra? |",
-            "|---|---|---|---|---|---|---|"]
+    out += ["", "Quedan: {}.".format(", ".join("{:g}".format(d) for d in quedan) if quedan else "ninguno"),
+            "", "Distancia al ATD de cada `DISPUTAS` (§7.8; menos es más parecido): " + " · ".join(
+                "{:g}: {}".format(d, num(f["distancia"])) for d, f in informe["R1_R2_R3"].items())]
+    out += ["", "**Reparto de los huecos (R2)**, ATD frente a DFL, con el `OBJETIVO` de cada severidad: la "
+            "tolerancia de cada celda (R2', §7.7) y el rango por partido ensanchado (R2'', §7.8):", "",
+            "| `DISPUTAS` | severidad | intervalo | ATD | DFL | tolerancia (puntos) | rango por partido ± margen | ¿cuadra? |",
+            "|---|---|---|---|---|---|---|---|"]
     for d, f in informe["R1_R2_R3"].items():
         for sev, s in f["severidades"].items():
-            for intervalo, valor, cota, dfl_r, ok, tolerancia in s["repartos"]:
+            for intervalo, valor, cota, dfl_r, ok, tolerancia, (lo_r, hi_r) in s["repartos"]:
                 atd_txt = num(valor) if valor is not None else "[≤ {}]".format(num(cota))
-                out.append("| {:g} | {} | {} | {} | {} | {} | {} |".format(
-                    d, sev, intervalo, atd_txt, num(dfl_r), num(tolerancia, 1), sino(ok)))
+                rango_txt = ("[{}–{}] ± {}".format(num(lo_r), num(hi_r), num((hi_r - lo_r) / 2.0))
+                             if lo_r is not None and hi_r is not None else "–")
+                out.append("| {:g} | {} | {} | {} | {} | {} | {} | {} |".format(
+                    d, sev, intervalo, atd_txt, num(dfl_r), num(tolerancia, 1), rango_txt, sino(ok)))
     r4 = informe["R4"]
     out += ["", "### R4'. Suavizado (con `DISPUTAS` {:g} y `OBJETIVO` {})".format(r4["disputas"], num(r4["objetivo"], 3)), "",
             "ATD: {} toques/min, {} controles/min, {} cm de temblor (descriptivo).".format(
@@ -314,7 +373,7 @@ def imprimir(informe):
     decide = "{:g}".format(r7["decide"]) if r7["decide"] is not None else "ninguno"
     out += ["", "### R7", "",
             "- `DISPUTAS` con los que mide el harness (R1', R2, R3' y R5): **{}**".format(finales),
-            "- decide (el más cercano al ATD en % de disputas; si empatan, el menor): **{}**".format(decide),
+            "- decide (el que más se parece al ATD, §7.8; si empatan, el menor): **{}**".format(decide),
             "- se puntúan al lado y solo vetan (si el candidato queda 0,03 o más por debajo del control): "
             "**{}**".format(vetan),
             "- el orden entre evidencias de equipo por proximidad: **{}**".format(
@@ -327,6 +386,48 @@ def imprimir(informe):
         out.append("- No queda ningún `DISPUTAS`: en el paso 3 cambia la forma de tapar (R2 con la ley de huecos del "
                    "ATD, o la parte dirigida con `dilatar` y `aire`), y se vuelve a leer con esta misma regla.")
     return "\n".join(out)
+
+
+# Los ensayos de la bitácora (§7.5, §7.7 y §7.8): (partido que hace de ATD, objetivo, disputas, suavizado).
+ENSAYOS = (
+    ("J03WR9", 0.3, 0.25, 25), ("J03WPY", 0.2, 0.0, 5), ("J03WMX", 0.15, 0.5, 11), ("J03WQQ", 0.41, 0.75, 51),
+    ("J03WR9", 0.0, 0.0, 25), ("J03WR9", 0.02, 0.0, 25), ("J03WPY", 0.02, 0.0, 25), ("J03WOH", 0.02, 0.0, 25),
+    ("J03WOY", 0.1, 0.25, 25), ("J03WN1", 0.05, 0.25, 25), ("J03WN1", 0.3, 0.5, 11),
+)
+
+
+def ensayos(partidos, detalle=False):
+    """La tabla de ensayos de la bitácora: cada partido de `partidos` hace de ATD con sus parámetros de
+    `ENSAYOS`, y los otros 6, de DFL (una sola DFL por partido, para todos sus ensayos)."""
+    filas = ["| partido que hace de ATD | plantado: objetivo · disputas · suavizado | `DISPUTAS` que quedan | decide "
+             "| `OBJETIVO` con el plantado (baja / media / alta) | suavizado elegido | R5 con el que decide |",
+             "|---|---|---|---|---|---|---|"]
+    informes = []
+    for partido in partidos:
+        dfl = None
+        for p, objetivo, disputas, suavizado in ENSAYOS:
+            if p != partido:
+                continue
+            salida, resto = ensayo(p, objetivo, disputas, suavizado)
+            dfl = dfl or DFL(resto)
+            informe = leer(salida, dfl, ensayo=True)
+            informes.append(("{} con objetivo {:g}, disputas {:g} y suavizado {}".format(p, objetivo, disputas, suavizado),
+                             informe))
+            r7 = informe["R7"]
+            sevs = informe["R1_R2_R3"][disputas]["severidades"]
+            decide = r7["decide"]
+            r5 = informe["R5"].get(decide, {}).get("cuadra") if decide is not None else None
+            filas.append("| {} | {} · {} · {} | {} | {} | {} | {} | {} |".format(
+                p, num(objetivo), num(disputas), suavizado,
+                ", ".join(num(d) for d in r7["quedan"]) or "ninguno",
+                num(decide) if decide is not None else "–",
+                " / ".join(num(sevs[s]["objetivo"], 3) for s in SEVERIDADES),
+                informe["R4"]["suavizado"], sino(r5)))
+    salida = "\n".join(filas)
+    if detalle:
+        for titulo, informe in informes:
+            salida += "\n\n## Ensayo: {}\n\n{}".format(titulo, imprimir(informe))
+    return salida
 
 
 def ensayo(partido, objetivo, disputas, suavizado):
@@ -344,14 +445,21 @@ def main():
     ap.add_argument("--partidos", nargs="+", default=list(pdfl.dfl.PARTIDOS), choices=list(pdfl.dfl.PARTIDOS))
     ap.add_argument("--ensayo", nargs=4, metavar=("PARTIDO", "OBJETIVO", "DISPUTAS", "SUAVIZADO"),
                     help="ensayo de la regla (bitácora §7.5): ese partido de la DFL, degradado así, hace de ATD")
+    ap.add_argument("--ensayos", nargs="*", metavar="PARTIDO", choices=sorted({e[0] for e in ENSAYOS}),
+                    help="la tabla de ensayos de la bitácora (todos, o los de esos partidos)")
+    ap.add_argument("--detalle", action="store_true", help="con --ensayos, también el informe de cada uno")
     args = ap.parse_args()
+    if args.ensayos is not None:
+        partidos = args.ensayos or sorted({e[0] for e in ENSAYOS})
+        print(ensayos(partidos, args.detalle))
+        return
     if args.ensayo:
         partido, objetivo, disputas, suavizado = args.ensayo
         salida, partidos = ensayo(partido, float(objetivo), float(disputas), int(suavizado))
         print("Ensayo: {} hace de ATD con objetivo {}, disputas {} y suavizado {}; los otros {} hacen de DFL.\n".format(
             partido, objetivo, disputas, suavizado, len(partidos)))
     elif args.salida_atd:
-        with open(args.salida_atd, encoding="utf-8") as f:
+        with open(args.salida_atd, encoding="utf-8-sig") as f:  # con o sin BOM (`>` en PowerShell lo pone)
             salida = json.load(f)
         partidos = args.partidos
     else:

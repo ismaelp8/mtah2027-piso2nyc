@@ -425,6 +425,35 @@ def comprobar_lectura():
     check("R2 con pocos huecos: la tolerancia crece con el ruido del ATD (66 huecos frente a 2.000)",
           ok_pocos and not ok_muchos and tol_pocos > 15.0 and tol_muchos == 10.0,
           "{:.1f} y {:.1f} puntos".format(tol_pocos, tol_muchos))
+    check("R2'': fuera de la tolerancia pero dentro del rango por partido ensanchado, cuadra",
+          la.r2_cuadra(55.0, 55.0, 43.0, 2000, (37.0, 49.0))[0]
+          and not la.r2_cuadra(55.0, 55.0, 43.0, 2000, (40.0, 44.0))[0])
+
+    def fila(s_dfl, reparto_dfl, disputas_dfl):
+        severidad = {"s_atd": 10.0, "s_dfl": s_dfl,
+                     "repartos": [("≤ 0,5 s", 40.0, 40.0, reparto_dfl, True, 10.0, (None, None))]}
+        return {"severidades": {"baja": severidad, "media": severidad}, "disputas_dfl": (disputas_dfl, None, None, None)}
+    igual = la.distancia_al_atd(fila(10.0, 40.0, 20.0), {"disputa_pct": 20.0})
+    lejos = la.distancia_al_atd(fila(14.0, 50.0, 26.0), {"disputa_pct": 20.0})
+    check("la distancia al ATD es 0 si todo coincide y suma s, reparto y % de disputas entre sus tolerancias",
+          igual == 0.0 and cerca(lejos, 2 * 4 / 5.0 + 2 * 10 / 10.0 + 6 / 3.0), "{:.2f}".format(lejos))
+
+    class DFLInventada:
+        """Una DFL de mentira que da siempre las mismas primarias: para recorrer la regla entera sin datos."""
+
+        def __init__(self, primarias):
+            self.primarias = primarias
+
+        def medir(self, prm):
+            return {"juntos": self.primarias, "por_partido": {"uno": self.primarias, "dos": self.primarias}}
+
+    primarias = pf.primarias(pf.perfil(caso_huecos()))
+    informe = la.leer(s, DFLInventada(primarias), ensayo=True)
+    texto = la.imprimir(informe)
+    check("la regla entera (R1'' a R7') corre e imprime su informe con una DFL inventada",
+          "R7" in informe and informe["R4"]["suavizado"] in la.SUAVIZADOS and "### R7" in texto)
+    check("con la DFL igual al ATD, queda algún DISPUTAS y decide uno de ellos",
+          informe["R7"]["quedan"] and informe["R7"]["decide"] in informe["R7"]["quedan"], str(informe["R7"]["quedan"]))
     check("la interpolación de OBJETIVO respeta el suelo y la rejilla",
           la.interpolar((0, 0.1, 0.2), (5.0, 5.0, 15.0), 3.0) == (0, "por debajo del suelo")
           and cerca(la.interpolar((0, 0.1, 0.2), (5.0, 5.0, 15.0), 10.0)[0], 0.15)
