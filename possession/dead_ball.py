@@ -15,11 +15,12 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
   es un gol válido (el Smart Tagging es automático). Si falla cualquiera de las tres, se fuerza `D` en
   juego. Si se cumplen, lo único que se pierde es el `D` entre el gol y el fin de su ventana, que no se
   ancla y decide el decodificador.
+- **El hueco sin balón antes de cada reinicio** (idea de Ismael): puntuación blanda de `D` desde que se
+  pierde el balón hasta el inicio de la ventana `SET PIECES`.
 
-Las dos son anclas duras: en esos frames solo se permite `D`.
-
-**Medido, pero todavía fuera de `evidence`:** el hueco sin balón antes de cada reinicio
-(`gaps_before_restarts`). Entra solo si pasa la regla apuntada en docs/decisiones.md antes de medirlo.
+**Solo la primera está en `evidence`** (un ancla dura: en esos frames solo se permite `D`). Las otras dos
+están programadas y probadas, pero entran solo si pasan la regla apuntada en docs/decisiones.md antes de
+medirlas (`validation/partido/agregados_dead_ball.py`). Mientras tanto, la entrega no cambia.
 
 Lo que se probó y lo que se midió está en docs/decisiones.md y en validation/resultados/
 (2026-11-12_balon_muerto_atd.md y 2026-11-13_revision_balon_muerto.md).
@@ -60,17 +61,25 @@ def pre_kickoff(game=games.GAME):
 
 
 def dead_mask(paths=None, game=games.GAME):
-    """Máscara de `D` de 199.319 posiciones, indexada por frame de vídeo, con todas las anclas duras.
+    """Máscara de `D` de 199.319 posiciones, indexada por frame de vídeo.
 
-    `paths` son las rutas de games.asset_paths(). Con `None` no se abre ningún fichero y solo va el tramo
-    antes del saque; con rutas, también los tramos de cada gol a su saque, que salen del Smart Tagging.
+    Recibe las rutas de games.asset_paths() por la interfaz común del pipeline, aunque esta versión no
+    lee ningún fichero. Si de gol a saque pasa su regla, entra aquí: `mask |= goal_to_kickoff_mask(paths,
+    game)` cuando `paths` no es `None`.
     """
-    mask = pre_kickoff(game)
-    if paths is not None:
-        n = len(mask)
-        fps = games.GAMES[game]["fps"]
-        for start, stop in goal_to_kickoff(smart_tagging_events(paths["smart_tagging"], fps), fps):
-            mask[max(start, 0):max(min(stop, n), 0)] = True
+    return pre_kickoff(game)
+
+
+def goal_to_kickoff_mask(paths, game=games.GAME):
+    """Máscara de los tramos de cada gol a su saque, que salen del Smart Tagging de `paths`.
+
+    Medida, pero todavía fuera de dead_mask y de `evidence`: la usa validation/partido/agregados_dead_ball.py.
+    """
+    n = games.GAMES[game]["n_video_frames"]
+    fps = games.GAMES[game]["fps"]
+    mask = np.zeros(n, dtype=bool)
+    for start, stop in goal_to_kickoff(smart_tagging_events(paths["smart_tagging"], fps), fps):
+        mask[max(start, 0):max(min(stop, n), 0)] = True
     return mask
 
 
@@ -201,16 +210,16 @@ def gaps_before_restarts(bx, by, events, fps):
 def evidence(trk, paths=None, game=games.GAME):
     """Lo que este módulo aporta al pipeline, con la interfaz común: `(score, allowed)`, de forma (n, 3).
 
-    Columnas en el orden `H`, `A`, `D` (possession/tracking.py). Por ahora solo hay anclas duras: en sus
-    frames solo se permite `D`, y no se puntúa nada.
+    Columnas en el orden `H`, `A`, `D` (possession/tracking.py). Versión 0: en los frames de `dead_mask`
+    solo se permite `D`, y no se puntúa nada más.
 
     Es la pieza del partido: usa las constantes de saque y, cuando los necesite, los ficheros de `paths`
     (Smart Tagging), así que no corre en la DFL. Lo que solo necesita el tracking va en
     possession/dead_state.py.
 
-    **Con `paths=None` no se abre ningún fichero:** solo entran las capas que no los necesitan, es decir,
-    el tramo antes del saque. Así la llama `validation/scripts/prueba_pipeline.py`, que ejecuta Claude y no
-    puede leer el partido. `None` nunca significa «usa games.asset_paths()».
+    **Con `paths=None` no se abre ningún fichero:** solo entran las capas que no los necesitan. Así la
+    llama `validation/scripts/prueba_pipeline.py`, que ejecuta Claude y no puede leer el partido. `None`
+    nunca significa «usa games.asset_paths()».
     """
     n = len(trk.bx)
     score, allowed = no_evidence(n)

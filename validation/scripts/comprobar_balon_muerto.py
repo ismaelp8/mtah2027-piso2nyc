@@ -1,6 +1,10 @@
 """Comprueba possession/dead_ball.py sin datos del partido: solo el código, la GT pública y un Smart Tagging
 inventado, que se escribe en una carpeta temporal y se borra al terminar.
 
+La sección 9 prueba la regla de validation/partido/agregados_dead_ball.py con un partido inventado en
+memoria: importa su `measure`, que no abre ficheros, y nunca ejecuta su `main`, que es lo que lee el
+partido.
+
     python validation/scripts/comprobar_balon_muerto.py
 
 Sale con código 1 si falla alguna comprobación. Claude puede ejecutarlo (validation/README.md).
@@ -135,20 +139,21 @@ def check_goal_to_kickoff(game, folder):
                             np.empty((n_frames, 0)), np.empty(0, dtype=np.int8), games.GAMES[game]["pitch"],
                             tracking.evaluated_blocks(game), fps)
     pre = dead_ball.pre_kickoff(game)
-    anchored = pre.copy()
+    anchored = np.zeros(n_frames, dtype=bool)
     for start, stop in expected:
         anchored[start:stop] = True
-    mask = dead_ball.dead_mask({"smart_tagging": path}, game)
+    goal_mask = dead_ball.goal_to_kickoff_mask({"smart_tagging": path}, game)
+    check("la máscara de gol a saque son justo sus tramos", bool(np.array_equal(goal_mask, anchored)),
+          "{} frames".format(int(goal_mask.sum())))
+    # Gol a saque está medido pero fuera de evidence hasta que pase su regla (docs/decisiones.md, 14/11).
+    check("con rutas, dead_mask sigue siendo solo el tramo antes del saque",
+          bool(np.array_equal(dead_ball.dead_mask({"smart_tagging": path}, game), pre)))
     score, allowed = dead_ball.evidence(trk, {"smart_tagging": path}, game)
-    check("con rutas, la máscara es el tramo antes del saque más los de gol a saque",
-          bool(np.array_equal(mask, anchored)), "{} frames".format(int(mask.sum())))
-    check("evidence: en lo anclado solo D, fuera todo permitido, y no puntúa",
-          bool(np.array_equal(~allowed[:, tracking.H], anchored))
-          and bool(np.array_equal(~allowed[:, tracking.A], anchored))
+    check("evidence con rutas: solo D en el tramo antes del saque, fuera todo permitido, y no puntúa",
+          bool(np.array_equal(~allowed[:, tracking.H], pre)) and bool(np.array_equal(~allowed[:, tracking.A], pre))
           and bool(allowed[:, tracking.D].all()) and not score.any())
     _, allowed_none = dead_ball.evidence(trk, None, game)
-    check("evidence sin rutas: solo el tramo antes del saque",
-          bool(np.array_equal(~allowed_none[:, tracking.H], pre)))
+    check("evidence sin rutas: lo mismo", bool(np.array_equal(allowed_none, allowed)))
 
 
 def check_gap_before_restart(game, folder):
@@ -209,6 +214,107 @@ def check_gap_before_restart(game, folder):
         check("gap_before con inicio 0 da error", True)
     check("sin balón visto antes de la ventana: el hueco empieza en el frame 0",
           result(*ball((0, 1000)), [window(1000)]) == [(dead_ball.GAP, (0, 1000))])
+
+
+def synthetic_match(game, variant=""):
+    """(tracking, eventos) de un partido inventado en memoria, para la regla de agregados_dead_ball.py.
+
+    - Juego: el balón va y viene por el eje largo, 10 s deprisa (10 m/s) y 10 s despacio (1 m/s), y 4 slots
+      lo siguen con un desfase fijo.
+    - Balón muerto: balón y jugadores quietos en el tramo antes del saque y de cada gol a su saque.
+    - Huecos: sin balón los segundos fijados antes de algunas ventanas; ahí los jugadores se paran.
+    Variantes: "gol_falso" (entre el primer gol y su saque hay juego), "huecos_en_juego" (en los huecos los
+    jugadores siguen corriendo), "sin_goles", "control_en_juego" (en el tramo antes del saque, que es el
+    control, hay juego), "huecos_por_todo" (el balón falta 45 s de cada minuto en todo el partido, no
+    solo antes de los reinicios), y "gol_temprano" y "saque_tarde" (5 s de juego deprisa al principio o
+    al final de cada tramo de gol a saque: fallan las suposiciones (a) o (b)).
+    """
+    info = games.GAMES[game]
+    n, fps = info["n_video_frames"], info["fps"]
+    length, width = info["pitch"]
+    t = np.arange(n) / fps
+    step = np.where(t % 20 < 10, 10.0, 1.0) * np.where((t // 4) % 2 == 0, 1.0, -1.0) / fps
+    x = length / 2 + np.cumsum(step) % 60 - 30
+    y = np.full(n, width / 2)
+    rows = [  # (código, tipo, inicio_s, fin_s, segundos sin balón antes del inicio)
+        ("goals", "", 1000, 1010, 0), ("set pieces", "kick off (after goal)", 1100, 1105, 0),
+        ("set pieces", "corner kick", 1500, 1535, 20), ("set pieces", "goal kick", 1600, 1635, 10),
+        ("set pieces", "throw-in", 1700, 1735, 0), ("set pieces", "free kick", 1800, 1835, 70),
+        ("set pieces", "throw-in", 2000, 2035, 8), ("set pieces", "corner kick", 2500, 2535, 15),
+        ("goals", "", 6000, 6012.5, 0), ("set pieces", "kick off (after goal)", 6080, 6085, 0),
+        ("set pieces", "corner kick", 6500, 6535, 12)]
+    if variant == "sin_goles":
+        rows = [r for r in rows if r[0] != "goals" and r[1] != "kick off (after goal)"]
+    events = [{"code": code, "type": kind, "start": int(round(s * fps)), "end": int(round(e * fps))}
+              for code, kind, s, e, _ in rows]
+    dead = dead_ball.pre_kickoff(game) if variant != "control_en_juego" else np.zeros(n, dtype=bool)
+    goals = [e for e in events if e["code"] == "goals"]
+    kicks = [e for e in events if e["type"] == "kick off (after goal)"]
+    for i, (goal, kick) in enumerate(zip(goals, kicks)):
+        if not (variant == "gol_falso" and i == 0):
+            dead[goal["end"]:kick["start"]] = True
+    x[dead], y[dead] = length / 2, width / 2
+    edges = {"gol_temprano": lambda goal, kick: slice(goal["end"], goal["end"] + 5 * fps),
+             "saque_tarde": lambda goal, kick: slice(kick["start"] - 5 * fps, kick["start"])}
+    if variant in edges:
+        for goal, kick in zip(goals, kicks):
+            seg = edges[variant](goal, kick)
+            x[seg] = length / 2 + 10 * np.sin(2 * np.pi * t[seg] / 4)  # unos 9 m/s de media a 1 s
+    running = x.copy()
+    for event, row in zip(events, rows):
+        x[event["start"] - row[4] * fps:event["start"]] = np.nan
+    if variant == "huecos_por_todo":
+        x[(t % 60) < 45] = np.nan
+    y[np.isnan(x)] = np.nan
+    anchor = running if variant == "huecos_en_juego" else np.where(np.isnan(x), length / 2, x)
+    offsets = ((-5, -3), (4, 6), (-8, 2), (6, -7))
+    px = np.stack([anchor + dx for dx, _ in offsets], axis=1)
+    py = np.stack([np.full(n, width / 2 + dy) for _, dy in offsets], axis=1)
+    trk = tracking.Tracking(x, y, px, py, np.array([0, 1, 0, 1], dtype=np.int8), (length, width),
+                            tracking.evaluated_blocks(game), fps)
+    return trk, sorted(events, key=lambda e: (e["start"], e["end"], e["code"], e["type"]))
+
+
+def check_rules(game):
+    """La regla de agregados_dead_ball.py (su `measure`, que no abre ficheros) con el partido inventado."""
+    sys.path.insert(0, os.path.join(ROOT, "validation", "partido"))
+    import agregados_dead_ball as agg  # solo sus cuentas: su main, que lee el partido, no se ejecuta
+
+    fps = games.GAMES[game]["fps"]
+    m = agg.measure(*synthetic_match(game), game)
+    check("partido inventado: entran las dos capas", m["gol_entra"] and m["hueco_entra"],
+          "control {} placebo {} tramos {}".format(m["control_ok"], m["power"], m["spans_ok"]))
+    check("partido inventado: 2 goles anclan, 3.938 frames", m["spans"] == 2 and m["anchored_frames"] == 3938,
+          "{} y {}".format(m["spans"], m["anchored_frames"]))
+    expected_states = {dead_ball.GAP: 5, dead_ball.BALL_SEEN: 1, dead_ball.GAP_TOO_LONG: 1,
+                       dead_ball.RESTART_INSIDE: 0}
+    check("partido inventado: 7 ventanas, 5 con hueco que puntúa, 65 s de hueco",
+          m["windows"] == 7 and m["states"] == expected_states and m["gap_frames"] == 65 * fps,
+          "{} {} {}".format(m["windows"], m["states"], m["gap_frames"]))
+    m = agg.measure(*synthetic_match(game, "gol_falso"), game)
+    check("un gol falso: falla su tramo entero y gol a saque no entra; el hueco sí",
+          not m["gol_entra"] and m["n_fail"] == 1 and m["fails_by_test"][0] == 1 and m["hueco_entra"])
+    m = agg.measure(*synthetic_match(game, "huecos_en_juego"), game)
+    check("jugadores corriendo en los huecos: el hueco no entra; gol a saque sí",
+          m["gol_entra"] and not m["hueco_entra"] and m["instrument"] and not m["looks_dead"])
+    m = agg.measure(*synthetic_match(game, "sin_goles"), game)
+    check("sin goles: gol a saque no entra y el placebo no tiene potencia",
+          not m["gol_entra"] and m["spans"] == 0 and not m["power"])
+    m = agg.measure(*synthetic_match(game, "control_en_juego"), game)
+    check("con juego en el control: no decide y no entra ninguna de las dos capas",
+          not m["control_ok"] and not m["gol_entra"] and not m["instrument"] and not m["hueco_entra"],
+          "control {} modelo de Ana: partido {} control {}".format(
+              m["control"], agg.share(m["g_match"]), agg.share(m["g_ctrl"])))
+    for variant, test, name in (("gol_temprano", 1, "la ventana GOALS acaba antes del gol: falla el borde inicial"),
+                                ("saque_tarde", 2, "la del saque empieza tarde: falla el borde final")):
+        m = agg.measure(*synthetic_match(game, variant), game)
+        check(name + " (no el tramo entero) y gol a saque no entra",
+              not m["gol_entra"] and m["fails_by_test"][test] == 2 and m["fails_by_test"][0] == 0,
+              "fallos por prueba {}".format(m["fails_by_test"]))
+    m = agg.measure(*synthetic_match(game, "huecos_por_todo"), game)
+    check("sin balón a menudo en todo el partido: el hueco no gana al placebo y no entra",
+          not m["beats_placebo"] and not m["hueco_entra"],
+          "cobertura {} placebo {}".format(agg.share(m["coverage"]), agg.share(m["coverage_placebo"])))
 
 
 def main():
@@ -289,6 +395,9 @@ def main():
         check_gap_before_restart(game, folder)
     finally:
         shutil.rmtree(folder, ignore_errors=True)
+
+    print("\n9. La regla de validation/partido/agregados_dead_ball.py, con un partido inventado en memoria")
+    check_rules(game)
 
     print("\n{}".format("TODO BIEN" if not failures else "FALLAN {}: {}".format(
         len(failures), "; ".join(failures))))
