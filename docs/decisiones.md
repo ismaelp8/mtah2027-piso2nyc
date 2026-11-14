@@ -642,8 +642,8 @@ Descartado:
 Quién: Manuel
 
 Qué se va a probar: la pieza de `possession/dead_ball.py` (función `evidence`), por capas, en este orden.
-Cada capa entra con la PR de la medida que la respalda (ver «Abierto»). Sale de `docs/PLAN_ENTREGA.md` §3 y de
-`validation/resultados/2026-11-13_revision_balon_muerto.md` §6.
+Cada capa entra con la PR de la medida que la respalda (ver «Abierto»). Sale de
+`docs/PLAN_ENTREGA.md` §3 y de `validation/resultados/2026-11-13_revision_balon_muerto.md` §6.
 
 1. **Anclas duras,** en `allowed` (solo `D`):
    - ya en `main`: el tramo antes del saque de cada parte;
@@ -675,8 +675,10 @@ Cada capa entra con la PR de la medida que la respalda (ver «Abierto»). Sale d
      5 s anteriores a su inicio, puntúa `D` desde el primer frame sin balón hasta el inicio de la ventana.
    - **No puntúa** si el hueco pasa de 60 s (sería una parada larga o juego sin balón, y la capa no sabe
      distinguirlos) ni si otro `GOALS` u otro `SET PIECES` empieza dentro del hueco.
-   - **No es `D` a pelo,** que es lo descartado el 13/11: es una puntuación blanda, solo antes de un
-     reinicio del Smart Tagging, y decide el decodificador.
+   - **No es `D` a pelo,** que es lo descartado el 13/11 y lo que `docs/PLAN_ENTREGA.md` §3 prohíbe
+     («usar la falta de balón como `D`»): es una puntuación blanda, solo antes de un reinicio del Smart
+     Tagging, y decide el decodificador. Así lo planteó Ismael en su mensaje a Manuel del 14/11: «como
+     evidencia para el decodificador (no como D a pelo, que es lo que se descartó el 13/11)».
    - Código: `gaps_before_restarts` en `possession/dead_ball.py`, todavía fuera de `evidence`.
 
 **Lo que no entra:**
@@ -689,6 +691,8 @@ Cada capa entra con la PR de la medida que la respalda (ver «Abierto»). Sale d
 Cómo se medirá (dataset, nº de partidos/posesiones, métrica):
 - **Agregados del partido:** los tres scripts de `validation/partido/` (`agregados_smart_tagging.py`,
   `agregados_balon_reinicios.py` y `agregados_jugadores.py`), que ejecuta Manuel.
+- **Gol a saque y la capa 4:** `validation/partido/agregados_dead_ball.py`, que también ejecuta Manuel, con
+  su propia regla (abajo).
 - **La capa 3, que solo usa el balón, también en la DFL:** los 7 partidos con el balón tapado «como el
   ATD» y el criterio del 13/11.
 - **Lo que usa el Smart Tagging no se puede medir en la DFL.** Se comprueba en el partido con agregados:
@@ -763,8 +767,9 @@ Resultado (los tres agregados, ejecutados por Manuel el 14/11; solo agregados de
   de córner, el 70 % de las de saque de puerta, el 80 % de las de falta y ninguna de saque inicial.
 
 Decisión según la regla, sin cambiarla:
-- **De gol a saque entra.** Cuántos goles anclan con el emparejamiento del código está **[sin verificar]**
-  hasta `validation/partido/agregados_dead_ball.py` (regla abajo).
+- **De gol a saque pasa esta regla,** pero entra en `main` solo si pasa también la de
+  `validation/partido/agregados_dead_ball.py` (abajo). Cuántos goles anclan con el emparejamiento del
+  código está **[sin verificar]** hasta ejecutarlo.
 - **El final de parte se escribe como capa** (1,15 y 0,81 m/s, por debajo de 1,2). Su candidato se apunta
   antes de medirlo en la DFL. Ojo: 1,15 está muy cerca de 1,2, el tramo antes del saque de la 2ª parte,
   que es `D`, va a 1,30, y el 35 % del partido está por debajo de 1,2. Así que 1,2 no separa bien, y el
@@ -839,6 +844,9 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
     tienen que decidir, y tienen que fallar la mitad o más de los que deciden. Si no, la medida no decide;
   - **ningún tramo anclado falla, y pasan la mitad o más.** No se puede quitar un gol concreto, porque
     sería una constante sacada del partido. Por eso un solo tramo que falla deja fuera toda la capa.
+
+  Es conservadora a propósito: un tramo bueno puede fallar si el ATD apenas ve el balón tras el gol y
+  alguien lo patea al centro. Se prefiere perder la capa a forzar `D` en juego.
 - **Sin ningún gol que ancle,** esta capa no tiene nada que subir.
 - **El hueco antes de cada reinicio (capa 4) entra si se cumplen las tres cosas,** con una puntuación de
   `D` de 1 por frame, marcada «sin ajustar» (la misma escala que `NEAREST_SCORE` en `candidates.py`; la
@@ -861,7 +869,8 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
     - **Lo que no comprueba:** que el hueco empiece justo en la parada. El modelo llega tarde al instante
       (entrada anterior de Ismael), así que solo dice si el hueco es sobre todo `D`. **[sin verificar]**
       Con lo que hay, la precisión del inicio no se puede medir: la DFL tapa el balón a partir de sus
-      propias etiquetas de `D`, y medirla ahí sería circular.
+      propias etiquetas de `D`, y medirla ahí sería circular (`docs/PLAN_ENTREGA.md` §4, «El `D` en la
+      DFL tiene un límite»).
 - **Si algo no pasa,** la capa se queda fuera. Con esta salida no se reajusta ningún número: ni los topes
   (180 s, 5 s, 60 s), ni los umbrales (5 m/s, la mitad, el 50 %, el doble, la mayoría, los 5 huecos), ni
   los tipos que juzga el modelo de Ana, ni los desplazamientos.
@@ -886,7 +895,8 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
 Abierto:
 - **Dos ficheros más, además de `dead_ball.py`, los dos de esta pieza:** las pruebas de las capas con un
   Smart Tagging inventado (secciones 7 y 8 de `validation/scripts/comprobar_balon_muerto.py`) y
-  `validation/partido/agregados_dead_ball.py`.
+  `validation/partido/agregados_dead_ball.py`. Las dos filas de `validation/README.md` que los describen
+  se tocan solo para eso.
 - **Una PR por medida:** las capas que se miden en la misma ejecución del script (gol a saque y la capa 4)
   van en la misma PR, cada una con sus agregados. Una capa que no pasa no entra en `evidence`.
 - **Aviso para Ismael:** `possession/pipeline.py` no pide el Smart Tagging en `games.require`. Si falta,

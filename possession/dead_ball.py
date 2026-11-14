@@ -5,7 +5,9 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
 - **Tramo antes del saque de cada parte** (v1): en la 2ª parte son los 2.934 frames que van del primer
   frame evaluado (110.808) al saque (113.742), todos `D` según FAQ.md. En la 1ª parte el primer frame
   evaluado ya es el saque, así que no hay tramo. Los frames de saque son los que publica FAQ.md, tal como
-  los guarda el código oficial (starter/load_smart_tagging.py).
+  los guarda el código oficial (starter/load_smart_tagging.py). No se fechan con el balón del ATD: con la
+  regla probada (balón quieto en el centro que empieza a moverse) no se encontró el golpeo en ninguno de
+  los 6 saques iniciales.
 - **De cada gol a su saque:** desde el fin de la ventana `GOALS` del Smart Tagging hasta el inicio de la
   ventana de su `Kick Off (After Goal)`. Entre el gol y el saque el balón está muerto por reglamento, así
   que ese tramo es todo `D` si se cumplen tres cosas, las tres **[sin verificar]**: que la ventana `GOALS`
@@ -146,7 +148,8 @@ GAP_STATES = (GAP, BALL_SEEN, GAP_TOO_LONG, RESTART_INSIDE)
 
 
 def restart_windows(events):
-    """Ventanas `SET PIECES` que no son saques iniciales (los dos tipos de saque ya tienen sus anclas)."""
+    """Ventanas `SET PIECES` que no son saques iniciales. Antes de un saque inicial ya hay otras capas: el
+    tramo antes del saque de cada parte y el de cada gol a su saque."""
     return [e for e in events if e["code"] == SET_PIECES_CODE and not e["type"].startswith("kick off")]
 
 
@@ -159,12 +162,13 @@ def last_seen_before(bx, by):
 def gap_before(last_seen, start, restart_starts, fps):
     """(estado, inicio del hueco) de un reinicio cuya ventana empieza en el frame `start`.
 
-    El hueco son los frames [inicio, start), todos sin balón, y el frame inicio − 1 tiene balón. El inicio
-    es None salvo con el estado GAP. `restart_starts` son los inicios de los demás `GOALS` y `SET PIECES`:
-    si alguno cae dentro del hueco, con los extremos incluidos, el hueco no es de este reinicio.
+    El hueco son los frames [inicio, start), todos sin balón; el frame inicio − 1 tiene balón, o inicio es 0.
+    El inicio es None salvo con el estado GAP. `restart_starts` son los inicios de los demás `GOALS` y
+    `SET PIECES`: si alguno cae dentro del hueco, con los extremos incluidos, el hueco no es de este reinicio.
     """
     if not 0 < start <= len(last_seen):
-        raise ValueError("el inicio {} cae fuera del tracking ({} frames)".format(start, len(last_seen)))
+        # Sin el frame: el mensaje se puede pegar a Claude (CLAUDE.md, regla nº 1).
+        raise ValueError("el inicio de la ventana cae fuera del tracking ({} frames)".format(len(last_seen)))
     gap_start = int(last_seen[start - 1]) + 1
     length = start - gap_start
     if length < LONG_GAP_S * fps:
@@ -199,6 +203,10 @@ def evidence(trk, paths=None, game=games.GAME):
 
     Columnas en el orden `H`, `A`, `D` (possession/tracking.py). Por ahora solo hay anclas duras: en sus
     frames solo se permite `D`, y no se puntúa nada.
+
+    Es la pieza del partido: usa las constantes de saque y, cuando los necesite, los ficheros de `paths`
+    (Smart Tagging), así que no corre en la DFL. Lo que solo necesita el tracking va en
+    possession/dead_state.py.
 
     **Con `paths=None` no se abre ningún fichero:** solo entran las capas que no los necesitan, es decir,
     el tramo antes del saque. Así la llama `validation/scripts/prueba_pipeline.py`, que ejecuta Claude y no

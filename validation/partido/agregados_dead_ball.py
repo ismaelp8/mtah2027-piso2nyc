@@ -262,7 +262,8 @@ def main():
     restart_starts = [e["start"] for e in events if e["code"] in (dead_ball.GOALS_CODE, dead_ball.SET_PIECES_CODE)]
     shifted = [r[0]["start"] + shift * fps for r in results for shift in PLACEBO_SHIFTS_S]
     shifted = [s for s in shifted if inside_blocks(s, s + 1, trk.blocks)]
-    placebo_gaps = sum(dead_ball.gap_before(last_seen, s, restart_starts, fps)[0] == dead_ball.GAP for s in shifted)
+    placebo_gaps = sum(dead_ball.gap_before(last_seen, s, restart_starts, fps)[0] == dead_ball.GAP
+                       for s in shifted)
     coverage_placebo = placebo_gaps / len(shifted) if shifted else float("nan")
     print("   placebo (inicios desplazados {} s): {} inicios, con hueco {} ({})".format(
         "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), len(shifted), placebo_gaps,
@@ -280,10 +281,11 @@ def main():
     n_gap = int((gap_region & graded).sum())
     print("   frames de hueco (evaluados), sumados: {} ({} de los evaluados)".format(n_gap, pct(n_gap, n_graded)))
     g_judged = dead_share(odds, judged_region & graded)
+    g_rest = dead_share(odds, gap_region & ~judged_region & graded)
+    g_all, g_first = dead_share(odds, gap_region & graded), dead_share(odds, first_seconds & graded)
     print("   modelo de Ana, D en: huecos de córner y falta (n={}) {}   resto de huecos {}   todos {}   primeros"
-          " {} s de los huecos {}".format(
-              n_judged, share(g_judged), share(dead_share(odds, gap_region & ~judged_region & graded)),
-              share(dead_share(odds, gap_region & graded)), EDGE_S, share(dead_share(odds, first_seconds & graded))))
+          " {} s de los huecos {}".format(n_judged, share(g_judged), share(g_rest), share(g_all), EDGE_S,
+                                          share(g_first)))
     print("   modelo de Ana, D en: partido {}   control {}".format(
         share(dead_share(odds, graded)), share(dead_share(odds, pre))))
     print("   jugadores (m/s) en los huecos: {}".format(quantiles(players[gap_region & graded])))
@@ -291,8 +293,8 @@ def main():
     beats_placebo = coverage >= 2 * coverage_placebo  # False si el placebo es NaN
     enough = n_judged >= MIN_JUDGED_GAPS
     looks_dead = enough and g_judged >= 0.5  # False si g_judged es NaN
-    print("   regla: cobertura ≥ 50 % {}   ≥ 2 veces el placebo {}   ≥ {} huecos de córner y falta {}   el modelo"
-          " de Ana ve D en la mayoría de sus frames {}   -> la capa entra: {}".format(
+    print("   regla: cobertura ≥ 50 % {}   ≥ 2 veces el placebo {}   ≥ {} huecos de córner y falta {}"
+          "   el modelo de Ana ve D en la mayoría de sus frames {}   -> la capa entra: {}".format(
               yes(covers), yes(beats_placebo), MIN_JUDGED_GAPS, yes(enough), yes(looks_dead),
               yes(covers and beats_placebo and looks_dead)))
 
