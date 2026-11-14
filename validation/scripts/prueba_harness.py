@@ -100,8 +100,10 @@ def comprobar_opciones(carpeta):
         funcion = version["piezas"]["candidates"]
         comprobar("las opciones se fijan con la función", isinstance(funcion, functools.partial)
                   and funcion.func is evidencia_prueba and funcion.keywords == {"peso": 3.0})
-        funcion(tracking.Tracking(*([None] * len(tracking.Tracking._fields)))._replace(bx=[0.0] * 5))
-        comprobar("y llegan a la función al llamarla", llamadas == [3.0])
+        comprobar("y llegan a la función: la prueba con el partido inventado la llama una vez", llamadas == [3.0])
+        ruta = escribir(carpeta, json.dumps({"solo opciones": {"piezas": {"candidates": {"opciones": {}}}}}))
+        version = puntuar.leer_versiones(ruta)[0]["solo opciones"]
+        comprobar("sin «funcion», la de siempre", version["piezas"]["candidates"] is candidates.evidence)
         ruta = escribir(carpeta, json.dumps({"x": {"piezas": {"candidates": {
             "funcion": "evidencia_prueba", "opciones": {"pesso": 3.0}}}}}))
         comprobar("una opción que la función no tiene da error", da_error(lambda: puntuar.leer_versiones(ruta)))
@@ -143,10 +145,41 @@ def comprobar_erratas(carpeta):
          "{\"v\": {\"piezas\": {\"candidates\": {\"funcion\": \"evidence\", \"opciones\": {\"radio\": 2}}}}}"),
         ("«params» como opción del decodificador",
          "{\"v\": {\"piezas\": {\"temporal\": {\"opciones\": {\"params\": {}}}}}}"),
+        ("«piezas» vacías que no son un objeto ([])", "{\"v\": {\"piezas\": []}}"),
+        ("«piezas» a false", "{\"v\": {\"piezas\": false}}"),
+        ("«opciones» a false", "{\"v\": {\"piezas\": {\"candidates\": {\"opciones\": false}}}}"),
+        ("una versión que se llama como la fila de dejar uno fuera",
+         json.dumps({puntuar.DEJAR_UNO_FUERA_FICHERO: {}})),
+        ("la otra fila de dejar uno fuera", json.dumps({puntuar.DEJAR_UNO_FUERA: {}})),
+        ("NaN como coste", "{\"v\": {\"params\": {\"switch\": NaN}}}"),
+        ("Infinity como coste", "{\"v\": {\"params\": {\"switch\": Infinity}}}"),
+        ("una función que el módulo importa pero no es una pieza (no_evidence)",
+         "{\"v\": {\"piezas\": {\"candidates\": \"no_evidence\"}}}"),
+        ("una función del módulo que devuelve otra cosa (nearest_team)",
+         "{\"v\": {\"piezas\": {\"candidates\": \"nearest_team\"}}}"),
+        ("algo que no es una función (__class__)", "{\"v\": {\"piezas\": {\"candidates\": \"__class__\"}}}"),
     ]
     for nombre, texto in casos:
         ruta = escribir(carpeta, texto)
         comprobar(nombre, da_error(lambda: puntuar.leer_versiones(ruta)))
+
+    def escribe_en_el_tracking(trk):
+        trk.bx[0] = 0.0
+        return tracking.no_evidence(len(trk.bx))
+
+    def decodificador_corto(score, allowed, blocks, params):
+        return np.zeros(10, dtype=np.int8)
+
+    candidates.escribe_en_el_tracking = escribe_en_el_tracking
+    temporal.decodificador_corto = decodificador_corto
+    try:
+        ruta = escribir(carpeta, "{\"v\": {\"piezas\": {\"candidates\": \"escribe_en_el_tracking\"}}}")
+        comprobar("una pieza que escribe en el tracking (el harness se lo da a todas las versiones)",
+                  da_error(lambda: puntuar.leer_versiones(ruta)))
+        ruta = escribir(carpeta, "{\"v\": {\"piezas\": {\"temporal\": \"decodificador_corto\"}}}")
+        comprobar("un decodificador que no da una etiqueta por frame", da_error(lambda: puntuar.leer_versiones(ruta)))
+    finally:
+        del candidates.escribe_en_el_tracking, temporal.decodificador_corto
     comprobar("un fichero que no existe da error",
               not os.path.exists(os.path.join(carpeta, "no_existe.json"))
               and _da_oserror(lambda: puntuar.leer_versiones(os.path.join(carpeta, "no_existe.json"))))
@@ -196,9 +229,23 @@ def comprobar_lectura_eventos():
               and puntuar.version_de_main(puntuar.VERSIONES) == "Viterbi, coste 25 (v0)")
 
 
+MAX_BYTES = 20000  # un fichero de versiones ocupa unos cientos de bytes; un volcado por frame, megas
+
+
+def comprobar_carpeta():
+    print("Todo lo que hay en validation/harness/versiones/ es un fichero de versiones pequeño")
+    carpeta = os.path.dirname(EJEMPLO)
+    for nombre in sorted(os.listdir(carpeta)):
+        ruta = os.path.join(carpeta, nombre)
+        pequeño = nombre.endswith(".json") and os.path.getsize(ruta) <= MAX_BYTES
+        comprobar(nombre, pequeño and not da_error(lambda: puntuar.leer_versiones(ruta)),
+                  "" if pequeño else "no es un .json de menos de {} bytes".format(MAX_BYTES))
+
+
 def main():
     carpeta = tempfile.mkdtemp(prefix="mtah_prueba_harness_")
     try:
+        comprobar_carpeta()
         comprobar_ejemplo()
         comprobar_opciones(carpeta)
         comprobar_erratas(carpeta)

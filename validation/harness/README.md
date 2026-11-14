@@ -70,13 +70,15 @@ Sin tocar `puntuar.py`: las versiones van en un fichero JSON y se pasan con `--v
    python validation/harness/puntuar.py --versiones validation/harness/versiones/candidatos_2026-11-15.json
    ```
 
-4. **Sube el JSON en tu PR con la tabla.** La salida empieza por el fichero, su huella y cada versión, así
-   que quien revisa puede repetirla en tu rama. La huella es el sha256 del contenido sin espacios: no
-   cambia con los saltos de línea de Windows, el BOM ni el sangrado.
+4. **Sube el JSON en tu PR con la tabla.** La salida empieza por el fichero, su huella, el commit del
+   código (y si había cambios sin commit) y cada versión, así que quien revisa puede repetirla en tu rama.
+   La huella es el sha256 del contenido sin espacios: no cambia con los saltos de línea de Windows, el BOM
+   ni el sangrado. Identifica el fichero, no el código: por eso va también el commit.
 
 **El fichero.** Cada clave es el nombre de una versión, como saldrá en la tabla. El control (el baseline
-oficial) va siempre delante y no hace falta escribirlo. Incluye la versión de `main` (`{}`), para ver
-cuánto cambias respecto a lo que ya hay.
+oficial) va siempre delante y no hace falta escribirlo. **Incluye la versión de `main` (`{}`):** el
+harness compara cada candidato con ella (sección «Frente a la versión de main» de la salida), con la
+misma regla de §5.8 que frente al control. Eso es lo que decide entre tu candidato y lo que ya hay.
 
 ```json
 {
@@ -89,18 +91,25 @@ cuánto cambias respecto a lo que ya hay.
 }
 ```
 
-`evidence_n2` es inventada: para usarla tendría que existir en `possession/candidates.py`.
+`evidence_n2` es inventada: para usarla tendría que existir en `possession/candidates.py`. Si tu variante
+es una opción de la función de siempre, basta con las opciones: `{"candidates": {"opciones": {"radio":
+2.0}}}`.
 
 | clave | qué es |
 |---|---|
-| `params` | los costes del decodificador (las claves de `temporal.DEFAULTS`). Sin ella, los de por defecto |
-| `piezas` | qué función usa cada pieza en lugar de la de siempre. Las piezas: `ball` (en lugar de `clean`), `candidates` y `dead_state` (en lugar de `evidence`) y `temporal` (en lugar de `decode`). La función tiene que estar en ese módulo de `possession/`. Vale su nombre (`"evidence_n2"`) o `{"funcion": ..., "opciones": {...}}`, y las opciones se le pasan como argumentos con nombre |
+| `params` | los parámetros del decodificador que use la versión (con el de siempre, las claves de `temporal.DEFAULTS`). Sin ella, los de por defecto |
+| `piezas` | qué función usa cada pieza en lugar de la de siempre. Las piezas: `ball` (en lugar de `clean`), `candidates` y `dead_state` (en lugar de `evidence`) y `temporal` (en lugar de `decode`). La función tiene que estar en ese módulo de `possession/`. Vale su nombre (`"evidence_n2"`) o `{"funcion": ..., "opciones": {...}}`; sin `funcion`, la de siempre. Las opciones se le pasan como argumentos con nombre |
 | `nota` | texto libre: qué es y por qué. Sale en la cabecera |
 | `tipo` | `pipeline` (por defecto) o `control`. Un `control` es el baseline con otra ventana (`"ventana": 125`) |
 
-Las erratas dan error al leer el fichero, antes de cargar ningún partido: una clave desconocida, una
-pieza o una función que no existe, una opción que la función no acepta, o unos `params` que el
-decodificador no admite. `validation/harness/versiones/ejemplo.json` es un fichero completo:
+**Las erratas dan error al leer el fichero, antes de cargar ningún partido:** una clave desconocida, una
+pieza o una función que no existe, una opción que la función no acepta, `NaN` o `Infinity`, o un nombre
+de fila del propio harness. Además, cada versión se ejecuta entera sobre un partido inventado de un
+minuto: así fallan también unos `params` que el decodificador no admite, una función que no es una pieza
+(no devuelve lo que pide la interfaz) y una pieza que escribe en el tracking. **El tracking es de solo
+lectura:** todas las versiones reciben el mismo, así que una pieza tiene que devolver una copia
+(`trk._replace(bx=...)`) en vez de cambiarlo. `validation/harness/versiones/ejemplo.json` es un fichero
+completo:
 
 ```bash
 python validation/harness/puntuar.py --versiones validation/harness/versiones/ejemplo.json
@@ -112,6 +121,13 @@ números en las 24 celdas, y sin `--versiones` la salida es idéntica byte a byt
 
 **Con `--versiones`, la fila «dejando un partido fuera»** se llama «elegida dejando un partido fuera» y
 elige entre las versiones del pipeline de tu fichero.
+
+**La pieza de `D` de estado (`dead_state`) no se mide así hoy.** Con `--d oraculo`, que es lo que se usa
+por defecto, el `D` sale de las etiquetas: una variante de `dead_state` no cambia nada, y si su `allowed`
+contradice las etiquetas, el pipeline da error («las piezas se contradicen»). Con `--d propio` cada versión
+pone su `D`, pero ese número no decide nada: el balón tapado en los `D` de la DFL delata la etiqueta. El
+modo con el equipo copiado de las etiquetas que promete el plan (§4) todavía no existe. Mientras tanto,
+el `D` se mide con sus propios scripts y su criterio del 13/11.
 
 **Sin `--versiones`** se puntúan las de `VERSIONES` en `puntuar.py`: el decodificador con cuatro costes.
 Es la tabla de referencia (`validation/resultados/2026-11-14_harness_dfl.md`).

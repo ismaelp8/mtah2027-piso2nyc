@@ -35,6 +35,7 @@ import hashlib
 import inspect
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -74,14 +75,17 @@ DEJAR_UNO_FUERA_FICHERO = "elegida dejando un partido fuera"  # la misma fila co
 
 MODULOS = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal}
 CLAVES = {"pipeline": {"tipo", "nota", "params", "piezas"}, "control": {"tipo", "nota", "ventana"}}
-FRAMES_PRUEBA = 50  # el problema sin evidencia con el que se prueba el decodificador al leer el fichero
+RESERVADOS = (CONTROL, DEJAR_UNO_FUERA, DEJAR_UNO_FUERA_FICHERO)  # nombres de filas que pone el harness
+FRAMES_PRUEBA = 1500  # el partido inventado con el que se prueba cada versión al leer el fichero (1 min)
+SEMILLA_PRUEBA = 20261114
 
 
 def leer_versiones(ruta):
     """Las versiones de un fichero JSON, con el control delante. Devuelve (versiones, contenido, huella).
 
-    Comprueba todo lo que puede antes de cargar ningún partido: claves, piezas, funciones, opciones y los
-    `params` del decodificador. Cualquier errata da error con la ruta y la versión.
+    Comprueba todo lo que puede antes de cargar ningún partido: claves, piezas, funciones y opciones, y
+    ejecuta cada versión sobre un partido inventado (`partido_de_prueba`). Cualquier errata da error con la
+    ruta y la versión.
     """
     def sin_repetidas(pares):
         objeto = collections.OrderedDict()
@@ -91,17 +95,50 @@ def leer_versiones(ruta):
             objeto[clave] = valor
         return objeto
 
+    def sin_constantes(texto):  # json de Python acepta NaN e Infinity; el JSON de verdad, no
+        raise ValueError("{}: «{}» no vale en el fichero".format(ruta, texto))
+
     with open(ruta, "rb") as handle:
         crudo = handle.read()
-    contenido = json.loads(crudo.decode("utf-8-sig"), object_pairs_hook=sin_repetidas)
+    contenido = json.loads(crudo.decode("utf-8-sig"), object_pairs_hook=sin_repetidas,
+                           parse_constant=sin_constantes)
     if not isinstance(contenido, dict) or not contenido:
         raise ValueError("{}: tiene que ser un objeto JSON con al menos una versión".format(ruta))
     versiones = collections.OrderedDict([(CONTROL, VERSIONES[CONTROL])])
     for nombre, spec in contenido.items():
-        if nombre == CONTROL:
-            raise ValueError("{}: «{}» es el control, que va siempre; ponle otro nombre".format(ruta, nombre))
+        if nombre in RESERVADOS:
+            raise ValueError("{}: «{}» es el nombre de una fila del harness; ponle otro".format(ruta, nombre))
         versiones[nombre] = version_de(spec, "{}, versión «{}»".format(ruta, nombre))
     return versiones, contenido, huella_de(contenido)
+
+
+def partido_de_prueba():
+    """Un `Tracking` inventado de 1 minuto, 11 contra 11 y el balón con huecos, de solo lectura.
+
+    Cada versión del fichero se ejecuta sobre él al leerlo: una errata en `params`, una función que no es
+    una pieza o una pieza que escribe en el tracking fallan aquí, antes de medir nada.
+    """
+    rng = np.random.default_rng(SEMILLA_PRUEBA)
+    largo, ancho = 105.0, 68.0
+    n, por_equipo = FRAMES_PRUEBA, 11
+    px = np.clip(rng.uniform(5, largo - 5, 2 * por_equipo) + np.cumsum(rng.normal(0, 0.15, (n, 2 * por_equipo)), 0),
+                 0, largo).astype(np.float32)
+    py = np.clip(rng.uniform(5, ancho - 5, 2 * por_equipo) + np.cumsum(rng.normal(0, 0.15, (n, 2 * por_equipo)), 0),
+                 0, ancho).astype(np.float32)
+    bx = np.clip(largo / 2 + np.cumsum(rng.normal(0, 0.4, n)), 0, largo)
+    by = np.clip(ancho / 2 + np.cumsum(rng.normal(0, 0.4, n)), 0, ancho)
+    sin_balon = np.repeat(rng.random(n // 25) < 0.4, 25)
+    bx[sin_balon], by[sin_balon] = np.nan, np.nan
+    team = np.repeat(np.array([0, 1], dtype=np.int8), por_equipo)
+    trk = tracking.Tracking(bx, by, px, py, team, (largo, ancho), ((100, n - 100),), 25)
+    return solo_lectura(trk)
+
+
+def solo_lectura(trk):
+    """El mismo `Tracking`, con sus arrays de solo lectura: una pieza que escriba en él da error."""
+    for array in (trk.bx, trk.by, trk.px, trk.py, trk.team):
+        array.setflags(write=False)
+    return trk
 
 
 def huella_de(contenido):
@@ -132,19 +169,22 @@ def version_de(spec, donde):
     params = spec.get("params")
     if params is not None and not isinstance(params, dict):
         raise ValueError("{}: «params» tiene que ser un objeto".format(donde))
-    piezas = spec.get("piezas") or {}
+    piezas = spec.get("piezas")
+    piezas = {} if piezas is None else piezas
     if not isinstance(piezas, dict):
         raise ValueError("{}: «piezas» tiene que ser un objeto".format(donde))
     funciones = {}
     for pieza, valor in piezas.items():
         funciones[pieza] = funcion_de(pieza, valor, donde)
-    # Un problema sin evidencia de 50 frames: así una errata en `params` falla aquí y no a mitad de medir.
-    decodificar = funciones.get("temporal", temporal.decode)
+    # La versión entera sobre un partido inventado: así una errata falla aquí y no a mitad de medir.
+    prueba = partido_de_prueba()
     try:
-        decodificar(np.zeros((FRAMES_PRUEBA, tracking.N_STATES)),
-                    np.ones((FRAMES_PRUEBA, tracking.N_STATES), bool), [(0, FRAMES_PRUEBA)], params)
-    except (KeyError, TypeError, ValueError) as error:
-        raise ValueError("{}: el decodificador no acepta esos «params»: {}".format(donde, error))
+        salida = pipeline.run(prueba, params=params, pieces=funciones, report={})
+        if np.shape(salida) != (FRAMES_PRUEBA,):
+            raise ValueError("devuelve {} etiquetas en vez de una por frame".format(np.shape(salida)))
+    except Exception as error:  # cualquier fallo, con su tipo y su mensaje: no se ha medido nada
+        raise ValueError("{}: falla en la prueba con un partido inventado de {} frames, antes de medir: "
+                         "{}: {}".format(donde, FRAMES_PRUEBA, type(error).__name__, error))
     return {"tipo": "pipeline", "params": params, "piezas": funciones}
 
 
@@ -158,7 +198,8 @@ def funcion_de(pieza, valor, donde):
         raise ValueError("{}: la pieza «{}» tiene que ser el nombre de una función o un objeto con "
                          "«funcion» y «opciones»".format(donde, pieza))
     nombre = valor.get("funcion", pipeline.PIECES[pieza])
-    opciones = valor.get("opciones") or {}
+    opciones = valor.get("opciones")
+    opciones = {} if opciones is None else opciones
     modulo = MODULOS[pieza]
     funcion = getattr(modulo, nombre, None) if isinstance(nombre, str) else None
     if not callable(funcion):
@@ -317,8 +358,29 @@ def resumir(por_partido, partidos, n_draws, versiones=VERSIONES, dejar_uno=DEJAR
             fila["diferencia_intervalo"] = diferencia_bootstrap((flags, n_pred), juntar(referencia), n_draws)
             fila["gana_en"] = int(sum(a > b for a, b in zip(f1s, f1_ref)))
         filas[nombre] = fila
+    frente_a_main(filas, por_partido, partidos, n_draws, versiones)
     filas[dejar_uno] = dejar_uno_fuera(por_partido, partidos, filas, versiones)
     return filas
+
+
+def frente_a_main(filas, por_partido, partidos, n_draws, versiones):
+    """Lo mismo que frente al control, pero frente a la versión de main: lo que decide entre candidatos."""
+    main = version_de_main(versiones)
+    if main is None:
+        return
+    de_main = [por_partido[(main, p)] for p in partidos]
+    f1_main = [spell_f1(r["flags"], r["n_pred"]) for r in de_main]
+    for nombre, version in versiones.items():
+        if nombre in (CONTROL, main) or version["tipo"] != "pipeline":
+            continue
+        recuentos = [por_partido[(nombre, p)] for p in partidos]
+        f1s = [spell_f1(r["flags"], r["n_pred"]) for r in recuentos]
+        filas[nombre]["frente_a_main"] = {
+            "referencia": main,
+            "diferencia": filas[nombre]["spell_f1"] - filas[main]["spell_f1"],
+            "diferencia_intervalo": diferencia_bootstrap(juntar(recuentos), juntar(de_main), n_draws),
+            "gana_en": int(sum(a > b for a, b in zip(f1s, f1_main))),
+        }
 
 
 def dejar_uno_fuera(por_partido, partidos, filas, versiones=VERSIONES):
@@ -369,7 +431,9 @@ def medir(partidos, modo_d, n_draws, avisar=None, versiones=None, con_eventos=Fa
                                "posesiones": len(pm.possession_spells(gt[c], pm.valid_runs(gt[c])))}
                            for c in dfl.CONVENCIONES}
         for condicion in dfl.CONDICIONES:
-            trk = dfl.tracking_de(cargado, condicion)
+            # De solo lectura: todas las versiones reciben el mismo tracking, y una pieza que escribiera en
+            # él cambiaría lo que ven las siguientes.
+            trk = solo_lectura(dfl.tracking_de(cargado, condicion))
             visible = ~np.isnan(trk.bx)
             vivo = (gt["flag"] == H) | (gt["flag"] == A)
             perfil[partido].setdefault("balon_visible_en_juego_pct", {})[condicion] = round(
@@ -527,9 +591,14 @@ def num(valor, signo=False):
     return ("{:+.3f}" if signo else "{:.3f}").format(valor).replace(".", ",")
 
 
-def veredicto(salida, nombre, n_partidos):
-    """¿Gana `nombre` al control con la regla de §5.8? Mira todas las condiciones y convenciones."""
+def veredicto(salida, nombre, n_partidos, campo=None):
+    """¿Gana `nombre` al control con la regla de §5.8? Mira todas las condiciones y convenciones.
+
+    Con `campo="frente_a_main"`, la misma regla frente a la versión de main.
+    """
     filas = [salida[c][k][nombre] for c in salida for k in salida[c]]
+    if campo is not None:
+        filas = [f[campo] for f in filas]
     gana = all(f["diferencia"] >= EMPATE and f["gana_en"] >= min(MIN_PARTIDOS, n_partidos)
                and (f["diferencia_intervalo"] is None or f["diferencia_intervalo"][0] > 0) for f in filas)
     pierde = all(f["diferencia"] <= -EMPATE for f in filas)
@@ -587,12 +656,47 @@ def tablas(salida, partidos, versiones=VERSIONES):
     for nombre, version in versiones.items():
         if version["tipo"] == "pipeline":
             lineas.append("- {}: **{}**".format(nombre, veredicto(salida, nombre, len(partidos))))
+    lineas += tabla_frente_a_main(salida, partidos, versiones)
     return "\n".join(lineas)
 
 
-def cabecera_versiones(ruta, contenido, huella):
+def tabla_frente_a_main(salida, partidos, versiones):
+    """Cada candidato frente a la versión de main, con la misma regla de §5.8: lo que decide si entra."""
+    main = version_de_main(versiones)
+    candidatas = [n for n, v in versiones.items() if v["tipo"] == "pipeline" and n != main]
+    if main is None or not candidatas:
+        return []
+    lineas = ["", "### Frente a la versión de main («{}»)".format(main), "",
+              "| etiquetas | balón | versión | frente a main [5–95 %] | gana en |", "|---|---|---|---|---|"]
+    for convencion, por_condicion in salida.items():
+        for condicion, filas in por_condicion.items():
+            for nombre in candidatas:
+                f = filas[nombre]["frente_a_main"]
+                intervalo = f["diferencia_intervalo"]
+                lineas.append("| {} | {} | {} | {} | {} de {} |".format(
+                    convencion, condicion, nombre, num(f["diferencia"], True) + (
+                        " [{} a {}]".format(num(intervalo[0], True), num(intervalo[1], True)) if intervalo else ""),
+                    f["gana_en"], len(partidos)))
+    lineas += ["", "Regla de §5.8 frente a main (todas las condiciones y las dos convenciones):", ""]
+    for nombre in candidatas:
+        lineas.append("- {}: **{}**".format(nombre, veredicto(salida, nombre, len(partidos), "frente_a_main")))
+    return lineas
+
+
+def version_del_codigo():
+    """El commit del repo y si hay cambios sin commit: la huella del fichero no identifica el código."""
+    try:
+        commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
+                                text=True, check=True).stdout.strip()
+        sucio = subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], cwd=ROOT).returncode != 0
+    except (OSError, subprocess.CalledProcessError):
+        return "desconocido (sin git)"
+    return commit + (", con cambios sin commit" if sucio else "")
+
+
+def cabecera_versiones(ruta, contenido, huella, codigo):
     """Qué versiones se midieron, para que la tabla pegada en una PR se explique sola."""
-    lineas = ["versiones: {} (huella {})".format(ruta, huella[:12])]
+    lineas = ["versiones: {} (huella {}) · código: {}".format(ruta, huella[:12], codigo)]
     for nombre, spec in contenido.items():
         lineas.append("- {}: {}".format(nombre, json.dumps(spec, ensure_ascii=False, sort_keys=True)))
     return "\n".join(lineas)
@@ -623,14 +727,15 @@ def main():
     if args.json:
         completa = {"d": args.d, "partidos": args.partidos, "perfil": perfil, "resultados": salida}
         if versiones is not None:
-            completa["versiones"] = {"fichero": args.versiones, "huella": huella, "contenido": contenido}
+            completa["versiones"] = {"fichero": args.versiones, "huella": huella, "codigo": version_del_codigo(),
+                                     "contenido": contenido}
         if en_eventos is not None:
             completa["eventos"] = en_eventos
         print(json.dumps(completa, ensure_ascii=False, indent=1))
         return
     print("D: {} · partidos: {} · bootstrap: {}".format(args.d, len(args.partidos), args.bootstrap))
     if versiones is not None:
-        print(cabecera_versiones(args.versiones, contenido, huella))
+        print(cabecera_versiones(args.versiones, contenido, huella, version_del_codigo()))
     if args.d == "propio":
         print("AVISO: con el D propio, el balón tapado en los D de la DFL delata la etiqueta. No decide nada.")
     print()

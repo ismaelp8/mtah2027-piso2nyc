@@ -72,8 +72,10 @@ duraciones mínimas y la poda van aquí, no en las piezas de evidencia.
 
 **Para comparar variantes de una pieza** (14/11): escríbela como otra función de tu módulo, con la misma
 firma. El harness la usa en lugar de la de siempre con `pipeline.run(..., pieces=...)`, que se rellena
-desde el fichero de `--versiones` (README del harness). La entrega usa siempre las funciones de
-`pipeline.PIECES`: `ball.clean`, `candidates.evidence`, `dead_state.evidence` y `temporal.decode`.
+desde el fichero de `--versiones` (README del harness). La entrega usa siempre las de siempre:
+`ball.clean`, `candidates.evidence`, `dead_state.evidence` y `temporal.decode`, que son las que nombra
+`pipeline.PIECES`. Todas las versiones reciben el mismo tracking, de solo lectura: una pieza devuelve una
+copia (`trk._replace(...)`), nunca lo cambia.
 
 **Lo que da error a propósito,** para que no pase en silencio: una puntuación con `NaN` o infinito en un
 frame evaluado, una pieza que no devuelve arrays de forma (n, 3), un parámetro del decodificador mal
