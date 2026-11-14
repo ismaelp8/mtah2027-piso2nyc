@@ -699,3 +699,18 @@ apunta, antes de ejecutar `validation/partido/perfil_atd.py`.
    - votan las tres severidades, con el `DISPUTAS` del punto 3, el `OBJETIVO` que sale para cada una (R1''
      en la baja y la media, R1' en la alta) y el suavizado de R4';
    - «limpio» y la condición de hoy (41 % de los frames vivos) se siguen puntuando, sin voto.
+
+## 9. Después de medir (14/11)
+
+Ismael ejecutó `validation/partido/perfil_atd.py` el 14/11, con todo lo anterior en `main` (`84b8d7c`).
+`leer_atd.py` se ejecutó sin cambiar nada de esta carpeta. El resultado está en
+`validation/resultados/2026-11-14_perfil_atd.md`.
+
+- **R0 cuadra. No queda ningún `DISPUTAS`** (R7: «todavía no») [medido]. R4' (25 frames) y R5 se
+  calcularon con `DISPUTAS` 0,25, que no pasa R1': son descriptivos.
+- **Lo que no estaba previsto** [inferencia, sección 2 del resultado]: el balón del ATD se parece al de
+  la DFL con solo los `D` tapados (`limpio`), y la mayor parte de su 41 % sin balón sería balón muerto. Los
+  dos candidatos de la sección 7.4 (la ley de huecos del ATD, `dilatar` y `aire`) siguen tapando balón en
+  juego. Lo que pide el perfil es tapar menos.
+- **El cambio de forma del paso 3 lo decide Ismael.** Lo que se elija se apunta aquí como cambio posterior
+  a medir, y se vuelve a leer con esta misma regla.
