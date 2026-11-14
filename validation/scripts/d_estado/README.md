@@ -13,6 +13,7 @@ incluido, y solo imprimen agregados y coeficientes.
 | `entrenar.py` | ajusta la regresión logística (`D` frente a juego) con los rasgos de `dead_state.features` e imprime el `MODEL` que va escrito en el módulo. Con `--comprobar` dice si el `MODEL` del módulo es el que sale de aquí. Es el único sitio donde se usa `scikit-learn` |
 | `medir.py` | mide los tres candidatos (E1, E2 y E3) dejando un partido fuera: AUC por frame, el criterio del 13/11 por parada, el `spellF1` oficial con el equipo oráculo frente al control, el placebo y la sensibilidad |
 | `referencia_agregado4.py` | cómo se mueven los jugadores en la DFL, tal cual y con un temblor añadido, en las mismas dos líneas que imprime `validation/partido/agregados_jugadores.py` en su punto 4. Es con lo que se compara la salida del partido para saber si el modelo se traslada al ATD |
+| `traslado_atd.py` | la referencia de la DFL **partido a partido** para leer los puntos 4 y 6 de `validation/partido/agregados_jugadores.py` (velocidades, jugadores fuera del campo y slots vistos), y qué hace la pieza si faltan jugadores a ratos. Con ella se fijaron los umbrales de `validation/resultados/2026-11-14_agregados_jugadores_atd.md` |
 
 ## Cómo se ejecutan
 
@@ -34,6 +35,10 @@ python validation/scripts/d_estado/entrenar.py --comprobar
 
 ```bash
 python validation/scripts/d_estado/referencia_agregado4.py
+```
+
+```bash
+python validation/scripts/d_estado/traslado_atd.py
 ```
 
 `medir.py` tarda unos minutos con los 7 partidos. Con `--sin-sensibilidad` hace solo la medida principal.
