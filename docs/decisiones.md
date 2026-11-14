@@ -632,4 +632,28 @@ Sin modelar:
 - slots de más (el ATD tiene 24 y 22 por equipo);
 - detecciones falsas de jugadores.
 
+Añadido tras calibrar y mirar el perfil, antes de puntuar ninguna versión (14/11) [medido]:
+- **La calibración** (commit `60fc9fb`): suavizado de 13 frames (0,154 cm de temblor); 78,12 frames por
+  ausencia «al azar», 0,1875 por frame «en las aglomeraciones» y W = 44,38 m «lejos de la jugada». Las tres
+  dejan 10,24–10,27 localizados por equipo en juego.
+- **Ninguna variante pasa la comprobación del perfil:**
+
+  | variante | qué falla |
+  |---|---|
+  | «al azar» | p50 del visitante: 10 |
+  | «lejos de la jugada» | p10: 7, y p50 del visitante: 10 |
+  | «en las aglomeraciones» | solo la mediana de los tramos: 16,3 s, por debajo de 17,8 |
+
+  Lo que dice [inferencia]: en el ATD faltan varios jugadores a la vez, pero no tantos ni tan a menudo
+  como lejos del balón.
+- **Saltos de más de 12 m/s:** unos 25 por minuto en las tres variantes, frente a 0,689 del ATD. Vienen del
+  barajado de slots del harness, que es mucho más duro que los cambios de slot del ATD, y vale para todas
+  las versiones.
+- **Ajuste, como en R6, que calibra también la mediana de los tramos:**
+  - «en las aglomeraciones» pasa a ausencias de 2, 3 o 4 s de media (en vez de 1 s);
+  - se toma la primera de esas tres que pase el perfil, recalibrando su probabilidad para 10,25 en juego;
+  - si pasa, es la única variante que vota;
+  - «al azar» y «lejos de la jugada» se puntúan sin voto, como descripción y como cota;
+  - si ninguna pasa, la medida no concluye y las tres se puntúan sin voto.
+
 Resultado: pendiente.

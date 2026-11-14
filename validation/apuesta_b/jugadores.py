@@ -52,7 +52,8 @@ MEDIA_PRESENTE = ATD["tramo_p50_s"] * dfl.FPS / np.log(2.0)
 # «en las aglomeraciones»
 AGLOMERACION_M = 1.5
 CERCA_DEL_BALON_M = 15.0
-MEDIA_AUSENCIA_AGLOMERACION = 25  # frames (1 s)
+MEDIA_AUSENCIA_AGLOMERACION = 25  # frames (1 s); ver AUSENCIAS_AGLOMERACION
+AUSENCIAS_AGLOMERACION = (50, 75, 100)  # el ajuste del 14/11 (docs/decisiones.md): 2, 3 o 4 s
 BLOQUE = 10000  # frames por bloque al calcular distancias entre jugadores
 
 # Lo que sale de --calibrar (con commit antes de puntuar). Temblor: 1,000 / 0,200 / 0,157 / 0,154 / 0,089 cm
@@ -254,11 +255,11 @@ def calibrar(cargados, variante):
 
 # -- perfil y puntuación -------------------------------------------------------------------------------
 
-def perfil_de(cargados, variante):
+def perfil_de(cargados, variante, parametro=None):
     """Agregado 7 del perfil (el mismo código que midió el ATD) con los 7 partidos juntos."""
     parciales = []
     for cargado in cargados:
-        trk = tracking_jugadores(cargado, dfl.VOTAN[0], variante)
+        trk = tracking_jugadores(cargado, dfl.VOTAN[0], variante, parametro)
         evaluado = np.zeros(len(trk.bx), bool)
         for inicio, fin in trk.blocks:
             evaluado[inicio:fin] = True
@@ -308,9 +309,34 @@ def main():
     parser.add_argument("--perfil", action="store_true", help="perfil de los jugadores de cada variante")
     parser.add_argument("--sin-degradar", action="store_true",
                         help="comprobación: sin degradar a los jugadores, el tracking y la tabla del harness")
+    parser.add_argument("--ajustar-aglomeraciones", action="store_true",
+                        help="el ajuste del 14/11: ausencias de 2, 3 o 4 s en las aglomeraciones, la primera que "
+                             "pase el perfil")
     parser.add_argument("--bootstrap", type=int, default=1000)
     args = parser.parse_args()
     partidos = list(dfl.PARTIDOS)
+
+    if args.ajustar_aglomeraciones:
+        global MEDIA_AUSENCIA_AGLOMERACION
+        cargados = [dfl.cargar(p) for p in partidos]
+        variante = "en las aglomeraciones"
+        print("### «{}»: ausencias de 2, 3 o 4 s (la primera que pase el perfil)".format(variante))
+        print()
+        for media in AUSENCIAS_AGLOMERACION:
+            MEDIA_AUSENCIA_AGLOMERACION = media
+            parametro, en_juego, parte = calibrar(cargados, variante)
+            p = perfil_de(cargados, variante, parametro)
+            pasa = vota(p)
+            print("- {} frames: probabilidad {} → {:.3f} en juego ({:.1f} % de las ausencias en juego); "
+                  "local {:.2f} / {:g} / {:g} / {:g}; visitante {:.2f} / {:g} / {:g} / {:g}; tramo p50 {:.1f} s; "
+                  "saltos {:.1f}/min; vota: {}".format(
+                      media, parametro, en_juego, 100.0 * parte,
+                      p["local"]["media"], p["local"]["p10"], p["local"]["p50"], p["local"]["p90"],
+                      p["visitante"]["media"], p["visitante"]["p10"], p["visitante"]["p50"], p["visitante"]["p90"],
+                      p["tramo_p50_s"], p["saltos_por_minuto"], "sí" if pasa else "no"))
+            if pasa:
+                break
+        return
 
     if args.sin_degradar:
         SUAVIZADO = None  # ni suavizado ni ausencias: tiene que ser el tracking del harness
