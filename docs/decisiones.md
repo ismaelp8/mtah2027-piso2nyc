@@ -460,6 +460,124 @@ Descartado:
 - **Tomar `OBJETIVO` de las severidades baja y media:** con bloques de 5 a 15 s no lo identifican
   (bitácora §9.2).
 
+### 2026-11-14 · `D` · estado con jugadores: candidatos y regla de lectura, escritos antes de medir
+
+Quién: Ana
+
+Qué se probó: todavía nada. Esta entrada fija lo que se va a comparar y cómo se va a leer, antes de
+entrenar ni medir. La pieza es `possession/dead_state.py`: cuánto parece que el juego está parado en
+cada frame, solo con los jugadores (`docs/PLAN_ENTREGA.md` §3).
+
+- **Candidatos:**
+  - **control (v0):** la pieza no opina, como hasta ahora;
+  - **E1:** la velocidad media de los jugadores en 2 s, en una regresión logística de una variable;
+  - **E2:** una regresión logística con los 11 rasgos de la revisión del 13/11 (§5.3), en ventanas
+    centradas: velocidad media en 1, 2 y 4 s, percentil 75 y máximo de la velocidad, fracción de
+    jugadores a menos de 1 m/s, jugadores fuera del campo, jugadores en un área, distancia entre los
+    centroides de los equipos, dispersión, y cada equipo en su mitad;
+  - **E3:** E2 más la velocidad media y la fracción de jugadores lentos en ventanas solo hacia atrás y
+    solo hacia delante, de 2 y 4 s (19 rasgos). Pregunta que contesta: si mirar por separado lo que
+    viene y lo que pasó coloca mejor el principio y el final de la parada.
+- **Lo que queda fijo y no se compara:**
+  - solo jugadores, sin balón: en la DFL va tapado durante el `D` y delataría la etiqueta, y en el ATD
+    que falte no significa `D`;
+  - los rasgos son agregados por frame de los slots que se ven; nada depende de qué slot es cada uno.
+    La velocidad es la de `validation/partido/comun.py` (diferencia centrada de ±2 frames, sin los
+    saltos de más de 12 m/s), para que el agregado 4 del partido se pueda comparar;
+  - regresión logística de `scikit-learn` con los rasgos estandarizados, `C = 1` y uno de cada 5
+    frames, sin azar. Los coeficientes del módulo son los del ajuste con los 7 partidos;
+  - salida: el logaritmo de la razón de probabilidades en la columna `D`, con escala 1 y recortado a
+    ±8; cero donde no se ve a nadie. Sin umbral ni histéresis, y sin prohibir nada;
+  - el decodificador es el de `main` con sus costes por defecto (25). No se toca: es de David.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): se medirá en los 7 partidos de la DFL
+(Bassek et al., 2025), dejando uno fuera: el modelo que puntúa un partido se entrena con los otros
+seis. Los jugadores van sin degradar y con los slots barajados, como en `validation/harness/dfl.py`.
+Scripts en `validation/scripts/d_estado/`.
+
+- **Por frame:** AUC de `D` frente a juego.
+- **Por parada:** la puntuación de la pieza sola pasa por el decodificador (juego o `D`) y se compara
+  con las paradas reales. Una parada está detectada si una racha de `D` predicha cubre al menos la
+  mitad. Se miden la latencia del inicio y del fin, y los `D` espurios (rachas predichas que no tocan
+  ninguna parada real).
+- **`spellF1` oficial con el equipo oráculo:** el `D` de la pieza y el equipo de las etiquetas, con las
+  dos convenciones (flag y control) y rellenando de las dos formas de la revisión (arrastrar el equipo
+  previo o adelantar el que reanuda). Frente al control, con el bootstrap pareado del harness.
+- **Sensibilidad, que no elige nada:** la escala de la puntuación a la mitad y al doble, y un temblor
+  de 0,1 y 0,2 m en las posiciones de los jugadores.
+- **Placebo:** la misma puntuación desplazada 60 s. No debería detectar paradas ni sumar.
+
+Resultado: pendiente. Irá en una entrada aparte, con las medidas.
+
+Decisión y por qué (la regla de lectura, fijada antes de medir):
+- **El criterio del 13/11, con los 7 partidos juntos y leído así:**
+  - el inicio a 25 frames o menos en al menos el 70 % de las paradas reales, y lo mismo el fin. Una
+    parada no detectada cuenta como fallo. Los bordes que coinciden con el principio o el final de una
+    parte no cuentan;
+  - el sesgo mediano de cada borde dentro de ±12 frames, sobre las detectadas;
+  - 0,3 `D` espurios o menos por minuto de juego;
+  - ninguna racha de `D` ni de juego de menos de 25 frames. La duración mínima es del decodificador y
+    no está elegida: 1 s es una lectura provisional.
+- **Entre candidatos, la regla de §5.8 sobre el `spellF1` con equipo oráculo:** 0,03 o más, en 6 de 7
+  partidos y con el intervalo sin el cero, con las dos convenciones y las dos formas de rellenar. Si
+  no, empate, y entra el más simple: E1 antes que E2, y E2 antes que E3.
+- **Las tres condiciones del balón del harness no aplican:** la pieza no usa el balón y el equipo es
+  oráculo, así que serían tres veces el mismo número.
+- **Si ningún candidato cumple el criterio él solo, no se da por cumplido.** Es lo esperable: la
+  revisión midió en un partido que el estado llega 1 s tarde de mediana al inicio. Se apunta lo medido
+  y se decide con Ismael si la pieza entra como estado, junto a las fronteras de Manuel.
+- **Sin verificar:** que se traslade al ATD. Depende del agregado 4 del partido (velocidad media de
+  los jugadores), que ejecuta Manuel.
+- **Aclaración, añadida antes de medir con los 7 partidos:** el script de medida se probó con los dos
+  partidos que ya estaban bajados, solo para ver que funcionaba. Ahí se vio que la regla de arriba no
+  dice qué hacer si el orden no es transitivo (E3 gana a E1, pero E3 empata con E2 y E2 con E1). Se
+  lee así: **entra el candidato más simple al que ningún otro gana.** Los números de esa prueba no se
+  usan para nada más.
+
+Descartado (antes de medir):
+- **Usar el balón en esta pieza,** por lo dicho arriba.
+- **Poner un umbral, una histéresis o una duración mínima en la pieza:** van en el decodificador.
+- **Modelos no lineales (árboles, redes):** no caben como coeficientes escritos en el módulo y piden
+  una dependencia nueva.
+- **Ajustar la escala de la puntuación o los costes del decodificador para que el `D` salga mejor:**
+  los costes son la pieza de David. Aquí la escala solo se mira como sensibilidad.
+
+### 2026-11-14 · `D` · estado con jugadores: resultado de la medida
+
+Quién: Ana
+
+Qué se probó: los tres candidatos y el control de la entrada anterior, con su regla de lectura.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): los 7 partidos de la DFL dejando uno
+fuera (713 paradas; 3.061 posesiones con el flag y 1.736 con control), con
+`validation/scripts/d_estado/medir.py`. Detalle en `validation/resultados/2026-11-14_d_estado.md`.
+
+Resultado:
+- **[medido] Ningún candidato cumple él solo el criterio del 13/11.** E2: 86 % de las paradas
+  detectadas, inicio a 25 frames o menos en el 35 % y fin en el 40 % (se pide el 70 %), sesgo mediano
+  de +14 y +17 frames, 0,26 `D` espurios por minuto y ninguna racha corta. E3 solo falla la latencia
+  (37 % y 41 %). E1 falla cuatro de las cinco condiciones.
+- **[medido] Frente a no opinar, con el equipo oráculo:** E2 gana con la regla de §5.8 (+0,039 y
+  +0,032 con el flag, en 6 de 7 partidos; +0,175 y +0,172 con control, en 7 de 7). E3 también; E1 no.
+- **[medido] Entre candidatos:** E3 empata con E2 (+0,002 a +0,010) y gana a E1; E2 empata con E1.
+  Entra el más simple al que ningún otro gana: E2.
+- **[medido] Placebo:** con la puntuación desplazada 60 s, AUC 0,52 y `spellF1` 0,28 por debajo del
+  control.
+- **[medido] Sensibilidad:** con la escala a la mitad sale algo mejor (+0,007) y con el doble deja de
+  cumplir §5.8 con el flag (+0,020). Con un temblor de 0,1 m en los jugadores detecta el 61 % de las
+  paradas; con 0,2 m, el 3 %, aunque el AUC sigue en 0,95.
+
+Decisión y por qué:
+- **El candidato escrito en `possession/dead_state.py` es E2.**
+- **No se da por cumplido el criterio.** La pieza da el estado, no el instante: si entra, y cómo,
+  lo decide Ismael, junto a las fronteras de Manuel.
+- **Antes de usarla en el partido hace falta el agregado 4** (Manuel), comparado con la tabla de
+  `referencia_agregado4.py`. Si los jugadores del ATD tiemblan, la pieza votaría contra el `D` [inferencia].
+- **Para David:** los costes `to_dead` y `from_dead` y la escala de esta pieza son el mismo ajuste.
+
+Descartado:
+- **E1,** porque E3 le gana, y **E3,** porque no gana a E2 y es más complejo.
+
 ### 2026-11-14 · `D` · fronteras y anclas: capas, candidatos y regla de lectura, escritos antes de medir
 
 Quién: Manuel
