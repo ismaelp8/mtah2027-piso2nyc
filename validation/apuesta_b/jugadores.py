@@ -290,8 +290,8 @@ def vota(p):
     return abs(medias - ATD["media"]) <= 0.5 and cuantiles and tramo
 
 
-def puntuar_variante(variante, partidos, n_draws):
-    versiones = puntuar.leer_versiones(VERSIONES)[0]
+def puntuar_variante(variante, partidos, n_draws, fichero=VERSIONES):
+    versiones = puntuar.leer_versiones(fichero)[0]
     original = dfl.tracking_de, dfl.CONDICIONES
     dfl.tracking_de = lambda cargado, condicion: tracking_jugadores(cargado, condicion, variante)
     dfl.CONDICIONES = dfl.VOTAN
@@ -313,6 +313,8 @@ def main():
                         help="el ajuste del 14/11: ausencias de 2, 3 o 4 s en las aglomeraciones, la primera que "
                              "pase el perfil")
     parser.add_argument("--bootstrap", type=int, default=1000)
+    parser.add_argument("--versiones", default=VERSIONES,
+                        help="fichero de versiones del harness que se puntúa (por defecto, apuesta_b.json)")
     args = parser.parse_args()
     partidos = list(dfl.PARTIDOS)
 
@@ -397,7 +399,7 @@ def main():
         print("## Jugadores «{}» ({}; parámetro {}, suavizado {})".format(
             variante, "vota" if vota(perfiles[variante]) else "sin voto", CALIBRADO[variante], SUAVIZADO))
         print()
-        salida, versiones = puntuar_variante(variante, partidos, args.bootstrap)
+        salida, versiones = puntuar_variante(variante, partidos, args.bootstrap, args.versiones)
         print(puntuar.tablas(salida, partidos, versiones))
         print()
 

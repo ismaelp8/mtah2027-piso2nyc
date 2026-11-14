@@ -1035,5 +1035,13 @@ criterios fijados antes de medir. Lo que falta lo decide Ismael:
 
 Sin medir con B5: los jugadores degradados como el ATD (se midió con B2).
 
+Añadido antes de medir (15/11): **B5 con los jugadores degradados como el ATD.**
+- Se mide con `validation/apuesta_b/jugadores.py --versiones validation/harness/versiones/apuesta_b5.json`,
+  con las mismas tres variantes y la misma calibración (`60fc9fb`).
+- La lectura es la misma que con B2: sin voto, porque ninguna variante reproduce el perfil del ATD. Se
+  mira si B5 gana a `main` con §5.8 en cada variante.
+- Es descriptivo: no cambia el veredicto de B5, pero dice si su ventaja depende de los jugadores perfectos
+  de la DFL.
+
 Descartado: B3 y B4 (entrada anterior).
 
