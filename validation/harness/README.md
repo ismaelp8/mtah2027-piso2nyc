@@ -109,6 +109,30 @@ es una opción de la función de siempre, basta con las opciones: `{"candidates"
 | `nota` | texto libre: qué es y por qué. Sale en la cabecera |
 | `tipo` | `pipeline` (por defecto) o `control`. Un `control` es el baseline con otra ventana (`"ventana": 125`) |
 
+**Una pieza aprendida, dejando un partido fuera** (decisión de Ismael del 14/11, para la apuesta B). Dos
+añadidos a `piezas`:
+
+- **`"modulo.funcion"`:** la función sale de otro módulo de `possession/` en lugar del de la pieza. Solo los
+  que admite `OTROS_MODULOS` en `puntuar.py`: hoy, `aprendida` para la pieza `candidates`. Así la apuesta B
+  vive en `possession/aprendida.py` sin tocar `candidates.py`.
+- **`"dejar_fuera": true`:** al puntuar cada partido de la DFL, el harness le pasa a la función
+  `fuera=<partido>`, y la función usa los coeficientes que se entrenaron sin ese partido. Sin él, un modelo
+  entrenado con los 7 se puntuaría sobre partidos que ya vio, contra §5.8. Fuera del harness (la entrega),
+  `fuera` vale `None`: los coeficientes de los 7. Al leer el fichero, la versión se prueba con `None` y con
+  cada partido, así que un pliegue que falta da error antes de medir.
+
+```json
+{
+  "main: N1 y coste 25": {},
+  "B1: proximidad aprendida": {
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b1", "dejar_fuera": true}}
+  }
+}
+```
+
+`validation/harness/versiones/apuesta_b.json` es el fichero de la apuesta B, y
+`validation/apuesta_b/entrenar.py` escribe los coeficientes de cada pliegue en el módulo.
+
 **Las erratas dan error al leer el fichero, antes de cargar ningún partido:** una clave desconocida, una
 pieza o una función que no existe, una opción que la función no acepta, `NaN` o `Infinity`, o un nombre
 de fila del propio harness. Además, cada versión se ejecuta entera sobre un partido inventado de un
@@ -221,4 +245,4 @@ Hace falta el XML de eventos de cada partido, que baja `descargar_datos_abiertos
 |---|---|
 | `dfl.py` | carga un partido de la caché, calcula sus etiquetas con las dos convenciones, degrada el balón y lo pasa al formato de `possession/tracking.py` |
 | `puntuar.py` | ejecuta cada versión, la puntúa y aplica la regla |
-| `versiones/` | los ficheros de versiones de `--versiones`; `ejemplo.json` es el de muestra |
+| `versiones/` | los ficheros de versiones de `--versiones`; `ejemplo.json` es el de muestra y `apuesta_b.json`, el de la apuesta B |

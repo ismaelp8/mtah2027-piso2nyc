@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, os.path.join(ROOT, "validation", "harness"))
 sys.path.insert(0, ROOT)
 import puntuar  # noqa: E402
-from possession import ball, candidates, dead_state, temporal, tracking  # noqa: E402
+from possession import aprendida, ball, candidates, dead_state, temporal, tracking  # noqa: E402
 
 EJEMPLO = os.path.join(ROOT, "validation", "harness", "versiones", "ejemplo.json")
 fallos = []
@@ -111,6 +111,48 @@ def comprobar_opciones(carpeta):
         del candidates.evidencia_prueba
 
 
+def comprobar_dejar_fuera(carpeta):
+    print("Otro módulo (aprendida) y dejar fuera el partido que se puntúa")
+    llamadas = []
+
+    def evidencia_prueba(trk, fuera=None, peso=1.0):
+        llamadas.append(fuera)
+        score, allowed = tracking.no_evidence(len(trk.bx))
+        return score * peso, allowed
+
+    aprendida.evidencia_prueba = evidencia_prueba
+    try:
+        ruta = escribir(carpeta, json.dumps({"main": {}, "deja fuera": {"piezas": {"candidates": {
+            "funcion": "aprendida.evidencia_prueba", "opciones": {"peso": 2.0}, "dejar_fuera": True}}},
+            "sin dejar fuera": {"piezas": {"candidates": "aprendida.evidencia_prueba"}}}))
+        versiones = puntuar.leer_versiones(ruta)[0]
+        deja, sin = versiones["deja fuera"], versiones["sin dejar fuera"]
+        comprobar("«modulo.funcion» toma la función de ese módulo, con sus opciones",
+                  isinstance(deja["piezas"]["candidates"], functools.partial)
+                  and deja["piezas"]["candidates"].func is evidencia_prueba
+                  and deja["piezas"]["candidates"].keywords == {"peso": 2.0}
+                  and sin["piezas"]["candidates"] is evidencia_prueba)
+        comprobar("la versión dice qué piezas dejan fuera el partido; las demás no llevan «fuera»",
+                  deja.get("fuera") == ["candidates"] and "fuera" not in sin and "fuera" not in versiones["main"])
+        comprobar("al leer, la versión se prueba con fuera=None (la entrega) y con cada partido de la DFL",
+                  llamadas == [None] + list(puntuar.dfl.PARTIDOS) + [None], str(llamadas))
+        comprobar("la versión de main sigue siendo la vacía", puntuar.version_de_main(versiones) == "main")
+        del llamadas[:]
+        trk = puntuar.partido_de_prueba()
+        gt = np.full(len(trk.bx), tracking.X, dtype=np.int8)
+        for inicio, fin in trk.blocks:
+            gt[inicio:fin] = tracking.H
+        puntuar.ejecutar(deja, trk, gt, "oraculo", "J03WMX")
+        puntuar.ejecutar(sin, trk, gt, "oraculo", "J03WMX")
+        comprobar("al puntuar, solo la pieza que deja fuera recibe el partido", llamadas == ["J03WMX", None],
+                  str(llamadas))
+        ruta = escribir(carpeta, json.dumps({"v": {"piezas": {"candidates": {
+            "funcion": "aprendida.evidencia_prueba", "opciones": {"fuera": "J03WMX"}, "dejar_fuera": True}}}}))
+        comprobar("con «dejar_fuera», «fuera» en las opciones da error", da_error(lambda: puntuar.leer_versiones(ruta)))
+    finally:
+        del aprendida.evidencia_prueba
+
+
 def comprobar_erratas(carpeta):
     print("Erratas que dan error al leer el fichero, antes de medir")
     casos = [
@@ -159,6 +201,16 @@ def comprobar_erratas(carpeta):
         ("una función del módulo que devuelve otra cosa (nearest_team)",
          "{\"v\": {\"piezas\": {\"candidates\": \"nearest_team\"}}}"),
         ("algo que no es una función (__class__)", "{\"v\": {\"piezas\": {\"candidates\": \"__class__\"}}}"),
+        ("una función de un módulo que la pieza no admite (temporal.decode)",
+         "{\"v\": {\"piezas\": {\"candidates\": \"temporal.decode\"}}}"),
+        ("un módulo que no existe", "{\"v\": {\"piezas\": {\"candidates\": \"otro.evidence\"}}}"),
+        ("una función de aprendida en otra pieza",
+         "{\"v\": {\"piezas\": {\"dead_state\": \"aprendida.evidence_b1\"}}}"),
+        ("una función de aprendida que no existe", "{\"v\": {\"piezas\": {\"candidates\": \"aprendida.evidence_b9\"}}}"),
+        ("«dejar_fuera» que no es true o false",
+         "{\"v\": {\"piezas\": {\"candidates\": {\"funcion\": \"evidence\", \"dejar_fuera\": 1}}}}"),
+        ("«dejar_fuera» con una función que no tiene «fuera» (candidates.evidence)",
+         "{\"v\": {\"piezas\": {\"candidates\": {\"funcion\": \"evidence\", \"dejar_fuera\": true}}}}"),
     ]
     for nombre, texto in casos:
         ruta = escribir(carpeta, texto)
@@ -250,6 +302,7 @@ def main():
         comprobar_carpeta()
         comprobar_ejemplo()
         comprobar_opciones(carpeta)
+        comprobar_dejar_fuera(carpeta)
         comprobar_erratas(carpeta)
         comprobar_formato(carpeta)
         comprobar_lectura_eventos()

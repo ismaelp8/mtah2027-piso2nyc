@@ -48,7 +48,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "evaluation"))
 import dfl  # noqa: E402
 import possession_metrics as pm  # noqa: E402
-from possession import ball, candidates, dead_state, pipeline, temporal, tracking  # noqa: E402
+from possession import aprendida, ball, candidates, dead_state, pipeline, temporal, tracking  # noqa: E402
 from starter import baseline  # noqa: E402
 
 H, A, D, X = tracking.H, tracking.A, tracking.D, tracking.X
@@ -74,6 +74,9 @@ DEJAR_UNO_FUERA_FICHERO = "elegida dejando un partido fuera"  # la misma fila co
 # -- versiones de un fichero (--versiones) -------------------------------------------------------------
 
 MODULOS = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal}
+# Otros módulos de los que una pieza puede tomar su función, escrita "modulo.funcion" (decisión de Ismael,
+# 14/11): la apuesta B vive en possession/aprendida.py para no tocar candidates.py, que es de Antonio.
+OTROS_MODULOS = {"candidates": {"aprendida": aprendida}}
 CLAVES = {"pipeline": {"tipo", "nota", "params", "piezas"}, "control": {"tipo", "nota", "ventana"}}
 RESERVADOS = (CONTROL, DEJAR_UNO_FUERA, DEJAR_UNO_FUERA_FICHERO)  # nombres de filas que pone el harness
 FRAMES_PRUEBA = 1500  # el partido inventado con el que se prueba cada versión al leer el fichero (1 min)
@@ -183,52 +186,84 @@ def version_de(spec, donde):
     piezas = {} if piezas is None else piezas
     if not isinstance(piezas, dict):
         raise ValueError("{}: «piezas» tiene que ser un objeto".format(donde))
-    funciones = {}
+    funciones, fuera = {}, []
     for pieza, valor in piezas.items():
-        funciones[pieza] = funcion_de(pieza, valor, donde)
-    # La versión entera sobre un partido inventado: así una errata falla aquí y no a mitad de medir.
+        funciones[pieza], deja = funcion_de(pieza, valor, donde)
+        if deja:
+            fuera.append(pieza)
+    # La versión entera sobre un partido inventado: así una errata falla aquí y no a mitad de medir. Si deja
+    # fuera el partido, también con cada partido de la DFL: así falla aquí un pliegue que no existe.
     prueba = partido_de_prueba()
     try:
-        salida = pipeline.run(prueba, params=params, pieces=funciones, report={})
-        if np.shape(salida) != (FRAMES_PRUEBA,):
-            raise ValueError("devuelve {} etiquetas en vez de una por frame".format(np.shape(salida)))
-        evaluado = np.zeros(FRAMES_PRUEBA, bool)
-        for inicio, fin in prueba.blocks:
-            evaluado[inicio:fin] = True
-        if not np.isin(salida, (H, A, D, X)).all() or not np.array_equal(salida == X, ~evaluado):
-            raise ValueError("las etiquetas tienen que ser H, A o D dentro de los tramos evaluados y X fuera")
+        for partido in [None] + (list(dfl.PARTIDOS) if fuera else []):
+            salida = pipeline.run(prueba, params=params, pieces=con_partido(funciones, fuera, partido), report={})
+            if np.shape(salida) != (FRAMES_PRUEBA,):
+                raise ValueError("devuelve {} etiquetas en vez de una por frame".format(np.shape(salida)))
+            evaluado = np.zeros(FRAMES_PRUEBA, bool)
+            for inicio, fin in prueba.blocks:
+                evaluado[inicio:fin] = True
+            if not np.isin(salida, (H, A, D, X)).all() or not np.array_equal(salida == X, ~evaluado):
+                raise ValueError("las etiquetas tienen que ser H, A o D dentro de los tramos evaluados y X fuera")
     except Exception as error:  # cualquier fallo, con su tipo y su mensaje: no se ha medido nada
         raise ValueError("{}: falla en la prueba con un partido inventado de {} frames, antes de medir: "
                          "{}: {}".format(donde, FRAMES_PRUEBA, type(error).__name__, error))
-    return {"tipo": "pipeline", "params": params, "piezas": funciones}
+    version = {"tipo": "pipeline", "params": params, "piezas": funciones}
+    if fuera:
+        version["fuera"] = fuera
+    return version
 
 
 def funcion_de(pieza, valor, donde):
-    """La función de una pieza: "nombre" o {"funcion": "nombre", "opciones": {...}}, dentro de su módulo."""
+    """La función de una pieza y si deja fuera el partido que se puntúa: (función, dejar_fuera).
+
+    `valor` es "nombre" o {"funcion": "nombre", "opciones": {...}, "dejar_fuera": true}. La función está en
+    el módulo de la pieza o, escrita "modulo.nombre", en uno de `OTROS_MODULOS` de esa pieza. Con
+    `dejar_fuera`, el harness le pasa `fuera=<partido>` al puntuar cada partido de la DFL, para que use
+    los coeficientes que se entrenaron sin él; fuera del harness (la entrega), `fuera` vale None.
+    """
     if pieza not in pipeline.PIECES:
         raise ValueError("{}: la pieza «{}» no existe (valen: {})".format(donde, pieza, sorted(pipeline.PIECES)))
     if isinstance(valor, str):
         valor = {"funcion": valor}
-    if not isinstance(valor, dict) or set(valor) - {"funcion", "opciones"}:
+    if not isinstance(valor, dict) or set(valor) - {"funcion", "opciones", "dejar_fuera"}:
         raise ValueError("{}: la pieza «{}» tiene que ser el nombre de una función o un objeto con "
-                         "«funcion» y «opciones»".format(donde, pieza))
+                         "«funcion», «opciones» y «dejar_fuera»".format(donde, pieza))
     nombre = valor.get("funcion", pipeline.PIECES[pieza])
     opciones = valor.get("opciones")
     opciones = {} if opciones is None else opciones
+    dejar_fuera = valor.get("dejar_fuera", False)
+    if not isinstance(dejar_fuera, bool):
+        raise ValueError("{}: «dejar_fuera» de «{}» tiene que ser true o false".format(donde, pieza))
     modulo = MODULOS[pieza]
+    if isinstance(nombre, str) and "." in nombre:
+        nombre_modulo, nombre = nombre.split(".", 1)
+        modulo = OTROS_MODULOS.get(pieza, {}).get(nombre_modulo)
+        if modulo is None:
+            raise ValueError("{}: la pieza «{}» no puede usar funciones de «{}» (valen: {})".format(
+                donde, pieza, nombre_modulo, sorted(OTROS_MODULOS.get(pieza, {}))))
     funcion = getattr(modulo, nombre, None) if isinstance(nombre, str) else None
     if not callable(funcion):
         raise ValueError("{}: no hay ninguna función «{}» en {}".format(donde, nombre, modulo.__name__))
     if not isinstance(opciones, dict):
         raise ValueError("{}: las «opciones» de «{}» tienen que ser un objeto".format(donde, pieza))
+    if dejar_fuera and "fuera" in opciones:
+        raise ValueError("{}: con «dejar_fuera», «fuera» lo pone el harness; no va en las «opciones»".format(donde))
     # La misma llamada que hace pipeline.run: el tracking (o la evidencia, los tramos y los params).
     posicionales = (None,) * (4 if pieza == "temporal" else 1)
     try:
-        inspect.signature(funcion).bind(*posicionales, **opciones)
+        inspect.signature(funcion).bind(*posicionales, **dict(opciones, **({"fuera": None} if dejar_fuera else {})))
     except TypeError as error:
-        raise ValueError("{}: {}.{} no se puede llamar con esas opciones: {}".format(
-            donde, modulo.__name__, nombre, error))
-    return functools.partial(funcion, **opciones) if opciones else funcion
+        raise ValueError("{}: {}.{} no se puede llamar con esas opciones{}: {}".format(
+            donde, modulo.__name__, nombre, " y «fuera»" if dejar_fuera else "", error))
+    return (functools.partial(funcion, **opciones) if opciones else funcion), dejar_fuera
+
+
+def con_partido(funciones, fuera, partido):
+    """Las piezas de una versión, con `fuera=partido` en las que dejan fuera el partido que se puntúa."""
+    if not fuera:
+        return funciones
+    return {pieza: functools.partial(funcion, fuera=partido) if pieza in fuera else funcion
+            for pieza, funcion in funciones.items()}
 
 
 # -- el `D` oráculo y el control -----------------------------------------------------------------------
@@ -274,13 +309,14 @@ def control(trk, ventana):
     return codes
 
 
-def ejecutar(version, trk, gt, modo_d):
-    """Etiquetas de una versión sobre un `Tracking` de la DFL."""
+def ejecutar(version, trk, gt, modo_d, partido=None):
+    """Etiquetas de una versión sobre un `Tracking` de la DFL. `partido` va a las piezas que lo dejan fuera."""
     if version["tipo"] == "control":
         codes = control(trk, version["ventana"])
         return imponer_d(codes, gt, trk.blocks) if modo_d == "oraculo" else codes
     extra = [d_oraculo(gt)] if modo_d == "oraculo" else []
-    return pipeline.run(trk, extra=extra, params=version["params"], pieces=version.get("piezas"))
+    piezas = con_partido(version.get("piezas"), version.get("fuera"), partido)
+    return pipeline.run(trk, extra=extra, params=version["params"], pieces=piezas)
 
 
 # -- puntuación ----------------------------------------------------------------------------------------
@@ -457,7 +493,7 @@ def medir(partidos, modo_d, n_draws, avisar=None, versiones=None, con_eventos=Fa
                 100.0 * float(np.mean(visible[vivo])), 1)
             for nombre, version in versiones.items():
                 # El `D` es el mismo en las dos convenciones: una sola ejecución sirve para las dos.
-                pred = ejecutar(version, trk, gt["flag"], modo_d)
+                pred = ejecutar(version, trk, gt["flag"], modo_d, partido)
                 if puntos is not None:
                     en_eventos[(nombre, condicion)].append(eventos.aciertos(puntos, pred))
                 for convencion in dfl.CONVENCIONES:
