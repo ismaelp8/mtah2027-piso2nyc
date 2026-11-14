@@ -108,7 +108,7 @@ La protección de verdad es esta regla, no la configuración.
 
 ---
 
-## Dónde estamos (actualizado el 12/11/2026)
+## Dónde estamos (actualizado el 14/11/2026)
 
 Lee esto para saber en qué punto está el equipo. El detalle está en los ficheros enlazados.
 
@@ -136,22 +136,61 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     ganadora.
   - **Fuera no hay nada hecho:** ningún método abierto da posesión de equipo por frame con criterio de
     control. Se construye con piezas propias.
+- **Recuento a ojo del vídeo de la ventana** (Manu y Antonio, 12–13/11; PR #1, todavía abierta, rama
+  `exp/recuento-video-ventana-publica`, secciones 16 y 17 de la bitácora del experimento 1):
+  - una señal de que la GT da la posesión con un toque sin control (1 caso claro y 1 discutible);
+  - el protocolo de Antonio para contar frame a frame (sección 17);
+  - no se completó.
+- **Experimento 2** (14/11, `validation/resultados/2026-11-14_experimento2_convencion_tracking.md`;
+  bitácora y regla de lectura en `validation/experimento2/`): el recuento hecho con el tracking en vez de a
+  ojo.
+  - **El instrumento** usa las medidas de toque y control de los experimentos 0 y 1. En la DFL distingue
+    "la etiqueta cambia en el toque" de "exige control", salvo si el balón se pierde en todas las disputas
+    o tiene mucho ruido.
+  - **En la ventana queda sin decidir**, por la regla fijada antes. Ismael lo ejecutó con
+    `validation/partido/recuento_ventana.py`. El detector de toques casi no ve toques en el ATD: 2,2 por
+    minuto, frente a 20–38 en la DFL. No es por falta de balón: en la ventana se ve el 93,5 % del juego.
+  - **Por qué** [inferencia, apoyada en la DFL]: el balón del ATD se comporta como uno **suavizado en
+    torno a 1 s**. En la DFL, una media móvil de 25 frames reproduce su temblor y sus toques y controles
+    por minuto.
+  - **Qué implica:**
+    - nada que dependa de cambios bruscos de la velocidad del balón, calibrado en la DFL, sirve tal cual
+      en el ATD; la proximidad al balón sí aguanta;
+    - la degradación DFL→ATD tiene que suavizar el balón.
+  - **La regla del temporizador de Antonio** apenas cambia las etiquetas de la DFL: con 10 frames de
+    margen siguen 6,0 cambios por minuto vivo, frente a 2,78 exigiendo control.
+  - **La convención sigue sin medir.** Se mantiene la decisión del 12/11: exigir control.
+- **Balón muerto** (Manuel, con la revisión de la sesión de Ana, 12–13/11; mergeado el 14/11):
+  - qué hay: `possession/dead_ball.py` v1, que marca el tramo antes del saque de la 2ª parte, y
+    `possession/io.py`, el lector del ATD del pipeline;
+  - diagnóstico del balón del ATD (`validation/resultados/2026-11-12_balon_muerto_atd.md`) y revisión
+    (`2026-11-13_revision_balon_muerto.md`): el `D` suma por la precisión de sus fronteras (≤ 1 s), no
+    por cubrir frames; hay una propuesta de v2 por capas;
+  - el sondeo del silbato en el audio, en `validation/silbato/`;
+  - el detalle y las decisiones están en `docs/decisiones.md` (12/11 y 13/11).
 
 **Lo siguiente, en este orden:**
 
-1. **Recuento manual del vídeo de la ventana pública.** Lo hace una persona del equipo (ya avisada);
-   Claude no ve el vídeo.
-   - Las 3 posesiones cortas entre dos del rival: ¿control o solo toque?
-   - Los 12 cambios directos: ¿la etiqueta cambia en el primer toque o cuando ya hay control?
+1. **Medir el balón del ATD en todo el partido, solo con tracking** (sin etiquetas), con un script de
+   `validation/partido/` que ejecuta una persona:
+   - visibilidad y longitud de los huecos;
+   - cuánto está suavizado;
+   - la columna de velocidad frente al desplazamiento suavizado.
 
-   Solo recuentos; los momentos están en la sección 6 del resultado del experimento 1. De ahí sale la
-   convención de las etiquetas (qué lectura y cuándo se fecha el cambio). No salen etiquetas,
-   constantes ni ajustes.
-2. **Con el recuento:** fijar la convención y escribir, antes de medir, el protocolo para elegir la
-   definición de control.
+   Hay que coordinarlo con `validation/partido/agregados_balon_reinicios.py` y leer con
+   `possession/io.py`. Sirve a la vez para el balón muerto y para la posesión.
+2. **Con eso:**
+   - la degradación DFL→ATD, con el balón tapado en los `D` y suavizado como el del ATD;
+   - un detector de toques que funcione con ese balón, calibrado en la DFL degradada;
+   - si se quiere medir la convención: repetir la ventana con el instrumento nuevo y una regla fijada
+     antes.
+
+   Mientras tanto, la convención sigue siendo "exigir control". Otras salidas, si lo decide Ismael:
+   preguntar a la organización, o completar el recuento a ojo con el protocolo de Antonio, solo
+   recuentos.
 3. **Después:**
    - el generador de etiquetas de la DFL, con la convención como opción;
-   - la degradación DFL→ATD, con el balón tapado en los `D`;
+   - el `D` v2;
    - los candidatos N1–N5 y el modelo temporal (`docs/investigacion_metodos.md`).
 
 **Pendiente de permiso de Ismael:**
@@ -164,7 +203,10 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
 - los criterios se escriben antes de medir;
 - placebos y sensibilidad;
 - resultados por partido y con los 7 juntos;
-- cada afirmación con [medido], [inferencia] o [sin verificar].
+- cada afirmación con [medido], [inferencia] o [sin verificar];
+- los scripts de `validation/partido/` leen el partido: los escribe Claude, los ejecuta una persona y
+  solo se pegan agregados. Una ejecución sobre la ventana pública se lee con una regla fijada antes, y
+  nunca sirve para elegir parámetros.
 
 ---
 

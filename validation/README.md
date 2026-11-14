@@ -28,6 +28,9 @@ que faltan, los scripts y los resultados. El porqué está en
 | `partido/agregados_smart_tagging.py` | ventanas `SET PIECES` por tipo (duración, `Team N/A`), cobertura de los frames evaluados por las fases, huecos entre fases, goles → saque posterior | **datos del partido: solo una persona** |
 | `partido/agregados_balon_reinicios.py` | ¿las "reanudaciones" del detector de golpeo caen donde acaba la ventana `SET PIECES` y donde suben los jugadores? Balón que desaparece saliendo del campo; columna de velocidad del ATD frente al desplazamiento suavizado | **datos del partido: solo una persona** |
 | `partido/agregados_jugadores.py` | velocidad media de los jugadores (en todo el partido, antes y después de cada reinicio, al principio y al final de cada parte) frente a la DFL; jugadores fuera de los límites | **datos del partido: solo una persona** |
+| `partido/recuento_ventana.py` | experimento 2: qué convención sigue la GT pública (cuándo cambia la posesión), medida con el tracking en vez de a ojo; se lee con la regla de `experimento2/BITACORA.md` §7 | **datos del partido: solo una persona** (ATD de la ventana y GT pública) |
+| `experimento2/calibrar_dfl.py` | calibra ese instrumento en la DFL degradada para parecerse al ATD (`--tabla` da las tablas de la bitácora) | DFL |
+| `experimento2/pruebas_sinteticas.py` | prueba el instrumento y el lector de `recuento_ventana.py` con datos inventados | GT pública y datos sintéticos |
 | `scripts/revision_balon_muerto/` | pruebas de la revisión del detector de `D` (13/11): coste de cada error de `D`, `io.py` con un ATD sintético, jugadores solos en la DFL; su `README.md` dice cómo repetirlas | GT pública, GT sintética, DFL |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
