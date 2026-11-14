@@ -416,3 +416,80 @@ Descartado:
   hay que congelar.
 - **Comparar variantes de limpieza del balón:** su árbitro sería una degradación que aún no imita al
   balón del ATD. Se fija la de §2.1 (filtro de validez e interpolar huecos cortos).
+
+### 2026-11-14 · `D` · estado con jugadores: candidatos y regla de lectura, escritos antes de medir
+
+Quién: Ana
+
+Qué se probó: todavía nada. Esta entrada fija lo que se va a comparar y cómo se va a leer, antes de
+entrenar ni medir. La pieza es `possession/dead_state.py`: cuánto parece que el juego está parado en
+cada frame, solo con los jugadores (`docs/PLAN_ENTREGA.md` §3).
+
+- **Candidatos:**
+  - **control (v0):** la pieza no opina, como hasta ahora;
+  - **E1:** la velocidad media de los jugadores en 2 s, en una regresión logística de una variable;
+  - **E2:** una regresión logística con los 11 rasgos de la revisión del 13/11 (§5.3), en ventanas
+    centradas: velocidad media en 1, 2 y 4 s, percentil 75 y máximo de la velocidad, fracción de
+    jugadores a menos de 1 m/s, jugadores fuera del campo, jugadores en un área, distancia entre los
+    centroides de los equipos, dispersión, y cada equipo en su mitad;
+  - **E3:** E2 más la velocidad media y la fracción de jugadores lentos en ventanas solo hacia atrás y
+    solo hacia delante, de 2 y 4 s (19 rasgos). Pregunta que contesta: si mirar por separado lo que
+    viene y lo que pasó coloca mejor el principio y el final de la parada.
+- **Lo que queda fijo y no se compara:**
+  - solo jugadores, sin balón: en la DFL va tapado durante el `D` y delataría la etiqueta, y en el ATD
+    que falte no significa `D`;
+  - los rasgos son agregados por frame de los slots que se ven; nada depende de qué slot es cada uno.
+    La velocidad es la de `validation/partido/comun.py` (diferencia centrada de ±2 frames, sin los
+    saltos de más de 12 m/s), para que el agregado 4 del partido se pueda comparar;
+  - regresión logística de `scikit-learn` con los rasgos estandarizados, `C = 1` y uno de cada 5
+    frames, sin azar. Los coeficientes del módulo son los del ajuste con los 7 partidos;
+  - salida: el logaritmo de la razón de probabilidades en la columna `D`, con escala 1 y recortado a
+    ±8; cero donde no se ve a nadie. Sin umbral ni histéresis, y sin prohibir nada;
+  - el decodificador es el de `main` con sus costes por defecto (25). No se toca: es de David.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): se medirá en los 7 partidos de la DFL
+(Bassek et al., 2025), dejando uno fuera: el modelo que puntúa un partido se entrena con los otros
+seis. Los jugadores van sin degradar y con los slots barajados, como en `validation/harness/dfl.py`.
+Scripts en `validation/scripts/d_estado/`.
+
+- **Por frame:** AUC de `D` frente a juego.
+- **Por parada:** la puntuación de la pieza sola pasa por el decodificador (juego o `D`) y se compara
+  con las paradas reales. Una parada está detectada si una racha de `D` predicha cubre al menos la
+  mitad. Se miden la latencia del inicio y del fin, y los `D` espurios (rachas predichas que no tocan
+  ninguna parada real).
+- **`spellF1` oficial con el equipo oráculo:** el `D` de la pieza y el equipo de las etiquetas, con las
+  dos convenciones (flag y control) y rellenando de las dos formas de la revisión (arrastrar el equipo
+  previo o adelantar el que reanuda). Frente al control, con el bootstrap pareado del harness.
+- **Sensibilidad, que no elige nada:** la escala de la puntuación a la mitad y al doble, y un temblor
+  de 0,1 y 0,2 m en las posiciones de los jugadores.
+- **Placebo:** la misma puntuación desplazada 60 s. No debería detectar paradas ni sumar.
+
+Resultado: pendiente. Irá en una entrada aparte, con las medidas.
+
+Decisión y por qué (la regla de lectura, fijada antes de medir):
+- **El criterio del 13/11, con los 7 partidos juntos y leído así:**
+  - el inicio a 25 frames o menos en al menos el 70 % de las paradas reales, y lo mismo el fin. Una
+    parada no detectada cuenta como fallo. Los bordes que coinciden con el principio o el final de una
+    parte no cuentan;
+  - el sesgo mediano de cada borde dentro de ±12 frames, sobre las detectadas;
+  - 0,3 `D` espurios o menos por minuto de juego;
+  - ninguna racha de `D` ni de juego de menos de 25 frames. La duración mínima es del decodificador y
+    no está elegida: 1 s es una lectura provisional.
+- **Entre candidatos, la regla de §5.8 sobre el `spellF1` con equipo oráculo:** 0,03 o más, en 6 de 7
+  partidos y con el intervalo sin el cero, con las dos convenciones y las dos formas de rellenar. Si
+  no, empate, y entra el más simple: E1 antes que E2, y E2 antes que E3.
+- **Las tres condiciones del balón del harness no aplican:** la pieza no usa el balón y el equipo es
+  oráculo, así que serían tres veces el mismo número.
+- **Si ningún candidato cumple el criterio él solo, no se da por cumplido.** Es lo esperable: la
+  revisión midió en un partido que el estado llega 1 s tarde de mediana al inicio. Se apunta lo medido
+  y se decide con Ismael si la pieza entra como estado, junto a las fronteras de Manuel.
+- **Sin verificar:** que se traslade al ATD. Depende del agregado 4 del partido (velocidad media de
+  los jugadores), que ejecuta Manuel.
+
+Descartado (antes de medir):
+- **Usar el balón en esta pieza,** por lo dicho arriba.
+- **Poner un umbral, una histéresis o una duración mínima en la pieza:** van en el decodificador.
+- **Modelos no lineales (árboles, redes):** no caben como coeficientes escritos en el módulo y piden
+  una dependencia nueva.
+- **Ajustar la escala de la puntuación o los costes del decodificador para que el `D` salga mejor:**
+  los costes son la pieza de David. Aquí la escala solo se mira como sensibilidad.
