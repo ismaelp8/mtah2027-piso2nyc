@@ -485,9 +485,64 @@ Cómo se medirá (dataset, nº de partidos/posesiones, métrica):
   la DFL esté comprobada con la medida del balón del ATD. Con esta medida se implementa y se mide; la
   decisión llega después.
 
-Resultado: pendiente.
+Resultado (añadido después de medir, el mismo día; lo de arriba no ha cambiado):
 
-Decisión y por qué: pendiente.
+- **Cómo se midió de verdad:** como estaba escrito, con una copia local de
+  `validation/harness/puntuar.py` que deja elegir la evidencia de cada versión (clave `evidencia` en
+  `VERSIONES`) y la versión de referencia (`--referencia`). Ese cambio no se sube; va en la descripción
+  de la PR para que Ismael decida.
+- **Con qué se mide:** 3.061 posesiones con el `flag` y 1.736 con `control`, y el balón visible en el
+  98,7 % de los frames de juego (limpio) o en el 58,3 % (con huecos). [medido]
+- **La comparación principal, frente a N1 con coste 25:** diferencia de `spellF1` con los 7 partidos
+  juntos, su intervalo del 5 al 95 % y en cuántos partidos gana. [medido]
+
+  | etiquetas | balón | N1 | N2 − N1 | Ret − N1 |
+  |---|---|---|---|---|
+  | flag | limpio | 0,474 | −0,095 [−0,108 a −0,083], 0 de 7 | −0,092 [−0,104 a −0,080], 0 de 7 |
+  | flag | huecos | 0,383 | −0,056 [−0,067 a −0,047], 0 de 7 | −0,070 [−0,081 a −0,059], 0 de 7 |
+  | flag | huecos y suavizado | 0,374 | −0,066 [−0,076 a −0,056], 0 de 7 | −0,068 [−0,079 a −0,057], 0 de 7 |
+  | control | limpio | 0,630 | +0,005 [−0,013 a +0,023], 4 de 7 | +0,013 [−0,005 a +0,029], 5 de 7 |
+  | control | huecos | 0,589 | −0,023 [−0,040 a −0,008], 1 de 7 | −0,046 [−0,062 a −0,029], 0 de 7 |
+  | control | huecos y suavizado | 0,573 | −0,037 [−0,054 a −0,021], 0 de 7 | −0,044 [−0,061 a −0,027], 0 de 7 |
+
+- **Ninguno de los dos gana a N1** con la regla de §5.8. [medido]
+  - Con el `flag` pierden en las tres condiciones y en los 7 partidos.
+  - Con `control`, que los favorece por construcción, empatan con el balón limpio y pierden con huecos.
+- **Por qué, en parte:** opinan en menos frames y, con el mismo coste, cambian de equipo menos veces.
+  Con coste 25 predicen 998–1.162 posesiones (N2) y 1.025–1.232 (Ret), frente a 1.382–1.871 de N1.
+  [medido]
+- **Sensibilidad a la escala, que no decide:** [medido]
+  - con coste 50 pierden en las seis combinaciones (de −0,04 a −0,07, 0 de 7);
+  - con coste 12 y el `flag` siguen perdiendo (de −0,02 a −0,05, en 0–3 de 7);
+  - con coste 12 y `control` ganan mucho (de +0,06 a +0,21, 7 de 7). N1 con coste 12 predice 2.003–3.079
+    posesiones, frente a 1.736 reales.
+  - Con `control`, el orden cambia con el coste: es cosa de la escala del decodificador, no de la
+    evidencia. Con el `flag` no cambia con ningún coste.
+- **Cada evidencia con su mejor coste de los tres** (mirado después; solo descriptivo): con el `flag`, N1
+  sigue por delante en las tres condiciones. N1 saca 0,474 / 0,397 / 0,379, N2 0,433 / 0,364 / 0,333 y
+  Ret 0,430 / 0,344 / 0,330. [medido]
+- **La limpieza, comprobada:** N1 con y sin la limpieza nueva se mueve entre −0,002 y +0,008 (redondeado
+  a tres decimales), en las 18 combinaciones de coste, condición y convención. Está lejos del −0,03 que
+  obligaba a avisar. [medido] En la DFL solo actúa el relleno de huecos cortos, como se esperaba.
+
+Decisión y por qué:
+- **Se queda N1** (`METHOD = "N1"`): ninguno de los dos candidatos gana con la regla escrita antes, y
+  pierden con el `flag`, que es el mismo tipo de etiqueta que la GT del reto. La evidencia del pipeline no
+  cambia.
+- **N2 y Ret se quedan en el código, sin usar:**
+  - por si la medida del balón del ATD cambia la degradación: el orden no es definitivo hasta entonces
+    (plan, §3 y §4);
+  - como posibles variables de la apuesta B.
+- **Entra la limpieza v1, fija:** la comprobación no da motivo para avisar. En la DFL apenas se nota,
+  porque la degradación no mete saltos ni detecciones falsas; los pasos 1 y 2 están para el ATD, donde no
+  se pueden medir fuera.
+- **Para el decodificador (David)** [inferencia]: la evidencia y el coste de cambio no se eligen por
+  separado.
+  - Con `control`, la mejor combinación medida es una evidencia que opina poco con un coste bajo: N2 con
+    coste 12 saca 0,680 con el balón limpio.
+  - Con el `flag`, nada gana a N1 con coste 25.
+  - Si la convención de la GT resulta ser «exigir control», vale la pena medir N2 con costes bajos junto
+    al decodificador.
 
 Descartado (antes de medir):
 - **N4, toques por cambios de velocidad del balón:** el experimento 2 apunta a que el balón del ATD viene
