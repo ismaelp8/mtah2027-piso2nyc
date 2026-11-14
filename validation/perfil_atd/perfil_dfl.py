@@ -41,13 +41,7 @@ import instrumento as ins  # noqa: E402
 import perfil as pf  # noqa: E402
 
 PARAMETROS = ("objetivo", "disputas", "media_bloque", "suavizado")
-HARNESS = collections.OrderedDict([
-    ("limpio", None),
-    ("huecos", {"objetivo": dfl.OBJETIVO, "disputas": dfl.DISPUTAS, "media_bloque": dfl.MEDIA_BLOQUE,
-                "suavizado": 1}),
-    ("huecos y suavizado", {"objetivo": dfl.OBJETIVO, "disputas": dfl.DISPUTAS,
-                            "media_bloque": dfl.MEDIA_BLOQUE, "suavizado": dfl.SUAVIZADO}),
-])
+HARNESS = collections.OrderedDict((nombre, dfl.PARAMETROS_DE[nombre]) for nombre in dfl.CONDICIONES)
 
 # Medida en seco (bitácora §5): cada barrido mueve un parámetro desde la referencia.
 REFERENCIA = {"objetivo": 0.2, "disputas": 0.5, "media_bloque": 25, "suavizado": 1}
@@ -109,28 +103,21 @@ def cargar(partido):
 def degradar_parte(parte, prm, rng):
     """(parte con el balón degradado, frames vivos, frames vivos tapados solo por la parte dirigida).
 
-    Es `dfl.degradar_parte` con las constantes como parámetros, con los mismos pasos y el mismo orden de
-    sorteos. `prm=None` es "limpio": solo se tapa el balón en los `D` y en sus bordes.
+    Es `dfl.degradar_con`, el mismo código que usa el harness (hasta el 14/11 era una copia de sus pasos).
+    `prm=None` es "limpio": solo se tapa el balón en los `D` y en sus bordes. Con `"forma": "atd"`, los
+    huecos siguen la ley del ATD (`dfl.mascara_como_el_atd`).
     """
-    estado = np.asarray(parte["estado"])
-    activo = estado == 1
-    x, y = np.array(parte["x"], dtype=float), np.array(parte["y"], dtype=float)
-    tapado = np.convolve((~activo).astype(int), np.ones(2 * dfl.BORDE + 1, dtype=int), mode="same") > 0
-    dirigida_pct = 0.0
-    if prm is not None:
-        prep = ins.preparar_en_juego(parte, estado)
-        huecos, dirigida_pct = ins.mascara_dirigida(prep, np.asarray(parte["z"], dtype=float), activo,
-                                                    prm["objetivo"], rng, fraccion=prm["disputas"],
-                                                    media=prm["media_bloque"])
-        if prm["suavizado"] > 1:
-            x[tapado], y[tapado] = np.nan, np.nan  # el balón congelado del `D` no entra en la media
-            x, y = dfl.media_movil(x, prm["suavizado"]), dfl.media_movil(y, prm["suavizado"])
-        tapado = tapado | huecos
-    x[tapado], y[tapado] = np.nan, np.nan
-    nueva = dict(parte)
-    nueva["x"], nueva["y"] = x, y
-    vivos = int(activo.sum())
+    nueva, vivos, dirigida_pct = dfl.degradar_con(parte, prm, rng)
     return nueva, vivos, dirigida_pct * vivos / 100.0
+
+
+def clave_de(prm):
+    """Clave de caché de unas condiciones: los parámetros, con la forma y los microcortes por defecto."""
+    if prm is None:
+        return None
+    completo = dict({"forma": "dirigida", "microcortes": 0.0}, **prm)
+    return tuple((p, completo[p] if isinstance(completo[p], str) else round(float(completo[p]), 6))
+                 for p in PARAMETROS + ("forma", "microcortes"))
 
 
 def tracking_con(cargado, prm):
@@ -177,6 +164,9 @@ def comprobar_igual_que_el_harness(cargado):
 def nombre_de(prm):
     if prm is None:
         return "limpio"
+    if prm.get("forma", "dirigida") == "atd":
+        return "forma atd · objetivo {:g} · disputas {:g} · microcortes {:.3g} · suavizado {:g}".format(
+            prm["objetivo"], prm["disputas"], prm.get("microcortes", 0.0), prm["suavizado"])
     return "objetivo {:g} · disputas {:g} · bloques {:g} · suavizado {:g}".format(
         *(prm[p] for p in PARAMETROS))
 

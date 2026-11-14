@@ -53,13 +53,17 @@ def sino(v):
 class DFL:
     """Los partidos de la DFL cargados una vez, y las primarias de cada condición medida, en caché."""
 
-    def __init__(self, partidos):
+    def __init__(self, partidos, forma="dirigida"):
         self.cargados = [pdfl.cargar(p) for p in partidos]
         pdfl.comprobar_igual_que_el_harness(self.cargados[0])
         self.cache = {}
+        # Bitácora §9 (después de medir, decisión de Ismael del 14/11): con la forma «atd», todas las
+        # condiciones que mide la regla llevan la ley de huecos del ATD; la regla no cambia.
+        self.forma = {} if forma == "dirigida" else {"forma": "atd", "microcortes": pdfl.dfl.MICROCORTES}
 
     def medir(self, prm):
-        clave = tuple(round(float(prm[p]), 6) for p in pdfl.PARAMETROS)
+        prm = dict(prm, **self.forma)
+        clave = pdfl.clave_de(prm)
         if clave not in self.cache:
             parciales, por_partido = [], {}
             for c in self.cargados:
@@ -430,10 +434,12 @@ def ensayos(partidos, detalle=False):
     return salida
 
 
-def ensayo(partido, objetivo, disputas, suavizado):
+def ensayo(partido, objetivo, disputas, suavizado, forma="dirigida"):
     """(salida, partidos de referencia): un partido de la DFL degradado con parámetros conocidos hace de
     ATD, con las celdas de menos de 5 casos suprimidas como en el partido; los otros hacen de DFL."""
     prm = {"objetivo": objetivo, "disputas": disputas, "media_bloque": BASE["media_bloque"], "suavizado": suavizado}
+    if forma == "atd":
+        prm.update(forma="atd", microcortes=pdfl.dfl.MICROCORTES)
     trk, _, _ = pdfl.tracking_con(pdfl.cargar(partido), prm)
     salida = pf.para_imprimir(pf.perfil(trk, minimo_celda=5))
     return salida, [p for p in pdfl.dfl.PARTIDOS if p != partido]
@@ -448,6 +454,9 @@ def main():
     ap.add_argument("--ensayos", nargs="*", metavar="PARTIDO", choices=sorted({e[0] for e in ENSAYOS}),
                     help="la tabla de ensayos de la bitácora (todos, o los de esos partidos)")
     ap.add_argument("--detalle", action="store_true", help="con --ensayos, también el informe de cada uno")
+    ap.add_argument("--forma", choices=("dirigida", "atd"), default="dirigida",
+                    help="cómo se tapa el balón de la DFL: la de antes de medir (por defecto) o la ley de huecos "
+                         "del ATD (bitácora §9, después de medir)")
     args = ap.parse_args()
     if args.ensayos is not None:
         partidos = args.ensayos or sorted({e[0] for e in ENSAYOS})
@@ -455,7 +464,7 @@ def main():
         return
     if args.ensayo:
         partido, objetivo, disputas, suavizado = args.ensayo
-        salida, partidos = ensayo(partido, float(objetivo), float(disputas), int(suavizado))
+        salida, partidos = ensayo(partido, float(objetivo), float(disputas), int(suavizado), args.forma)
         print("Ensayo: {} hace de ATD con objetivo {}, disputas {} y suavizado {}; los otros {} hacen de DFL.\n".format(
             partido, objetivo, disputas, suavizado, len(partidos)))
     elif args.salida_atd:
@@ -464,7 +473,9 @@ def main():
         partidos = args.partidos
     else:
         ap.error("hace falta la salida del ATD o --ensayo")
-    print(imprimir(leer(salida, DFL(partidos), ensayo=bool(args.ensayo))))
+    print("Forma de tapar el balón de la DFL: {}.\n".format(
+        "la ley de huecos del ATD (bitácora §9)" if args.forma == "atd" else "la de antes de medir"))
+    print(imprimir(leer(salida, DFL(partidos, args.forma), ensayo=bool(args.ensayo))))
 
 
 if __name__ == "__main__":

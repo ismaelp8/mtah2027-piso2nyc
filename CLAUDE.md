@@ -186,7 +186,25 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Ese +0,10 está inflado por construcción:** las etiquetas de control salen de una regla de
     proximidad, parecida a lo que se mide. El flag es el mismo tipo de etiqueta que la GT del reto: lo
     que no aguante con el flag no cuenta.
-  - La degradación del balón es provisional y el `D` no se puede validar ahí con el balón.
+  - El `D` no se puede validar ahí con el balón.
+  - **Desde el 14/11 por la noche, la degradación imita al balón del ATD** (ver el punto siguiente).
+    Los números de esta primera medida, con la condición de antes, ya no deciden.
+- **Perfil del balón del ATD y harness «como el ATD»** (14/11; `validation/resultados/2026-11-14_perfil_atd.md`
+  y `2026-11-14_harness_como_el_atd.md`). Ismael ejecutó el perfil y se leyó con una regla fijada antes.
+  - **El ATD casi no tiene huecos cortos:** pierde el balón en bloques de 5 s o más, como la DFL con
+    solo los `D` tapados [medido]. La mayor parte de su 41 % sin balón sería balón muerto [inferencia].
+    El balón viene suavizado unos 25 frames [medido].
+  - **Votan dos condiciones:** «como el ATD» (microcortes, el 11,3 % del juego en bloques de 5 a 15 s y
+    suavizado 25) y «como el ATD, sin bloques». `limpio` y la condición de antes se puntúan sin voto.
+  - **Con el flag, el Viterbi de `main` gana al baseline por +0,022 en 7 de 7** (antes perdía), pero no
+    llega al +0,03 de §5.8.
+  - **El harness ya puede decidir** el orden entre evidencias de equipo y lo que use la velocidad del
+    balón.
+  - **Para sustituir lo que hay en `main`,** un candidato tiene que ganar al control y a `main`
+    (decisión de Ismael, 14/11).
+  - **Cada uno prueba sus versiones sin tocar `puntuar.py`:** con un JSON en
+    `validation/harness/versiones/` y `--versiones` (README del harness). `--eventos` añade los eventos
+    humanos de la DFL, como referencia descriptiva.
 
 **Lo siguiente: el plan hasta la entrega** ([`docs/PLAN_ENTREGA.md`](docs/PLAN_ENTREGA.md), decidido por
 Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal para el final.
@@ -204,10 +222,8 @@ Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal par
 - **Cada persona sustituye su pieza sin tocar las demás.** La interfaz está en `possession/tracking.py` y
   en la sección 2 del plan.
 - **Qué versión entra lo decide el harness de la DFL,** nunca la ventana pública (sección 4 del plan).
-- **Sigue siendo lo primero de hoy:** medir el balón del ATD en todo el partido, solo con tracking, con un
-  script de `validation/partido/` que ejecuta una persona (visibilidad, huecos y cuánto está suavizado).
-  Va a la vez que el pipeline, no antes. De ella dependen la degradación DFL→ATD y la elección entre
-  evidencias de equipo.
+- **La medida del balón del ATD está hecha (14/11),** y la degradación del harness se calibró con ella
+  (punto anterior).
 - **La convención sigue siendo "exigir control".** El harness puntúa con las dos: el flag y la corregida.
 - **Corte: lunes 16 a las 14:00.** Lo que no haya ganado en el harness no entra.
 

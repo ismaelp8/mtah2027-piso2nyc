@@ -699,3 +699,92 @@ apunta, antes de ejecutar `validation/partido/perfil_atd.py`.
    - votan las tres severidades, con el `DISPUTAS` del punto 3, el `OBJETIVO` que sale para cada una (R1''
      en la baja y la media, R1' en la alta) y el suavizado de R4';
    - «limpio» y la condición de hoy (41 % de los frames vivos) se siguen puntuando, sin voto.
+
+## 9. Después de medir (14/11)
+
+Ismael ejecutó `validation/partido/perfil_atd.py` el 14/11, con todo lo anterior en `main` (`84b8d7c`).
+`leer_atd.py` se ejecutó sin cambiar nada de esta carpeta. El resultado está en
+`validation/resultados/2026-11-14_perfil_atd.md`.
+
+- **R0 cuadra. No queda ningún `DISPUTAS`** (R7: «todavía no») [medido]. R4' (25 frames) y R5 se
+  calcularon con `DISPUTAS` 0,25, que no pasa R1': son descriptivos.
+- **Lo que no estaba previsto** [inferencia, sección 2 del resultado]: el balón del ATD se parece al de
+  la DFL con solo los `D` tapados (`limpio`), y la mayor parte de su 41 % sin balón sería balón muerto. Los
+  dos candidatos de la sección 7.4 (la ley de huecos del ATD, `dilatar` y `aire`) siguen tapando balón en
+  juego. Lo que pide el perfil es tapar menos.
+- **El cambio de forma del paso 3 lo decide Ismael.** Lo que se elija se apunta aquí como cambio posterior
+  a medir, y se vuelve a leer con esta misma regla.
+
+### 9.1 La forma nueva, escrita antes de volver a leer (14/11)
+
+**Decisión de Ismael (14/11), con el resultado delante:** «Como el ATD». La condición principal pasa a
+parecerse al ATD: el balón tapado en los `D`, casi nada más en juego, y suavizado. La de antes (41 % de los
+vivos) queda como prueba de estrés, sin voto. Se vuelve a leer con esta misma regla.
+
+**Cómo se tapa (forma «atd», `dfl.degradar_con` y `dfl.mascara_como_el_atd`).** Es el primer candidato de
+la sección 7.4, la ley de huecos del ATD, con sus dos partes medidas:
+
+- **la misma parte dirigida** (`DISPUTAS`), sin cambios;
+- **microcortes al ritmo del ATD:** 15 por cada 94.214 frames vivos, con longitud geométrica de media 3,4
+  frames (51 frames en 15 huecos) y como mucho 12 (0,5 s);
+- **bloques de 5 a 15 s** (longitud uniforme) para completar `OBJETIVO`, en vez de los de 1 s de media.
+
+**La regla no cambia.** `leer_atd.py --forma atd` recorre los mismos `DISPUTAS` y `OBJETIVO` con las mismas
+R0 a R7'. Sin `--forma`, la lectura es la de antes: comprobado después (14/11), sale idéntica desde R0, y
+solo añade una línea de cabecera con la forma.
+
+**Qué entra en el harness, según lo que salga** (punto 4 de la sección 8):
+
+- **votan** las condiciones de la forma «atd» con el `DISPUTAS` que decida, el `OBJETIVO` de cada
+  severidad y el suavizado de R4'. Las severidades con el mismo `OBJETIVO` son la misma condición y se
+  juntan;
+- **se puntúan sin voto** «limpio» y «huecos y suavizado» (la de antes);
+- **si con la forma «atd» tampoco queda ningún `DISPUTAS`,** se para y decide Ismael.
+
+**Ensayo:** J03WR9, degradado con la forma «atd» (`objetivo` 0,05, `disputas` 0 y suavizado 25), hace de
+ATD. La regla tiene que devolver `DISPUTAS` 0 y suavizado 25. Se lanza a la vez que la lectura.
+
+### 9.2 Lo que dice el ensayo de la forma «atd», escrito antes de ver la relectura del ATD (14/11)
+
+**Ensayo:** J03WR9, degradado con la forma «atd» (`objetivo` 0,05, `disputas` 0 y suavizado 25), hace de
+ATD (`leer_atd.py --ensayo J03WR9 0.05 0 25 --forma atd`).
+
+- **Lo que sale bien** [medido]: queda `DISPUTAS` 0 y decide él. El suavizado elegido es 25 y R5 cuadra.
+- **En las severidades baja y media, `OBJETIVO` no se identifica** [medido]. Los 10 valores de la rejilla
+  pasan R1' y R2, y la regla elige 0,41 porque es el de `s` más cercana. Con la forma «atd», los bloques
+  duran de 5 a 15 s y no cuentan en los huecos de hasta 2 s ni de hasta 5 s.
+- **La severidad alta sí lo ve, pero se queda corta** [medido]: da 0,026 para el 0,05 plantado. Su `s`
+  mezcla los huecos de las paradas, que cambian de un partido a otro [inferencia].
+
+**Cambio, escrito antes de ver la relectura del ATD:**
+
+- **Con la forma «atd», `OBJETIVO` sale solo de la severidad alta (R1').** Las severidades baja y media
+  siguen decidiendo `DISPUTAS` (R1', R2 y R3'), como hasta ahora.
+- **Votan dos condiciones,** que acotan lo que el perfil no puede medir: si los huecos de 5 a 15 s que el
+  ATD tiene de más son juego o paradas.
+  - «como el ATD»: el `DISPUTAS` que decide, microcortes, el `OBJETIVO` de la alta y el suavizado de R4';
+  - «como el ATD, sin bloques»: lo mismo con `OBJETIVO` 0, como si todos los huecos largos fueran
+    paradas.
+- **Se puntúan sin voto** «limpio» y «huecos y suavizado».
+- **Esto cambia la sección 9.1,** que decía «el `OBJETIVO` de cada severidad». Se le enseña a Ismael antes
+  de subir.
+
+### 9.3 La relectura con la forma «atd» (14/11)
+
+`leer_atd.py <salida del ATD> --forma atd`. La salida ya estaba escrita cuando se apuntó la sección 9.2,
+pero no se había mirado.
+
+- **R0 cuadra. Queda `DISPUTAS` 0 y decide él** [medido]. Distancia al ATD: 3,66, frente a 13,57 con la
+  forma de antes. R2 cuadra en todas las celdas, también en la severidad alta.
+- **`OBJETIVO`:**
+  - baja y media: 0,41, sin identificar, como predecía la sección 9.2;
+  - alta: 0,113.
+- **R4': 25 frames. R5 cuadra.** Repetidos con `OBJETIVO` 0,113 sale lo mismo [medido].
+- **R7:** el orden entre evidencias de equipo por proximidad y lo que use la velocidad del balón **se
+  pueden decidir**.
+- **En el harness** (`validation/harness/dfl.py`):
+  - votan «como el ATD» (`OBJETIVO` 0,113) y «como el ATD, sin bloques» (`OBJETIVO` 0), con
+    `DISPUTAS` 0, microcortes y suavizado 25;
+  - se puntúan sin voto «limpio» y «huecos y suavizado».
+
+  La tabla de referencia nueva está en `validation/resultados/2026-11-14_harness_como_el_atd.md`.

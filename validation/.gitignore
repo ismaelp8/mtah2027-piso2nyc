@@ -16,3 +16,12 @@
 *.pkl
 *.h5
 *.part
+
+# Excepción: los ficheros de versiones del harness (`puntuar.py --versiones`) son configuración, qué
+# funciones y parámetros se comparan, no datos. Solo en esa carpeta. Las dos líneas de debajo vuelven a
+# ignorar ahí lo que se llame como un fichero del partido o de la GT (la negación anula también la regla
+# `*_possession_gt_meta.json` de la raíz). validation/scripts/prueba_harness.py comprueba además que todo
+# lo que hay en la carpeta es un fichero de versiones pequeño.
+!harness/versiones/*.json
+harness/versiones/BAR-ATH*
+harness/versiones/*_possession_gt*
