@@ -22,6 +22,10 @@ que faltan, los scripts y los resultados. El porqué está en
 | `partido/diagnostico_balon_muerto.py` | ¿sirve el balón del ATD para el detector de `D`? Balón fuera del campo, en los reinicios y en los saques iniciales | **datos del partido: solo una persona** |
 | `partido/diagnostico_coordenadas.py` | ¿separa x = 0,5 a los dos equipos? Temblor del balón y tramos con el balón quieto | **datos del partido: solo una persona** |
 | `partido/comun.py` | constantes y utilidades de los dos diagnósticos (no se ejecuta solo) | — |
+| `partido/agregados_smart_tagging.py` | ventanas `SET PIECES` por tipo (duración, `Team N/A`), cobertura de los frames evaluados por las fases, huecos entre fases, goles → saque posterior | **datos del partido: solo una persona** |
+| `partido/agregados_balon_reinicios.py` | ¿las "reanudaciones" del detector de golpeo caen donde acaba la ventana `SET PIECES` y donde suben los jugadores? Balón que desaparece saliendo del campo; columna de velocidad del ATD frente al desplazamiento suavizado | **datos del partido: solo una persona** |
+| `partido/agregados_jugadores.py` | velocidad media de los jugadores (en todo el partido, antes y después de cada reinicio, al principio y al final de cada parte) frente a la DFL; jugadores fuera de los límites | **datos del partido: solo una persona** |
+| `scripts/revision_balon_muerto/` | pruebas de la revisión del detector de `D` (13/11): coste de cada error de `D`, `io.py` con un ATD sintético, jugadores solos en la DFL; su `README.md` dice cómo repetirlas | GT pública, GT sintética, DFL |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
 
@@ -30,6 +34,7 @@ python validation/scripts/perfil_etiquetas.py evaluation/gt/BAR-ATH_possession_g
 python validation/scripts/sensibilidad_metrica.py
 python validation/scripts/descargar_datos_abiertos.py dfl --solo-ligeros
 python validation/scripts/comprobar_balon_muerto.py
+python validation/scripts/revision_balon_muerto/coste_errores_D.py
 ```
 
 ## Reglas
