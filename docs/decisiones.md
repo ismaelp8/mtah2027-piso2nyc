@@ -874,4 +874,32 @@ Comprobaciones del instrumento:
 La terquedad en los robos (los eventos) no se resuelve aquí: la ajustará David con los costes, encima de la
 evidencia que entre.
 
-Resultado: pendiente.
+Resultado (15/11; `validation/resultados/2026-11-14_apuesta_b.md` §8, código `412c705`) [medido]:
+- **Criterio 1: los dos ganan al control y a `main`** con §5.8. Frente a `main`, con el flag:
+
+  | | «como el ATD» | «sin bloques» |
+  |---|---|---|
+  | B3 | +0,056 | +0,054 |
+  | B4 | +0,066 | +0,052 |
+
+  Con el control, de +0,142 a +0,150. Todo en 7 de 7 partidos.
+- **Criterio 2, con la regla escrita: no lo cumple ninguno.**
+  - **B3** ve 625 y 624 paradas, frente a 626 de `main` (de 713). La regla pide «al menos tantas», y queda
+    1 y 2 paradas por debajo. Su precisión del `D` (97,4 y 98,9 %) y su `spellF1` con el `D` propio
+    (0,422 / 0,641 y 0,450 / 0,679) quedan por encima de los de `main`.
+  - **B4** ve más paradas (88,4 y 88,2 %), pero la precisión de su `D` (89,0 y 89,1 %) queda 4,8 y 5,6
+    puntos por debajo de la de `main`, y el límite es 2: dice `D` de más.
+- **Descriptivo, con el balón a la vista en los `D`:** B3 solo ve el 6,9 % de las paradas, `main` el
+  75,3 % y B4 el 87,8 %.
+
+Decisión y por qué: **por la regla escrita, no entra ni B3 ni B4.**
+- B3 falla por 1 y 2 paradas de 713. Además, se come las paradas en las que se ve el balón, que en el
+  ATD son muchas [inferencia].
+- B4 dice `D` de más.
+- Leer el «al menos tantas» con tolerancia, ahora que se ven los números, no vale.
+
+Siguiente candidato posible, que decide Ismael: B4 más N1, es decir, la diferencia `H` − `A` de B2 y el
+margen de 1 de N1 donde se ve el balón. Corte: lunes 16 a las 14:00.
+
+Descartado: B3 y B4 tal cual.
+
