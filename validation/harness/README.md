@@ -105,7 +105,7 @@ es una opción de la función de siempre, basta con las opciones: `{"candidates"
 | clave | qué es |
 |---|---|
 | `params` | los parámetros del decodificador que use la versión (con el de siempre, las claves de `temporal.DEFAULTS`). Sin ella, los de por defecto |
-| `piezas` | qué función usa cada pieza en lugar de la de la entrega (`pipeline.PIECES`). Las piezas: `ball` (en lugar de `clean`), `candidates` (en lugar de `aprendida.evidence_b5` desde el 14/11; antes, `evidence`), `dead_state` (en lugar de `evidence`) y `temporal` (en lugar de `decode`). La función tiene que estar en ese módulo de `possession/`. Vale su nombre (`"evidence_n2"`) o `{"funcion": ..., "opciones": {...}}`; sin `funcion`, la de siempre. Las opciones se le pasan como argumentos con nombre |
+| `piezas` | qué función usa cada pieza en lugar de la de la entrega (`pipeline.PIECES`). Las piezas: `ball` (en lugar de `clean`), `candidates` (en lugar de `aprendida.evidence_b5` desde el 14/11; antes, `evidence`), `dead_state` (en lugar de `evidence`) y `temporal` (en lugar de `decode`). La función tiene que estar en ese módulo de `possession/`. Vale su nombre (`"evidence_n2"`) o `{"funcion": ..., "opciones": {...}}`; sin `funcion`, la de la entrega (en `candidates`, desde el 14/11, B5, que pide `"dejar_fuera": true`). Las opciones se le pasan como argumentos con nombre |
 | `nota` | texto libre: qué es y por qué. Sale en la cabecera |
 | `tipo` | `pipeline` (por defecto) o `control`. Un `control` es el baseline con otra ventana (`"ventana": 125`) |
 

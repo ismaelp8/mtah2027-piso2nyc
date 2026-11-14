@@ -5,7 +5,8 @@ ATD del partido y con los partidos abiertos de la Bundesliga que prepara `valida
 ninguna pieza abre ficheros por su cuenta, salvo `dead_ball.py`, que usa los ficheros del partido.
 
 Contrato de las piezas de evidencia (`candidates`, `dead_state`, `dead_ball`): cada una tiene una función
-`evidence(trk, ...)` que devuelve `(score, allowed)`:
+`evidence(trk, ...)` que devuelve `(score, allowed)`. La pieza de equipo de la entrega es, desde el 14/11,
+`aprendida.evidence_b5` (la apuesta B; `pipeline.PIECES`), con la misma interfaz:
 
 - `score`: array (n, 3) de float, una columna por estado en el orden `H`, `A`, `D`. Es aditiva: el pipeline
   suma las de todas las piezas. Más alto es más probable. Solo cuentan las diferencias entre las columnas

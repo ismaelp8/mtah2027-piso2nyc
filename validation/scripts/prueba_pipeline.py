@@ -331,6 +331,8 @@ def check_reader(folder, rng):
     theirs = baseline.nearest_player_labels(raw, baseline.team_of_each_track(meta), n, pitch)
     check("el candidato v0 coincide con el jugador más cercano del baseline oficial",
           bool(np.array_equal(ours, theirs)), "{} frames con balón".format(int(np.sum(ours >= 0))))
+    check("la copia del más cercano que usa B5 (la entrega) también coincide con el baseline oficial",
+          bool(np.array_equal(aprendida.equipo_mas_cercano(trk), theirs)))
 
 
 def main():

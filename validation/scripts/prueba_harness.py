@@ -162,10 +162,22 @@ def comprobar_dejar_fuera(carpeta):
         piezas = puntuar.piezas_para(principal.get("piezas"), principal.get("fuera"), "J03WMX")
         comprobar("la versión que no nombra la pieza de equipo usa la de la entrega (B5) dejando fuera el partido",
                   isinstance(piezas.get("candidates"), functools.partial)
-                  and piezas["candidates"].func is pipeline.default_piece("candidates")
+                  and piezas["candidates"].func is aprendida.evidence_b5
                   and piezas["candidates"].keywords == {"fuera": "J03WMX"})
         comprobar("puntuar sin decir el partido la versión de main (B5 por defecto) da error",
                   da_error(lambda: puntuar.ejecutar(principal, trk, gt, "oraculo")))
+        # Un espía como pieza de la entrega: ejecutar le pasa el partido aunque la versión no la nombre, también
+        # con las versiones de VERSIONES, que no llevan la clave «piezas».
+        original = pipeline.PIECES["candidates"]
+        pipeline.PIECES["candidates"] = "aprendida.evidencia_prueba"
+        try:
+            del llamadas[:]
+            puntuar.ejecutar({"tipo": "pipeline", "params": None}, trk, gt, "oraculo", "J03WR9")
+            puntuar.ejecutar(principal, trk, gt, "oraculo", "J03WOH")
+            comprobar("ejecutar pasa el partido a la pieza de la entrega que no se nombra (también sin «piezas»)",
+                      llamadas == ["J03WR9", "J03WOH"], str(llamadas))
+        finally:
+            pipeline.PIECES["candidates"] = original
         ruta = escribir(carpeta, json.dumps({"v": {"piezas": {"candidates": "aprendida.evidencia_prueba"}}}))
         comprobar("una función con «fuera» sin «dejar_fuera» da error (se puntuaría con partidos que vio)",
                   da_error(lambda: puntuar.leer_versiones(ruta)))

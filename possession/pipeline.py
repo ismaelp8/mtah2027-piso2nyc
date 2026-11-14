@@ -79,10 +79,10 @@ def run(trk, extra=(), params=None, report=None, pieces=None):
     unknown = sorted(set(pieces) - set(PIECES))
     if unknown:
         raise ValueError("piezas desconocidas: {} (valen: {})".format(unknown, sorted(PIECES)))
-    clean = pieces.get("ball") or default_piece("ball")
-    team = pieces.get("candidates") or default_piece("candidates")
-    state = pieces.get("dead_state") or default_piece("dead_state")
-    decode = pieces.get("temporal") or default_piece("temporal")
+    clean = pieces["ball"] if "ball" in pieces else default_piece("ball")
+    team = pieces["candidates"] if "candidates" in pieces else default_piece("candidates")
+    state = pieces["dead_state"] if "dead_state" in pieces else default_piece("dead_state")
+    decode = pieces["temporal"] if "temporal" in pieces else default_piece("temporal")
 
     trk = clean(trk)
     evidences = [team(trk), state(trk)]

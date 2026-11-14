@@ -37,7 +37,7 @@ Cada uno trabaja en su fichero. Si necesitas algo de otra pieza, pídeselo a su 
 
 ```
 ATD ─► Tracking ─► limpieza ─► evidencias por frame ─► suma ─► decodificador ─► CSV
-       tracking.py  ball.py    candidates.py                    temporal.py     pipeline.py
+       tracking.py  ball.py    aprendida.py (B5, 14/11)         temporal.py     pipeline.py
                                dead_state.py
                                dead_ball.py
 ```
@@ -151,10 +151,12 @@ tenía dueño.
 duraciones mínimas; (c) el mismo con poda. El control es el voto por mayoría de ±50 frames del baseline.
 
 **El orden importa (14/11 por la noche).** Los costes se miden en las unidades de la evidencia de equipo.
-- **Qué evidencia hay:** la de `main` es el jugador más cercano, con un empujón fijo por frame. La apuesta
-  B de Ismael (B2, evidencia aprendida con la proximidad y la forma de los equipos) va ganando a `main` y
-  da empujones de tamaño variable, con una escala ajustada para el coste 25 de hoy. Falta comprobarla con
-  jugadores como los del ATD.
+- **Qué evidencia hay (14/11, de noche):** la de `main` es B5, la apuesta B de Ismael
+  (`aprendida.evidence_b5`): la evidencia aprendida de B2 más el +1 del jugador más cercano. Entró porque
+  cumplió los tres criterios fijados antes de medir (`docs/decisiones.md`). Da empujones de tamaño
+  variable, con una escala elegida para el coste 25 de hoy y con la pieza de `D` de Ana dentro. En los
+  eventos humanos pierde en las recuperaciones (70 frente a 84): es lo que hay que mirar al ajustar los
+  costes.
 - **Ya, sobre `main`:** escribe el código de (b) y (c) y el fichero de versiones con los candidatos.
 - **Cuando se decida B2 (entra o se descarta):** ajusta los costes encima de la evidencia que quede en
   `main`. Ismael avisa. Si entra B2 y cambias los costes, hay que volver a mirar su escala: coordínalo con
@@ -243,8 +245,9 @@ entrenamiento y su origen, las reglas de posesión, las limitaciones y cómo rep
 
 ### Antonio: evidencia de equipo (`possession/candidates.py`) y limpieza (`possession/ball.py`)
 
-**Qué hay:** el jugador más cercano al balón (N1), que es lo que hace el baseline, y una limpieza que
-todavía no hace nada.
+**Qué hay:** desde el 14/11 por la noche, la pieza de equipo de la entrega es B5 (`aprendida.evidence_b5`,
+la apuesta B), no N1. Para entrar, un candidato tuyo tiene que ganar a B5 en el harness. N1 sigue en
+`candidates.evidence`; el control del harness sigue siendo el baseline (N1 con voto de ±50).
 
 **Qué tienes que hacer:**
 

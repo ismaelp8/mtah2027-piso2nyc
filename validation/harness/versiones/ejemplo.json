@@ -7,7 +7,7 @@
     "params": {"switch": 50, "to_dead": 50, "from_dead": 50}
   },
   "v0 pieza a pieza": {
-    "nota": "las funciones de la entrega escritas una a una (la de equipo, B5 desde el 15/11, dejando fuera el partido): tiene que dar lo mismo que la primera",
+    "nota": "las funciones de la entrega escritas una a una (la de equipo, B5 desde el 14/11, dejando fuera el partido): tiene que dar lo mismo que la primera",
     "piezas": {"ball": "clean", "candidates": {"funcion": "aprendida.evidence_b5", "dejar_fuera": true}, "dead_state": "evidence", "temporal": "decode"}
   }
 }
