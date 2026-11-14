@@ -118,6 +118,53 @@ Es la tabla de referencia (`validation/resultados/2026-11-14_harness_dfl.md`).
 
 `python validation/scripts/prueba_harness.py` prueba la lectura del fichero sin cargar ningún partido.
 
+## Eventos humanos (`--eventos`): la referencia sin circularidad
+
+**Por qué.** Las etiquetas `control` salen de una regla de proximidad, y una versión que se le parezca gana
+con ellas por construcción. Los eventos que anota una persona en la DFL no dependen de nuestro tracking ni
+de nuestras reglas. Con `--eventos`, el harness mira además la etiqueta de cada versión en esos eventos,
+con las guardas y los retardos del experimento 1 (`eventos.py`):
+
+| punto | etiqueta que se espera | cuántos (7 partidos) |
+|---|---|---|
+| pase completado | equipo del pasador, 5 frames después de la recepción | 3.142 |
+| recuperación | equipo que recupera, 12 frames (0,5 s) después | 195 |
+| duelo con cambio (`PossessionChange` = true) | el que gana el duelo, 2 s después | 229 |
+| duelo sin cambio (`PossessionChange` = false) | el que tenía el balón, 2 s después | 211 |
+
+**Comprobación del instrumento [medido, 14/11].** Con las etiquetas del harness como si fueran una
+predicción salen los recuentos y los porcentajes del experimento 1: 97,9 / 89,2 / 88,6 / 47,4 con el flag y
+98,8 / 87,7 / 84,3 / 74,9 con la corrección. Esas dos filas salen siempre en la tabla: si cambian, algo
+se ha roto.
+
+**Regla de lectura,** escrita el 14/11 antes de puntuar ninguna versión con ella:
+
+- **Qué se mide:** el % de aciertos por tipo de punto, con los 7 partidos juntos, una tabla por condición
+  del balón. No hay una por convención: los eventos no dependen de ella. Con el `D` oráculo nunca hay
+  `D` en estos puntos, porque todos caen con el balón en juego.
+- **Diferencias:** frente al control y frente a la versión de `main` (la primera del pipeline sin
+  `params` ni `piezas`, como `{}`). Bootstrap pareado sobre los puntos de cada tipo, 1.000 remuestreos,
+  semilla fija, intervalo del 5 al 95 %.
+- **Qué se lee:** las recuperaciones y los duelos con cambio (¿cambia cuando debe?) junto con los duelos
+  sin cambio (¿se queda cuando debe?). No cambiar nunca gana en los segundos y cambiar siempre, en los
+  primeros: por eso se leen siempre juntos. Los pases se enseñan pero no se leen: caen casi siempre dentro
+  de posesiones largas (experimento 1).
+- **Veredicto en cada condición,** con los intervalos de esos tres tipos:
+  - **mejora:** al menos uno queda entero por encima de cero y ninguno entero por debajo;
+  - **empeora:** al revés;
+  - **compromiso:** uno por encima y otro por debajo;
+  - **no concluye:** ninguno se separa de cero.
+- **Veredicto de la versión:** el mismo en las tres condiciones, o «depende del balón».
+- **Es descriptivo.** No entra en la regla de §5.8 ni cambia su veredicto. Si puede vetar a un candidato
+  lo decide Ismael. Dos razones:
+  - el significado oficial de `PossessionChange` está [sin verificar];
+  - la selección de los duelos usa el flag (quién tenía el balón 10 frames antes).
+- **Complementa al `spellF1`, no lo sustituye.** Mide aciertos en puntos sueltos, así que no ve la
+  fragmentación: una versión que parpadea puede acertar en todos los puntos.
+
+Hace falta el XML de eventos de cada partido, que baja `descargar_datos_abiertos.py dfl`. Sin él,
+`--eventos` da error y el resto del harness funciona igual.
+
 ## Límites
 
 - **Las etiquetas `control` favorecen a los métodos de proximidad.** Salen del flag filtrado con una regla
