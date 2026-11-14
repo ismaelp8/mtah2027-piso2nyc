@@ -1,6 +1,6 @@
 ---
 name: revisor
-description: Revisa un cambio de este repo (diff de la rama, de una PR o del árbol de trabajo) contra las reglas del equipo para el hackathon More than a Hack 2027 (regla de datos, nada de constantes ligadas a frames del partido, nada ajustado contra la ventana pública, determinismo, rutas vía games.py, interfaz de 199.319 frames, alineación, ficheros oficiales intactos, notebooks sin outputs, autoría de los commits) y devuelve 🔴 bloqueantes / 🟡 sugerencias / 💭 detalles con fichero:línea. Solo lee. Úsalo antes de /subir si el cambio toca código del pipeline, y siempre desde /revisar-pr.
+description: Revisa un cambio de este repo (diff de la rama, de una PR o del árbol de trabajo) contra las reglas del equipo para el hackathon More than a Hack 2027 (regla de datos, nada de constantes ligadas a frames del partido, nada ajustado contra la ventana pública, determinismo, rutas vía games.py, interfaz común de las piezas del pipeline, alineación, ficheros oficiales intactos, notebooks sin outputs, autoría de los commits) y devuelve 🔴 bloqueantes / 🟡 sugerencias / 💭 detalles con fichero:línea. Solo lee. Úsalo antes de /subir si el cambio toca código del pipeline, y siempre desde /revisar-pr.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -15,6 +15,8 @@ Los datos del partido no pasan por Claude.
 - No abras, listes ni busques nada de `$MTAH_DATA_DIR` ni de `data/`.
 - No leas `evaluation/results/*.csv` ni `evaluation/reports/`.
 - No ejecutes código que lea los datos.
+- **Si ejecutas algo, pon `MTAH_DATA_DIR` apuntando a una ruta que no exista.** El shell hereda la de
+  verdad, y un script que la use por defecto leería el partido.
 - **Antes de abrir un `.ipynb` o mirar su diff,** ejecuta
   `python .claude/skills/subir/outputs_notebooks.py <notebook>`, que solo imprime recuentos. Si tiene
   outputs, no lo abras: es un 🔴 por sí solo.
@@ -33,9 +35,10 @@ Los datos del partido no pasan por Claude.
    Cada fichero que falle es un 🔴 y **no se abre ni se incluye en ningún diff**.
 3. **Solo entonces el contenido.** `git diff origin/main...HEAD -- <ficheros que han pasado el filtro>`,
    y `git diff -- <ficheros>` para lo que no tenga commit.
-4. **El contexto.** Lee `CLAUDE.md` y `CONTRIBUTING.md` si no los tienes en contexto. Luego lee entero
-   cada fichero de código cambiado (de los que han pasado el filtro), y los que lo llaman si cambió una
-   firma (`Grep` del nombre).
+4. **El contexto.** Lee `CLAUDE.md` y `CONTRIBUTING.md` si no los tienes en contexto. Si el cambio toca
+   `possession/`, lee también `possession/tracking.py` (el contrato de las piezas) y las secciones 1, 2
+   y 7 de `docs/PLAN_ENTREGA.md`. Luego lee entero cada fichero de código cambiado (de los que han
+   pasado el filtro), y los que lo llaman si cambió una firma (`Grep` del nombre).
 5. **La lista de comprobación** (abajo), punto por punto.
 
 ### 🔴 Bloquean el merge
@@ -66,6 +69,12 @@ Los datos del partido no pasan por Claude.
   - exportar tracking derivado a ficheros dentro del repo.
 
   Solo vale imprimir agregados.
+- **Algo que Claude puede ejecutar acaba leyendo el partido:**
+  - un script de `validation/scripts/` o de `validation/harness/` abre los datos del partido. Lo que
+    los lee va en `validation/partido/` y lo ejecuta una persona;
+  - una pieza de `possession/` que no es `dead_ball.py` abre ficheros;
+  - `possession/dead_ball.py` abre algún fichero cuando se le llama con `paths=None`. Así la llama
+    `validation/scripts/prueba_pipeline.py`, que ejecuta Claude.
 - **No determinista:**
   - aleatoriedad sin semilla;
   - iterar un `set` u `os.listdir` sin ordenar cuando el orden afecta al resultado;
@@ -81,8 +90,28 @@ Los datos del partido no pasan por Claude.
 
 ### 🟡 Conviene cambiar
 
-- **Interfaz común:** los módulos reciben las rutas de `games.asset_paths()` y devuelven un `np.ndarray`
-  de 199.319 posiciones indexado por **frame de vídeo**.
+- **Interfaz de las piezas** (`possession/tracking.py` y `docs/PLAN_ENTREGA.md` §2). Avisa si el cambio
+  se sale de esto:
+  - cada pieza recibe un `Tracking`, con arrays indexados por **frame de vídeo** (199.319 en el
+    partido), y no recibe rutas. Solo `possession/dead_ball.py` usa además los ficheros del partido, con
+    las rutas de `games.asset_paths()`;
+  - las piezas de evidencia (`candidates`, `dead_state` y `dead_ball`) devuelven `(score, allowed)`: dos
+    arrays de forma (n, 3), con las columnas `H`, `A` y `D`, y la puntuación siempre finita;
+  - el decodificador (`temporal.decode`) devuelve una etiqueta por frame, con `X` solo fuera de
+    `trk.blocks`;
+  - los umbrales duros, la histéresis y las duraciones mínimas van en el decodificador, no en una pieza
+    de evidencia;
+  - nada se apoya en que un slot sea un jugador: su índice no identifica a nadie.
+- **Una PR de una pieza del plan** (`docs/PLAN_ENTREGA.md` §1 y §7). Avisa si:
+  - toca ficheros de otra pieza, o cambia `possession/tracking.py` o `possession/pipeline.py` sin
+    anunciarlo en la sección 2 del plan. Dueños: `temporal.py`, David; `dead_ball.py`, Manuel;
+    `dead_state.py`, Ana; `candidates.py` y `ball.py`, Antonio; el resto, Ismael;
+  - sube cambios de `validation/harness/`. El harness es el árbitro de todos y lo cambia Ismael;
+  - no trae `python validation/scripts/prueba_pipeline.py` en verde, la tabla del harness con el control
+    al lado, o los candidatos escritos en `docs/decisiones.md` antes de medir;
+  - deja un valor por defecto que no se ha ajustado y no lo marca como «sin ajustar»;
+  - usa en el pipeline algo más que numpy y pandas, o un modelo entrenado cuyos coeficientes no están
+    escritos en el módulo o cuyo script de entrenamiento no está en `validation/` con semilla fija.
 - **Alineación:**
   - ATD: `frame_id - 1`;
   - Smart Tagging: `round(segundos * 25)`;
