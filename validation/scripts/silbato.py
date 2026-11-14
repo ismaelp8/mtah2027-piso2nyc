@@ -42,8 +42,16 @@ _LOTE = 1024               # frames por lote al calcular el espectro (memoria ac
 def _herramienta(nombre):
     ruta = shutil.which(nombre)
     if ruta is None:
-        raise RuntimeError("no encuentro {}: instálalo con `brew install ffmpeg`".format(nombre))
+        raise RuntimeError("no encuentro {}: instala ffmpeg (Mac: `brew install ffmpeg`; Linux: el "
+                           "paquete `ffmpeg`; Windows: `winget install ffmpeg`)".format(nombre))
     return ruta
+
+
+def version_ffmpeg():
+    """Primera línea de `ffmpeg -version`. Va en la salida: otra versión puede decodificar distinto."""
+    salida = subprocess.run([_herramienta("ffmpeg"), "-version"],
+                            check=True, capture_output=True, text=True).stdout
+    return salida.splitlines()[0] if salida else "desconocida"
 
 
 def metadatos(ruta):
