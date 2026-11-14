@@ -70,8 +70,9 @@ Sin tocar `puntuar.py`: las versiones van en un fichero JSON y se pasan con `--v
    python validation/harness/puntuar.py --versiones validation/harness/versiones/candidatos_2026-11-15.json
    ```
 
-4. **Sube el JSON en tu PR con la tabla.** La salida empieza por el fichero, su sha256 y cada versión, así
-   que quien revisa puede repetirla en tu rama.
+4. **Sube el JSON en tu PR con la tabla.** La salida empieza por el fichero, su huella y cada versión, así
+   que quien revisa puede repetirla en tu rama. La huella es el sha256 del contenido sin espacios: no
+   cambia con los saltos de línea de Windows, el BOM ni el sangrado.
 
 **El fichero.** Cada clave es el nombre de una versión, como saldrá en la tabla. El control (el baseline
 oficial) va siempre delante y no hace falta escribirlo. Incluye la versión de `main` (`{}`), para ver

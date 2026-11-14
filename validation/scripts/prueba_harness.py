@@ -64,7 +64,20 @@ def comprobar_ejemplo():
                                                          "dead_state": dead_state.evidence,
                                                          "temporal": temporal.decode})
     with open(EJEMPLO, "rb") as handle:
-        comprobar("la huella es el sha256 del fichero", huella == hashlib.sha256(handle.read()).hexdigest())
+        crudo = handle.read()
+    comprobar("la huella no depende de los saltos de línea, el BOM ni el sangrado",
+              huella == puntuar.huella_de(json.loads(crudo.decode("utf-8")))
+              and huella != hashlib.sha256(crudo).hexdigest() and _huella_retocada(crudo) == huella)
+
+
+def _huella_retocada(crudo):
+    """La huella del ejemplo guardado con CRLF, BOM y otro sangrado."""
+    carpeta = tempfile.mkdtemp(prefix="mtah_prueba_harness_")
+    try:
+        texto = json.dumps(json.loads(crudo.decode("utf-8")), ensure_ascii=False, indent=4).replace("\n", "\r\n")
+        return puntuar.leer_versiones(escribir(carpeta, texto, bom=True))[2]
+    finally:
+        shutil.rmtree(carpeta, ignore_errors=True)
 
 
 def comprobar_opciones(carpeta):

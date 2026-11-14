@@ -77,7 +77,7 @@ FRAMES_PRUEBA = 50  # el problema sin evidencia con el que se prueba el decodifi
 
 
 def leer_versiones(ruta):
-    """Las versiones de un fichero JSON, con el control delante. Devuelve (versiones, contenido, sha256).
+    """Las versiones de un fichero JSON, con el control delante. Devuelve (versiones, contenido, huella).
 
     Comprueba todo lo que puede antes de cargar ningún partido: claves, piezas, funciones, opciones y los
     `params` del decodificador. Cualquier errata da error con la ruta y la versión.
@@ -100,7 +100,13 @@ def leer_versiones(ruta):
         if nombre == CONTROL:
             raise ValueError("{}: «{}» es el control, que va siempre; ponle otro nombre".format(ruta, nombre))
         versiones[nombre] = version_de(spec, "{}, versión «{}»".format(ruta, nombre))
-    return versiones, contenido, hashlib.sha256(crudo).hexdigest()
+    return versiones, contenido, huella_de(contenido)
+
+
+def huella_de(contenido):
+    """sha256 del contenido sin espacios: no cambia con los saltos de línea de Windows, el BOM ni el sangrado."""
+    canonico = json.dumps(contenido, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonico.encode("utf-8")).hexdigest()
 
 
 def version_de(spec, donde):
@@ -449,7 +455,7 @@ def tablas(salida, partidos, versiones=VERSIONES):
 
 def cabecera_versiones(ruta, contenido, huella):
     """Qué versiones se midieron, para que la tabla pegada en una PR se explique sola."""
-    lineas = ["versiones: {} (sha256 {})".format(ruta, huella[:12])]
+    lineas = ["versiones: {} (huella {})".format(ruta, huella[:12])]
     for nombre, spec in contenido.items():
         lineas.append("- {}: {}".format(nombre, json.dumps(spec, ensure_ascii=False, sort_keys=True)))
     return "\n".join(lineas)
@@ -477,7 +483,7 @@ def main():
     if args.json:
         completa = {"d": args.d, "partidos": args.partidos, "perfil": perfil, "resultados": salida}
         if versiones is not None:
-            completa["versiones"] = {"fichero": args.versiones, "sha256": huella, "contenido": contenido}
+            completa["versiones"] = {"fichero": args.versiones, "huella": huella, "contenido": contenido}
         print(json.dumps(completa, ensure_ascii=False, indent=1))
         return
     print("D: {} · partidos: {} · bootstrap: {}".format(args.d, len(args.partidos), args.bootstrap))
