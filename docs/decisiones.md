@@ -1042,6 +1042,9 @@ Añadido antes de medir (15/11): **B5 con los jugadores degradados como el ATD.*
   mira si B5 gana a `main` con §5.8 en cada variante.
 - Es descriptivo: no cambia el veredicto de B5, pero dice si su ventaja depende de los jugadores perfectos
   de la DFL.
+- **Resultado** [medido, sin voto]: B5 gana a `main` con §5.8 en las tres variantes, en 7 de 7 partidos.
+  Con el flag, de +0,059 a +0,106; con el control, de +0,120 a +0,236. La ventaja no depende de los
+  jugadores perfectos.
 
 Descartado: B3 y B4 (entrada anterior).
 
