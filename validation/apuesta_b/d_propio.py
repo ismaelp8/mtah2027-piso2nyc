@@ -117,7 +117,7 @@ def main():
     print()
     tabla(nombres, *medir(versiones, nombres, dfl.tracking_de))
     print()
-    print("### El balón a la vista en los `D` (descriptivo, no es criterio)")
+    print("### El balón a la vista en los `D` (criterio 3 de B5, 15/11; para lo demás, descriptivo)")
     print()
     print("El balón limpio de la DFL, congelado, en los `D` y sus bordes. Lo demás, igual.")
     print()

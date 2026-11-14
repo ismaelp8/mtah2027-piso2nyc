@@ -1007,4 +1007,33 @@ Comprobaciones del instrumento:
 - con el `D` oráculo, la diferencia `H` − `A` de B5 es la de B2 más la de N1;
 - los coeficientes de B1 a B4 no cambian al reentrenar.
 
-Resultado: pendiente.
+Resultado (15/11; `validation/resultados/2026-11-14_apuesta_b.md` §9, código `aaa2650`) [medido]:
+**B5 cumple los tres criterios.**
+1. **En el harness** gana al control y a `main` con §5.8, en 7 de 7 partidos en todas las celdas:
+
+   | etiquetas | «como el ATD» | «sin bloques» |
+   |---|---|---|
+   | flag | +0,071 | +0,056 |
+   | control | +0,148 | +0,146 |
+
+2. **Con `d_propio.py` y el balón tapado:**
+   - ve 629 y 628 paradas, frente a 626 de `main`;
+   - la precisión de su `D` es 93,3 y 94,2 %, frente a 93,8 y 94,7 %;
+   - su `spellF1` con el `D` propio es 0,416 / 0,616 y 0,433 / 0,642, frente a 0,366 / 0,505 y
+     0,394 / 0,536.
+3. **Con el balón a la vista en los `D`:** ve 545 paradas, frente a 537 de `main` (el mínimo era 530).
+
+Eventos (descriptivo): un compromiso frente a `main`, como B2. Pierde en las recuperaciones (70 frente a
+84) y gana en los duelos sin cambio (75 frente a 62).
+
+Decisión y por qué: **B5 es el candidato de la apuesta B para entrar en la entrega.** Cumple los tres
+criterios fijados antes de medir. Lo que falta lo decide Ismael:
+- cambiar `pipeline.PIECES["candidates"]` a `aprendida.evidence_b5`, en `pipeline.py` o con un
+  envoltorio en `candidates.py` acordado con Antonio;
+- regenerar la entrega y comprobar su sha256;
+- que David ajuste los costes encima de B5 (los de hoy están en la escala de N1).
+
+Sin medir con B5: los jugadores degradados como el ATD (se midió con B2).
+
+Descartado: B3 y B4 (entrada anterior).
+
