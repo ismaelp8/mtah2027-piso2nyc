@@ -7,8 +7,12 @@ El camino nuevo es una función de otro módulo («aprendida.…») con «dejar_
 ser idénticas a las de `{}`, y la pieza tiene que recibir los 7 partidos de la DFL al puntuar. Se ejecutó
 el 14/11 antes de medir la apuesta B.
 
-Desde el 15/11 comprueba también que B4 con la α de B2 y el `D` oráculo da las mismas etiquetas que B2:
-solo cambia cuánto pesa cada equipo frente a `D`, y con el oráculo eso no cambia ninguna etiqueta.
+Desde el 15/11 comprueba también:
+- que B4 con la α de B2 y el `D` oráculo da las mismas etiquetas que B2 (solo cambia cuánto pesa cada
+  equipo frente a `D`, y con el oráculo eso no cambia ninguna etiqueta);
+- que, con B5 como pieza de equipo de la entrega, la versión de `main` (`{}`) da lo mismo que B5 escrita a
+  mano con `dejar_fuera`: el harness deja fuera el partido también en la pieza por defecto. Desde ese
+  cambio, N1 por el camino nuevo se compara con N1 escrito a mano (`candidates.evidence`), no con `{}`.
 
 Datos abiertos de la DFL: lo puede ejecutar cualquiera, Claude incluido. Solo imprime agregados. Tarda un
 minuto.
@@ -46,23 +50,32 @@ def main():
     try:
         ruta = os.path.join(carpeta, "n1.json")
         with open(ruta, "w", encoding="utf-8") as handle:
-            json.dump({"main": {}, "N1 por el camino nuevo": {"piezas": {"candidates": {
-                "funcion": "aprendida.n1_por_aprendida", "dejar_fuera": True}}}}, handle)
+            json.dump({"main": {}, "N1": {"piezas": {"candidates": "evidence"}},
+                       "N1 por el camino nuevo": {"piezas": {"candidates": {
+                           "funcion": "aprendida.n1_por_aprendida", "dejar_fuera": True}}},
+                       "B5 a mano": {"piezas": {"candidates": {"funcion": "aprendida.evidence_b5",
+                                                               "dejar_fuera": True}}}}, handle)
         versiones = puntuar.leer_versiones(ruta)[0]
         del recibidos[:]
         salida, _, _ = puntuar.medir(list(dfl.PARTIDOS), "oraculo", 0, versiones=versiones)
     finally:
         shutil.rmtree(carpeta, ignore_errors=True)
         del aprendida.n1_por_aprendida
-    celdas = [(filas["main"], filas["N1 por el camino nuevo"])
+    celdas = [(filas["N1"], filas["N1 por el camino nuevo"])
               for por_condicion in salida.values() for filas in por_condicion.values()]
     iguales = sum(all(a[k] == b[k] for k in CLAVES) for a, b in celdas)
-    print("celdas (convención × condición): {}, idénticas: {}".format(len(celdas), iguales))
+    print("N1 por el camino nuevo frente a N1 a mano, celdas (convención × condición): {}, idénticas: {}".format(
+        len(celdas), iguales))
+    de_main = [(filas["main"], filas["B5 a mano"])
+               for por_condicion in salida.values() for filas in por_condicion.values()]
+    iguales_main = sum(all(a[k] == b[k] for k in CLAVES) for a, b in de_main)
+    print("main ({{}}, B5 por defecto) frente a B5 a mano con dejar_fuera: {} de {} celdas idénticas".format(
+        iguales_main, len(de_main)))
     todos = sorted(set(recibidos)) == sorted(dfl.PARTIDOS)
     print("la pieza recibió los {} partidos al puntuar: {} ({} llamadas)".format(
         len(dfl.PARTIDOS), "sí" if todos else "no", len(recibidos)))
     b4_igual = comprobar_b4()
-    if iguales != len(celdas) or not todos or not b4_igual:
+    if iguales != len(celdas) or iguales_main != len(de_main) or not todos or not b4_igual:
         sys.exit(1)
 
 

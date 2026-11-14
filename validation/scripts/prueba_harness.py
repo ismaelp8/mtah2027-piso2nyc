@@ -25,7 +25,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, os.path.join(ROOT, "validation", "harness"))
 sys.path.insert(0, ROOT)
 import puntuar  # noqa: E402
-from possession import aprendida, ball, candidates, dead_state, temporal, tracking  # noqa: E402
+from possession import aprendida, ball, candidates, dead_state, pipeline, temporal, tracking  # noqa: E402
 
 EJEMPLO = os.path.join(ROOT, "validation", "harness", "versiones", "ejemplo.json")
 fallos = []
@@ -62,8 +62,9 @@ def comprobar_ejemplo():
     comprobar("una versión vacía es el pipeline tal cual", v0 == {"tipo": "pipeline", "params": None, "piezas": {}})
     comprobar("«params» pasa al decodificador tal cual",
               versiones["Viterbi, coste 50"]["params"] == {"switch": 50, "to_dead": 50, "from_dead": 50})
-    comprobar("las piezas escritas una a una son las funciones de la entrega",
-              versiones["v0 pieza a pieza"]["piezas"] == {"ball": ball.clean, "candidates": candidates.evidence,
+    comprobar("las piezas escritas una a una son las funciones de la entrega (la de equipo deja fuera el partido)",
+              versiones["v0 pieza a pieza"].get("fuera") == ["candidates"] and
+              versiones["v0 pieza a pieza"]["piezas"] == {"ball": ball.clean, "candidates": aprendida.evidence_b5,
                                                          "dead_state": dead_state.evidence,
                                                          "temporal": temporal.decode})
     with open(EJEMPLO, "rb") as handle:
@@ -101,9 +102,12 @@ def comprobar_opciones(carpeta):
         comprobar("las opciones se fijan con la función", isinstance(funcion, functools.partial)
                   and funcion.func is evidencia_prueba and funcion.keywords == {"peso": 3.0})
         comprobar("y llegan a la función: la prueba con el partido inventado la llama una vez", llamadas == [3.0])
-        ruta = escribir(carpeta, json.dumps({"solo opciones": {"piezas": {"candidates": {"opciones": {}}}}}))
+        ruta = escribir(carpeta, json.dumps({"solo opciones": {"piezas": {"temporal": {"opciones": {}}}}}))
         version = puntuar.leer_versiones(ruta)[0]["solo opciones"]
-        comprobar("sin «funcion», la de siempre", version["piezas"]["candidates"] is candidates.evidence)
+        comprobar("sin «funcion», la de siempre", version["piezas"]["temporal"] is temporal.decode)
+        ruta = escribir(carpeta, json.dumps({"x": {"piezas": {"candidates": {"opciones": {}}}}}))
+        comprobar("sin «funcion» ni «dejar_fuera», la de equipo de la entrega (B5, con «fuera») da error",
+                  da_error(lambda: puntuar.leer_versiones(ruta)))
         ruta = escribir(carpeta, json.dumps({"x": {"piezas": {"candidates": {
             "funcion": "evidencia_prueba", "opciones": {"pesso": 3.0}}}}}))
         comprobar("una opción que la función no tiene da error", da_error(lambda: puntuar.leer_versiones(ruta)))
@@ -154,6 +158,14 @@ def comprobar_dejar_fuera(carpeta):
         ruta = escribir(carpeta, json.dumps({"v": {"piezas": {"candidates": {
             "funcion": "aprendida.evidencia_prueba", "opciones": {"fuera": "J03WMX"}, "dejar_fuera": True}}}}))
         comprobar("con «dejar_fuera», «fuera» en las opciones da error", da_error(lambda: puntuar.leer_versiones(ruta)))
+        principal = versiones["main"]
+        piezas = puntuar.piezas_para(principal.get("piezas"), principal.get("fuera"), "J03WMX")
+        comprobar("la versión que no nombra la pieza de equipo usa la de la entrega (B5) dejando fuera el partido",
+                  isinstance(piezas.get("candidates"), functools.partial)
+                  and piezas["candidates"].func is pipeline.default_piece("candidates")
+                  and piezas["candidates"].keywords == {"fuera": "J03WMX"})
+        comprobar("puntuar sin decir el partido la versión de main (B5 por defecto) da error",
+                  da_error(lambda: puntuar.ejecutar(principal, trk, gt, "oraculo")))
         ruta = escribir(carpeta, json.dumps({"v": {"piezas": {"candidates": "aprendida.evidencia_prueba"}}}))
         comprobar("una función con «fuera» sin «dejar_fuera» da error (se puntuaría con partidos que vio)",
                   da_error(lambda: puntuar.leer_versiones(ruta)))

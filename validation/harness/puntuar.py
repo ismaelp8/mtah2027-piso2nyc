@@ -195,8 +195,9 @@ def version_de(spec, donde):
     # fuera el partido, también con cada partido de la DFL: así falla aquí un pliegue que no existe.
     prueba = partido_de_prueba()
     try:
-        for partido in [None] + (list(dfl.PARTIDOS) if fuera else []):
-            salida = pipeline.run(prueba, params=params, pieces=con_partido(funciones, fuera, partido), report={})
+        deja_alguna = bool(fuera) or bool(de_la_entrega_que_dejan_fuera(funciones))
+        for partido in [None] + (list(dfl.PARTIDOS) if deja_alguna else []):
+            salida = pipeline.run(prueba, params=params, pieces=piezas_para(funciones, fuera, partido), report={})
             if np.shape(salida) != (FRAMES_PRUEBA,):
                 raise ValueError("devuelve {} etiquetas en vez de una por frame".format(np.shape(salida)))
             evaluado = np.zeros(FRAMES_PRUEBA, bool)
@@ -271,6 +272,26 @@ def con_partido(funciones, fuera, partido):
             for pieza, funcion in funciones.items()}
 
 
+def de_la_entrega_que_dejan_fuera(funciones):
+    """Las piezas que la versión no nombra y cuya función de la entrega deja fuera un partido (tiene `fuera`).
+
+    Desde el 15/11 la evidencia de equipo de la entrega es B5 (`aprendida.evidence_b5`): sin esto, la versión
+    de `main` (`{}`) la usaría con los coeficientes de los 7 partidos, sobre partidos que ya vio.
+    """
+    return [pieza for pieza in pipeline.PIECES if pieza not in (funciones or {})
+            and "fuera" in inspect.signature(pipeline.default_piece(pieza)).parameters]
+
+
+def piezas_para(funciones, fuera, partido):
+    """Las piezas con que se puntúa `partido`: las de la versión y, si dejan fuera un partido, también las
+    de la entrega que la versión no nombra, todas con `fuera=partido`."""
+    piezas = dict(funciones or {})
+    defecto = de_la_entrega_que_dejan_fuera(funciones)
+    for pieza in defecto:
+        piezas[pieza] = pipeline.default_piece(pieza)
+    return con_partido(piezas, list(fuera or []) + defecto, partido)
+
+
 # -- el `D` oráculo y el control -----------------------------------------------------------------------
 
 def d_oraculo(gt):
@@ -320,9 +341,9 @@ def ejecutar(version, trk, gt, modo_d, partido=None):
         codes = control(trk, version["ventana"])
         return imponer_d(codes, gt, trk.blocks) if modo_d == "oraculo" else codes
     extra = [d_oraculo(gt)] if modo_d == "oraculo" else []
-    if version.get("fuera") and partido is None:
+    if (version.get("fuera") or de_la_entrega_que_dejan_fuera(version.get("piezas"))) and partido is None:
         raise ValueError("esta versión deja fuera el partido que se puntúa: hace falta `partido`")
-    piezas = con_partido(version.get("piezas"), version.get("fuera"), partido)
+    piezas = piezas_para(version.get("piezas"), version.get("fuera"), partido)
     return pipeline.run(trk, extra=extra, params=version["params"], pieces=piezas)
 
 

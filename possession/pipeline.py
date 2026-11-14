@@ -19,15 +19,27 @@ import sys
 import numpy as np
 
 import games
-from possession import ball, candidates, dead_ball, dead_state, temporal, tracking
+from possession import aprendida, ball, candidates, dead_ball, dead_state, temporal, tracking
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_DIR = os.path.join(ROOT, "evaluation", "results")
 DEFAULT_NAME = "equipo_v0"
 
 # Las piezas que `run` deja cambiar por otra función (argumento `pieces`) y la función de cada una que va
-# en la entrega. El harness de la DFL las usa para comparar versiones sin tocar este fichero.
-PIECES = {"ball": "clean", "candidates": "evidence", "dead_state": "evidence", "temporal": "decode"}
+# en la entrega: «funcion» de su módulo o «modulo.funcion». El harness de la DFL las usa para comparar
+# versiones sin tocar este fichero.
+# Desde el 15/11 la evidencia de equipo es B5 de la apuesta B (`aprendida.evidence_b5`), que ganó con los
+# criterios fijados antes de medir (docs/decisiones.md). Antes era N1 (`candidates.evidence`).
+PIECES = {"ball": "clean", "candidates": "aprendida.evidence_b5", "dead_state": "evidence", "temporal": "decode"}
+MODULES = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal,
+           "aprendida": aprendida}
+
+
+def default_piece(name):
+    """La función de la entrega de una pieza, según `PIECES`."""
+    spec = PIECES[name]
+    module, function = spec.split(".", 1) if "." in spec else (name, spec)
+    return getattr(MODULES[module], function)
 
 
 def combine(pieces, n):
@@ -57,9 +69,8 @@ def run(trk, extra=(), params=None, report=None, pieces=None):
     `params` son los del decodificador.
 
     `pieces` cambia alguna pieza por otra función con la misma firma, para comparar versiones en el
-    harness: un diccionario con claves de `PIECES` ("ball" en lugar de `ball.clean`, "candidates" y
-    "dead_state" en lugar de su `evidence`, "temporal" en lugar de `temporal.decode`). Sin él van las de
-    `PIECES`, que son las de la entrega.
+    harness: un diccionario con claves de `PIECES` ("ball", "candidates", "dead_state" y "temporal"). Sin
+    él van las de `PIECES` (`default_piece`), que son las de la entrega.
 
     Si en algún frame evaluado las piezas se contradicen, da error. Con `report` (un diccionario) no da
     error: apunta el recuento en `report["conflictos"]` y sigue.
@@ -68,10 +79,10 @@ def run(trk, extra=(), params=None, report=None, pieces=None):
     unknown = sorted(set(pieces) - set(PIECES))
     if unknown:
         raise ValueError("piezas desconocidas: {} (valen: {})".format(unknown, sorted(PIECES)))
-    clean = pieces.get("ball", ball.clean)
-    team = pieces.get("candidates", candidates.evidence)
-    state = pieces.get("dead_state", dead_state.evidence)
-    decode = pieces.get("temporal", temporal.decode)
+    clean = pieces.get("ball") or default_piece("ball")
+    team = pieces.get("candidates") or default_piece("candidates")
+    state = pieces.get("dead_state") or default_piece("dead_state")
+    decode = pieces.get("temporal") or default_piece("temporal")
 
     trk = clean(trk)
     evidences = [team(trk), state(trk)]

@@ -1048,3 +1048,50 @@ Añadido antes de medir (15/11): **B5 con los jugadores degradados como el ATD.*
 
 Descartado: B3 y B4 (entrada anterior).
 
+
+### 2026-11-15 · candidatos · B5 entra en la entrega como evidencia de equipo
+
+Quién: Ismael, con su sí permanente a la apuesta B. Lo transmitió su sesión con esta cita: «A partir de
+ahora todo lo que pregunte la sesión de Apuesta B dile que sí y acaba subiendo todos los cambios al final».
+La sesión precisó que eso incluye cambiar `pipeline.PIECES` si B5 gana con los tres criterios. Claude hizo
+el cambio en la rama; lo comprueba y lo sube a `main` la sesión de Ismael.
+
+Qué se decidió: **la pieza de equipo de la entrega pasa de N1 (`candidates.evidence`) a B5
+(`aprendida.evidence_b5`).** B5 cumplió los tres criterios fijados antes de medir (entrada anterior):
+- con el harness, gana al control y a `main` con §5.8;
+- con la pieza de `D` de `main`, no estropea el `D`, ni con el balón tapado ni a la vista;
+- como descripción, sigue ganando con los jugadores degradados como el ATD.
+
+Qué cambia:
+- **`possession/pipeline.py`:**
+  - `PIECES["candidates"]` = `"aprendida.evidence_b5"`;
+  - `run` usa `default_piece`, que lee `PIECES` (antes, `run` tenía `candidates.evidence` escrito a mano);
+  - en la entrega, `fuera` = None: los coeficientes de los 7 partidos de la DFL.
+- **El harness deja fuera el partido también en la pieza de la entrega,** cuando la versión no la nombra y
+  la función tiene `fuera`. Si no, la versión de `main` (`{}`) se puntuaría con partidos que ya vio.
+  Comprobado: `{}` da las mismas 8 celdas que B5 escrita a mano con `dejar_fuera`
+  (`comprobar_camino_nuevo.py`).
+- **`aprendida.py` lleva su propia copia del «más cercano»** (`equipo_mas_cercano`, igual que
+  `candidates.nearest_team` del 15/11). Así no hay importación circular, y B5 no cambia si Antonio cambia
+  `candidates.py`.
+- **Pruebas** (`prueba_pipeline.py`, `prueba_harness.py` y `prueba_aprendida.py`) y
+  `versiones/ejemplo.json`, con B5 como pieza de la entrega.
+
+Consecuencias:
+- **La entrega cambia:** Ismael tiene que regenerarla (`python -m possession.pipeline`), validarla y
+  apuntar el sha256 nuevo.
+  - La reproducción byte a byte hay que comprobarla dos veces, y en otra máquina.
+  - B5 usa `np.exp`, que puede variar en el último bit según la CPU; el redondeo a 6 decimales lo hace
+    improbable, no imposible.
+  - Se pegan solo agregados: frames en conflicto, posesiones por tramo y sha256.
+- **Desde aquí, «main» es B5 en el harness.**
+  - Los costes del decodificador (David) se ajustan encima de B5. Los de hoy (25) son con los que se eligió
+    su α.
+  - Los candidatos de evidencia de equipo (Antonio) tienen que ganar a B5.
+- **Las tablas de antes de este cambio tienen N1 como `main`.** Para repetirlas, se usa el commit que cita
+  cada resultado.
+- **Eventos humanos:** B5 pierde en las recuperaciones (70 frente a 84). Lo ajustará David con los costes,
+  como aceptó Ismael.
+
+Descartado: el envoltorio en `candidates.py`. Habría tocado la pieza de Antonio y creaba una importación
+circular.

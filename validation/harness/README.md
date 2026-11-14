@@ -105,7 +105,7 @@ es una opción de la función de siempre, basta con las opciones: `{"candidates"
 | clave | qué es |
 |---|---|
 | `params` | los parámetros del decodificador que use la versión (con el de siempre, las claves de `temporal.DEFAULTS`). Sin ella, los de por defecto |
-| `piezas` | qué función usa cada pieza en lugar de la de siempre. Las piezas: `ball` (en lugar de `clean`), `candidates` y `dead_state` (en lugar de `evidence`) y `temporal` (en lugar de `decode`). La función tiene que estar en ese módulo de `possession/`. Vale su nombre (`"evidence_n2"`) o `{"funcion": ..., "opciones": {...}}`; sin `funcion`, la de siempre. Las opciones se le pasan como argumentos con nombre |
+| `piezas` | qué función usa cada pieza en lugar de la de la entrega (`pipeline.PIECES`). Las piezas: `ball` (en lugar de `clean`), `candidates` (en lugar de `aprendida.evidence_b5` desde el 15/11; antes, `evidence`), `dead_state` (en lugar de `evidence`) y `temporal` (en lugar de `decode`). La función tiene que estar en ese módulo de `possession/`. Vale su nombre (`"evidence_n2"`) o `{"funcion": ..., "opciones": {...}}`; sin `funcion`, la de siempre. Las opciones se le pasan como argumentos con nombre |
 | `nota` | texto libre: qué es y por qué. Sale en la cabecera |
 | `tipo` | `pipeline` (por defecto) o `control`. Un `control` es el baseline con otra ventana (`"ventana": 125`) |
 
@@ -137,6 +137,14 @@ añadidos a `piezas`:
 - una función que acepta `fuera` sin `"dejar_fuera": true`, porque se puntuaría con los coeficientes de los
   7 partidos, sobre partidos que ya vio;
 - puntuar una versión que deja fuera el partido sin decir cuál.
+
+**Desde el 15/11 la pieza de equipo de la entrega es B5 (`aprendida.evidence_b5`), que deja fuera un
+partido.** El harness se lo pasa también cuando la versión no nombra la pieza: la versión de `main` (`{}`)
+se puntúa, partido a partido, con el pliegue que no lo vio. Comprobado con
+`validation/apuesta_b/comprobar_camino_nuevo.py`: `{}` da las mismas celdas que B5 escrita a mano con
+`dejar_fuera`. Las tablas de antes del 15/11 tienen N1 como `main`. Los ficheros `apuesta_b*.json` llaman
+«main: N1 y coste 25» a `{}`, y desde ese día `{}` es B5: para repetir sus tablas, usa el commit que cita
+cada resultado.
 
 **Ojo con la fila «elegida dejando un partido fuera»** cuando hay versiones con `dejar_fuera`: no está
 anidada del todo. Para elegir la versión de un partido mira lo que sacan las versiones en los otros seis, y
