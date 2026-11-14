@@ -2,8 +2,8 @@
 
 Es la apuesta B del plan (docs/PLAN_ENTREGA.md §3, «Ismael»; docs/investigacion_metodos.md §4.2), con las
 decisiones de Ismael del 14/11 (docs/decisiones.md): una evidencia de equipo aprendida en la DFL que
-compite con N1 (`candidates.evidence`) en el harness. **No va en la entrega** salvo que gane con la regla
-de §5.8 al control y a `main`.
+compite con N1 (`candidates.evidence`) en el harness. Va en la entrega solo si gana con la regla de §5.8 al
+control y a `main`, y con los criterios del `D` que se fijaron antes de medir (B5, 15/11).
 
 - **Solo `H` frente a `A`.** La columna `D` va a cero, como en N1: el `D` es de `dead_state` y `dead_ball`.
 - **Simétrica por construcción:** cada rasgo es «lo del local menos lo del visitante» y el modelo no tiene
@@ -12,8 +12,10 @@ de §5.8 al control y a `main`.
   un slot es el mismo objeto entre un frame y el siguiente (un tracklet); los saltos de más de `VEL_MAX`,
   que son cambios de slot, se descartan.
 - **Por tramo evaluado:** ninguna ventana cruza el descanso. Fuera de los tramos, la puntuación es cero.
-- **La puntuación:** α·z a favor del equipo que el modelo da como poseedor (z es el logit) y cero para el
-  otro y para `D`, redondeada a `DECIMALES`. El logit se suma rasgo a rasgo, sin BLAS. El redondeo hace
+- **La puntuación** (`puntuacion_de`) depende del conjunto. En B1 y B2 es α·|z| a favor del equipo que el
+  modelo da como poseedor (z es el logit) y cero para el otro y para `D`. En B4 es −α·|z| al que pierde, y
+  B5 es B4 más el +1 de N1 donde se ve el balón. Va redondeada a `DECIMALES`. El logit se suma rasgo a
+  rasgo, sin BLAS. El redondeo hace
   improbable, no imposible, que la entrega dependa del último bit de `np.exp` en otra máquina: la garantía
   es reproducir el CSV byte a byte en una máquina limpia.
 
@@ -22,12 +24,13 @@ Hay un juego por pliegue: el que se entrenó sin cada partido de la DFL, para qu
 partido con un modelo que no lo vio (`fuera`), y el de los 7 partidos (`fuera=None`), que es el de la
 entrega.
 
-Interfaz: `evidence_b1(trk)` y `evidence_b2(trk)` devuelven `(score, allowed)`; ver possession/tracking.py.
+Interfaz: `evidence_b1(trk)` … `evidence_b5(trk)` devuelven `(score, allowed)`; ver possession/tracking.py.
+Este módulo no importa ninguna otra pieza: el «más cercano» de B5 es una copia propia (`equipo_mas_cercano`),
+para que B5 no cambie si cambia `candidates.py` y para que no haya importaciones circulares.
 """
 
 import numpy as np
 
-from possession.candidates import nearest_team
 from possession.tracking import A, H, no_evidence
 
 # -- rasgos (fijados en docs/decisiones.md el 14/11, antes de medir; sin ajustar) -----------------------
@@ -43,6 +46,7 @@ DECIMALES = 6
 CONJUNTOS = ("b1", "b2", "b3", "b4", "b5")
 RASGOS_DE = {"b1": "b1", "b2": "b2", "b3": "b2", "b4": "b2", "b5": "b2"}
 N1_PUNTOS = 1.0  # el +1 de N1 que suma B5 (candidates.NEAREST_SCORE el 15/11), escrito aquí para que no cambie con él
+BLOQUE_CERCANO = 20000  # frames por bloque al buscar el más cercano (candidates.CHUNK el 15/11)
 BASE_BALON = ["signo del más cercano"] + ["núcleo {} m".format(s) for s in SIGMAS] + ["distancia del más cercano"]
 NOMBRES = {
     "b1": ["{}, ventana {}".format(r, v) for r in BASE_BALON for v in VENTANAS_BALON],
@@ -197,7 +201,7 @@ def puntuacion_de(conjunto, z, visible, alfa, cercano=None):
       `H` − `A` es la de b2, y el margen del ganador sobre `D` es siempre cero: el `D` lo deciden las piezas
       de `D`.
     - b5: b4 más N1 (`N1_PUNTOS` al equipo de `cercano`, el equipo del jugador más cercano al balón de
-      `candidates.nearest_team`, −1 donde nadie). Frente a `D` empuja como N1.
+      `equipo_mas_cercano`, −1 donde nadie). Frente a `D` empuja como N1.
     """
     if conjunto in ("b1", "b2"):
         return puntuacion(z, alfa)
@@ -216,6 +220,27 @@ def puntuacion_de(conjunto, z, visible, alfa, cercano=None):
         score[cercano == A, A] += N1_PUNTOS
         return score, allowed
     raise ValueError("conjunto desconocido: {} (valen: {})".format(conjunto, CONJUNTOS))
+
+
+def equipo_mas_cercano(trk):
+    """Equipo del slot más cercano al balón por frame: 0, 1, o -1 si no hay balón o no hay jugadores.
+
+    Copia de `candidates.nearest_team` del 15/11 (N1, lo que hace starter/baseline.py): con dos slots a la
+    misma distancia gana el de índice más bajo. Es la que usó el entrenamiento de B5.
+    """
+    out = np.full(len(trk.bx), -1, dtype=np.int8)
+    seen = np.flatnonzero(~np.isnan(trk.bx) & ~np.isnan(trk.by))
+    team = np.asarray(trk.team)
+    for start in range(0, len(seen), BLOQUE_CERCANO):
+        idx = seen[start:start + BLOQUE_CERCANO]
+        dx = trk.px[idx].astype(np.float64) - trk.bx[idx, None]
+        dy = trk.py[idx].astype(np.float64) - trk.by[idx, None]
+        d2 = dx * dx + dy * dy
+        d2 = np.where(np.isnan(d2), np.inf, d2)
+        best = np.argmin(d2, axis=1)
+        found = np.isfinite(d2[np.arange(len(idx)), best])
+        out[idx[found]] = team[best[found]]
+    return out
 
 
 def balon_visible(trk):
@@ -238,9 +263,10 @@ def _evidencia(trk, conjunto, fuera):
     cercano = None
     if conjunto == "b5":
         # Como N1, pero a cero fuera de los tramos, como el resto de este módulo (ahí se escribe `X`).
+        todos = equipo_mas_cercano(trk)
         cercano = np.full(len(trk.bx), -1, dtype=np.int8)
         for inicio, fin in trk.blocks:
-            cercano[inicio:fin] = nearest_team(trk)[inicio:fin]
+            cercano[inicio:fin] = todos[inicio:fin]
     return puntuacion_de(conjunto, z, balon_visible(trk), juego["alfa"], cercano)
 
 

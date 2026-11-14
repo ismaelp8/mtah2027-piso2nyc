@@ -44,7 +44,7 @@ sys.path.insert(0, os.path.join(ROOT, "validation", "harness"))
 sys.path.insert(0, ROOT)
 import dfl  # noqa: E402
 import puntuar  # noqa: E402
-from possession import aprendida, candidates, dead_state, temporal  # noqa: E402
+from possession import aprendida, ball, dead_state, temporal  # noqa: E402
 
 H, A = puntuar.H, puntuar.A
 # Fijados antes de medir y sin ajustar (docs/decisiones.md, 14/11): `PASO`, la condición y `ALFAS` en la
@@ -54,8 +54,8 @@ PASO = 5
 LAMBDA = 1.0
 ITERACIONES = 25
 ALFAS = (1 / 16, 1 / 8, 1 / 4, 1 / 2, 1.0, 2.0)
-# B3 y B4 (docs/decisiones.md, 15/11, antes de medir): los pesos de B2 y α elegida con la pieza de `D` de
-# `main` dentro, sin oráculo, en esta rejilla.
+# B3, B4 y B5 (docs/decisiones.md, 15/11, antes de medir): los pesos de B2 y α elegida con la pieza de `D`
+# de `main` dentro, sin oráculo, en esta rejilla.
 ALFAS_D_PROPIO = (1 / 8, 1 / 4, 1 / 2, 1.0, 2.0, 4.0, 8.0)
 CON_PESOS_DE_B2 = ("b3", "b4", "b5")
 CIFRAS = 6
@@ -69,9 +69,10 @@ def preparar(partido):
     gt = cargado["gt"]
     condiciones = {}
     for condicion in dfl.VOTAN:
-        trk = dfl.tracking_de(cargado, condicion)
+        # Con el balón limpio, como lo ven las piezas en `pipeline.run`.
+        trk = ball.clean(dfl.tracking_de(cargado, condicion))
         condiciones[condicion] = {"rasgos": aprendida.rasgos(trk, "b2"), "blocks": trk.blocks,
-                                  "visible": aprendida.balon_visible(trk), "n1": candidates.nearest_team(trk),
+                                  "visible": aprendida.balon_visible(trk), "n1": aprendida.equipo_mas_cercano(trk),
                                   "estado_d": dead_state.evidence(trk)[0][:, puntuar.D]}
         if partido == dfl.PARTIDOS[0] and condicion == CONDICION_ENTRENAMIENTO:
             # B1 son las primeras columnas de B2: se comprueba una vez con el código del módulo.

@@ -1,4 +1,6 @@
-"""Apuesta B frente al `D` de la pieza de estado: cuántas paradas se pierden con B2 y con N1. Descriptivo.
+"""Apuesta B frente al `D` de la pieza de estado: cuántas paradas ve cada versión.
+
+Es el criterio 2 de B3, B4 y B5 y el criterio 3 de B5 (docs/decisiones.md, 15/11). Para lo demás, descriptivo.
 
     python validation/apuesta_b/d_propio.py
     python validation/apuesta_b/d_propio.py --versiones validation/harness/versiones/apuesta_b_paradas.json
@@ -8,7 +10,7 @@ versión pone su `D` con las piezas de `main` (`dead_state.evidence`, el modelo 
 ±8 en la columna `D`). Se mira cuánto de cada parada real ve como `D` cada versión, con el decodificador
 de `main`.
 
-**No decide nada** (README del harness): la DFL tapa el balón en todos los `D`, así que N1 nunca opina en
+**Sus límites** (README del harness): la DFL tapa el balón en todos los `D`, así que N1 nunca opina en
 una parada y le deja el sitio a la pieza de `D`. En el ATD el balón puede verse en las paradas, y entonces
 N1 también empujaría contra el `D`. B2 opina con los jugadores, haya balón o no. La comparación favorece a
 N1.

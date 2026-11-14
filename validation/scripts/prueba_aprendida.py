@@ -31,7 +31,7 @@ sys.path.insert(0, ROOT)
 import dfl  # noqa: E402
 import entrenar  # noqa: E402
 import puntuar  # noqa: E402
-from possession import aprendida, candidates, tracking  # noqa: E402
+from possession import aprendida, ball, tracking  # noqa: E402
 
 fallos = []
 
@@ -40,6 +40,22 @@ def comprobar(nombre, ok, detalle=""):
     print("  [{}] {}{}".format("OK" if ok else "FALLA", nombre, "   " + detalle if detalle else ""))
     if not ok:
         fallos.append(nombre)
+
+
+def mas_cercano_a_mano(trk):
+    """El equipo del slot más cercano al balón, frame a frame y sin vectorizar: la referencia de la prueba."""
+    salida = np.full(len(trk.bx), -1, dtype=np.int8)
+    for t in range(len(trk.bx)):
+        if np.isnan(trk.bx[t]) or np.isnan(trk.by[t]):
+            continue
+        mejor, distancia = -1, np.inf
+        for slot in range(trk.px.shape[1]):
+            d2 = (float(trk.px[t, slot]) - trk.bx[t]) ** 2 + (float(trk.py[t, slot]) - trk.by[t]) ** 2
+            if np.isfinite(d2) and d2 < distancia:
+                mejor, distancia = slot, d2
+        if mejor >= 0:
+            salida[t] = trk.team[mejor]
+    return salida
 
 
 def main():
@@ -86,9 +102,13 @@ def main():
               np.array_equal(b4[:, tracking.H] - b4[:, tracking.A], b2[:, tracking.H] - b2[:, tracking.A]))
     comprobar("el ganador de B4 nunca supera a D (margen cero)",
               (np.max(b4[:, :2], axis=1) == b4[:, tracking.D]).all() and (b4[:, tracking.D] == 0).all())
-    cercano = candidates.nearest_team(trk)
+    cercano = aprendida.equipo_mas_cercano(trk)
+    comprobar("el más cercano de B5 es el de una búsqueda a fuerza bruta (N1, desempate al índice más bajo)",
+              np.array_equal(cercano, mas_cercano_a_mano(trk)))
     b5, _ = aprendida.puntuacion_de("b5", z, visible, juego["alfa"], cercano)
-    n1, _ = candidates.evidence(trk)
+    n1 = np.zeros((len(trk.bx), 3))  # N1 escrito a mano: N1_PUNTOS al equipo del más cercano
+    n1[cercano == tracking.H, tracking.H] = aprendida.N1_PUNTOS
+    n1[cercano == tracking.A, tracking.A] = aprendida.N1_PUNTOS
     tramos = ~fuera_de_tramos
     b5_modulo, _ = aprendida.evidence_b5(trk)
     b4_con_alfa_de_b5, _ = aprendida.puntuacion_de("b4", z, visible, aprendida.coeficientes("b5")["alfa"])
@@ -101,6 +121,9 @@ def main():
     comprobar("B3, B4 y B5 llevan los pesos de B2 en todos los pliegues",
               all(aprendida.COEFICIENTES[c][k]["pesos"] == aprendida.COEFICIENTES["b2"][k]["pesos"]
                   for c in ("b3", "b4", "b5") for k in aprendida.COEFICIENTES["b2"]))
+    limpio = ball.clean(trk)
+    comprobar("ball.clean devuelve el balón tal cual (si cambia, hay que reentrenar la apuesta B con entrenar.py)",
+              np.array_equal(limpio.bx, trk.bx, equal_nan=True) and np.array_equal(limpio.by, trk.by, equal_nan=True))
     print("Coeficientes")
     claves = {"todos"} | set(dfl.PARTIDOS)
     for conjunto in aprendida.CONJUNTOS:
