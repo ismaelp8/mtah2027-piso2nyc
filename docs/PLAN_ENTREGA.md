@@ -29,7 +29,7 @@
 | `D`: fronteras y anclas | Manuel | `possession/dead_ball.py` | cuándo empieza y cuándo acaba cada parada, y qué equipo reanuda, con el balón, el Smart Tagging y el silbato | agregados del partido; lo del balón, también en la DFL |
 | `D`: estado, y documento técnico | Ana | `possession/dead_state.py` | la probabilidad de que el juego esté parado en cada frame, con los jugadores; desde el lunes, el documento técnico | DFL |
 | evidencia de equipo y limpieza del balón | Antonio | `possession/candidates.py`, `possession/ball.py` | quién tiene el balón cuando se ve: proximidad con control, frente al jugador más cercano | DFL degradada |
-| apuesta B: evidencia aprendida | Ismael, en una sesión aparte | — | un modelo que da las tres clases; solo si gana al de reglas | DFL |
+| apuesta B: evidencia aprendida | Ismael, en una sesión aparte | `possession/aprendida.py` | un modelo de `H` frente a `A` (decisión del 14/11); solo si gana al de reglas | DFL |
 
 Cada uno trabaja en su fichero. Si necesitas algo de otra pieza, pídeselo a su dueño.
 
@@ -71,7 +71,7 @@ etiqueta por frame: 0 `H`, 1 `A`, 2 `D` y 3 `X` fuera de los tramos evaluados. L
 duraciones mínimas y la poda van aquí, no en las piezas de evidencia.
 
 **Para comparar variantes de una pieza** (14/11): escríbela como otra función de tu módulo, con la misma
-firma. El harness la usa en lugar de la de siempre con `pipeline.run(..., pieces=...)`, que se rellena
+firma (la apuesta B usa además `possession/aprendida.py`, que el harness admite para `candidates`). El harness la usa en lugar de la de siempre con `pipeline.run(..., pieces=...)`, que se rellena
 desde el fichero de `--versiones` (README del harness). La entrega usa siempre las de siempre:
 `ball.clean`, `candidates.evidence`, `dead_state.evidence` y `temporal.decode`, que son las que nombra
 `pipeline.PIECES`. Todas las versiones reciben el mismo tracking, de solo lectura: una pieza devuelve una
@@ -124,9 +124,10 @@ su prueba con un partido inventado, y el harness de la DFL (`validation/harness/
 **Domingo y lunes:** revisar y mergear las PR a diario, mantener una entrega válida en todo momento,
 congelar, y reproducir el CSV byte a byte en una máquina limpia.
 
-**Apuesta B** (evidencia aprendida de tres clases, `docs/investigacion_metodos.md` §4.2): en una sesión
-aparte, cuando el harness y la degradación estén comprobados. Se abandona el lunes a las 14:00 si no ha
-ganado.
+**Apuesta B** (evidencia aprendida, `docs/investigacion_metodos.md` §4.2; de `H` frente a `A` y no de tres
+clases, por decisión del 14/11 en `docs/decisiones.md`): en una sesión aparte, cuando el harness y la
+degradación estén comprobados. Se abandona el lunes a las 14:00 si no ha ganado. Medida el 14/11:
+`validation/resultados/2026-11-14_apuesta_b.md`.
 
 ### David: decodificador (`possession/temporal.py`)
 

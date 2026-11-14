@@ -133,6 +133,15 @@ añadidos a `piezas`:
 `validation/harness/versiones/apuesta_b.json` es el fichero de la apuesta B, y
 `validation/apuesta_b/entrenar.py` escribe los coeficientes de cada pliegue en el módulo.
 
+**Lo que da error a propósito:**
+- una función que acepta `fuera` sin `"dejar_fuera": true`, porque se puntuaría con los coeficientes de los
+  7 partidos, sobre partidos que ya vio;
+- puntuar una versión que deja fuera el partido sin decir cuál.
+
+**Ojo con la fila «elegida dejando un partido fuera»** cuando hay versiones con `dejar_fuera`: no está
+anidada del todo. Para elegir la versión de un partido mira lo que sacan las versiones en los otros seis, y
+cada uno se puntuó con un pliegue que sí vio el primero. La regla de §5.8 no usa esa fila.
+
 **Las erratas dan error al leer el fichero, antes de cargar ningún partido:** una clave desconocida, una
 pieza o una función que no existe, una opción que la función no acepta, `NaN` o `Infinity`, o un nombre
 de fila del propio harness. Además, cada versión se ejecuta entera sobre un partido inventado de un

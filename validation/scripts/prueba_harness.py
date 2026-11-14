@@ -120,22 +120,26 @@ def comprobar_dejar_fuera(carpeta):
         score, allowed = tracking.no_evidence(len(trk.bx))
         return score * peso, allowed
 
+    def evidencia_sin_fuera(trk):
+        return tracking.no_evidence(len(trk.bx))
+
     aprendida.evidencia_prueba = evidencia_prueba
+    aprendida.evidencia_sin_fuera = evidencia_sin_fuera
     try:
         ruta = escribir(carpeta, json.dumps({"main": {}, "deja fuera": {"piezas": {"candidates": {
             "funcion": "aprendida.evidencia_prueba", "opciones": {"peso": 2.0}, "dejar_fuera": True}}},
-            "sin dejar fuera": {"piezas": {"candidates": "aprendida.evidencia_prueba"}}}))
+            "sin dejar fuera": {"piezas": {"candidates": "aprendida.evidencia_sin_fuera"}}}))
         versiones = puntuar.leer_versiones(ruta)[0]
         deja, sin = versiones["deja fuera"], versiones["sin dejar fuera"]
         comprobar("«modulo.funcion» toma la función de ese módulo, con sus opciones",
                   isinstance(deja["piezas"]["candidates"], functools.partial)
                   and deja["piezas"]["candidates"].func is evidencia_prueba
                   and deja["piezas"]["candidates"].keywords == {"peso": 2.0}
-                  and sin["piezas"]["candidates"] is evidencia_prueba)
+                  and sin["piezas"]["candidates"] is evidencia_sin_fuera)
         comprobar("la versión dice qué piezas dejan fuera el partido; las demás no llevan «fuera»",
                   deja.get("fuera") == ["candidates"] and "fuera" not in sin and "fuera" not in versiones["main"])
         comprobar("al leer, la versión se prueba con fuera=None (la entrega) y con cada partido de la DFL",
-                  llamadas == [None] + list(puntuar.dfl.PARTIDOS) + [None], str(llamadas))
+                  llamadas == [None] + list(puntuar.dfl.PARTIDOS), str(llamadas))
         comprobar("la versión de main sigue siendo la vacía", puntuar.version_de_main(versiones) == "main")
         del llamadas[:]
         trk = puntuar.partido_de_prueba()
@@ -143,14 +147,18 @@ def comprobar_dejar_fuera(carpeta):
         for inicio, fin in trk.blocks:
             gt[inicio:fin] = tracking.H
         puntuar.ejecutar(deja, trk, gt, "oraculo", "J03WMX")
-        puntuar.ejecutar(sin, trk, gt, "oraculo", "J03WMX")
-        comprobar("al puntuar, solo la pieza que deja fuera recibe el partido", llamadas == ["J03WMX", None],
-                  str(llamadas))
+        puntuar.ejecutar(sin, trk, gt, "oraculo", None)
+        comprobar("al puntuar, la pieza que deja fuera recibe el partido", llamadas == ["J03WMX"], str(llamadas))
+        comprobar("puntuar sin decir el partido una versión que lo deja fuera da error",
+                  da_error(lambda: puntuar.ejecutar(deja, trk, gt, "oraculo")))
         ruta = escribir(carpeta, json.dumps({"v": {"piezas": {"candidates": {
             "funcion": "aprendida.evidencia_prueba", "opciones": {"fuera": "J03WMX"}, "dejar_fuera": True}}}}))
         comprobar("con «dejar_fuera», «fuera» en las opciones da error", da_error(lambda: puntuar.leer_versiones(ruta)))
+        ruta = escribir(carpeta, json.dumps({"v": {"piezas": {"candidates": "aprendida.evidencia_prueba"}}}))
+        comprobar("una función con «fuera» sin «dejar_fuera» da error (se puntuaría con partidos que vio)",
+                  da_error(lambda: puntuar.leer_versiones(ruta)))
     finally:
-        del aprendida.evidencia_prueba
+        del aprendida.evidencia_prueba, aprendida.evidencia_sin_fuera
 
 
 def comprobar_erratas(carpeta):
@@ -211,6 +219,8 @@ def comprobar_erratas(carpeta):
          "{\"v\": {\"piezas\": {\"candidates\": {\"funcion\": \"evidence\", \"dejar_fuera\": 1}}}}"),
         ("«dejar_fuera» con una función que no tiene «fuera» (candidates.evidence)",
          "{\"v\": {\"piezas\": {\"candidates\": {\"funcion\": \"evidence\", \"dejar_fuera\": true}}}}"),
+        ("la apuesta B sin «dejar_fuera» (aprendida.evidence_b2, con los coeficientes de los 7)",
+         "{\"v\": {\"piezas\": {\"candidates\": \"aprendida.evidence_b2\"}}}"),
     ]
     for nombre, texto in casos:
         ruta = escribir(carpeta, texto)

@@ -527,6 +527,10 @@ Añadido tras entrenar y antes de medir en el harness (14/11):
   también fija cuánto pesa `H`/`A` frente a las piezas de `D` en la entrega, y con el `D` oráculo eso no
   se ve. Si un candidato se queda a menos de ~0,01 de la regla, la rejilla ampliada sería un tercer
   candidato, declarado como tal.
+- **Valores fijados al escribir el código** (la entrada solo decía «iteraciones fijas, L2 pequeña»): L2 de
+  1 sobre los rasgos divididos por su raíz cuadrática media, 25 iteraciones de Newton y los pesos con 6
+  cifras significativas. Ninguno se ajustó. Con unas 90.000 filas, esa L2 es despreciable, y el último
+  paso de Newton queda por debajo de 1e-13 en los 16 pliegues.
 - **Comprobaciones del instrumento** [medido]:
   - sin `--versiones`, la salida del harness (tabla y `--json`) es idéntica byte a byte a la de `main`;
   - N1 por el camino nuevo (`aprendida.…` con `dejar_fuera`) da las mismas 8 celdas que `{}`, y la pieza

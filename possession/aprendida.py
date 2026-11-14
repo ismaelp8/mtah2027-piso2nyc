@@ -8,10 +8,14 @@ de §5.8 al control y a `main`.
 - **Solo `H` frente a `A`.** La columna `D` va a cero, como en N1: el `D` es de `dead_state` y `dead_ball`.
 - **Simétrica por construcción:** cada rasgo es «lo del local menos lo del visitante» y el modelo no tiene
   término independiente. Cambiar los equipos de lado cambia el signo del logit y nada más.
-- **Sin identidad:** los rasgos no dependen del orden de los slots ni de que un slot sea un jugador.
+- **Sin identidad:** los rasgos no dependen del orden de los slots. Solo las velocidades de B2 suponen que
+  un slot es el mismo objeto entre un frame y el siguiente (un tracklet); los saltos de más de `VEL_MAX`,
+  que son cambios de slot, se descartan.
 - **Por tramo evaluado:** ninguna ventana cruza el descanso. Fuera de los tramos, la puntuación es cero.
 - **La puntuación:** α·z a favor del equipo que el modelo da como poseedor (z es el logit) y cero para el
-  otro y para `D`, redondeada a `DECIMALES` para que la entrega no dependa del último bit de la máquina.
+  otro y para `D`, redondeada a `DECIMALES`. El logit se suma rasgo a rasgo, sin BLAS. El redondeo hace
+  improbable, no imposible, que la entrega dependa del último bit de `np.exp` en otra máquina: la garantía
+  es reproducir el CSV byte a byte en una máquina limpia.
 
 Los coeficientes los escribe `validation/apuesta_b/entrenar.py` (numpy, sin azar) al final de este fichero.
 Hay un juego por pliegue: el que se entrenó sin cada partido de la DFL, para que el harness puntúe cada
@@ -25,7 +29,8 @@ import numpy as np
 
 from possession.tracking import A, H, no_evidence
 
-# -- rasgos (fijados en docs/decisiones.md el 14/11, antes de medir) -----------------------------------
+# -- rasgos (fijados en docs/decisiones.md el 14/11, antes de medir; sin ajustar) -----------------------
+# Ninguna de estas constantes se ajustó: se escribieron antes de medir y no se tocaron al ver resultados.
 
 SIGMAS = (1.0, 2.5, 6.0)  # m: anchura de los núcleos gaussianos de distancia al balón
 TOPE = 15.0  # m: tope de la distancia del más cercano de cada equipo

@@ -4,8 +4,10 @@
     python validation/apuesta_b/entrenar.py --seco   # entrena y enseña los agregados, sin escribir nada
 
 Son datos abiertos de otros partidos (Bassek et al., 2025, CC BY 4.0), con la caché del harness: lo puede
-ejecutar cualquiera, Claude incluido. Solo imprime agregados. No tiene azar: dos ejecuciones escriben los
-mismos coeficientes. Tarda unos minutos.
+ejecutar cualquiera, Claude incluido. Solo imprime agregados. No tiene azar: en la misma máquina, dos
+ejecuciones escriben los mismos coeficientes (comprobado el 14/11). En otra máquina, el ajuste usa BLAS y
+LAPACK y podría cambiar la sexta cifra; la entrega no se ve afectada, porque lee los coeficientes ya
+escritos en el módulo. Tarda unos minutos.
 
 Lo que hace es lo que se fijó antes de medir (docs/decisiones.md, 14/11, «apuesta B»):
 
@@ -42,6 +44,8 @@ import puntuar  # noqa: E402
 from possession import aprendida, candidates, temporal  # noqa: E402
 
 H, A = puntuar.H, puntuar.A
+# Fijados antes de medir y sin ajustar (docs/decisiones.md, 14/11): `PASO`, la condición y `ALFAS` en la
+# entrada de los candidatos; `LAMBDA`, `ITERACIONES` y `CIFRAS` al escribir este código, antes de medir.
 CONDICION_ENTRENAMIENTO = "como el ATD"
 PASO = 5
 LAMBDA = 1.0
@@ -147,8 +151,11 @@ def escribir(modelos):
     if len(patron.findall(texto)) != 1:
         raise AssertionError("no encuentro un único bloque de coeficientes en {}".format(MODULO))
     nuevo = patron.sub(lambda _: salto.join(bloque_de_coeficientes(modelos)), texto)
-    with open(MODULO, "w", encoding="utf-8", newline="") as handle:
+    compile(nuevo, MODULO, "exec")  # un módulo roto dejaría sin harness a todos: se comprueba antes
+    temporal_ruta = MODULO + ".nuevo"
+    with open(temporal_ruta, "w", encoding="utf-8", newline="") as handle:
         handle.write(nuevo)
+    os.replace(temporal_ruta, MODULO)
 
 
 def pct(a, b):

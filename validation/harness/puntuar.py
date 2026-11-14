@@ -248,6 +248,11 @@ def funcion_de(pieza, valor, donde):
         raise ValueError("{}: las «opciones» de «{}» tienen que ser un objeto".format(donde, pieza))
     if dejar_fuera and "fuera" in opciones:
         raise ValueError("{}: con «dejar_fuera», «fuera» lo pone el harness; no va en las «opciones»".format(donde))
+    # Una función con `fuera` sin «dejar_fuera» usaría los coeficientes de los 7 partidos: se puntuaría sobre
+    # partidos que ya vio, contra §5.8, sin que nadie lo notara.
+    if not dejar_fuera and "fuera" in inspect.signature(funcion).parameters:
+        raise ValueError("{}: {}.{} deja fuera un partido (tiene «fuera»): hace falta «dejar_fuera»: true".format(
+            donde, modulo.__name__, nombre))
     # La misma llamada que hace pipeline.run: el tracking (o la evidencia, los tramos y los params).
     posicionales = (None,) * (4 if pieza == "temporal" else 1)
     try:
@@ -315,6 +320,8 @@ def ejecutar(version, trk, gt, modo_d, partido=None):
         codes = control(trk, version["ventana"])
         return imponer_d(codes, gt, trk.blocks) if modo_d == "oraculo" else codes
     extra = [d_oraculo(gt)] if modo_d == "oraculo" else []
+    if version.get("fuera") and partido is None:
+        raise ValueError("esta versión deja fuera el partido que se puntúa: hace falta `partido`")
     piezas = con_partido(version.get("piezas"), version.get("fuera"), partido)
     return pipeline.run(trk, extra=extra, params=version["params"], pieces=piezas)
 
