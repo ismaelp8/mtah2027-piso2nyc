@@ -1,4 +1,5 @@
-"""Comprueba possession/dead_ball.py sin datos del partido: solo el código y la GT pública.
+"""Comprueba possession/dead_ball.py sin datos del partido: solo el código, la GT pública y un Smart Tagging
+inventado, que se escribe en una carpeta temporal y se borra al terminar.
 
     python validation/scripts/comprobar_balon_muerto.py
 
@@ -10,14 +11,17 @@ import csv
 import hashlib
 import io
 import os
+import random
+import shutil
 import sys
+import tempfile
 
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 import games  # noqa: E402
-from possession import dead_ball  # noqa: E402
+from possession import dead_ball, tracking  # noqa: E402
 from starter.load_smart_tagging import KICKOFF_VIDEO_FRAMES  # noqa: E402
 
 GT_PATH = os.path.join(ROOT, "evaluation", "gt", "BAR-ATH_possession_gt_public.csv")
@@ -48,6 +52,88 @@ def mask_without_opening_files(game):
     finally:
         builtins.open, io.open = real_open, real_io_open
     return mask, opened
+
+
+def smart_tagging_xml(folder, name, instances, shuffle_seed=None):
+    """Un Smart Tagging inventado con `instances` = [(código, inicio_s, fin_s, Type o None)]. Devuelve la ruta."""
+    rows = list(instances)
+    if shuffle_seed is not None:
+        random.Random(shuffle_seed).shuffle(rows)
+    body = []
+    for i, (code, start_s, end_s, kind) in enumerate(rows):
+        labels = "<label><group>Team</group><text>N/A</text></label>"
+        if kind:
+            labels += "<label><group>Type</group><text>{}</text></label>".format(kind)
+        body.append("<instance><ID>{}</ID><start>{}</start><end>{}</end><code>{}</code>{}</instance>".format(
+            i, start_s, end_s, code, labels))
+    path = os.path.join(folder, name)
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write("<file><ALL_INSTANCES>{}</ALL_INSTANCES></file>".format("".join(body)))
+    return path
+
+
+def check_goal_to_kickoff(game, folder):
+    """La capa «de cada gol a su saque» con casos inventados, también los que anclarían juego vivo."""
+    fps = games.GAMES[game]["fps"]
+    n_frames = games.GAMES[game]["n_video_frames"]
+    ko = "Kick Off (After Goal)"
+
+    def spans(instances, seed=None):
+        path = smart_tagging_xml(folder, "caso.xml", instances, seed)
+        return dead_ball.goal_to_kickoff(dead_ball.smart_tagging_events(path, fps), fps)
+
+    def at(seconds):
+        return int(round(seconds * fps))
+
+    check("gol con su saque: de fin del gol a inicio del saque",
+          spans([("GOALS", 1000, 1010, None), ("SET PIECES", 1100, 1105, ko)]) == [(at(1010), at(1100))])
+    check("códigos y tipos sin distinguir mayúsculas",
+          spans([("goals", 1000, 1010, None), ("set pieces", 1100, 1105, "kick off (after goal)")])
+          == [(at(1010), at(1100))])
+    check("a 180 s justos del fin del gol entra; un frame más, no",
+          len(spans([("GOALS", 100, 110, None), ("SET PIECES", 290, 295, ko)])) == 1
+          and spans([("GOALS", 100, 110, None), ("SET PIECES", 290.04, 295, ko)]) == [])
+    check("gol sin saque y otro gol con saque: solo ancla el segundo",
+          spans([("GOALS", 100, 110, None), ("GOALS", 150, 160, None), ("SET PIECES", 200, 205, ko)])
+          == [(at(160), at(200))])
+    check("un reinicio entre el gol y el saque: no ancla",
+          spans([("GOALS", 100, 110, None), ("SET PIECES", 150, 185, "Throw-in"), ("SET PIECES", 200, 205, ko)])
+          == [])
+    check("un gol que empieza entre otro gol y su saque: no ancla",
+          spans([("GOALS", 100, 110, None), ("GOALS", 150, 215, None), ("SET PIECES", 200, 205, ko)]) == [])
+    check("saque dentro de su ventana GOALS: no ancla ni se lleva el gol siguiente",
+          spans([("GOALS", 100, 110, None), ("SET PIECES", 105, 110, ko),
+                 ("GOALS", 300, 310, None), ("SET PIECES", 350, 355, ko)]) == [(at(310), at(350))])
+    check("dos saques tras un gol: solo el primero",
+          spans([("GOALS", 100, 110, None), ("SET PIECES", 150, 155, ko), ("SET PIECES", 200, 205, ko)])
+          == [(at(110), at(150))])
+    several = [("GOALS", 1000, 1010, None), ("SET PIECES", 1100, 1105, ko), ("GOALS", 2000, 2010, None),
+               ("GOALS", 3000, 3010, None), ("SET PIECES", 3210, 3215, ko), ("SET PIECES", 4000, 4035, "Throw-in"),
+               ("BUILD UP", 4100, 4140, None), ("GOALS", 6000, 6012.5, None), ("SET PIECES", 6080, 6085, ko)]
+    expected = [(at(1010), at(1100)), (at(6012.5), at(6080))]
+    check("varios goles: solo los que tienen su saque cerca y sin nada por medio", spans(several) == expected,
+          str(spans(several)))
+    check("no depende del orden del fichero", all(spans(several, seed) == expected for seed in range(10)))
+
+    path = smart_tagging_xml(folder, "partido_inventado.xml", several)
+    trk = tracking.Tracking(np.full(n_frames, np.nan), np.full(n_frames, np.nan), np.empty((n_frames, 0)),
+                            np.empty((n_frames, 0)), np.empty(0, dtype=np.int8), games.GAMES[game]["pitch"],
+                            tracking.evaluated_blocks(game), fps)
+    pre = dead_ball.pre_kickoff(game)
+    anchored = pre.copy()
+    for start, stop in expected:
+        anchored[start:stop] = True
+    mask = dead_ball.dead_mask({"smart_tagging": path}, game)
+    score, allowed = dead_ball.evidence(trk, {"smart_tagging": path}, game)
+    check("con rutas, la máscara es el tramo antes del saque más los de gol a saque",
+          bool(np.array_equal(mask, anchored)), "{} frames".format(int(mask.sum())))
+    check("evidence: en lo anclado solo D, fuera todo permitido, y no puntúa",
+          bool(np.array_equal(~allowed[:, tracking.H], anchored))
+          and bool(np.array_equal(~allowed[:, tracking.A], anchored))
+          and bool(allowed[:, tracking.D].all()) and not score.any())
+    _, allowed_none = dead_ball.evidence(trk, None, game)
+    check("evidence sin rutas: solo el tramo antes del saque",
+          bool(np.array_equal(~allowed_none[:, tracking.H], pre)))
 
 
 def main():
@@ -119,6 +205,13 @@ def main():
         check("con otro partido da un error en vez de una máscara", False)
     except ValueError:
         check("con otro partido da un error en vez de una máscara", True)
+
+    print("\n7. De cada gol a su saque, con un Smart Tagging inventado")
+    folder = tempfile.mkdtemp(prefix="comprobar_balon_muerto_")
+    try:
+        check_goal_to_kickoff(game, folder)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
 
     print("\n{}".format("TODO BIEN" if not failures else "FALLAN {}: {}".format(
         len(failures), "; ".join(failures))))

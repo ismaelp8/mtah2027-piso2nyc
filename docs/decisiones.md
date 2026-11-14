@@ -459,3 +459,172 @@ Descartado:
   calibrado por la regla.
 - **Tomar `OBJETIVO` de las severidades baja y media:** con bloques de 5 a 15 s no lo identifican
   (bitácora §9.2).
+
+### 2026-11-14 · `D` · fronteras y anclas: capas, candidatos y regla de lectura, escritos antes de medir
+
+Quién: Manuel
+
+Qué se va a probar: la pieza de `possession/dead_ball.py` (función `evidence`), por capas, en este orden.
+Cada capa entra con su propia PR. Sale de `docs/PLAN_ENTREGA.md` §3 y de
+`validation/resultados/2026-11-13_revision_balon_muerto.md` §6.
+
+1. **Anclas duras,** en `allowed` (solo `D`):
+   - ya en `main`: el tramo antes del saque de cada parte;
+   - **de cada gol a su saque:** desde el fin de cada ventana `GOALS` hasta el inicio de la ventana del
+     siguiente `Kick Off (After Goal)`. Un gol sin saque etiquetado después, o con el saque a más de 3
+     minutos del fin de su ventana `GOALS`, no ancla nada. Cada saque se empareja con un solo gol.
+     **[sin verificar]** Que la ventana `GOALS` acabe con el balón ya en la portería;
+   - **el final de cada parte:** solo si lo pide el agregado 4 (regla de abajo). Su candidato se escribe
+     aquí antes de medirlo.
+2. **Fin del `D` (el reinicio) y equipo que reanuda,** dentro de cada ventana `SET PIECES`. Candidatos para
+   el instante del reinicio:
+   - **R1:** el golpeo del balón, es decir, el balón visto quieto que empieza a moverse (`find_strike` de
+     `validation/partido/diagnostico_balon_muerto.py`);
+   - **R2:** sin instante: `D` antes del inicio de la ventana, juego después de su fin, y dentro decide el
+     decodificador.
+
+   **El equipo que reanuda:** el `Team` del `SET PIECE`, puntuado en `H` o `A` desde el reinicio. Los
+   `Team = N/A` no puntúan equipo. Los saques de banda, que son `N/A`, quedan para una capa aparte
+   (jugador fuera de la banda, agregado 6).
+3. **Inicio del `D` (la salida):** el balón que desaparece a 2 m o menos de una línea, con 1 m/s o más
+   hacia fuera y un hueco de 2 s o más. Son los umbrales del agregado 3. Se empareja con el `SET PIECES`
+   que le sigue a 30 s o menos, y da `D` desde la salida hasta el reinicio de la capa 2.
+
+**Lo que no entra:**
+- **el silbato:** según el mensaje de Antonio del 14/11, su sondeo no pasa su criterio porque la señal
+  está sucia. Todavía no está apuntado en `validation/silbato/` **[sin verificar en el repo]**; lo apunta
+  él;
+- **lo descartado el 13/11:** suavizar el `D` con un voto, usar la falta de balón como `D` y arrastrar el
+  equipo a través de una parada.
+
+Cómo se medirá (dataset, nº de partidos/posesiones, métrica):
+- **Agregados del partido:** los tres scripts de `validation/partido/` (`agregados_smart_tagging.py`,
+  `agregados_balon_reinicios.py` y `agregados_jugadores.py`), que ejecuta Manuel.
+- **La capa 3, que solo usa el balón, también en la DFL:** los 7 partidos con el balón tapado «como el
+  ATD» y el criterio del 13/11.
+- **Lo que usa el Smart Tagging no se puede medir en la DFL.** Se comprueba en el partido con agregados:
+  ventanas que reciben un fin de `D`, duración de los `D` en intervalos gruesos, y balón en movimiento
+  dentro de lo anclado.
+- **Siempre:** `validation/scripts/prueba_pipeline.py` en verde después de cada cambio. La ventana pública
+  solo dice si algo está roto.
+
+Regla de lectura (fijada antes de ver los agregados):
+- **De gol a saque entra** si el agregado 1 (punto 3) da los 4 goles con su saque etiquetado después. Si
+  falta alguno, entran los que lo tienen.
+- **El final de parte:** se escribe y se mide una capa para él solo si, en las dos partes, la velocidad
+  media de los jugadores en los 30 s finales tiene un p50 por debajo de 1,2 m/s (como la DFL en `D`;
+  agregado 4). Si no, no se hace nada.
+- **R1 entra** solo en los tipos de reinicio (5 casos o más) en los que se cumplen las dos cosas
+  (agregado 2):
+  - el golpeo aparece en el 70 % o más de las ventanas;
+  - cae a ±1 s de la subida de velocidad de los jugadores en el 70 % o más de las encontradas.
+
+  En los demás tipos va R2.
+- **La capa 3 entra** si se cumplen las dos cosas del agregado 3 y después pasa el criterio del 13/11 en
+  la DFL. Si no, queda fuera:
+  - el 50 % o más de las salidas van seguidas de un `SET PIECES` a 30 s o menos;
+  - el 50 % o más de las ventanas de banda, córner y saque de puerta, los tres tipos juntos, tienen una
+    salida en los 15 s previos.
+- **Ningún umbral sale del partido:**
+  - los de detección (2 m, 1 m/s, 2 s, 30 s, 15 s, ±1 s) son los de los scripts de la revisión;
+  - el 1,2 m/s es la referencia de la DFL;
+  - los de esta regla (70 %, 50 % y 3 minutos) se fijan aquí, antes de medir;
+  - las puntuaciones de cada capa se marcan «sin ajustar» en el código.
+
+**Cuándo se escribió la regla:** en la sesión de Manuel, antes de que él ejecutara los tres scripts. Pero
+va en el mismo commit que el resultado, así que el historial de git no lo demuestra. Desde aquí, la regla
+de cada medida nueva se sube en un commit antes de ejecutar su script.
+
+Resultado (los tres agregados, ejecutados por Manuel el 14/11; solo agregados del partido entero):
+- **[medido] Las ventanas `SET PIECES` duran 35 s** en banda, córner, saque de puerta y falta (p10, p50 y
+  p90 de 35 s), y 5 s en los saques iniciales.
+- **[medido] El golpeo cae más de 5 s antes del fin de la ventana** en las 53 ventanas de banda, córner,
+  saque de puerta y falta.
+- **[inferencia] El fin de la ventana no es el reinicio.** Se sostiene si el golpeo es el reinicio, y eso
+  no lo ha validado la regla de R1.
+- **[medido] `Team = N/A`** en el 100 % de los saques de banda y de los saques iniciales, y en el 0 % de
+  córners, saques de puerta y faltas.
+- **[medido] Los 4 goles tienen su saque etiquetado después,** con el emparejamiento de
+  `agregados_smart_tagging.py`: desde el **inicio** de `GOALS`, sin emparejar uno a uno y sin tope. Del
+  inicio de cada `GOALS` a su saque suman 16.403 frames (10,3 % de los evaluados), con una mediana de
+  168 s.
+  - Es unas 2,7 veces lo que infería la revisión (§4.2, unos 6.000 frames) y más que las paradas tras gol
+    de la DFL (51 y 93 s). **[sin verificar]** Si es porque la ventana `GOALS` empieza con la jugada del
+    gol o porque hubo revisiones largas.
+- **[medido] Velocidad media de los jugadores en los 30 s finales de cada parte:** p50 de 1,15 m/s en la
+  1ª y de 0,81 en la 2ª.
+- **[medido] Golpeo a ±1 s de la subida de velocidad de los jugadores,** sobre las encontradas:
+  - banda, 0 de 26;
+  - córner, 2 de 12;
+  - saque de puerta, 0 de 10;
+  - saques iniciales, 3 de 5;
+  - faltas, 3 de 5.
+
+  El golpeo aparece en 26 de 26, 12 de 12, 10 de 10, 5 de 6 y 5 de 5.
+- **[medido] Salidas del balón:** 24 de 133 huecos largos. De ellas, 16 (66,7 %) van seguidas de un
+  `SET PIECES` a 30 s o menos. Tienen una salida entre 15 s antes y 2 s después de su inicio 6 de las 48
+  ventanas de banda, córner y saque de puerta (12,5 %).
+- **[medido] La columna de velocidad del balón del ATD** frente al desplazamiento suavizado a 1 s:
+  correlación de 0,08 y cociente de medianas de 0,27.
+- **[medido] Velocidad media de los jugadores en todo el partido:** p10/p50/p90 de 0,70/1,50/2,94 m/s, con
+  el 35,4 % por debajo de 1,2. La fracción de jugadores a menos de 1 m/s da 0,08/0,29/0,74. La DFL sin
+  temblor da 0,71/1,63/3,14, el 31,1 % y 0,03/0,24/0,73 (`validation/resultados/2026-11-14_d_estado.md`).
+- **[medido] Algún jugador fuera de los límites:** en el 84,6 % de las ventanas de banda, el 91,7 % de las
+  de córner, el 70 % de las de saque de puerta, el 80 % de las de falta y ninguna de saque inicial.
+
+Decisión según la regla, sin cambiarla:
+- **De gol a saque entra.** Cuántos goles anclan con el emparejamiento del código está **[sin verificar]**
+  hasta `validation/partido/agregados_dead_ball.py` (regla abajo).
+- **El final de parte se escribe como capa** (1,15 y 0,81 m/s, por debajo de 1,2). Su candidato se apunta
+  antes de medirlo en la DFL. Ojo: 1,15 está muy cerca de 1,2, el tramo antes del saque de la 2ª parte,
+  que es `D`, va a 1,30, y el 35 % del partido está por debajo de 1,2. Así que 1,2 no separa bien, y el
+  candidato no lo usará como detector.
+- **R1 no entra en ningún tipo.** El golpeo aparece en casi todas las ventanas, pero coincide con la
+  subida de los jugadores como mucho en el 60 %.
+  - En las faltas, contando solo las 4 que tienen subida, saldría el 75 %. La regla dice «de las
+    encontradas», que son 5, así que no se cambia.
+- **La capa 3 no entra:** 12,5 %, frente al 50 % pedido.
+
+Lo que estos agregados enseñan y la regla no preveía:
+- **La columna de velocidad del balón del ATD no se usa** (correlación de 0,08). Se decide sin un criterio
+  escrito antes, porque la regla no tenía uno para el agregado 5.
+- **R2 está mal especificada.** Con ventanas de 35 s fijos y el reinicio dentro, «`D` antes del inicio y
+  juego después del fin» no dice dónde está el reinicio.
+  - No se va a medir dónde cae el golpeo dentro de la ventana para fijarlo: sería circular (el golpeo no
+    se ha validado) y daría una constante sacada del partido.
+  - R2 se escribirá sin desfase sacado del partido: o «`D` hasta el inicio de la ventana, y dentro decide
+    el decodificador», o con un desfase de la DFL o de la documentación de Metrica.
+- **El equipo que reanuda por el `Team`** solo vale para 27 reinicios (córner, saque de puerta y falta).
+- **[inferencia] Lo medido no contradice que el modelo de jugadores de Ana se traslade al ATD:** las dos
+  líneas de su criterio se parecen a la fila sin temblor de la DFL. Un p50 algo más bajo también podría
+  deberse a más tiempo parado.
+- **[medido] En los 30 s iniciales del bloque de la 2ª parte**, que son `D` según el FAQ, los jugadores
+  van a 1,30 m/s de mediana. Un `D` no siempre es lento.
+
+Cambio después de ver los agregados, por fallos encontrados con casos inventados y no con datos:
+- **El emparejamiento de gol a saque** era hacia delante (cada gol con el primer saque libre). Con un gol
+  sin su saque, un `GOALS` falso o un reinicio por medio, anclaba juego vivo. Ahora va hacia atrás (cada
+  saque con el último gol que acaba antes) y no ancla si entre los dos empieza otro `GOALS` u otro
+  `SET PIECES`.
+- **Las tres suposiciones del tramo, todas [sin verificar]:**
+  - (a) la ventana `GOALS` acaba con el balón ya en la portería;
+  - (b) la ventana del saque empieza en el reinicio o antes;
+  - (c) cada `GOALS` es un gol válido.
+
+  Si falla (a), se pierden unos frames de `D`; si fallan (b) o (c), se fuerza `D` en juego.
+
+Regla de lectura de `validation/partido/agregados_dead_ball.py` (fijada antes de ejecutarlo):
+- **La capa entra** si, en lo anclado de gol a saque, la fracción de frames con el balón visto deprisa
+  (5 m/s o más, con el desplazamiento suavizado a 1 s) es como mucho la mitad de la del partido entero.
+  Si algún gol no ancla, se dice cuántos y entran los que anclan.
+- **Si no pasa,** la capa no se sube y se revisan el emparejamiento y las suposiciones (a) a (c).
+- **Lo demás es descriptivo:** el tramo antes del saque de la 2ª parte (un `D` seguro) como referencia,
+  la velocidad de los jugadores (tras un gol puede haber celebraciones) y el recuento de equipos del
+  Smart Tagging que coinciden con los nombres del ATD, para la capa del equipo que reanuda.
+
+Abierto:
+- **Dos ficheros más, además de `dead_ball.py`, los dos de esta pieza:** las pruebas de las capas con un
+  Smart Tagging inventado (sección 7 de `validation/scripts/comprobar_balon_muerto.py`) y
+  `validation/partido/agregados_dead_ball.py`.
+- **Aviso para Ismael:** `possession/pipeline.py` no pide el Smart Tagging en `games.require`. Si falta,
+  el error sale de `ET.parse` y se entiende peor.
