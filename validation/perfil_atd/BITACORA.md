@@ -742,3 +742,28 @@ R0 a R7'. Sin `--forma`, la lectura es la de antes, byte a byte.
 
 **Ensayo:** J03WR9, degradado con la forma «atd» (`objetivo` 0,05, `disputas` 0 y suavizado 25), hace de
 ATD. La regla tiene que devolver `DISPUTAS` 0 y suavizado 25. Se lanza a la vez que la lectura.
+
+### 9.2 Lo que dice el ensayo de la forma «atd», escrito antes de ver la relectura del ATD (14/11)
+
+**Ensayo:** J03WR9, degradado con la forma «atd» (`objetivo` 0,05, `disputas` 0 y suavizado 25), hace de
+ATD (`leer_atd.py --ensayo J03WR9 0.05 0 25 --forma atd`).
+
+- **Lo que sale bien** [medido]: queda `DISPUTAS` 0 y decide él. El suavizado elegido es 25 y R5 cuadra.
+- **En las severidades baja y media, `OBJETIVO` no se identifica** [medido]. Los 10 valores de la rejilla
+  pasan R1' y R2, y la regla elige 0,41 porque es el de `s` más cercana. Con la forma «atd», los bloques
+  duran de 5 a 15 s y no cuentan en los huecos de hasta 2 s ni de hasta 5 s.
+- **La severidad alta sí lo ve, pero se queda corta** [medido]: da 0,026 para el 0,05 plantado. Su `s`
+  mezcla los huecos de las paradas, que cambian de un partido a otro [inferencia].
+
+**Cambio, escrito antes de ver la relectura del ATD:**
+
+- **Con la forma «atd», `OBJETIVO` sale solo de la severidad alta (R1').** Las severidades baja y media
+  siguen decidiendo `DISPUTAS` (R1', R2 y R3'), como hasta ahora.
+- **Votan dos condiciones,** que acotan lo que el perfil no puede medir: si los huecos de 5 a 15 s que el
+  ATD tiene de más son juego o paradas.
+  - «como el ATD»: el `DISPUTAS` que decide, microcortes, el `OBJETIVO` de la alta y el suavizado de R4';
+  - «como el ATD, sin bloques»: lo mismo con `OBJETIVO` 0, como si todos los huecos largos fueran
+    paradas.
+- **Se puntúan sin voto** «limpio» y «huecos y suavizado».
+- **Esto cambia la sección 9.1,** que decía «el `OBJETIVO` de cada severidad». Se le enseña a Ismael antes
+  de subir.
