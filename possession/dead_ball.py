@@ -15,6 +15,7 @@ docs/decisiones.md.
 import numpy as np
 
 import games
+from possession.tracking import A, H, no_evidence
 from starter.load_smart_tagging import KICKOFF_VIDEO_FRAMES
 
 HALF_NAMES = {1: "1st Half", 2: "2nd Half"}
@@ -41,3 +42,27 @@ def dead_mask(paths=None, game=games.GAME):
     lee ningún fichero.
     """
     return pre_kickoff(game)
+
+
+def evidence(trk, paths=None, game=games.GAME):
+    """Lo que este módulo aporta al pipeline, con la interfaz común: `(score, allowed)`, de forma (n, 3).
+
+    Columnas en el orden `H`, `A`, `D` (possession/tracking.py). Versión 0: en los frames de `dead_mask`
+    solo se permite `D`, y no se puntúa nada más.
+
+    Es la pieza del partido: usa las constantes de saque y, cuando los necesite, los ficheros de `paths`
+    (Smart Tagging), así que no corre en la DFL. Lo que solo necesita el tracking va en
+    possession/dead_state.py.
+
+    **Con `paths=None` no se abre ningún fichero:** solo entran las capas que no los necesitan. Así la
+    llama `validation/scripts/prueba_pipeline.py`, que ejecuta Claude y no puede leer el partido. `None`
+    nunca significa «usa games.asset_paths()».
+    """
+    n = len(trk.bx)
+    score, allowed = no_evidence(n)
+    mask = dead_mask(paths, game)
+    if len(mask) != n:
+        raise ValueError("la máscara de D tiene {} frames y el tracking {}".format(len(mask), n))
+    allowed[mask, H] = False
+    allowed[mask, A] = False  # ni H ni A: solo D
+    return score, allowed

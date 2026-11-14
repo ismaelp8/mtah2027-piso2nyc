@@ -344,3 +344,75 @@ Descartado:
   retraso o el parpadeo que anulan el `D` en `spellF1` [medido en la sintética y la DFL].
 - **Arrastrar el equipo anterior a través de una parada:** en `J03WMX` el equipo cambia en el 90 % de las
   paradas [medido].
+
+### 2026-11-14 · infraestructura · un solo pipeline con una pieza por persona; el harness de la DFL decide qué entra
+
+Quién: Ismael
+
+Qué se probó: no se midió nada nuevo; es una decisión de organización. Se valoraron tres formas de
+repartir el trabajo de los dos días y medio que quedan:
+- dos equipos, cada uno con un pipeline completo (A, por reglas, y B, con evidencia aprendida), para
+  comparar por apartados cuál saca mejores resultados;
+- ir apartado por apartado, empezando por el preprocessing y probando varias variantes de cada uno;
+- un solo pipeline con piezas intercambiables, una persona por pieza y todas a la vez.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): sin medida nueva. Se apoya en lo ya
+documentado:
+- `spellF1` no puntúa un apartado suelto: necesita el pipeline completo con todo fijo menos la pieza que
+  se compara (`docs/investigacion_metodos.md` §5.1);
+- los pipelines A y B solo se diferencian en la evidencia (§4);
+- la limpieza del balón no está en el ranking de piezas (§3.1) y la degradación de la DFL es el eslabón
+  más débil de la validación externa (§5.5);
+- el experimento 2 (14/11) apunta a que el balón del ATD viene suavizado [inferencia, con 4 minutos de
+  ventana], y la degradación todavía no imita ese balón.
+
+Resultado:
+- **[medido]** Lo único ejecutado es `validation/scripts/prueba_pipeline.py`, con un partido inventado:
+  29 comprobaciones en verde. Entre ellas, 158.857 frames evaluados con etiqueta y `X` en el resto, el
+  tramo antes del saque de la 2ª parte como `D`, el decodificador igual que la búsqueda exhaustiva en 200
+  casos, el CSV regenerado byte a byte, y que una evidencia con NaN o dos piezas que se contradicen dan
+  error en vez de pasar en silencio.
+- **[medido]** Primera medida del harness (`validation/resultados/2026-11-14_harness_dfl.md`): los 7
+  partidos de la DFL, con el `D` copiado de las etiquetas y la evidencia del jugador más cercano. Con las
+  etiquetas corregidas por control (1.736 posesiones), el Viterbi con coste 25 gana al voto del baseline
+  en las tres condiciones del balón (+0,106, +0,115 y +0,126) y en los 7 partidos. Con el flag tal cual
+  (3.061 posesiones), empata o pierde por poco (+0,020, −0,028 y −0,022). Con la regla de §5.8 no gana
+  ninguna versión, porque la diferencia no se mantiene con las dos convenciones.
+- **[inferencia]** La ventaja con las etiquetas de control está inflada por construcción: esas etiquetas
+  salen de una regla de proximidad (el más cercano a 1 m durante 12 frames, o dos toques) y lo que se
+  mide es proximidad con un coste por cambiar. El flag es el mismo tipo de etiqueta que la GT del reto.
+- Todavía no hay ningún número del pipeline en el partido.
+
+Decisión y por qué:
+- **Un solo pipeline con cinco piezas y una persona por pieza,** todas a la vez. El reparto y lo que hace
+  cada uno están en `docs/PLAN_ENTREGA.md`.
+- **Una interfaz común** (`possession/tracking.py`): las piezas reciben un `Tracking` y las de evidencia
+  devuelven `(score, allowed)` de forma (n, 3); el decodificador consume la suma. Son funciones puras
+  sobre arrays, para que el código que valida el harness sea el mismo que se entrega.
+- **El pipeline corre de punta a punta desde hoy** con la versión más simple de cada pieza: jugador más
+  cercano, `D` solo antes del saque de la 2ª parte y un Viterbi con coste de cambio.
+- **Qué versión entra lo decide el harness de la DFL,** con la regla de §5.8, las dos convenciones de
+  etiquetas y tres condiciones del tracking. La ventana pública se mira siempre y nunca elige.
+- **Se cambia el orden de «Lo siguiente» del 14/11 por la mañana,** que dejaba el modelo temporal para el
+  final. La medida del balón del ATD sigue siendo lo primero, pero a la vez que el pipeline.
+- **Corte el lunes 16 a las 14:00:** lo que no haya ganado en el harness no entra.
+- **Por qué:** el cuello de botella no es escribir código, sino las ejecuciones sobre el partido, que solo
+  puede hacer una persona, y la integración. Con piezas en paralelo detrás de una interfaz, cada mejora
+  entra sola y siempre hay una entrega válida.
+
+Abierto:
+- **La convención de la GT del reto.** La primera medida del harness dice que decide qué decodificador
+  conviene. Sigue sin medir.
+- **La medida del balón del ATD en todo el partido.** Hasta tenerla, no se elige entre evidencias de
+  equipo ni se da por buena la apuesta B.
+- **Los valores por defecto del esqueleto están sin ajustar:** los tres costes del decodificador a 25 y
+  la puntuación 1 del jugador más cercano. Se fijan en la DFL.
+
+Descartado:
+- **Dos pipelines completos:** construirían dos veces el lector, la limpieza, el `D` y el decodificador,
+  que son comunes y son lo que decide la nota, y doblarían las ejecuciones sobre el partido. De la idea
+  queda A contra B como dos candidatos de una sola pieza, la evidencia, con corte para B.
+- **Apartado por apartado, en orden:** el primer número de punta a punta llegaría el lunes, que es cuando
+  hay que congelar.
+- **Comparar variantes de limpieza del balón:** su árbitro sería una degradación que aún no imita al
+  balón del ATD. Se fija la de §2.1 (filtro de validez e interpolar huecos cortos).

@@ -359,9 +359,13 @@ notebooks/                exploración, siempre sin outputs
 requirements.txt          dependencias fijadas con versión (al final, pip freeze de lo que se use)
 ```
 
-**Interfaz común:** cada módulo recibe las rutas de `games.asset_paths()` y devuelve un `np.ndarray` de
-**199.319** posiciones indexado por **frame de vídeo**. Así nadie se pelea con la alineación y las piezas
-se combinan solas.
+**Desde el 14/11 el paquete `possession/` existe** y tiene además `tracking.py` (el formato común) y
+`dead_state.py` (el estado de `D` con los jugadores).
+
+**Interfaz común** (`possession/tracking.py` y [`PLAN_ENTREGA.md`](PLAN_ENTREGA.md) §2): cada pieza recibe
+un `Tracking`, con arrays indexados por **frame de vídeo** (**199.319** en el partido), y las piezas de
+evidencia devuelven `(score, allowed)`, dos arrays de forma (n, 3). Así nadie se pelea con la alineación,
+las piezas se combinan solas y el mismo código corre en el partido y en la DFL.
 
 ### Cómo se trabaja en el repo
 
@@ -384,6 +388,10 @@ salvo `evaluation/gt/BAR-ATH_possession_gt_public*`.
 
 Esto es un punto de partida, no un dogma. El detalle y los responsables de cada área están en
 `CLAUDE.md`.
+
+**Desde el 14/11, el reparto y el calendario que valen están en [`PLAN_ENTREGA.md`](PLAN_ENTREGA.md):**
+una pieza por persona, la interfaz común y cómo se decide qué entra. Las dos tablas de abajo son las del
+plan original.
 
 1. **Limpieza del balón:** interpolar huecos cortos, descartar saltos físicamente imposibles y marcar
    cuándo el balón sale del campo.

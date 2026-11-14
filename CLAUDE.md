@@ -80,11 +80,13 @@ La protección de verdad es esta regla, no la configuración.
 
 | persona | GitHub | papel |
 |---|---|---|
-| Ismael Pintor | `ismaelp8` | infraestructura y entrega, reviewer, dueño del documento técnico |
-| David Ortega | `ortegafer` | reviewer |
-| Antonio Azuer | `antonioazuero11-wq` | por asignar |
-| Manuel Herrero | `manuelherrero` | por asignar |
-| Ana Aparicio | — | documento técnico |
+| Ismael Pintor | `ismaelp8` | infraestructura y entrega (esqueleto, harness, integración), reviewer, dueño del documento técnico |
+| David Ortega | `ortegafer` | decodificador (`possession/temporal.py`), reviewer |
+| Antonio Azuer | `antonioazuero11-wq` | evidencia de equipo y limpieza del balón (`possession/candidates.py`, `possession/ball.py`) |
+| Manuel Herrero | `manuelherrero` | `D`: fronteras y anclas (`possession/dead_ball.py`) |
+| Ana Aparicio | — | `D`: estado (`possession/dead_state.py`) y documento técnico |
+
+Qué tiene que hacer cada uno hasta la entrega: [`docs/PLAN_ENTREGA.md`](docs/PLAN_ENTREGA.md).
 
 - **Si alguien delega el git en Claude** (lo dice en su `CLAUDE.local.md` o lo pide en la
   conversación), hazlo tú con las skills. Explica cada paso en una frase sencilla, sin jerga, y pide
@@ -168,30 +170,49 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     por cubrir frames; hay una propuesta de v2 por capas;
   - el sondeo del silbato en el audio, en `validation/silbato/`;
   - el detalle y las decisiones están en `docs/decisiones.md` (12/11 y 13/11).
+- **Esqueleto del pipeline** (14/11): `possession/` corre de punta a punta con la versión más simple de
+  cada pieza (`tracking`, `ball`, `candidates`, `dead_state`, `dead_ball`, `temporal` y `pipeline`).
+  - Se comprueba sin datos del partido con `python validation/scripts/prueba_pipeline.py`.
+  - La entrega la genera una persona con `python -m possession.pipeline`.
+  - Los valores por defecto están sin ajustar.
+- **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
+  `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
+  el scorer oficial, en medio minuto. Lo puede ejecutar Claude.
+  - Mide con las dos convenciones de etiquetas, en tres condiciones del balón y frente al baseline, con
+    el `D` copiado de las etiquetas.
+  - **Quién gana depende de la convención.** Con las etiquetas corregidas por control, el Viterbi con
+    coste 25 gana al voto del baseline por más de 0,10 en los 7 partidos; con el flag tal cual, empata o
+    pierde por poco. Con la regla de §5.8 no gana ninguna versión.
+  - **Ese +0,10 está inflado por construcción:** las etiquetas de control salen de una regla de
+    proximidad, parecida a lo que se mide. El flag es el mismo tipo de etiqueta que la GT del reto: lo
+    que no aguante con el flag no cuenta.
+  - La degradación del balón es provisional y el `D` no se puede validar ahí con el balón.
 
-**Lo siguiente, en este orden:**
+**Lo siguiente: el plan hasta la entrega** ([`docs/PLAN_ENTREGA.md`](docs/PLAN_ENTREGA.md), decidido por
+Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal para el final.
 
-1. **Medir el balón del ATD en todo el partido, solo con tracking** (sin etiquetas), con un script de
-   `validation/partido/` que ejecuta una persona:
-   - visibilidad y longitud de los huecos;
-   - cuánto está suavizado;
-   - la columna de velocidad frente al desplazamiento suavizado.
+- **Un solo pipeline con cinco piezas y una persona por pieza,** todas a la vez:
 
-   Hay que coordinarlo con `validation/partido/agregados_balon_reinicios.py` y leer con
-   `possession/io.py`. Sirve a la vez para el balón muerto y para la posesión.
-2. **Con eso:**
-   - la degradación DFL→ATD, con el balón tapado en los `D` y suavizado como el del ATD;
-   - un detector de toques que funcione con ese balón, calibrado en la DFL degradada;
-   - si se quiere medir la convención: repetir la ventana con el instrumento nuevo y una regla fijada
-     antes.
+  | pieza | quién | fichero |
+  |---|---|---|
+  | esqueleto, harness de la DFL, integración y entrega | Ismael | `possession/pipeline.py`, `validation/harness/` |
+  | decodificador | David | `possession/temporal.py` |
+  | `D`: fronteras y anclas | Manuel | `possession/dead_ball.py` |
+  | `D`: estado; documento técnico | Ana | `possession/dead_state.py` |
+  | evidencia de equipo y limpieza del balón | Antonio | `possession/candidates.py`, `possession/ball.py` |
 
-   Mientras tanto, la convención sigue siendo "exigir control". Otras salidas, si lo decide Ismael:
-   preguntar a la organización, o completar el recuento a ojo con el protocolo de Antonio, solo
-   recuentos.
-3. **Después:**
-   - el generador de etiquetas de la DFL, con la convención como opción;
-   - el `D` v2;
-   - los candidatos N1–N5 y el modelo temporal (`docs/investigacion_metodos.md`).
+- **Cada persona sustituye su pieza sin tocar las demás.** La interfaz está en `possession/tracking.py` y
+  en la sección 2 del plan.
+- **Qué versión entra lo decide el harness de la DFL,** nunca la ventana pública (sección 4 del plan).
+- **Sigue siendo lo primero de hoy:** medir el balón del ATD en todo el partido, solo con tracking, con un
+  script de `validation/partido/` que ejecuta una persona (visibilidad, huecos y cuánto está suavizado).
+  Va a la vez que el pipeline, no antes. De ella dependen la degradación DFL→ATD y la elección entre
+  evidencias de equipo.
+- **La convención sigue siendo "exigir control".** El harness puntúa con las dos: el flag y la corregida.
+- **Corte: lunes 16 a las 14:00.** Lo que no haya ganado en el harness no entra.
+
+**Si quien abre la sesión no sabe cuál es su pieza,** enséñale su parte de la sección 3 del plan antes de
+proponer nada.
 
 **Pendiente de permiso de Ismael:**
 
@@ -377,15 +398,15 @@ CONTRIBUTING.md              normas del repo
   agents/revisor.md          revisa un diff contra nuestras reglas
 docs/
   GUIA_EQUIPO.md             guía larga para personas
+  PLAN_ENTREGA.md            quién hace qué hasta la entrega, la interfaz de las piezas y el calendario
   decisiones.md              registro de decisiones (materia prima del documento técnico)
   investigacion_metodos.md   análisis de métodos, alternativas y recomendación
+possession/                  el pipeline: una pieza por fichero, y pipeline.py, que genera la entrega
 validation/                  validación externa con datos abiertos: pasos, scripts y resultados agregados
+  harness/                   el harness de la DFL: puntúa el pipeline en los 7 partidos abiertos
 ```
 
-**Lo previsto** (propuesta de `docs/GUIA_EQUIPO.md` §8):
-- un paquete `possession/` con `io`, `ball`, `dead_ball`, `candidates`, `temporal` y `pipeline`, que
-  genere la entrega con un solo comando;
-- `notebooks/` para la exploración, siempre sin outputs.
+**Lo previsto:** `notebooks/` para la exploración, siempre sin outputs.
 
 ## Convenciones de código
 
@@ -397,11 +418,16 @@ validation/                  validación externa con datos abiertos: pasos, scri
   La entrega tiene que regenerarse **byte a byte**.
 - **Sin rutas fijas.** Todo pasa por `games.py` (`games.asset_paths()`, `games.GAMES`,
   `games.half_video_blocks()`), y los datos se localizan con `MTAH_DATA_DIR`.
-- **Interfaz común:**
-  - cada módulo recibe las rutas de `games.asset_paths()`;
-  - cada módulo devuelve un `np.ndarray` de **199.319** posiciones indexado por **frame de vídeo**.
+- **Interfaz común** (`possession/tracking.py` y `docs/PLAN_ENTREGA.md` §2):
+  - cada pieza recibe un `Tracking`: arrays indexados por **frame de vídeo**, **199.319** en el partido.
+    No recibe rutas ni abre ficheros; solo `possession/dead_ball.py` usa además los del partido, con las
+    rutas de `games.asset_paths()`;
+  - las piezas de evidencia devuelven `(score, allowed)`: dos arrays de forma (n, 3), con las columnas
+    `H`, `A` y `D`;
+  - el decodificador devuelve una etiqueta por frame de vídeo.
 
-  Así las piezas se combinan sin pelearse por la alineación.
+  Así las piezas se combinan sin pelearse por la alineación, y el mismo código corre en el partido y en
+  la DFL del harness.
 - **Distancias en metros:** se escalan con `games.GAMES["BAR-ATH"]["pitch"]`.
 - **Ninguna constante ligada a frames concretos de este partido** salvo las de `games.py`. Mirar el vídeo
   para entenderlo está permitido. Convertir lo que se ve en etiquetas, correcciones o constantes, no.
@@ -556,22 +582,24 @@ El análisis completo, las alternativas y la recomendación están en `docs/inve
 
 ## Reparto y calendario
 
-| área | responsable | qué hace |
+Desde el 14/11 manda [`docs/PLAN_ENTREGA.md`](docs/PLAN_ENTREGA.md): lo que hace cada persona, la interfaz
+de las piezas y cómo se decide qué entra.
+
+| pieza | responsable | qué hace |
 |---|---|---|
-| Infraestructura y entrega | Ismael | repo, pipeline de un comando, reproducibilidad, validación, formulario |
-| Balón muerto `D` y reinicios | por asignar | límites, Smart Tagging, patrones de jugadores parados |
-| Modelo de posesión | por asignar | candidato por frame, control frente a toque, modelo temporal |
-| Validación externa | por asignar | datos abiertos, degradación, harness de experimentos |
-| Documento técnico | todos (+ Ana), con Ismael como dueño | se va escribiendo durante la semana |
+| Esqueleto, harness e integración | Ismael | pipeline de un comando, harness de la DFL, integración diaria, congelado, reproducibilidad, formulario |
+| Decodificador | David | costes de cambio, duraciones mínimas y poda |
+| `D`: fronteras y anclas | Manuel | inicio y fin de cada parada y equipo que reanuda, con el balón, el Smart Tagging y el silbato |
+| `D`: estado | Ana | probabilidad de juego parado por frame, con los jugadores |
+| Evidencia de equipo y limpieza del balón | Antonio | proximidad con control, frente al jugador más cercano |
+| Documento técnico | Ana desde el lunes, con Ismael como dueño | a partir de `docs/decisiones.md` y `validation/resultados/` |
 
 | día | objetivo |
 |---|---|
-| **mar 10** | repo privado, entorno, datos en local, baseline reproducido, todo el equipo ha leído la documentación |
-| **mié 11** | exploración por áreas, interfaz común acordada, normas del repo y configuración de Claude, harness de validación externa empezado |
-| **jue 12** | primera versión de `D` y de posesión. **Primera entrega validada que bata el baseline** |
-| **vie 13** | modelo temporal integrado y experimentos con la validación externa |
-| **sáb 14** | llegan las instrucciones de entrega: revisar el formulario y las cuentas de Google. Empezar el documento técnico |
-| **dom 15 – lun 16** | iterar. **Congelar la versión el lunes por la noche** y comprobar la reproducción exacta en una máquina limpia |
+| **sáb 14** | esqueleto y harness en `main`; todos con la DFL en local; agregados del partido ejecutados; primera entrega de prueba. Revisar las instrucciones de entrega, el formulario y las cuentas de Google |
+| **dom 15** | cada pieza itera contra el harness; las PR entran según ganan |
+| **lun 16, 14:00** | **corte:** lo que no haya ganado en el harness no entra |
+| **lun 16, tarde y noche** | **congelar** y comprobar la reproducción exacta en una máquina limpia. Documento técnico |
 | **mar 17** | hacer público el repo, validar el fichero exacto y **enviar con margen**. El formulario se puede editar hasta las 23:59 CET |
 
 ## Checklist de entrega
