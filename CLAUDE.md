@@ -187,6 +187,19 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   frente a `main` con el flag, así que se quedan como opciones (`candidates.evidence(trk, method=...)`). La
   limpieza va como variante (`ball.clean_v1`): empata en el harness, que no puede ver los saltos falsos del
   ATD, y tiene un fallo conocido que hay que arreglar antes de usarla. La entrega no cambia.
+- **La evidencia de equipo de la entrega es B5 desde el 14/11 por la noche** (apuesta B de Ismael;
+  `validation/resultados/2026-11-14_apuesta_b.md` y `docs/decisiones.md`).
+  - **Qué es:** un modelo aprendido en la DFL, con la proximidad al balón y la forma de los equipos, decide
+    entre `H` y `A`. Frente al `D` empuja como N1, para no tapar la pieza de Ana.
+  - **Cumplió los tres criterios fijados antes de medir:**
+    - gana al control y a N1 con §5.8;
+    - con la pieza de Ana ve tantas paradas como N1;
+    - aguanta con el balón a la vista en las paradas.
+  - **En el harness** la fila por defecto («Viterbi, coste 25 (v0)») es ya B5: 0,498 / 0,512 con el flag.
+  - **La entrega cambia:** hay que regenerarla y reproducirla en otra máquina, porque B5 usa `np.exp` y
+    el último bit podría variar.
+  - **Pierde recuperaciones** en los eventos humanos. Lo ajusta David con los costes, que ahora se miden
+    en la escala de B5.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.
