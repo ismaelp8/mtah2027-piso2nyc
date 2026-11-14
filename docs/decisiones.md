@@ -655,5 +655,14 @@ Añadido tras calibrar y mirar el perfil, antes de puntuar ninguna versión (14/
   - si pasa, es la única variante que vota;
   - «al azar» y «lejos de la jugada» se puntúan sin voto, como descripción y como cota;
   - si ninguna pasa, la medida no concluye y las tres se puntúan sin voto.
+- **Tampoco pasa con el ajuste** (commit `b539f85`) [medido]:
+  - con ausencias de 2, 3 y 4 s, la mediana de los tramos ya cuadra (20,4 / 24,9 / 27,6 s);
+  - pero el p50 de localizados del visitante queda en 10 en los tres casos.
+
+  Causa probable [inferencia]: en la DFL el visitante ya parte de 10,8 localizados (no de 11), y la
+  calibración iguala la media de los dos equipos, no la de cada uno.
+- **Por la regla, la medida no concluye.** No se retoca más la degradación. Las tres variantes se
+  puntúan sin voto, con la calibración de `60fc9fb` (ausencias de 1 s en las aglomeraciones), como
+  descripción y como cota.
 
 Resultado: pendiente.
