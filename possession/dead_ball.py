@@ -10,12 +10,17 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
   ventana de su `Kick Off (After Goal)`. Entre el gol y el saque el balón está muerto por reglamento, así
   que ese tramo es todo `D` si se cumplen tres cosas, las tres **[sin verificar]**: que la ventana `GOALS`
   acaba con el balón ya en la portería, que la del saque empieza en el reinicio o antes, y que cada `GOALS`
-  es un gol válido (el Smart Tagging es automático). Si falla la primera se pierden unos frames de `D`; si
-  fallan las otras, se fuerza `D` en juego.
+  es un gol válido (el Smart Tagging es automático). Si falla cualquiera de las tres, se fuerza `D` en
+  juego. Si se cumplen, lo único que se pierde es el `D` entre el gol y el fin de su ventana, que no se
+  ancla y decide el decodificador.
 
-Las dos son anclas duras: en esos frames solo se permite `D`. Lo que se probó y lo que se midió está en
-docs/decisiones.md y en validation/resultados/ (2026-11-12_balon_muerto_atd.md y
-2026-11-13_revision_balon_muerto.md).
+Las dos son anclas duras: en esos frames solo se permite `D`.
+
+**Medido, pero todavía fuera de `evidence`:** el hueco sin balón antes de cada reinicio
+(`gaps_before_restarts`). Entra solo si pasa la regla apuntada en docs/decisiones.md antes de medirlo.
+
+Lo que se probó y lo que se midió está en docs/decisiones.md y en validation/resultados/
+(2026-11-12_balon_muerto_atd.md y 2026-11-13_revision_balon_muerto.md).
 """
 
 import xml.etree.ElementTree as ET
@@ -94,10 +99,13 @@ def goal_to_kickoff(events, fps):
     """Tramos (inicio, fin), con el fin sin incluir, desde el fin de cada `GOALS` hasta el inicio de su saque.
 
     Se empareja hacia atrás: cada `Kick Off (After Goal)` con el último `GOALS` que acaba cuando el saque
-    aún no ha empezado. El tramo no se ancla si entre los dos empieza otro `GOALS` u otro `SET PIECES`
-    (un gol sin su saque, un gol falso o un reinicio por medio harían que el tramo tapara juego), ni si el
-    saque llega más de MAX_GOAL_TO_KICKOFF_S después del fin del gol. Así cada gol y cada saque entran,
-    como mucho, en un tramo.
+    aún no ha empezado. El tramo no se ancla:
+    - si otro `GOALS` u otro `SET PIECES` empieza entre los dos, con los extremos incluidos (un gol sin su
+      saque, un gol falso, un reinicio por medio o un saque repetido harían que el tramo tapara juego);
+    - si otro `GOALS` se solapa con el tramo, aunque empiece antes (dos ventanas `GOALS` que se pisan no
+      pueden ser dos goles de verdad);
+    - si el saque llega más de MAX_GOAL_TO_KICKOFF_S después del fin del gol.
+    Así cada gol y cada saque entran, como mucho, en un tramo.
     """
     goals = [e for e in events if e["code"] == GOALS_CODE]
     restarts = [e for e in events if e["code"] in (GOALS_CODE, SET_PIECES_CODE)]
@@ -112,10 +120,78 @@ def goal_to_kickoff(events, fps):
         start, stop = goal["end"], kickoff["start"]
         if stop <= start or stop - start > MAX_GOAL_TO_KICKOFF_S * fps:
             continue
-        if any(start <= e["start"] < stop for e in restarts if e is not goal and e is not kickoff):
+        others = [e for e in restarts if e is not goal and e is not kickoff]
+        if any(start <= e["start"] <= stop for e in others):
+            continue
+        if any(e["code"] == GOALS_CODE and e["start"] < stop and e["end"] > start for e in others):
             continue
         spans.append((start, stop))
     return spans
+
+
+# -- El hueco sin balón antes de cada reinicio (idea de Ismael, 14/11). Medido, todavía fuera de `evidence`.
+
+# Sin balón en los LONG_GAP_S segundos antes del inicio de la ventana: es el umbral de los huecos largos del
+# perfil del ATD (validation/resultados/2026-11-14_perfil_atd.md). Un hueco de más de
+# MAX_GAP_BEFORE_RESTART_S no cuenta: sería una parada larga (una lesión) o juego sin balón, y la capa no
+# sabe distinguirlos. Los dos, fijados antes de medir (docs/decisiones.md, 14/11).
+LONG_GAP_S = 5
+MAX_GAP_BEFORE_RESTART_S = 60
+# Estado de cada ventana frente a la capa.
+GAP = "hueco"                       # hay hueco y se puntúa
+BALL_SEEN = "balón visto"           # se ve el balón en los LONG_GAP_S segundos previos
+GAP_TOO_LONG = "hueco largo"        # el hueco pasa de MAX_GAP_BEFORE_RESTART_S
+RESTART_INSIDE = "reinicio dentro"  # otro GOALS o SET PIECES empieza dentro del hueco
+GAP_STATES = (GAP, BALL_SEEN, GAP_TOO_LONG, RESTART_INSIDE)
+
+
+def restart_windows(events):
+    """Ventanas `SET PIECES` que no son saques iniciales (los dos tipos de saque ya tienen sus anclas)."""
+    return [e for e in events if e["code"] == SET_PIECES_CODE and not e["type"].startswith("kick off")]
+
+
+def last_seen_before(bx, by):
+    """Para cada frame i, el último frame <= i con el balón visto (x e y); -1 si todavía no se ha visto."""
+    seen = ~np.isnan(bx) & ~np.isnan(by)
+    return np.maximum.accumulate(np.where(seen, np.arange(len(bx)), -1))
+
+
+def gap_before(last_seen, start, restart_starts, fps):
+    """(estado, inicio del hueco) de un reinicio cuya ventana empieza en el frame `start`.
+
+    El hueco son los frames [inicio, start), todos sin balón, y el frame inicio − 1 tiene balón. El inicio
+    es None salvo con el estado GAP. `restart_starts` son los inicios de los demás `GOALS` y `SET PIECES`:
+    si alguno cae dentro del hueco, con los extremos incluidos, el hueco no es de este reinicio.
+    """
+    if not 0 < start <= len(last_seen):
+        raise ValueError("el inicio {} cae fuera del tracking ({} frames)".format(start, len(last_seen)))
+    gap_start = int(last_seen[start - 1]) + 1
+    length = start - gap_start
+    if length < LONG_GAP_S * fps:
+        return BALL_SEEN, None
+    if length > MAX_GAP_BEFORE_RESTART_S * fps:
+        return GAP_TOO_LONG, None
+    if any(gap_start <= s <= start for s in restart_starts):
+        return RESTART_INSIDE, None
+    return GAP, gap_start
+
+
+def gaps_before_restarts(bx, by, events, fps):
+    """[(ventana, estado, tramo)] para cada ventana de restart_windows(events), en su orden.
+
+    `tramo` es (inicio, fin), con el fin sin incluir y igual al inicio de la ventana, solo con el estado GAP;
+    si no, None. Las ventanas que empiezan fuera del tracking no entran.
+    """
+    last_seen = last_seen_before(bx, by)
+    restarts = [e for e in events if e["code"] in (GOALS_CODE, SET_PIECES_CODE)]
+    out = []
+    for window in restart_windows(events):
+        if not 0 < window["start"] <= len(bx):
+            continue
+        others = [e["start"] for e in restarts if e is not window]
+        state, gap_start = gap_before(last_seen, window["start"], others, fps)
+        out.append((window, state, None if gap_start is None else (gap_start, window["start"])))
+    return out
 
 
 def evidence(trk, paths=None, game=games.GAME):

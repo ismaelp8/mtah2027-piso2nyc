@@ -107,6 +107,21 @@ def check_goal_to_kickoff(game, folder):
     check("dos saques tras un gol: solo el primero",
           spans([("GOALS", 100, 110, None), ("SET PIECES", 150, 155, ko), ("SET PIECES", 200, 205, ko)])
           == [(at(110), at(150))])
+    check("un reinicio que empieza justo en el fin del gol: no ancla",
+          spans([("GOALS", 100, 110, None), ("SET PIECES", 110, 145, "Throw-in"), ("SET PIECES", 200, 205, ko)])
+          == [])
+    check("un gol falso y otro GOALS que empieza en el mismo frame que el saque: no ancla",
+          spans([("GOALS", 100, 110, None), ("GOALS", 200, 210, None), ("SET PIECES", 200, 205, ko)]) == [])
+    check("dos saques en el mismo frame: no ancla ninguno",
+          spans([("GOALS", 100, 110, None), ("SET PIECES", 150, 155, ko), ("SET PIECES", 150, 155, ko)]) == [])
+    check("dos GOALS que se pisan y el segundo pasa del saque: no ancla",
+          spans([("GOALS", 100, 110, None), ("GOALS", 105, 160, None), ("SET PIECES", 150, 155, ko)]) == [])
+    check("dos ventanas del mismo gol que acaban a la vez: ancla una vez",
+          spans([("GOALS", 100, 110, None), ("GOALS", 95, 110, None), ("SET PIECES", 150, 155, ko)])
+          == [(at(110), at(150))])
+    check("un GOALS dentro de otro: ancla desde el fin más tardío",
+          spans([("GOALS", 100, 110, None), ("GOALS", 102, 108, None), ("SET PIECES", 150, 155, ko)])
+          == [(at(110), at(150))])
     several = [("GOALS", 1000, 1010, None), ("SET PIECES", 1100, 1105, ko), ("GOALS", 2000, 2010, None),
                ("GOALS", 3000, 3010, None), ("SET PIECES", 3210, 3215, ko), ("SET PIECES", 4000, 4035, "Throw-in"),
                ("BUILD UP", 4100, 4140, None), ("GOALS", 6000, 6012.5, None), ("SET PIECES", 6080, 6085, ko)]
@@ -134,6 +149,66 @@ def check_goal_to_kickoff(game, folder):
     _, allowed_none = dead_ball.evidence(trk, None, game)
     check("evidence sin rutas: solo el tramo antes del saque",
           bool(np.array_equal(~allowed_none[:, tracking.H], pre)))
+
+
+def check_gap_before_restart(game, folder):
+    """El hueco sin balón antes de cada reinicio (todavía fuera de `evidence`), con casos inventados."""
+    fps = games.GAMES[game]["fps"]
+    n = 20000
+    long_gap = dead_ball.LONG_GAP_S * fps
+    max_gap = dead_ball.MAX_GAP_BEFORE_RESTART_S * fps
+
+    def ball(*holes, only_y=False):
+        """Balón visto en todos los frames salvo en los huecos [inicio, fin)."""
+        bx, by = np.zeros(n), np.zeros(n)
+        for lo, hi in holes:
+            by[lo:hi] = np.nan
+            if not only_y:
+                bx[lo:hi] = np.nan
+        return bx, by
+
+    def window(start, code="set pieces", kind="throw-in"):
+        return {"code": code, "type": kind, "start": start, "end": start + 35 * fps}
+
+    def result(bx, by, events):
+        return [(state, span) for _, state, span in dead_ball.gaps_before_restarts(bx, by, events, fps)]
+
+    w = 10000
+    check("hueco de 20 s justo antes de la ventana: se puntúa desde el primer frame sin balón",
+          result(*ball((w - 500, w)), [window(w)]) == [(dead_ball.GAP, (w - 500, w))])
+    check("hueco de 5 s justos entra; un frame menos, no",
+          result(*ball((w - long_gap, w)), [window(w)]) == [(dead_ball.GAP, (w - long_gap, w))]
+          and result(*ball((w - long_gap + 1, w)), [window(w)]) == [(dead_ball.BALL_SEEN, None)])
+    check("hueco de 60 s justos entra; un frame más, no",
+          result(*ball((w - max_gap, w)), [window(w)]) == [(dead_ball.GAP, (w - max_gap, w))]
+          and result(*ball((w - max_gap - 1, w)), [window(w)]) == [(dead_ball.GAP_TOO_LONG, None)])
+    check("un balón visto en el último frame antes de la ventana: no hay hueco",
+          result(*ball((w - 500, w - 1)), [window(w)]) == [(dead_ball.BALL_SEEN, None)])
+    check("falta solo la y del balón: cuenta como no visto",
+          result(*ball((w - 500, w), only_y=True), [window(w)]) == [(dead_ball.GAP, (w - 500, w))])
+    for label, other in (("un SET PIECES dentro del hueco", window(w - 200, kind="corner kick")),
+                         ("un SET PIECES justo en el primer frame del hueco", window(w - 500)),
+                         ("un GOALS dentro del hueco", window(w - 200, code="goals", kind="")),
+                         ("otra ventana en el mismo frame", window(w))):
+        check(label + ": no se puntúa",
+              result(*ball((w - 500, w)), [other, window(w)])[-1] == (dead_ball.RESTART_INSIDE, None))
+    check("un SET PIECES justo antes del hueco no lo anula",
+          result(*ball((w - 500, w)), [window(w - 501), window(w)])[-1] == (dead_ball.GAP, (w - 500, w)))
+    path = smart_tagging_xml(folder, "huecos.xml", [
+        ("SET PIECES", 100, 105, "Kick Off (Start)"), ("SET PIECES", 200, 205, "kick off (after goal)"),
+        ("SET PIECES", w / fps, w / fps + 35, "THROW-IN"), ("GOALS", 150, 160, None)])
+    events = dead_ball.smart_tagging_events(path, fps)
+    windows = [e["type"] for e, _, _ in dead_ball.gaps_before_restarts(*ball(), events, fps)]
+    check("los saques iniciales no entran y los tipos van en minúsculas", windows == ["throw-in"], str(windows))
+    check("una ventana que empieza en el frame 0 o fuera del tracking no entra",
+          result(*ball(), [window(0), window(n + 1), window(w)]) == [(dead_ball.BALL_SEEN, None)])
+    try:
+        dead_ball.gap_before(dead_ball.last_seen_before(*ball()), 0, [], fps)
+        check("gap_before con inicio 0 da error", False)
+    except ValueError:
+        check("gap_before con inicio 0 da error", True)
+    check("sin balón visto antes de la ventana: el hueco empieza en el frame 0",
+          result(*ball((0, 1000)), [window(1000)]) == [(dead_ball.GAP, (0, 1000))])
 
 
 def main():
@@ -210,6 +285,8 @@ def main():
     folder = tempfile.mkdtemp(prefix="comprobar_balon_muerto_")
     try:
         check_goal_to_kickoff(game, folder)
+        print("\n8. El hueco sin balón antes de cada reinicio (medido, todavía fuera de evidence)")
+        check_gap_before_restart(game, folder)
     finally:
         shutil.rmtree(folder, ignore_errors=True)
 
