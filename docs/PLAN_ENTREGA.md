@@ -278,8 +278,8 @@ python validation/harness/puntuar.py
 
 | | qué |
 |---|---|
-| **hoy** | la familia del decodificador y sus costes, con el `D` oráculo; el orden entre evidencias de equipo y lo que use la velocidad del balón (degradación «como el ATD», 14/11); la apuesta B |
-| **todavía no** | el `D`: el harness no tiene el modo con el equipo copiado de las etiquetas, y con el `D` oráculo una pieza de `D` no cambia nada. El `D` se mide con sus propios scripts y el criterio del 13/11 |
+| **hoy** | la familia del decodificador y sus costes, con el `D` oráculo; el orden entre evidencias de equipo y lo que use la velocidad del balón (degradación «como el ATD», 14/11); la apuesta B. Ojo: la DFL tiene más disputas que el ATD (20 % frente a 14,5 %), y es donde más se separan las evidencias por proximidad |
+| **todavía no** | el `D` en el harness: no tiene el modo con el equipo copiado de las etiquetas, y con el `D` oráculo una pieza de `D` no cambia nada. El `D` se mide con sus propios scripts (los de Ana traen ese modo) y el criterio del 13/11 |
 | **nunca** | lo que usa el Smart Tagging, que la DFL no tiene |
 
 **Cómo se mide siempre:**

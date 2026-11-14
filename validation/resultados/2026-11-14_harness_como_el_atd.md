@@ -25,6 +25,14 @@
 
    **No reproduce** el % de disputas (20,3 frente a 14,5) ni la visibilidad total (48,2 % frente a
    59,3 %), porque la DFL tiene más `D` (44,8 %) que lo que le falta al ATD [medido].
+
+   **Ojo: casi todo esto es calibración, no comprobación.**
+   - Calibrado: R1' ajusta la `s` alta; la ley de huecos y el ritmo de los microcortes se copiaron del
+     ATD; el suavizado lo eligió R4'.
+   - Comprobaciones independientes: R5 (proximidad), que cuadra, y R3' (disputas), que solo pasa por el
+     margen ensanchado.
+   - Las disputas son justo donde se separan las evidencias de equipo por proximidad. Que la DFL tenga
+     más que el ATD puede favorecer a esas evidencias en el harness [inferencia].
 4. **Con el flag, el Viterbi de coste 25 (el de `main`) gana al baseline en las dos condiciones que
    votan** [medido]: +0,022 [+0,013 a +0,030] en 7 de 7 partidos y +0,022 [+0,015 a +0,029] en 6 de 7.
    - Con la condición de antes perdía (−0,022). Parte de la conclusión del 14/11 («con el flag empata o

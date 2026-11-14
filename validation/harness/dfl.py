@@ -80,6 +80,8 @@ PARAMETROS_DE = {
     "limpio": None,
     "huecos y suavizado": {"objetivo": OBJETIVO, "disputas": DISPUTAS, "media_bloque": MEDIA_BLOQUE,
                            "suavizado": SUAVIZADO},
+    # Ya no se puntúa, pero `tracking_de(cargado, "huecos")` sigue valiendo para los scripts que la usen.
+    "huecos": {"objetivo": OBJETIVO, "disputas": DISPUTAS, "media_bloque": MEDIA_BLOQUE, "suavizado": 1},
 }
 CONVENCIONES = ("flag", "control")
 DEFINICION_CONTROL = "C0-12 o dos toques"
@@ -116,7 +118,7 @@ def media_movil(valores, ancho):
 
 def degradar_parte(parte, condicion, rng):
     """Copia de una parte de la caché con el balón como en `condicion`. Los jugadores no cambian."""
-    if condicion not in CONDICIONES:
+    if condicion not in PARAMETROS_DE:
         raise ValueError("condición desconocida: {}".format(condicion))
     return degradar_con(parte, PARAMETROS_DE[condicion], rng)[0]
 
