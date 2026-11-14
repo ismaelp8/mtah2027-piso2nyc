@@ -11,7 +11,7 @@ Con el partido inventado del harness (`puntuar.partido_de_prueba`) comprueba:
 - que no depende del orden de los slots: una permutación fija da la misma puntuación tras redondear;
 - los coeficientes: los 40 juegos (B1 a B5; los 7 partidos y un pliegue sin cada partido), con tantos
   pesos como rasgos, y el bloque del módulo es el que escribe `validation/apuesta_b/entrenar.py`;
-- B3 y B4 (15/11): con la misma α, B3 con el balón a la vista en todos los frames es B2, B3 no opina sin
+- B3 y B4 (14/11): con la misma α, B3 con el balón a la vista en todos los frames es B2, B3 no opina sin
   balón, B4 da la misma diferencia `H` − `A` que B2 y su ganador nunca supera a `D`; B5 es B4 más N1;
   B3, B4 y B5 llevan los pesos de B2.
 

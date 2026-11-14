@@ -28,7 +28,7 @@ DEFAULT_NAME = "equipo_v0"
 # Las piezas que `run` deja cambiar por otra función (argumento `pieces`) y la función de cada una que va
 # en la entrega: «funcion» de su módulo o «modulo.funcion». El harness de la DFL las usa para comparar
 # versiones sin tocar este fichero.
-# Desde el 15/11 la evidencia de equipo es B5 de la apuesta B (`aprendida.evidence_b5`), que ganó con los
+# Desde el 14/11 la evidencia de equipo es B5 de la apuesta B (`aprendida.evidence_b5`), que ganó con los
 # criterios fijados antes de medir (docs/decisiones.md). Antes era N1 (`candidates.evidence`).
 PIECES = {"ball": "clean", "candidates": "aprendida.evidence_b5", "dead_state": "evidence", "temporal": "decode"}
 MODULES = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal,

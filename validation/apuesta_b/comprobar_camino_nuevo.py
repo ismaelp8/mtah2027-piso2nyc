@@ -7,7 +7,7 @@ El camino nuevo es una función de otro módulo («aprendida.…») con «dejar_
 ser idénticas a las de `{}`, y la pieza tiene que recibir los 7 partidos de la DFL al puntuar. Se ejecutó
 el 14/11 antes de medir la apuesta B.
 
-Desde el 15/11 comprueba también:
+Desde el 14/11 comprueba también:
 - que B4 con la α de B2 y el `D` oráculo da las mismas etiquetas que B2 (solo cambia cuánto pesa cada
   equipo frente a `D`, y con el oráculo eso no cambia ninguna etiqueta);
 - que, con B5 como pieza de equipo de la entrega, la versión de `main` (`{}`) da lo mismo que B5 escrita a
@@ -80,7 +80,7 @@ def main():
 
 
 def comprobar_b4():
-    """B4 (15/11) con la α de B2 y el `D` oráculo da las mismas etiquetas que B2 en los 7 partidos."""
+    """B4 (14/11) con la α de B2 y el `D` oráculo da las mismas etiquetas que B2 en los 7 partidos."""
     def b4_con_alfa_de_b2(trk, fuera=None):
         juego = aprendida.coeficientes("b2", fuera)
         z = aprendida.logit(aprendida.rasgos(trk, "b2"), juego["pesos"])

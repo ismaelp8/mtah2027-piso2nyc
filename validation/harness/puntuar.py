@@ -275,7 +275,7 @@ def con_partido(funciones, fuera, partido):
 def de_la_entrega_que_dejan_fuera(funciones):
     """Las piezas que la versión no nombra y cuya función de la entrega deja fuera un partido (tiene `fuera`).
 
-    Desde el 15/11 la evidencia de equipo de la entrega es B5 (`aprendida.evidence_b5`): sin esto, la versión
+    Desde el 14/11 la evidencia de equipo de la entrega es B5 (`aprendida.evidence_b5`): sin esto, la versión
     de `main` (`{}`) la usaría con los coeficientes de los 7 partidos, sobre partidos que ya vio.
     """
     return [pieza for pieza in pipeline.PIECES if pieza not in (funciones or {})

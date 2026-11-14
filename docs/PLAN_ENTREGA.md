@@ -73,7 +73,7 @@ duraciones mínimas y la poda van aquí, no en las piezas de evidencia.
 **Para comparar variantes de una pieza** (14/11): escríbela como otra función de tu módulo, con la misma
 firma (la apuesta B usa además `possession/aprendida.py`, que el harness admite para `candidates`). El harness la usa en lugar de la de siempre con `pipeline.run(..., pieces=...)`, que se rellena
 desde el fichero de `--versiones` (README del harness). La entrega usa siempre las de siempre:
-`ball.clean`, `aprendida.evidence_b5` (la apuesta B, desde el 15/11; antes `candidates.evidence`),
+`ball.clean`, `aprendida.evidence_b5` (la apuesta B, desde el 14/11; antes `candidates.evidence`),
 `dead_state.evidence` y `temporal.decode`, que son las que nombra
 `pipeline.PIECES`. Todas las versiones reciben el mismo tracking, de solo lectura: una pieza devuelve una
 copia (`trk._replace(...)`), nunca lo cambia.

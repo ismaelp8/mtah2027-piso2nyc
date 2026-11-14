@@ -3,7 +3,7 @@
 Es la apuesta B del plan (docs/PLAN_ENTREGA.md §3, «Ismael»; docs/investigacion_metodos.md §4.2), con las
 decisiones de Ismael del 14/11 (docs/decisiones.md): una evidencia de equipo aprendida en la DFL que
 compite con N1 (`candidates.evidence`) en el harness. Va en la entrega solo si gana con la regla de §5.8 al
-control y a `main`, y con los criterios del `D` que se fijaron antes de medir (B5, 15/11).
+control y a `main`, y con los criterios del `D` que se fijaron antes de medir (B5, 14/11).
 
 - **Solo `H` frente a `A`.** La columna `D` va a cero, como en N1: el `D` es de `dead_state` y `dead_ball`.
 - **Simétrica por construcción:** cada rasgo es «lo del local menos lo del visitante» y el modelo no tiene
@@ -42,11 +42,11 @@ VENTANAS_BALON = (1, 13, 51, 151)  # frames: ventanas centradas de los rasgos de
 VEL_MAX = 12.0  # m/s: una velocidad mayor es un cambio de slot, no un jugador
 VENTANA_CERCA = 25  # frames: «sin balón cerca» es ningún frame con balón en ±12
 DECIMALES = 6
-# B3, B4 y B5 (15/11) usan los rasgos y los pesos de B2; solo cambia cómo se convierte el logit en puntuación.
+# B3, B4 y B5 (14/11) usan los rasgos y los pesos de B2; solo cambia cómo se convierte el logit en puntuación.
 CONJUNTOS = ("b1", "b2", "b3", "b4", "b5")
 RASGOS_DE = {"b1": "b1", "b2": "b2", "b3": "b2", "b4": "b2", "b5": "b2"}
-N1_PUNTOS = 1.0  # el +1 de N1 que suma B5 (candidates.NEAREST_SCORE el 15/11), escrito aquí para que no cambie con él
-BLOQUE_CERCANO = 20000  # frames por bloque al buscar el más cercano (candidates.CHUNK el 15/11)
+N1_PUNTOS = 1.0  # el +1 de N1 que suma B5 (candidates.NEAREST_SCORE el 14/11), escrito aquí para que no cambie con él
+BLOQUE_CERCANO = 20000  # frames por bloque al buscar el más cercano (candidates.CHUNK el 14/11)
 BASE_BALON = ["signo del más cercano"] + ["núcleo {} m".format(s) for s in SIGMAS] + ["distancia del más cercano"]
 NOMBRES = {
     "b1": ["{}, ventana {}".format(r, v) for r in BASE_BALON for v in VENTANAS_BALON],
@@ -225,7 +225,7 @@ def puntuacion_de(conjunto, z, visible, alfa, cercano=None):
 def equipo_mas_cercano(trk):
     """Equipo del slot más cercano al balón por frame: 0, 1, o -1 si no hay balón o no hay jugadores.
 
-    Copia de `candidates.nearest_team` del 15/11 (N1, lo que hace starter/baseline.py): con dos slots a la
+    Copia de `candidates.nearest_team` del 14/11 (N1, lo que hace starter/baseline.py): con dos slots a la
     misma distancia gana el de índice más bajo. Es la que usó el entrenamiento de B5.
     """
     out = np.full(len(trk.bx), -1, dtype=np.int8)
@@ -281,17 +281,17 @@ def evidence_b2(trk, fuera=None):
 
 
 def evidence_b3(trk, fuera=None):
-    """B3: B2 con puerta de balón. Solo opina donde se ve el balón en ese frame (15/11)."""
+    """B3: B2 con puerta de balón. Solo opina donde se ve el balón en ese frame (14/11)."""
     return _evidencia(trk, "b3", fuera)
 
 
 def evidence_b4(trk, fuera=None):
-    """B4: B2 que castiga al perdedor. El ganador y `D` a cero (15/11)."""
+    """B4: B2 que castiga al perdedor. El ganador y `D` a cero (14/11)."""
     return _evidencia(trk, "b4", fuera)
 
 
 def evidence_b5(trk, fuera=None):
-    """B5: B4 más el +1 de N1 donde se ve el balón (15/11)."""
+    """B5: B4 más el +1 de N1 donde se ve el balón (14/11)."""
     return _evidencia(trk, "b5", fuera)
 
 

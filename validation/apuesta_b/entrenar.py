@@ -21,7 +21,7 @@ Lo que hace es lo que se fijó antes de medir (docs/decisiones.md, 14/11, «apue
   convenciones, sobre los partidos de entrenamiento del pliegue, con el decodificador de `main` y el `D`
   oráculo, igual que el harness. Si empatan, la más pequeña.
 - **Pliegues:** uno por partido, entrenado y escalado sin él, y el de los 7, que es el de la entrega.
-- **B3, B4 y B5** (15/11): los pesos de B2 de cada pliegue, sin reentrenar. Su α se elige de
+- **B3, B4 y B5** (14/11): los pesos de B2 de cada pliegue, sin reentrenar. Su α se elige de
   `ALFAS_D_PROPIO` igual que la de B2, pero con la pieza de `D` de `main` (`dead_state.evidence`) dentro y
   sin oráculo.
 
@@ -54,7 +54,7 @@ PASO = 5
 LAMBDA = 1.0
 ITERACIONES = 25
 ALFAS = (1 / 16, 1 / 8, 1 / 4, 1 / 2, 1.0, 2.0)
-# B3, B4 y B5 (docs/decisiones.md, 15/11, antes de medir): los pesos de B2 y α elegida con la pieza de `D`
+# B3, B4 y B5 (docs/decisiones.md, 14/11, antes de medir): los pesos de B2 y α elegida con la pieza de `D`
 # de `main` dentro, sin oráculo, en esta rejilla.
 ALFAS_D_PROPIO = (1 / 8, 1 / 4, 1 / 2, 1.0, 2.0, 4.0, 8.0)
 CON_PESOS_DE_B2 = ("b3", "b4", "b5")

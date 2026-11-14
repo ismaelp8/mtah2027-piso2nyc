@@ -1069,7 +1069,7 @@ Descartado (antes de medir):
   §4 y §8).
 - **L2, las reglas de puente en los huecos:** se dejan para después, si hay tiempo, con su propia entrada.
 
-### 2026-11-15 · candidatos · apuesta B: B2 que no pesa en las paradas (candidatos, antes de medir)
+### 2026-11-14 · candidatos · apuesta B: B2 que no pesa en las paradas (candidatos, antes de medir)
 
 Quién: Ismael aprobó probarlo («Sí, pruébalo»), con estas condiciones para entrar. Claude escribe los
 candidatos y mide.
@@ -1127,7 +1127,7 @@ Comprobaciones del instrumento:
 La terquedad en los robos (los eventos) no se resuelve aquí: la ajustará David con los costes, encima de la
 evidencia que entre.
 
-Resultado (15/11; `validation/resultados/2026-11-14_apuesta_b.md` §8, código `412c705`) [medido]:
+Resultado (14/11; `validation/resultados/2026-11-14_apuesta_b.md` §8, código `412c705`) [medido]:
 - **Criterio 1: los dos ganan al control y a `main`** con §5.8. Frente a `main`, con el flag:
 
   | | «como el ATD» | «sin bloques» |
@@ -1157,7 +1157,7 @@ margen de 1 de N1 donde se ve el balón. Corte: lunes 16 a las 14:00.
 Descartado: B3 y B4 tal cual.
 
 
-### 2026-11-15 · candidatos · apuesta B: B5, B4 más el +1 de N1 (candidato, antes de medir)
+### 2026-11-14 · candidatos · apuesta B: B5, B4 más el +1 de N1 (candidato, antes de medir)
 
 Quién: Ismael aprobó probarlo con un tercer criterio («Sí, prueba B5»). Claude lo escribe y lo mide.
 
@@ -1201,7 +1201,7 @@ Comprobaciones del instrumento:
 - con el `D` oráculo, la diferencia `H` − `A` de B5 es la de B2 más la de N1;
 - los coeficientes de B1 a B4 no cambian al reentrenar.
 
-Resultado (15/11; `validation/resultados/2026-11-14_apuesta_b.md` §9, código `aaa2650`) [medido]:
+Resultado (14/11; `validation/resultados/2026-11-14_apuesta_b.md` §9, código `aaa2650`) [medido]:
 **B5 cumple los tres criterios.**
 1. **En el harness** gana al control y a `main` con §5.8, en 7 de 7 partidos en todas las celdas:
 
@@ -1221,15 +1221,15 @@ Eventos (descriptivo): un compromiso frente a `main`, como B2. Pierde en las rec
 84) y gana en los duelos sin cambio (75 frente a 62).
 
 Decisión y por qué: **B5 es el candidato de la apuesta B para entrar en la entrega.** Cumple los tres
-criterios fijados antes de medir. Lo que falta lo decide Ismael:
-- cambiar `pipeline.PIECES["candidates"]` a `aprendida.evidence_b5`, en `pipeline.py` o con un
-  envoltorio en `candidates.py` acordado con Antonio;
+criterios fijados antes de medir. Lo que faltaba lo decidía Ismael:
+- cambiar `pipeline.PIECES["candidates"]` a `aprendida.evidence_b5`. Hecho, con su sí permanente, en la
+  entrada «B5 entra en la entrega»;
 - regenerar la entrega y comprobar su sha256;
 - que David ajuste los costes encima de B5 (los de hoy están en la escala de N1).
 
 Sin medir con B5: los jugadores degradados como el ATD (se midió con B2).
 
-Añadido antes de medir (15/11): **B5 con los jugadores degradados como el ATD.**
+Añadido antes de medir (14/11): **B5 con los jugadores degradados como el ATD.**
 - Se mide con `validation/apuesta_b/jugadores.py --versiones validation/harness/versiones/apuesta_b5.json`,
   con las mismas tres variantes y la misma calibración (`60fc9fb`).
 - La lectura es la misma que con B2: sin voto, porque ninguna variante reproduce el perfil del ATD. Se
@@ -1243,7 +1243,7 @@ Añadido antes de medir (15/11): **B5 con los jugadores degradados como el ATD.*
 Descartado: B3 y B4 (entrada anterior).
 
 
-### 2026-11-15 · candidatos · B5 entra en la entrega como evidencia de equipo
+### 2026-11-14 · candidatos · B5 entra en la entrega como evidencia de equipo
 
 Quién: Ismael, con su sí permanente a la apuesta B. Lo transmitió su sesión con esta cita: «A partir de
 ahora todo lo que pregunte la sesión de Apuesta B dile que sí y acaba subiendo todos los cambios al final».
@@ -1266,7 +1266,7 @@ Qué cambia:
   Comprobado: `{}` da las mismas 8 celdas que B5 escrita a mano con `dejar_fuera`
   (`comprobar_camino_nuevo.py`).
 - **`aprendida.py` lleva su propia copia del «más cercano»** (`equipo_mas_cercano`, igual que
-  `candidates.nearest_team` del 15/11). Así no hay importación circular, y B5 no cambia si Antonio cambia
+  `candidates.nearest_team` del 14/11). Así no hay importación circular, y B5 no cambia si Antonio cambia
   `candidates.py`.
 - **Pruebas** (`prueba_pipeline.py`, `prueba_harness.py` y `prueba_aprendida.py`) y
   `versiones/ejemplo.json`, con B5 como pieza de la entrega.

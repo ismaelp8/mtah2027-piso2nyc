@@ -1,6 +1,6 @@
 """Apuesta B frente al `D` de la pieza de estado: cuántas paradas ve cada versión.
 
-Es el criterio 2 de B3, B4 y B5 y el criterio 3 de B5 (docs/decisiones.md, 15/11). Para lo demás, descriptivo.
+Es el criterio 2 de B3, B4 y B5 y el criterio 3 de B5 (docs/decisiones.md, 14/11). Para lo demás, descriptivo.
 
     python validation/apuesta_b/d_propio.py
     python validation/apuesta_b/d_propio.py --versiones validation/harness/versiones/apuesta_b_paradas.json
@@ -119,7 +119,7 @@ def main():
     print()
     tabla(nombres, *medir(versiones, nombres, dfl.tracking_de))
     print()
-    print("### El balón a la vista en los `D` (criterio 3 de B5, 15/11; para lo demás, descriptivo)")
+    print("### El balón a la vista en los `D` (criterio 3 de B5, 14/11; para lo demás, descriptivo)")
     print()
     print("El balón limpio de la DFL, congelado, en los `D` y sus bordes. Lo demás, igual.")
     print()

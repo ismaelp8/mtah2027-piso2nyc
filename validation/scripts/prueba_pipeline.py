@@ -248,7 +248,7 @@ def check_pieces(rng):
     trk = synthetic_tracking(400, [(50, 350)], (105.0, 68.0), rng, slots_per_team=5)
     block = slice(50, 350)
     explicit = {name: pipeline.default_piece(name) for name in pipeline.PIECES}
-    check("PIECES nombra las funciones que usa `run` por defecto (la de equipo, B5 desde el 15/11)",
+    check("PIECES nombra las funciones que usa `run` por defecto (la de equipo, B5 desde el 14/11)",
           explicit == {"ball": ball.clean, "candidates": aprendida.evidence_b5,
                        "dead_state": dead_state.evidence, "temporal": temporal.decode})
     base = pipeline.run(trk)
