@@ -292,3 +292,55 @@ Descartado:
 
   Las etiquetas de saque contienen los frames del FAQ, así que son coherentes con ellos. Que esos frames
   sean exactos es lo que dice la organización [fuente].
+
+### 2026-11-13 · `D` · revisión del detector v1: el `D` suma por sus fronteras; dos descartes vuelven a abrirse
+
+Quién: Ana (revisión pedida a Claude; lo que se reabre lo confirman Manuel e Ismael)
+
+Qué se probó:
+- Cuánto cuesta en `spellF1` cada error propio de un detector de `D`: paradas no detectadas, bordes tarde
+  o pronto, `D` que parpadea dentro de una parada, `D` sin fin, equipo equivocado al reanudar.
+- Si los jugadores solos (sin balón) sirven para detectar `D` y con qué precisión en las fronteras: AUC
+  por rasgo, umbral con histéresis y regresión logística, con el umbral elegido en una parte y evaluado
+  en la otra.
+- `possession/io.py` con un ATD sintético del mismo tamaño.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): scorer oficial sobre la GT sintética del repo
+(6 partes, 142 paradas por 332 posesiones), la GT pública con el equipo perfecto (17 posesiones, 4
+paradas; solo lectura de la métrica) y el partido abierto `J03WMX` de la DFL (103 paradas, 511
+posesiones) con el equipo perfecto. Detalle y scripts en
+`validation/resultados/2026-11-13_revision_balon_muerto.md`.
+
+Resultado:
+- **[medido]** En la DFL, con equipo perfecto: sin `D` 0,82; todas las paradas con los dos bordes 2 s tarde
+  0,83; la mitad de las paradas con bordes exactos 0,92; todas con ruido de ±1 s 0,90.
+- **[medido]** En la sintética: `D` que parpadea cada 4 s 0,62; equipo equivocado 0,5 s tras cada reinicio
+  0,80; fin del `D` 1 s tarde 0,92; inicio 1 s tarde 0,95.
+- **[medido]** Jugadores solos en la DFL: AUC 0,93–0,97 por frame; la logística detecta 43 de 62 y 35 de
+  41 paradas, pero el inicio llega 1 s tarde de mediana (p90 de 4–7 s) y el `spellF1` no mejora frente a
+  no poner `D` (0,775 frente a 0,781; 0,864 frente a 0,852).
+- **[medido]** `io.py` rompía con un balón o slot escrito como un solo `NaN`; corregido en esta rama.
+
+Decisión y por qué:
+- **El criterio de aceptación de cualquier detector de `D`, medido en la DFL antes de integrarlo:**
+  |latencia| ≤ 25 frames en el inicio y en el fin en al menos el 70 % de las paradas, sesgo mediano dentro
+  de ±12 frames, `D` espurios ≤ 0,3 por minuto de juego y ninguna racha de `D` ni de vivo por debajo de la
+  duración mínima. Por debajo de eso, el detector no mejora el ranking [inferencia a partir de lo medido].
+- **El tiempo del `D` sale del balón y del Smart Tagging; el estado, de los jugadores.** El modelo de estado
+  se entrena con los 7 partidos de la DFL con rasgos de equipo sin identidad, sin esperar a la degradación.
+- **Se reabren dos descartes de la entrada del 12/11**, que quedan como «sin evaluar» hasta que Manuel
+  ejecute `validation/partido/agregados_balon_reinicios.py`:
+  - fechar los reinicios con el balón («quieto que empieza a moverse»): sus 53 detecciones con menos de
+    1 s de balón quieto son lo esperable si el ATD solo recupera el balón cuando se mueve; hay que
+    cruzarlas con el fin de la ventana `SET PIECES` y con la subida de velocidad de los jugadores;
+  - «balón fuera del campo» como disparo del inicio del `D`: cubre pocos frames, pero son 2–3 s de balón
+    visible por cada salida, y falta medir el balón que desaparece saliendo.
+- Los agregados por tipo de reinicio se imprimen con 5 casos o más por tipo (los saques iniciales siempre
+  juntos), el criterio que Manuel dejó preguntado a Ismael; si Ismael prefiere juntarlos, es una constante
+  en `validation/partido/comun.py`.
+
+Descartado:
+- **Suavizar el `D` con un voto por mayoría o usar la ausencia del balón como `D`:** introducen justo el
+  retraso o el parpadeo que anulan el `D` en `spellF1` [medido en la sintética y la DFL].
+- **Arrastrar el equipo anterior a través de una parada:** en `J03WMX` el equipo cambia en el 90 % de las
+  paradas [medido].
