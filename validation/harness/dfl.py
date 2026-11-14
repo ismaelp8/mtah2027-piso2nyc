@@ -60,6 +60,7 @@ MEDIA_MICROCORTE = 51 / 15  # frames
 MAX_MICROCORTE = 12  # frames (0,5 s)
 BLOQUE_ATD = (125, 375)  # frames (de 5 a 15 s)
 CONDICIONES = ("limpio", "huecos", "huecos y suavizado")
+VOTAN = CONDICIONES  # las condiciones con las que se aplica la regla de §5.8 (las demás se puntúan sin voto)
 PARAMETROS_DE = {
     "limpio": None,
     "huecos": {"objetivo": OBJETIVO, "disputas": DISPUTAS, "media_bloque": MEDIA_BLOQUE, "suavizado": 1},

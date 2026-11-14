@@ -553,7 +553,7 @@ def resumir_eventos(en_eventos, tipos, versiones, n_draws):
     for nombre in versiones:
         for referencia in salida["condiciones"][dfl.CONDICIONES[0]][nombre]["frente_a"]:
             lecturas = {salida["condiciones"][c][nombre]["frente_a"][referencia]["lectura"]
-                        for c in dfl.CONDICIONES}
+                        for c in dfl.VOTAN}
             salida["veredictos"].setdefault(nombre, collections.OrderedDict())[referencia] = (
                 lecturas.pop() if len(lecturas) == 1 else "depende del balón")
     return salida
@@ -577,7 +577,7 @@ def tablas_eventos(resumen):
             convencion, " | ".join(pts(fila.get(t)) for t in TIPOS_EVENTO)))
     for condicion, filas in resumen["condiciones"].items():
         for nombre, fila in filas.items():
-            lineas.append("| {} | {} | {} |".format(condicion, nombre, " | ".join(
+            lineas.append("| {} | {} | {} |".format(balon(condicion), nombre, " | ".join(
                 pts(fila["acierto_pct"].get(t)) for t in TIPOS_EVENTO)))
     lineas += ["", "Diferencias en puntos, [5–95 %]:", "",
                "| balón | versión | frente a | " + " | ".join(LEIDOS) + " | lectura |",
@@ -595,8 +595,8 @@ def tablas_eventos(resumen):
                     celdas.append(pts(d["diferencia"], True) + (
                         " [{} a {}]".format(pts(intervalo[0], True), pts(intervalo[1], True)) if intervalo else ""))
                 lineas.append("| {} | {} | {} | {} | {} |".format(
-                    condicion, nombre, referencia, " | ".join(celdas), comparacion["lectura"]))
-    lineas += ["", "Veredicto en las tres condiciones (descriptivo, no entra en §5.8):", ""]
+                    balon(condicion), nombre, referencia, " | ".join(celdas), comparacion["lectura"]))
+    lineas += ["", "Veredicto en {} (descriptivo, no entra en §5.8):".format(que_votan(False)), ""]
     for nombre, por_referencia in resumen["veredictos"].items():
         lineas.append("- {}: {}".format(nombre, "; ".join(
             "frente a {}, **{}**".format(r, v) for r, v in por_referencia.items())))
@@ -614,15 +614,28 @@ def num(valor, signo=False):
 def veredicto(salida, nombre, n_partidos, campo=None):
     """¿Gana `nombre` al control con la regla de §5.8? Mira todas las condiciones y convenciones.
 
-    Con `campo="frente_a_main"`, la misma regla frente a la versión de main.
+    Con `campo="frente_a_main"`, la misma regla frente a la versión de main. Solo cuentan las condiciones
+    que votan (`dfl.VOTAN`); las demás se puntúan sin voto.
     """
-    filas = [salida[c][k][nombre] for c in salida for k in salida[c]]
+    filas = [salida[c][k][nombre] for c in salida for k in salida[c] if k in dfl.VOTAN]
     if campo is not None:
         filas = [f[campo] for f in filas]
     gana = all(f["diferencia"] >= EMPATE and f["gana_en"] >= min(MIN_PARTIDOS, n_partidos)
                and (f["diferencia_intervalo"] is None or f["diferencia_intervalo"][0] > 0) for f in filas)
     pierde = all(f["diferencia"] <= -EMPATE for f in filas)
     return "gana" if gana else "pierde" if pierde else "empate o no concluye"
+
+
+def que_votan(todas=True):
+    """Con qué condiciones se aplica la regla, dicho para la salida."""
+    if set(dfl.VOTAN) == set(dfl.CONDICIONES):
+        return "todas las condiciones" if todas else "las tres condiciones"
+    return "las condiciones que votan: {}".format(", ".join("«{}»".format(c) for c in dfl.VOTAN))
+
+
+def balon(condicion):
+    """El nombre de la condición en las tablas, marcado si no vota."""
+    return condicion if condicion in dfl.VOTAN else condicion + " (sin voto)"
 
 
 def tabla_perfil(perfil):
@@ -637,7 +650,7 @@ def tabla_perfil(perfil):
     lineas += ["", "| balón | visible en los frames de juego (media de los partidos) |", "|---|---|"]
     for condicion in dfl.CONDICIONES:
         media = float(np.mean([p["balon_visible_en_juego_pct"][condicion] for p in perfil.values()]))
-        lineas.append("| {} | {:.1f} % |".format(condicion, media).replace(".", ","))
+        lineas.append("| {} | {:.1f} % |".format(balon(condicion), media).replace(".", ","))
     lineas.append("")
     return "\n".join(lineas)
 
@@ -656,7 +669,7 @@ def tablas(salida, partidos, versiones=VERSIONES):
                     continue
                 if "elegidas" in f:
                     lineas.append("| {} | {} | {} | – | {} | – | {} / {} | – |".format(
-                        condicion, nombre, num(f["spell_f1"]), num(f["diferencia"], True),
+                        balon(condicion), nombre, num(f["spell_f1"]), num(f["diferencia"], True),
                         f["posesiones_predichas"], f["posesiones_reales"]))
                     continue
                 valores = list(f["spell_f1_por_partido"].values())
@@ -668,10 +681,10 @@ def tablas(salida, partidos, versiones=VERSIONES):
                         " [{} a {}]".format(num(intervalo[0], True), num(intervalo[1], True)) if intervalo else "")
                     gana = "{} de {}".format(f["gana_en"], len(partidos))
                 lineas.append("| {} | {} | {} | {}–{} | {} | {} | {} / {} | {} |".format(
-                    condicion, nombre, num(f["spell_f1"]), num(min(valores)), num(max(valores)), frente, gana,
+                    balon(condicion), nombre, num(f["spell_f1"]), num(min(valores)), num(max(valores)), frente, gana,
                     f["posesiones_predichas"], f["posesiones_reales"], num(f["acierto_de_equipo_medio"])))
         lineas.append("")
-    lineas.append("### Regla de §5.8 (todas las condiciones y las dos convenciones)")
+    lineas.append("### Regla de §5.8 ({} y las dos convenciones)".format(que_votan()))
     lineas.append("")
     for nombre, version in versiones.items():
         if version["tipo"] == "pipeline":
@@ -694,10 +707,10 @@ def tabla_frente_a_main(salida, partidos, versiones):
                 f = filas[nombre]["frente_a_main"]
                 intervalo = f["diferencia_intervalo"]
                 lineas.append("| {} | {} | {} | {} | {} de {} |".format(
-                    convencion, condicion, nombre, num(f["diferencia"], True) + (
+                    convencion, balon(condicion), nombre, num(f["diferencia"], True) + (
                         " [{} a {}]".format(num(intervalo[0], True), num(intervalo[1], True)) if intervalo else ""),
                     f["gana_en"], len(partidos)))
-    lineas += ["", "Regla de §5.8 frente a main (todas las condiciones y las dos convenciones):", ""]
+    lineas += ["", "Regla de §5.8 frente a main ({} y las dos convenciones):".format(que_votan()), ""]
     for nombre in candidatas:
         lineas.append("- {}: **{}**".format(nombre, veredicto(salida, nombre, len(partidos), "frente_a_main")))
     return lineas
