@@ -28,7 +28,8 @@ python validation/harness/puntuar.py
 ```
 
 Tarda medio minuto con los 7 partidos. Con `--partidos J03WMX` mide uno solo, para probar; con `--json`
-da la salida completa.
+da la salida completa; con `--versiones fichero.json`, puntúa las versiones de ese fichero (ver «Cómo
+se prueba una versión nueva»).
 
 ## Qué mide
 
@@ -55,13 +56,66 @@ otros seis y la puntúa en ese. Es el número honesto de un parámetro ajustado.
 
 ## Cómo se prueba una versión nueva
 
-1. Cambia tu pieza en `possession/` (o añade un parámetro).
-2. Añade una entrada a `VERSIONES` en `puntuar.py`. Las de tipo `pipeline` llaman a
-   `possession.pipeline.run` con los `params` del decodificador.
-3. Ejecuta el harness y pega la tabla, con el control al lado, en tu PR.
+Sin tocar `puntuar.py`: las versiones van en un fichero JSON y se pasan con `--versiones`.
 
-Escribe antes en `docs/decisiones.md` qué candidatos vas a comparar. Dos o tres, no veinte: con muchas
-variantes gana el azar.
+1. **Escribe tu variante en tu pieza** (`possession/`), como otra función del mismo módulo y con la misma
+   firma, o como una opción con valor por defecto de la que ya hay. Lo que va en la entrega no cambia
+   hasta que cambies la función de siempre.
+2. **Escribe las versiones en un JSON**, en `validation/harness/versiones/` y con un nombre tuyo (por
+   ejemplo, `candidatos_2026-11-15.json`). Hazlo antes de medir: es la lista de candidatos de
+   `docs/decisiones.md`. Dos o tres, no veinte: con muchas variantes gana el azar.
+3. **Ejecuta el harness con ese fichero:**
+
+   ```bash
+   python validation/harness/puntuar.py --versiones validation/harness/versiones/candidatos_2026-11-15.json
+   ```
+
+4. **Sube el JSON en tu PR con la tabla.** La salida empieza por el fichero, su sha256 y cada versión, así
+   que quien revisa puede repetirla en tu rama.
+
+**El fichero.** Cada clave es el nombre de una versión, como saldrá en la tabla. El control (el baseline
+oficial) va siempre delante y no hace falta escribirlo. Incluye la versión de `main` (`{}`), para ver
+cuánto cambias respecto a lo que ya hay.
+
+```json
+{
+  "N1 (main)": {},
+  "N2, radio 2 m": {
+    "nota": "el más cercano solo opina a menos de 2 m y con el rival a más de 1 m",
+    "piezas": {"candidates": {"funcion": "evidence_n2", "opciones": {"radio": 2.0}}}
+  },
+  "Viterbi, coste 40": {"params": {"switch": 40, "to_dead": 40, "from_dead": 40}}
+}
+```
+
+`evidence_n2` es inventada: para usarla tendría que existir en `possession/candidates.py`.
+
+| clave | qué es |
+|---|---|
+| `params` | los costes del decodificador (las claves de `temporal.DEFAULTS`). Sin ella, los de por defecto |
+| `piezas` | qué función usa cada pieza en lugar de la de siempre. Las piezas: `ball` (en lugar de `clean`), `candidates` y `dead_state` (en lugar de `evidence`) y `temporal` (en lugar de `decode`). La función tiene que estar en ese módulo de `possession/`. Vale su nombre (`"evidence_n2"`) o `{"funcion": ..., "opciones": {...}}`, y las opciones se le pasan como argumentos con nombre |
+| `nota` | texto libre: qué es y por qué. Sale en la cabecera |
+| `tipo` | `pipeline` (por defecto) o `control`. Un `control` es el baseline con otra ventana (`"ventana": 125`) |
+
+Las erratas dan error al leer el fichero, antes de cargar ningún partido: una clave desconocida, una
+pieza o una función que no existe, una opción que la función no acepta, o unos `params` que el
+decodificador no admite. `validation/harness/versiones/ejemplo.json` es un fichero completo:
+
+```bash
+python validation/harness/puntuar.py --versiones validation/harness/versiones/ejemplo.json
+```
+
+Su última versión escribe las funciones de siempre una a una, así que tiene que dar lo mismo que la
+primera. Comprobado (14/11): con el ejemplo, las versiones que también están en `VERSIONES` dan los mismos
+números en las 24 celdas, y sin `--versiones` la salida es idéntica byte a byte a la de antes del cambio.
+
+**Con `--versiones`, la fila «dejando un partido fuera»** se llama «elegida dejando un partido fuera» y
+elige entre las versiones del pipeline de tu fichero.
+
+**Sin `--versiones`** se puntúan las de `VERSIONES` en `puntuar.py`: el decodificador con cuatro costes.
+Es la tabla de referencia (`validation/resultados/2026-11-14_harness_dfl.md`).
+
+`python validation/scripts/prueba_harness.py` prueba la lectura del fichero sin cargar ningún partido.
 
 ## Límites
 
@@ -86,3 +140,4 @@ variantes gana el azar.
 |---|---|
 | `dfl.py` | carga un partido de la caché, calcula sus etiquetas con las dos convenciones, degrada el balón y lo pasa al formato de `possession/tracking.py` |
 | `puntuar.py` | ejecuta cada versión, la puntúa y aplica la regla |
+| `versiones/` | los ficheros de versiones de `--versiones`; `ejemplo.json` es el de muestra |

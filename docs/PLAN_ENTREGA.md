@@ -278,7 +278,10 @@ python validation/harness/puntuar.py
 - el orden se mantiene en las tres condiciones y con las dos convenciones;
 - la diferencia de `spellF1` es de 0,03 o más. Por debajo es un empate, y entra el más simple.
 
-**Dos o tres candidatos por pieza, escritos antes de medir.** Con muchas variantes, gana el azar.
+**Dos o tres candidatos por pieza, escritos antes de medir.** Con muchas variantes, gana el azar. Se
+escriben en un fichero de `validation/harness/versiones/` y se miden con
+`python validation/harness/puntuar.py --versiones <fichero>`, sin tocar `puntuar.py` (el README del
+harness dice cómo).
 
 **La ventana pública** se mira siempre (`/evaluar`) y nunca elige: sirve para ver si algo está roto.
 
@@ -322,7 +325,7 @@ python validation/scripts/descargar_datos_abiertos.py dfl
 - **Una PR por mejora de tu pieza,** pequeña. No esperes al lunes para abrir la primera.
 - **Cada PR que cambia una pieza lleva:**
   - `python validation/scripts/prueba_pipeline.py` en verde;
-  - la tabla del harness, con el control al lado;
+  - la tabla del harness, con el control al lado, y el fichero de versiones con el que se midió;
   - la entrada en `docs/decisiones.md` (`/decision`) con los candidatos que escribiste antes de medir.
 - **Antes de empezar cada día:** `/actualizar`, para traer lo que hayan mergeado los demás.
 - **Si te bloqueas más de una hora,** dilo en el grupo. Quedan dos días y medio.

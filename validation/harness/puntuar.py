@@ -3,6 +3,7 @@
     python validation/harness/puntuar.py                      # los 7 partidos: medio minuto
     python validation/harness/puntuar.py --partidos J03WMX    # un partido, para probar
     python validation/harness/puntuar.py --json               # la salida completa, en JSON
+    python validation/harness/puntuar.py --versiones validation/harness/versiones/ejemplo.json
 
 Ejecuta las mismas piezas que el partido (`possession.pipeline.run`) sobre el tracking de la DFL en el
 formato común (`dfl.py`) y las puntúa con el scorer oficial (`evaluation/possession_metrics.py`). Son
@@ -22,11 +23,15 @@ Cuándo gana un candidato (docs/investigacion_metodos.md §5.8): gana en 6 de 7 
 diferencia es de 0,03 o más y su intervalo no incluye el cero, y todo eso se mantiene en las tres
 condiciones y con las dos convenciones.
 
-Para probar una versión nueva, añádela a `VERSIONES`.
+Las versiones que se puntúan son las de `VERSIONES`, o las de un fichero JSON con `--versiones` (el
+README dice cómo se escribe). Para probar una versión nueva no hace falta tocar este fichero.
 """
 
 import argparse
 import collections
+import functools
+import hashlib
+import inspect
 import json
 import os
 import sys
@@ -41,7 +46,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "evaluation"))
 import dfl  # noqa: E402
 import possession_metrics as pm  # noqa: E402
-from possession import candidates, pipeline, tracking  # noqa: E402
+from possession import ball, candidates, dead_state, pipeline, temporal, tracking  # noqa: E402
 from starter import baseline  # noqa: E402
 
 H, A, D, X = tracking.H, tracking.A, tracking.D, tracking.X
@@ -60,6 +65,107 @@ VERSIONES = collections.OrderedDict([
     ("Viterbi, coste 50", {"tipo": "pipeline", "params": {"switch": 50.0, "to_dead": 50.0, "from_dead": 50.0}}),
     ("Viterbi, coste 100", {"tipo": "pipeline", "params": {"switch": 100.0, "to_dead": 100.0, "from_dead": 100.0}}),
 ])
+DEJAR_UNO_FUERA = "Viterbi, coste elegido dejando un partido fuera"  # la fila con las versiones de arriba
+DEJAR_UNO_FUERA_FICHERO = "elegida dejando un partido fuera"  # la misma fila con las de `--versiones`
+
+
+# -- versiones de un fichero (--versiones) -------------------------------------------------------------
+
+MODULOS = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal}
+CLAVES = {"pipeline": {"tipo", "nota", "params", "piezas"}, "control": {"tipo", "nota", "ventana"}}
+FRAMES_PRUEBA = 50  # el problema sin evidencia con el que se prueba el decodificador al leer el fichero
+
+
+def leer_versiones(ruta):
+    """Las versiones de un fichero JSON, con el control delante. Devuelve (versiones, contenido, sha256).
+
+    Comprueba todo lo que puede antes de cargar ningún partido: claves, piezas, funciones, opciones y los
+    `params` del decodificador. Cualquier errata da error con la ruta y la versión.
+    """
+    def sin_repetidas(pares):
+        objeto = collections.OrderedDict()
+        for clave, valor in pares:
+            if clave in objeto:
+                raise ValueError("{}: la clave «{}» está repetida".format(ruta, clave))
+            objeto[clave] = valor
+        return objeto
+
+    with open(ruta, "rb") as handle:
+        crudo = handle.read()
+    contenido = json.loads(crudo.decode("utf-8-sig"), object_pairs_hook=sin_repetidas)
+    if not isinstance(contenido, dict) or not contenido:
+        raise ValueError("{}: tiene que ser un objeto JSON con al menos una versión".format(ruta))
+    versiones = collections.OrderedDict([(CONTROL, VERSIONES[CONTROL])])
+    for nombre, spec in contenido.items():
+        if nombre == CONTROL:
+            raise ValueError("{}: «{}» es el control, que va siempre; ponle otro nombre".format(ruta, nombre))
+        versiones[nombre] = version_de(spec, "{}, versión «{}»".format(ruta, nombre))
+    return versiones, contenido, hashlib.sha256(crudo).hexdigest()
+
+
+def version_de(spec, donde):
+    """Una versión del fichero, lista para `ejecutar`."""
+    if not isinstance(spec, dict):
+        raise ValueError("{}: tiene que ser un objeto JSON".format(donde))
+    tipo = spec.get("tipo", "pipeline")
+    if not isinstance(tipo, str) or tipo not in CLAVES:
+        raise ValueError("{}: «tipo» tiene que ser {}".format(donde, " o ".join(sorted(CLAVES))))
+    raras = sorted(set(spec) - CLAVES[tipo])
+    if raras:
+        raise ValueError("{}: claves que no valen con «tipo» {}: {} (valen: {})".format(
+            donde, tipo, raras, sorted(CLAVES[tipo])))
+    if "nota" in spec and not isinstance(spec["nota"], str):
+        raise ValueError("{}: «nota» tiene que ser un texto".format(donde))
+    if tipo == "control":
+        ventana = spec.get("ventana")
+        if not isinstance(ventana, int) or isinstance(ventana, bool) or ventana < 0:
+            raise ValueError("{}: el control necesita «ventana», un entero de 0 o más".format(donde))
+        return {"tipo": "control", "ventana": ventana}
+
+    params = spec.get("params")
+    if params is not None and not isinstance(params, dict):
+        raise ValueError("{}: «params» tiene que ser un objeto".format(donde))
+    piezas = spec.get("piezas") or {}
+    if not isinstance(piezas, dict):
+        raise ValueError("{}: «piezas» tiene que ser un objeto".format(donde))
+    funciones = {}
+    for pieza, valor in piezas.items():
+        funciones[pieza] = funcion_de(pieza, valor, donde)
+    # Un problema sin evidencia de 50 frames: así una errata en `params` falla aquí y no a mitad de medir.
+    decodificar = funciones.get("temporal", temporal.decode)
+    try:
+        decodificar(np.zeros((FRAMES_PRUEBA, tracking.N_STATES)),
+                    np.ones((FRAMES_PRUEBA, tracking.N_STATES), bool), [(0, FRAMES_PRUEBA)], params)
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("{}: el decodificador no acepta esos «params»: {}".format(donde, error))
+    return {"tipo": "pipeline", "params": params, "piezas": funciones}
+
+
+def funcion_de(pieza, valor, donde):
+    """La función de una pieza: "nombre" o {"funcion": "nombre", "opciones": {...}}, dentro de su módulo."""
+    if pieza not in pipeline.PIECES:
+        raise ValueError("{}: la pieza «{}» no existe (valen: {})".format(donde, pieza, sorted(pipeline.PIECES)))
+    if isinstance(valor, str):
+        valor = {"funcion": valor}
+    if not isinstance(valor, dict) or set(valor) - {"funcion", "opciones"}:
+        raise ValueError("{}: la pieza «{}» tiene que ser el nombre de una función o un objeto con "
+                         "«funcion» y «opciones»".format(donde, pieza))
+    nombre = valor.get("funcion", pipeline.PIECES[pieza])
+    opciones = valor.get("opciones") or {}
+    modulo = MODULOS[pieza]
+    funcion = getattr(modulo, nombre, None) if isinstance(nombre, str) else None
+    if not callable(funcion):
+        raise ValueError("{}: no hay ninguna función «{}» en {}".format(donde, nombre, modulo.__name__))
+    if not isinstance(opciones, dict):
+        raise ValueError("{}: las «opciones» de «{}» tienen que ser un objeto".format(donde, pieza))
+    # La misma llamada que hace pipeline.run: el tracking (o la evidencia, los tramos y los params).
+    posicionales = (None,) * (4 if pieza == "temporal" else 1)
+    try:
+        inspect.signature(funcion).bind(*posicionales, **opciones)
+    except TypeError as error:
+        raise ValueError("{}: {}.{} no se puede llamar con esas opciones: {}".format(
+            donde, modulo.__name__, nombre, error))
+    return functools.partial(funcion, **opciones) if opciones else funcion
 
 
 # -- el `D` oráculo y el control -----------------------------------------------------------------------
@@ -111,7 +217,7 @@ def ejecutar(version, trk, gt, modo_d):
         codes = control(trk, version["ventana"])
         return imponer_d(codes, gt, trk.blocks) if modo_d == "oraculo" else codes
     extra = [d_oraculo(gt)] if modo_d == "oraculo" else []
-    return pipeline.run(trk, extra=extra, params=version["params"])
+    return pipeline.run(trk, extra=extra, params=version["params"], pieces=version.get("piezas"))
 
 
 # -- puntuación ----------------------------------------------------------------------------------------
@@ -182,12 +288,12 @@ def comprobar_formula(gt, pred, recuento):
         raise AssertionError("el spellF1 del harness ({}) no coincide con el oficial ({})".format(propio, oficial))
 
 
-def resumir(por_partido, partidos, n_draws):
+def resumir(por_partido, partidos, n_draws, versiones=VERSIONES, dejar_uno=DEJAR_UNO_FUERA):
     """Agregados de cada versión en una condición y una convención, a partir de los recuentos por partido."""
     filas = collections.OrderedDict()
     referencia = [por_partido[(CONTROL, p)] for p in partidos]
     f1_ref = [spell_f1(r["flags"], r["n_pred"]) for r in referencia]
-    for nombre in VERSIONES:
+    for nombre in versiones:
         recuentos = [por_partido[(nombre, p)] for p in partidos]
         f1s = [spell_f1(r["flags"], r["n_pred"]) for r in recuentos]
         flags, n_pred = juntar(recuentos)
@@ -204,13 +310,13 @@ def resumir(por_partido, partidos, n_draws):
             fila["diferencia_intervalo"] = diferencia_bootstrap((flags, n_pred), juntar(referencia), n_draws)
             fila["gana_en"] = int(sum(a > b for a, b in zip(f1s, f1_ref)))
         filas[nombre] = fila
-    filas["Viterbi, coste elegido dejando un partido fuera"] = dejar_uno_fuera(por_partido, partidos, filas)
+    filas[dejar_uno] = dejar_uno_fuera(por_partido, partidos, filas, versiones)
     return filas
 
 
-def dejar_uno_fuera(por_partido, partidos, filas):
+def dejar_uno_fuera(por_partido, partidos, filas, versiones=VERSIONES):
     """Para cada partido, la versión del pipeline que más saca en los otros; se puntúa en el que queda fuera."""
-    candidatas = [n for n, v in VERSIONES.items() if v["tipo"] == "pipeline"]
+    candidatas = [n for n, v in versiones.items() if v["tipo"] == "pipeline"]
     if len(partidos) < 2 or not candidatas:
         return None
     elegidas, recuentos = [], []
@@ -227,8 +333,13 @@ def dejar_uno_fuera(por_partido, partidos, filas):
             "posesiones_predichas": n_pred, "posesiones_reales": int(flags.shape[1])}
 
 
-def medir(partidos, modo_d, n_draws, avisar=None):
-    """{convención: {condición: {versión: agregados}}} y los recuentos de etiquetas de cada partido."""
+def medir(partidos, modo_d, n_draws, avisar=None, versiones=None):
+    """{convención: {condición: {versión: agregados}}} y los recuentos de etiquetas de cada partido.
+
+    Sin `versiones`, las de `VERSIONES`; con ellas (las de `leer_versiones`), esas.
+    """
+    dejar_uno = DEJAR_UNO_FUERA if versiones is None else DEJAR_UNO_FUERA_FICHERO
+    versiones = VERSIONES if versiones is None else versiones
     recuentos = collections.defaultdict(dict)  # (convención, condición) -> {(versión, partido): recuento}
     perfil = collections.OrderedDict()
     comprobado = False
@@ -246,7 +357,7 @@ def medir(partidos, modo_d, n_draws, avisar=None):
             vivo = (gt["flag"] == H) | (gt["flag"] == A)
             perfil[partido].setdefault("balon_visible_en_juego_pct", {})[condicion] = round(
                 100.0 * float(np.mean(visible[vivo])), 1)
-            for nombre, version in VERSIONES.items():
+            for nombre, version in versiones.items():
                 # El `D` es el mismo en las dos convenciones: una sola ejecución sirve para las dos.
                 pred = ejecutar(version, trk, gt["flag"], modo_d)
                 for convencion in dfl.CONVENCIONES:
@@ -260,7 +371,7 @@ def medir(partidos, modo_d, n_draws, avisar=None):
     salida = collections.OrderedDict()
     for convencion in dfl.CONVENCIONES:
         salida[convencion] = collections.OrderedDict(
-            (condicion, resumir(recuentos[(convencion, condicion)], partidos, n_draws))
+            (condicion, resumir(recuentos[(convencion, condicion)], partidos, n_draws, versiones, dejar_uno))
             for condicion in dfl.CONDICIONES)
     return salida, perfil
 
@@ -299,7 +410,7 @@ def tabla_perfil(perfil):
     return "\n".join(lineas)
 
 
-def tablas(salida, partidos):
+def tablas(salida, partidos, versiones=VERSIONES):
     lineas = []
     for convencion, por_condicion in salida.items():
         lineas.append("### Etiquetas: {}".format(convencion))
@@ -330,9 +441,17 @@ def tablas(salida, partidos):
         lineas.append("")
     lineas.append("### Regla de §5.8 (todas las condiciones y las dos convenciones)")
     lineas.append("")
-    for nombre, version in VERSIONES.items():
+    for nombre, version in versiones.items():
         if version["tipo"] == "pipeline":
             lineas.append("- {}: **{}**".format(nombre, veredicto(salida, nombre, len(partidos))))
+    return "\n".join(lineas)
+
+
+def cabecera_versiones(ruta, contenido, huella):
+    """Qué versiones se midieron, para que la tabla pegada en una PR se explique sola."""
+    lineas = ["versiones: {} (sha256 {})".format(ruta, huella[:12])]
+    for nombre, spec in contenido.items():
+        lineas.append("- {}: {}".format(nombre, json.dumps(spec, ensure_ascii=False, sort_keys=True)))
     return "\n".join(lineas)
 
 
@@ -343,20 +462,32 @@ def main():
                         help="de dónde sale el D: de las etiquetas (por defecto) o de cada versión")
     parser.add_argument("--bootstrap", type=int, default=1000, help="remuestreos del intervalo; 0 lo quita")
     parser.add_argument("--json", action="store_true", help="imprime la salida completa en JSON")
+    parser.add_argument("--versiones", metavar="FICHERO.json",
+                        help="las versiones que se puntúan, en lugar de las de VERSIONES (ver el README)")
     args = parser.parse_args()
 
+    versiones, contenido, huella = None, None, None
+    if args.versiones:
+        try:
+            versiones, contenido, huella = leer_versiones(args.versiones)
+        except (OSError, ValueError) as error:  # json.JSONDecodeError es un ValueError
+            sys.exit("--versiones: {}".format(error))
     salida, perfil = medir(args.partidos, args.d, args.bootstrap,
-                           avisar=lambda texto: print(texto, file=sys.stderr))
+                           avisar=lambda texto: print(texto, file=sys.stderr), versiones=versiones)
     if args.json:
-        print(json.dumps({"d": args.d, "partidos": args.partidos, "perfil": perfil, "resultados": salida},
-                         ensure_ascii=False, indent=1))
+        completa = {"d": args.d, "partidos": args.partidos, "perfil": perfil, "resultados": salida}
+        if versiones is not None:
+            completa["versiones"] = {"fichero": args.versiones, "sha256": huella, "contenido": contenido}
+        print(json.dumps(completa, ensure_ascii=False, indent=1))
         return
     print("D: {} · partidos: {} · bootstrap: {}".format(args.d, len(args.partidos), args.bootstrap))
+    if versiones is not None:
+        print(cabecera_versiones(args.versiones, contenido, huella))
     if args.d == "propio":
         print("AVISO: con el D propio, el balón tapado en los D de la DFL delata la etiqueta. No decide nada.")
     print()
     print(tabla_perfil(perfil))
-    print(tablas(salida, args.partidos))
+    print(tablas(salida, args.partidos, VERSIONES if versiones is None else versiones))
 
 
 if __name__ == "__main__":

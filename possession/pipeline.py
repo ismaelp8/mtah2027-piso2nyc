@@ -25,6 +25,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_DIR = os.path.join(ROOT, "evaluation", "results")
 DEFAULT_NAME = "equipo_v0"
 
+# Las piezas que `run` deja cambiar por otra función (argumento `pieces`) y la función de cada una que va
+# en la entrega. El harness de la DFL las usa para comparar versiones sin tocar este fichero.
+PIECES = {"ball": "clean", "candidates": "evidence", "dead_state": "evidence", "temporal": "decode"}
+
 
 def combine(pieces, n):
     """Suma las puntuaciones y cruza lo permitido. Devuelve (score, allowed, conflict).
@@ -43,7 +47,7 @@ def combine(pieces, n):
     return score, allowed, conflict
 
 
-def run(trk, extra=(), params=None, report=None):
+def run(trk, extra=(), params=None, report=None, pieces=None):
     """Etiquetas por frame (códigos de possession/tracking.py) a partir de un `Tracking`.
 
     `extra`: evidencias que se suman a las del tracking. Cada una es `(score, allowed)` ya calculada, o
@@ -52,19 +56,33 @@ def run(trk, extra=(), params=None, report=None):
 
     `params` son los del decodificador.
 
+    `pieces` cambia alguna pieza por otra función con la misma firma, para comparar versiones en el
+    harness: un diccionario con claves de `PIECES` ("ball" en lugar de `ball.clean`, "candidates" y
+    "dead_state" en lugar de su `evidence`, "temporal" en lugar de `temporal.decode`). Sin él van las de
+    `PIECES`, que son las de la entrega.
+
     Si en algún frame evaluado las piezas se contradicen, da error. Con `report` (un diccionario) no da
     error: apunta el recuento en `report["conflictos"]` y sigue.
     """
-    trk = ball.clean(trk)
-    pieces = [candidates.evidence(trk), dead_state.evidence(trk)]
-    pieces += [piece(trk) if callable(piece) else piece for piece in extra]
-    score, allowed, conflict = combine(pieces, len(trk.bx))
+    pieces = pieces or {}
+    unknown = sorted(set(pieces) - set(PIECES))
+    if unknown:
+        raise ValueError("piezas desconocidas: {} (valen: {})".format(unknown, sorted(PIECES)))
+    clean = pieces.get("ball", ball.clean)
+    team = pieces.get("candidates", candidates.evidence)
+    state = pieces.get("dead_state", dead_state.evidence)
+    decode = pieces.get("temporal", temporal.decode)
+
+    trk = clean(trk)
+    evidences = [team(trk), state(trk)]
+    evidences += [piece(trk) if callable(piece) else piece for piece in extra]
+    score, allowed, conflict = combine(evidences, len(trk.bx))
     conflicts = int(sum(conflict[start:stop].sum() for start, stop in trk.blocks))
     if report is not None:
         report["conflictos"] = conflicts
     elif conflicts:
         raise ValueError("las piezas se contradicen en {} frames evaluados".format(conflicts))
-    return temporal.decode(score, allowed, trk.blocks, params)
+    return decode(score, allowed, trk.blocks, params)
 
 
 def write_submission(path, codes):

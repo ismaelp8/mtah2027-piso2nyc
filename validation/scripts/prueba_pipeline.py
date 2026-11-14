@@ -28,7 +28,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "evaluation"))
 import games  # noqa: E402
 import possession_metrics as pm  # noqa: E402
-from possession import candidates, dead_ball, dead_state, pipeline, temporal, tracking  # noqa: E402
+from possession import ball, candidates, dead_ball, dead_state, pipeline, temporal, tracking  # noqa: E402
 from starter import baseline  # noqa: E402
 
 SEED = 20261114
@@ -242,6 +242,43 @@ def check_guards(rng):
           bool(np.array_equal(direct, lazy)) and bool(np.all(direct[100:140] == D)))
 
 
+def check_pieces(rng):
+    print("Cambiar una pieza por otra función (lo que usa el harness para comparar versiones)")
+    trk = synthetic_tracking(400, [(50, 350)], (105.0, 68.0), rng, slots_per_team=5)
+    block = slice(50, 350)
+    modules = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal}
+    explicit = {name: getattr(modules[name], function) for name, function in pipeline.PIECES.items()}
+    check("PIECES nombra las funciones que usa `run` por defecto",
+          explicit == {"ball": ball.clean, "candidates": candidates.evidence,
+                       "dead_state": dead_state.evidence, "temporal": temporal.decode})
+    base = pipeline.run(trk)
+    check("sin `pieces`, con {} y con las de PIECES una a una sale lo mismo",
+          bool(np.array_equal(base, pipeline.run(trk, pieces={})))
+          and bool(np.array_equal(base, pipeline.run(trk, pieces=explicit))))
+
+    seen = []
+
+    def no_ball(t):
+        seen.append(len(t.bx))
+        return t._replace(bx=np.full_like(t.bx, np.nan), by=np.full_like(t.by, np.nan))
+
+    out = pipeline.run(trk, pieces={"ball": no_ball})
+    check("la limpieza cambiada se usa, y las demás piezas reciben su tracking",
+          seen == [len(trk.bx)] and bool(np.all(out[block] == H)))
+
+    def always_a(t):
+        score, allowed = tracking.no_evidence(len(t.bx))
+        score[:, A] = 1.0
+        return score, allowed
+
+    out = pipeline.run(trk, pieces={"candidates": always_a})
+    check("la evidencia de equipo cambiada se usa", bool(np.all(out[block] == A)) and bool(np.all(out[:50] == X)))
+    out = pipeline.run(trk, pieces={"temporal": lambda score, allowed, blocks, params: np.full(len(score), D)})
+    check("el decodificador cambiado se usa", bool(np.all(out == D)))
+    check("una pieza que no existe da error",
+          raises(ValueError, lambda: pipeline.run(trk, pieces={"decoder": temporal.decode})))
+
+
 def check_csv(codes, folder):
     print("CSV de la entrega")
     path = pipeline.write_submission(os.path.join(folder, "prueba.csv"), codes)
@@ -301,6 +338,7 @@ def main():
             codes = check_pipeline(trk)
             check_decoder(rng)
             check_guards(rng)
+            check_pieces(np.random.default_rng(SEED + 1))  # su propio azar: no cambia el de las demás
         check_csv(codes, folder)
         check_reader(folder, rng)
     finally:

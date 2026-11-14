@@ -16,3 +16,7 @@
 *.pkl
 *.h5
 *.part
+
+# Excepción: los ficheros de versiones del harness (`puntuar.py --versiones`) son configuración, qué
+# funciones y parámetros se comparan, no datos. Solo en esa carpeta.
+!harness/versiones/*.json
