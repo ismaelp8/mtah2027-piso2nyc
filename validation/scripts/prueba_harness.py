@@ -4,7 +4,8 @@
 
 Comprueba que el ejemplo (`validation/harness/versiones/ejemplo.json`) se lee bien y que cada errata del
 fichero da error al leerlo, antes de medir nada. Que una versión del fichero dé los mismos números que la
-misma versión escrita en `VERSIONES` se comprobó con la DFL (README del harness).
+misma versión escrita en `VERSIONES` se comprobó con la DFL (README del harness). También prueba la regla
+de lectura de `--eventos` con intervalos inventados.
 
 No usa datos del partido ni de la DFL. Sale con código 1 si falla alguna comprobación. Claude puede
 ejecutarlo (validation/README.md).
@@ -18,7 +19,9 @@ import shutil
 import sys
 import tempfile
 
-ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import numpy as np
+
+ROOT =os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "validation", "harness"))
 sys.path.insert(0, ROOT)
 import puntuar  # noqa: E402
@@ -166,6 +169,33 @@ def comprobar_formato(carpeta):
     comprobar("«tipo»: «pipeline» se puede escribir", puntuar.leer_versiones(ruta)[0]["v"]["params"] == {"switch": 40.5})
 
 
+def comprobar_lectura_eventos():
+    print("Regla de lectura de los eventos humanos (README del harness)")
+
+    def lectura(*intervalos):
+        return puntuar.lectura_eventos({t: {"diferencia": 0.0, "intervalo": list(i) if i else None}
+                                        for t, i in zip(puntuar.LEIDOS, intervalos)})
+
+    comprobar("uno por encima de cero y ninguno por debajo: mejora", lectura((1, 5), (-2, 3), (-1, 1)) == "mejora")
+    comprobar("uno por debajo y ninguno por encima: empeora", lectura((-5, -1), (-2, 3), (-1, 1)) == "empeora")
+    comprobar("uno por encima y otro por debajo: compromiso", lectura((1, 5), (-2, 3), (-4, -1)) == "compromiso")
+    comprobar("ninguno se separa de cero: no concluye", lectura((-1, 5), (-2, 3), (0, 1)) == "no concluye")
+    comprobar("sin bootstrap no se lee", lectura(None, None, None) == "sin intervalo")
+    tipos = np.repeat(np.arange(len(puntuar.TIPOS_EVENTO)), 50)
+    a = np.ones(len(tipos), bool)
+    b = a.copy()
+    b[tipos == puntuar.TIPOS_EVENTO.index("duelo sin cambio")] = False
+    difs = puntuar.diferencias_eventos(a, b, tipos, 200)
+    comprobar("la diferencia y su intervalo salen en puntos y por tipo",
+              difs["duelo sin cambio"]["diferencia"] == 100.0 and difs["duelo sin cambio"]["intervalo"] == [100.0, 100.0]
+              and difs["recuperación"]["diferencia"] == 0.0 and puntuar.lectura_eventos(difs) == "mejora")
+    comprobar("el bootstrap da lo mismo dos veces", difs == puntuar.diferencias_eventos(a, b, tipos, 200))
+    versiones = puntuar.leer_versiones(EJEMPLO)[0]
+    comprobar("la versión de main es la primera del pipeline sin params ni piezas",
+              puntuar.version_de_main(versiones) == "Viterbi, coste 25 (v0)"
+              and puntuar.version_de_main(puntuar.VERSIONES) == "Viterbi, coste 25 (v0)")
+
+
 def main():
     carpeta = tempfile.mkdtemp(prefix="mtah_prueba_harness_")
     try:
@@ -173,6 +203,7 @@ def main():
         comprobar_opciones(carpeta)
         comprobar_erratas(carpeta)
         comprobar_formato(carpeta)
+        comprobar_lectura_eventos()
     finally:
         shutil.rmtree(carpeta, ignore_errors=True)
     print()

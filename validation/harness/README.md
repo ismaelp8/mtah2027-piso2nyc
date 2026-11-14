@@ -171,8 +171,8 @@ Hace falta el XML de eventos de cada partido, que baja `descargar_datos_abiertos
   de proximidad sobre el tracking limpio (el más cercano a 1 m durante 12 frames, o dos toques). Un
   candidato que use retención por proximidad se parece a esa regla y ganará con ellas por construcción.
   Por eso la regla exige ganar también con `flag`, que es el mismo tipo de etiqueta que la GT del reto.
-  La referencia sin circularidad son los eventos humanos de la DFL (experimento 1), que el harness aún no
-  usa.
+  La referencia sin circularidad son los eventos humanos de la DFL (experimento 1), que el harness mira
+  con `--eventos`, de momento solo como descripción (sección «Eventos humanos»).
 - **El `D` no se puede validar aquí con el balón.** La DFL congela el balón mientras está muerto, así que
   hay que taparlo, y entonces «no hay balón» casi equivale a «`D`». En el ATD no pasa. Por eso el `D` va
   copiado de las etiquetas. Con `--d propio` cada versión pone el suyo, pero ese número no decide nada.

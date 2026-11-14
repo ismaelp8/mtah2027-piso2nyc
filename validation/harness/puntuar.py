@@ -4,6 +4,7 @@
     python validation/harness/puntuar.py --partidos J03WMX    # un partido, para probar
     python validation/harness/puntuar.py --json               # la salida completa, en JSON
     python validation/harness/puntuar.py --versiones validation/harness/versiones/ejemplo.json
+    python validation/harness/puntuar.py --eventos            # además, los eventos humanos (descriptivo)
 
 Ejecuta las mismas piezas que el partido (`possession.pipeline.run`) sobre el tracking de la DFL en el
 formato común (`dfl.py`) y las puntúa con el scorer oficial (`evaluation/possession_metrics.py`). Son
@@ -339,8 +340,9 @@ def dejar_uno_fuera(por_partido, partidos, filas, versiones=VERSIONES):
             "posesiones_predichas": n_pred, "posesiones_reales": int(flags.shape[1])}
 
 
-def medir(partidos, modo_d, n_draws, avisar=None, versiones=None):
-    """{convención: {condición: {versión: agregados}}} y los recuentos de etiquetas de cada partido.
+def medir(partidos, modo_d, n_draws, avisar=None, versiones=None, con_eventos=False):
+    """{convención: {condición: {versión: agregados}}}, los recuentos de etiquetas de cada partido y, con
+    `con_eventos`, los aciertos en los eventos humanos (si no, None).
 
     Sin `versiones`, las de `VERSIONES`; con ellas (las de `leer_versiones`), esas.
     """
@@ -349,10 +351,19 @@ def medir(partidos, modo_d, n_draws, avisar=None, versiones=None):
     recuentos = collections.defaultdict(dict)  # (convención, condición) -> {(versión, partido): recuento}
     perfil = collections.OrderedDict()
     comprobado = False
+    if con_eventos:
+        import eventos  # solo con --eventos: necesita los XML de eventos de la DFL
+    en_eventos = collections.defaultdict(list)  # versión o etiquetas, y condición -> aciertos por partido
+    tipos = []
     for partido in partidos:
         inicio = time.time()
         cargado = dfl.cargar(partido)
         gt = cargado["gt"]
+        puntos = eventos.puntos_de_control(cargado, cargado["meta"]) if con_eventos else None
+        if puntos is not None:
+            tipos.append(puntos["tipo"])
+            for convencion in dfl.CONVENCIONES:
+                en_eventos[("etiquetas «{}»".format(convencion), None)].append(eventos.aciertos(puntos, gt[convencion]))
         perfil[partido] = {c: {"frames_H": int(np.sum(gt[c] == H)), "frames_A": int(np.sum(gt[c] == A)),
                                "frames_D": int(np.sum(gt[c] == D)),
                                "posesiones": len(pm.possession_spells(gt[c], pm.valid_runs(gt[c])))}
@@ -366,6 +377,8 @@ def medir(partidos, modo_d, n_draws, avisar=None, versiones=None):
             for nombre, version in versiones.items():
                 # El `D` es el mismo en las dos convenciones: una sola ejecución sirve para las dos.
                 pred = ejecutar(version, trk, gt["flag"], modo_d)
+                if puntos is not None:
+                    en_eventos[(nombre, condicion)].append(eventos.aciertos(puntos, pred))
                 for convencion in dfl.CONVENCIONES:
                     recuento = contar(gt[convencion], pred)
                     if not comprobado:
@@ -379,7 +392,131 @@ def medir(partidos, modo_d, n_draws, avisar=None, versiones=None):
         salida[convencion] = collections.OrderedDict(
             (condicion, resumir(recuentos[(convencion, condicion)], partidos, n_draws, versiones, dejar_uno))
             for condicion in dfl.CONDICIONES)
-    return salida, perfil
+    resumen = resumir_eventos(en_eventos, tipos, versiones, n_draws) if con_eventos else None
+    return salida, perfil, resumen
+
+
+# -- eventos humanos (--eventos; regla de lectura en el README) ----------------------------------------
+
+TIPOS_EVENTO = ("pase completado", "recuperación", "duelo con cambio", "duelo sin cambio")  # = eventos.TIPOS
+LEIDOS = ("recuperación", "duelo con cambio", "duelo sin cambio")  # los pases se enseñan pero no se leen
+
+
+def version_de_main(versiones):
+    """La primera versión del pipeline sin `params` ni `piezas`: la que hay en `main`. None si no hay."""
+    for nombre, version in versiones.items():
+        if version["tipo"] == "pipeline" and version.get("params") is None and not version.get("piezas"):
+            return nombre
+    return None
+
+
+def tasas(aciertos, tipos):
+    return collections.OrderedDict((tipo, round(100.0 * float(np.mean(aciertos[tipos == i])), 1))
+                                   for i, tipo in enumerate(TIPOS_EVENTO) if np.any(tipos == i))
+
+
+def diferencias_eventos(a, b, tipos, n_draws):
+    """Por tipo: diferencia de aciertos (a − b, en puntos) e intervalo por bootstrap pareado sobre los puntos."""
+    salida = collections.OrderedDict()
+    for i, tipo in enumerate(TIPOS_EVENTO):
+        x, y = a[tipos == i].astype(float), b[tipos == i].astype(float)
+        if not len(x):
+            continue
+        fila = {"diferencia": round(100.0 * float(x.mean() - y.mean()), 1), "intervalo": None}
+        if n_draws:
+            rng = np.random.RandomState([SEMILLA_BOOTSTRAP, i])
+            picks = rng.randint(0, len(x), (n_draws, len(x)))
+            difs = x[picks].mean(axis=1) - y[picks].mean(axis=1)
+            fila["intervalo"] = [round(100.0 * float(v), 1) for v in np.percentile(difs, PERCENTILES)]
+        salida[tipo] = fila
+    return salida
+
+
+def lectura_eventos(difs):
+    """El veredicto de una condición con la regla del README: mejora, empeora, compromiso o no concluye."""
+    intervalos = [difs[t]["intervalo"] for t in LEIDOS if t in difs]
+    if not intervalos or any(v is None for v in intervalos):
+        return "sin intervalo"
+    arriba = any(bajo > 0 for bajo, _ in intervalos)
+    abajo = any(alto < 0 for _, alto in intervalos)
+    return {(True, False): "mejora", (False, True): "empeora", (True, True): "compromiso"}.get(
+        (arriba, abajo), "no concluye")
+
+
+def resumir_eventos(en_eventos, tipos, versiones, n_draws):
+    """Aciertos en los eventos humanos de cada versión, por condición, y sus diferencias con el control y main."""
+    tipos = np.concatenate(tipos)
+    juntos = {clave: np.concatenate(partes) for clave, partes in en_eventos.items()}
+    main = version_de_main(versiones)
+    salida = collections.OrderedDict()
+    salida["puntos"] = collections.OrderedDict((t, int(np.sum(tipos == i))) for i, t in enumerate(TIPOS_EVENTO))
+    salida["etiquetas"] = collections.OrderedDict(
+        (c, tasas(juntos[("etiquetas «{}»".format(c), None)], tipos)) for c in dfl.CONVENCIONES)
+    salida["condiciones"] = collections.OrderedDict()
+    for condicion in dfl.CONDICIONES:
+        filas = collections.OrderedDict()
+        for nombre in versiones:
+            a = juntos[(nombre, condicion)]
+            fila = {"acierto_pct": tasas(a, tipos), "frente_a": collections.OrderedDict()}
+            for referencia in (CONTROL, main):
+                if nombre == CONTROL or referencia in (None, nombre) or referencia in fila["frente_a"]:
+                    continue
+                difs = diferencias_eventos(a, juntos[(referencia, condicion)], tipos, n_draws)
+                fila["frente_a"][referencia] = {"por_tipo": difs, "lectura": lectura_eventos(difs)}
+            filas[nombre] = fila
+        salida["condiciones"][condicion] = filas
+    salida["veredictos"] = collections.OrderedDict()
+    for nombre in versiones:
+        for referencia in salida["condiciones"][dfl.CONDICIONES[0]][nombre]["frente_a"]:
+            lecturas = {salida["condiciones"][c][nombre]["frente_a"][referencia]["lectura"]
+                        for c in dfl.CONDICIONES}
+            salida["veredictos"].setdefault(nombre, collections.OrderedDict())[referencia] = (
+                lecturas.pop() if len(lecturas) == 1 else "depende del balón")
+    return salida
+
+
+def pts(valor, signo=False):
+    if valor is None:
+        return "–"
+    return ("{:+.1f}" if signo else "{:.1f}").format(valor).replace(".", ",")
+
+
+def tablas_eventos(resumen):
+    """Las tablas de --eventos: aciertos por tipo de punto y diferencias leídas con la regla del README."""
+    lineas = ["### Eventos humanos (descriptivo; regla de lectura en validation/harness/README.md)", "",
+              "Puntos, con los partidos medidos juntos: " + ", ".join(
+                  "{} {}".format(n, t) for t, n in resumen["puntos"].items()) + ".", "",
+              "| balón | versión | " + " | ".join(TIPOS_EVENTO) + " |",
+              "|---|---|" + "---|" * len(TIPOS_EVENTO)]
+    for convencion, fila in resumen["etiquetas"].items():
+        lineas.append("| (todas) | etiquetas «{}» como predicción | {} |".format(
+            convencion, " | ".join(pts(fila.get(t)) for t in TIPOS_EVENTO)))
+    for condicion, filas in resumen["condiciones"].items():
+        for nombre, fila in filas.items():
+            lineas.append("| {} | {} | {} |".format(condicion, nombre, " | ".join(
+                pts(fila["acierto_pct"].get(t)) for t in TIPOS_EVENTO)))
+    lineas += ["", "Diferencias en puntos, [5–95 %]:", "",
+               "| balón | versión | frente a | " + " | ".join(LEIDOS) + " | lectura |",
+               "|---|---|---|" + "---|" * len(LEIDOS) + "---|"]
+    for condicion, filas in resumen["condiciones"].items():
+        for nombre, fila in filas.items():
+            for referencia, comparacion in fila["frente_a"].items():
+                celdas = []
+                for tipo in LEIDOS:
+                    d = comparacion["por_tipo"].get(tipo)
+                    if d is None:
+                        celdas.append("–")
+                        continue
+                    intervalo = d["intervalo"]
+                    celdas.append(pts(d["diferencia"], True) + (
+                        " [{} a {}]".format(pts(intervalo[0], True), pts(intervalo[1], True)) if intervalo else ""))
+                lineas.append("| {} | {} | {} | {} | {} |".format(
+                    condicion, nombre, referencia, " | ".join(celdas), comparacion["lectura"]))
+    lineas += ["", "Veredicto en las tres condiciones (descriptivo, no entra en §5.8):", ""]
+    for nombre, por_referencia in resumen["veredictos"].items():
+        lineas.append("- {}: {}".format(nombre, "; ".join(
+            "frente a {}, **{}**".format(r, v) for r, v in por_referencia.items())))
+    return "\n".join(lineas)
 
 
 # -- salida --------------------------------------------------------------------------------------------
@@ -470,6 +607,8 @@ def main():
     parser.add_argument("--json", action="store_true", help="imprime la salida completa en JSON")
     parser.add_argument("--versiones", metavar="FICHERO.json",
                         help="las versiones que se puntúan, en lugar de las de VERSIONES (ver el README)")
+    parser.add_argument("--eventos", action="store_true",
+                        help="añade los aciertos en los eventos humanos de la DFL (descriptivo; ver el README)")
     args = parser.parse_args()
 
     versiones, contenido, huella = None, None, None
@@ -478,12 +617,15 @@ def main():
             versiones, contenido, huella = leer_versiones(args.versiones)
         except (OSError, ValueError) as error:  # json.JSONDecodeError es un ValueError
             sys.exit("--versiones: {}".format(error))
-    salida, perfil = medir(args.partidos, args.d, args.bootstrap,
-                           avisar=lambda texto: print(texto, file=sys.stderr), versiones=versiones)
+    salida, perfil, en_eventos = medir(args.partidos, args.d, args.bootstrap,
+                                       avisar=lambda texto: print(texto, file=sys.stderr), versiones=versiones,
+                                       con_eventos=args.eventos)
     if args.json:
         completa = {"d": args.d, "partidos": args.partidos, "perfil": perfil, "resultados": salida}
         if versiones is not None:
             completa["versiones"] = {"fichero": args.versiones, "huella": huella, "contenido": contenido}
+        if en_eventos is not None:
+            completa["eventos"] = en_eventos
         print(json.dumps(completa, ensure_ascii=False, indent=1))
         return
     print("D: {} · partidos: {} · bootstrap: {}".format(args.d, len(args.partidos), args.bootstrap))
@@ -494,6 +636,9 @@ def main():
     print()
     print(tabla_perfil(perfil))
     print(tablas(salida, args.partidos, VERSIONES if versiones is None else versiones))
+    if en_eventos is not None:
+        print()
+        print(tablas_eventos(en_eventos))
 
 
 if __name__ == "__main__":
