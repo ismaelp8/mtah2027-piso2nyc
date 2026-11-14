@@ -646,12 +646,12 @@ Cómo se medirá (dataset, nº de partidos/posesiones, métrica):
   la DFL esté comprobada con la medida del balón del ATD. Con esta medida se implementa y se mide; la
   decisión llega después.
 
-Resultado (añadido después de medir, el mismo día; lo de arriba no ha cambiado):
+Primera medida (14/11 por la tarde, con las condiciones de antes; ya no decide): lo de arriba no ha
+cambiado.
 
-- **Cómo se midió de verdad:** como estaba escrito, con una copia local de
-  `validation/harness/puntuar.py` que deja elegir la evidencia de cada versión (clave `evidencia` en
-  `VERSIONES`) y la versión de referencia (`--referencia`). Ese cambio no se sube; va en la descripción
-  de la PR para que Ismael decida.
+- **Cómo se midió:** como estaba escrito, con una copia local de `validation/harness/puntuar.py` que
+  dejaba elegir la evidencia de cada versión y la versión de referencia. Se hizo antes de que el harness
+  aceptara `--versiones`, sobre el `main` de entonces (84b8d7c); esa copia ya no existe.
 - **Con qué se mide:** 3.061 posesiones con el `flag` y 1.736 con `control`, y el balón visible en el
   98,7 % de los frames de juego (limpio) o en el 58,3 % (con huecos). [medido]
 - **La comparación principal, frente a N1 con coste 25:** diferencia de `spellF1` con los 7 partidos
@@ -668,7 +668,8 @@ Resultado (añadido después de medir, el mismo día; lo de arriba no ha cambiad
 
 - **Ninguno de los dos gana a N1** con la regla de §5.8. [medido]
   - Con el `flag` pierden en las tres condiciones y en los 7 partidos.
-  - Con `control`, que los favorece por construcción, empatan con el balón limpio y pierden con huecos.
+  - Con `control`, que los favorece por construcción, empatan con el balón limpio; con huecos, N2 empata
+    (−0,023, por debajo de 0,03) y Ret pierde.
 - **Por qué, en parte:** opinan en menos frames y, con el mismo coste, cambian de equipo menos veces.
   Con coste 25 predicen 998–1.162 posesiones (N2) y 1.025–1.232 (Ret), frente a 1.382–1.871 de N1.
   [medido]
@@ -684,26 +685,45 @@ Resultado (añadido después de medir, el mismo día; lo de arriba no ha cambiad
   Ret 0,430 / 0,344 / 0,330. [medido]
 - **La limpieza, comprobada:** N1 con y sin la limpieza nueva se mueve entre −0,002 y +0,008 (redondeado
   a tres decimales), en las 18 combinaciones de coste, condición y convención. Está lejos del −0,03 que
-  obligaba a avisar. [medido] En la DFL solo actúa el relleno de huecos cortos, como se esperaba.
-
-Decisión y por qué:
-- **Se queda N1** (`METHOD = "N1"`): ninguno de los dos candidatos gana con la regla escrita antes, y
-  pierden con el `flag`, que es el mismo tipo de etiqueta que la GT del reto. La evidencia del pipeline no
-  cambia.
-- **N2 y Ret se quedan en el código, sin usar:**
-  - por si la medida del balón del ATD cambia la degradación: el orden no es definitivo hasta entonces
-    (plan, §3 y §4);
-  - como posibles variables de la apuesta B.
-- **Entra la limpieza v1, fija:** la comprobación no da motivo para avisar. En la DFL apenas se nota,
-  porque la degradación no mete saltos ni detecciones falsas; los pasos 1 y 2 están para el ATD, donde no
-  se pueden medir fuera.
+  obligaba a avisar. [medido] En la DFL solo actuaría el relleno de huecos cortos, porque la degradación
+  no mete saltos ni detecciones falsas. [inferencia: no se contaron los puntos que toca cada paso]
 - **Para el decodificador (David)** [inferencia]: la evidencia y el coste de cambio no se eligen por
   separado.
   - Con `control`, la mejor combinación medida es una evidencia que opina poco con un coste bajo: N2 con
     coste 12 saca 0,680 con el balón limpio.
   - Con el `flag`, nada gana a N1 con coste 25.
-  - Si la convención de la GT resulta ser «exigir control», vale la pena medir N2 con costes bajos junto
-    al decodificador.
+
+Cambios antes de volver a medir (14/11 por la noche, escritos antes de la segunda medida):
+
+- **Por qué se vuelve a medir:** desde el 14/11 por la noche, el harness tapa el balón «como el ATD».
+  Votan «como el ATD» y «como el ATD, sin bloques», y para sustituir a `main` hay que ganar al control
+  **y** a `main` (entrada de Ismael de arriba; plan, §4). Las condiciones de la primera medida ya no
+  votan. Los candidatos y sus valores no cambian.
+- **Cómo se mide ahora:** sin tocar `puntuar.py`, con
+  `validation/harness/versiones/evidencia_equipo_2026-11-14.json`. El fichero trae cuatro versiones, y
+  cada una cambia una sola pieza respecto a `main`:
+  - «N1 (main)», `{}`;
+  - «limpieza v1», con `ball.clean_v1`;
+  - N2;
+  - Ret.
+- **Lo que cambia respecto a lo escrito antes de medir:**
+  - **N2 y Ret se miden sin la limpieza nueva,** frente a `main`, y no con ella frente a N1. Así cada
+    versión cambia una sola pieza. En la primera medida, la limpieza movió a N1 menos de 0,01.
+  - **La limpieza ya no entra «fija»:** pasa a ser una candidata más (`ball.clean_v1`). `ball.clean`
+    sigue siendo lo de `main` hasta que gane. El plan (§3 y §8) la daba por fija, pero la regla nueva dice
+    que, si empata con `main`, se queda lo de `main`. Si se aplica esa regla o la del plan, lo decide
+    Ismael.
+  - **La sensibilidad con costes 12 y 50 no se repite:** no decidía y ya se midió.
+- **Mensaje de Ismael (14/11 por la noche):**
+  - hay que priorizar `ball.py`, porque quitar los ~200 saltos imposibles del ATD ayuda a cualquier
+    evidencia;
+  - N2 y Ret tendrían que ganar también a la apuesta B (B2), que ya gana a `main`.
+  - Lo que sabemos del ATD (perfil del 14/11, agregados): 216 pares de frames seguidos a más de 40 m/s,
+    149 rachas con balón, menos de 5 rachas de 1 o 2 frames y 15 huecos de hasta 0,5 s que suman 51
+    frames. [medido, por Ismael] **En el partido, el paso 1 es el único que puede hacer algo.** En la DFL
+    no hay saltos que quitar, así que el harness no lo puede ver. [inferencia]
+
+Decisión y por qué: pendiente de la segunda medida.
 
 Descartado (antes de medir):
 - **N4, toques por cambios de velocidad del balón:** el experimento 2 apunta a que el balón del ATD viene

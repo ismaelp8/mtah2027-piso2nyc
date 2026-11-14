@@ -1,6 +1,9 @@
 """Limpieza del balón. Recibe un `Tracking` y devuelve otro con el balón limpio.
 
-Versión 1 (docs/investigacion_metodos.md §2.1, A1 + A2): una sola versión, fija y sin variantes
+`clean` es la que usa el pipeline: hoy, la versión 0, que devuelve el balón tal cual. Pasa a ser `clean_v1`
+cuando esta gane en el harness de la DFL al control y a la versión de main (docs/PLAN_ENTREGA.md §4).
+
+`clean_v1` (docs/investigacion_metodos.md §2.1, A1 + A2) es una sola versión, sin variantes
 (docs/PLAN_ENTREGA.md §3 y §8; docs/decisiones.md, 14/11). Tres pasos, en este orden:
 
 1. Salto imposible: se quita un punto si, para llegar a él desde el punto visto anterior y para ir de él al
@@ -16,15 +19,18 @@ Versión 1 (docs/investigacion_metodos.md §2.1, A1 + A2): una sola versión, fi
 
 Solo cambia el balón; los jugadores no se tocan. Lo de fuera de los límites del campo no se toca aquí: es
 señal para el `D` (possession/dead_ball.py).
+
+Límite conocido: una detección falsa de 2 frames pegada a balón bueno sobrevive a los pasos 1 y 2, porque
+el paso 1 exige el salto a los dos lados de cada punto.
 """
 
 import numpy as np
 
 from possession.candidates import NOBODY, proximity
 
-# Sin ajustar; ninguno sale del partido ni de la ventana pública (docs/decisiones.md, 14/11). Son los cortes
-# que mide el perfil del ATD (validation/perfil_atd/BITACORA.md §4, filas 1 y 6), para que su medida diga
-# cuánto toca cada regla en el partido.
+# Sin ajustar; ninguno sale del partido ni de la ventana pública (docs/decisiones.md, 14/11). Los tres
+# primeros son los cortes que mide el perfil del ATD (validation/perfil_atd/BITACORA.md §4, filas 1 y 6),
+# para que su medida diga cuánto toca cada regla en el partido; NEAR_RIVAL sale del experimento 2.
 MAX_SPEED = 40.0  # m/s; los golpeos más fuertes publicados rondan 18–35 m/s
 ISOLATED_MAX = 2  # frames
 MAX_GAP = 12  # frames: huecos de menos de 0,5 s
@@ -84,6 +90,11 @@ def fill_short_gaps(trk, bx, by):
 
 
 def clean(trk):
+    """El tracking que reciben las piezas. Versión 0: el balón tal cual."""
+    return trk
+
+
+def clean_v1(trk):
     """El tracking con el balón limpio: sin saltos imposibles ni detecciones aisladas, y con los huecos
     cortos interpolados. `trk` no cambia."""
     bx = np.array(trk.bx, dtype=np.float64)
@@ -93,4 +104,7 @@ def clean(trk):
     bad = drop_isolated(~np.isnan(bx) & ~np.isnan(by))
     bx[bad], by[bad] = np.nan, np.nan
     bx, by = fill_short_gaps(trk, bx, by)
+    # De solo lectura, como el tracking que reparte el harness: una pieza posterior no puede cambiarlo.
+    bx.setflags(write=False)
+    by.setflags(write=False)
     return trk._replace(bx=bx, by=by)

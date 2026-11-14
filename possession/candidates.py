@@ -11,7 +11,8 @@ un equipo en los frames en que opinan y 0 («no opino») en el resto:
   más cercano es siempre del mismo equipo y está a RADIUS o menos. Va por equipo y no por slot, porque un
   slot no es un jugador. Es la traducción de «un toque sin control no cambia la posesión».
 
-`METHOD` es la que usa el pipeline. Solo cambia cuando un candidato gane a N1 en el harness de la DFL.
+`METHOD` es la que usa el pipeline. Solo cambia cuando un candidato gane en el harness de la DFL al control y
+a la versión de main (docs/PLAN_ENTREGA.md §4).
 
 Interfaz: `evidence(trk)` devuelve `(score, allowed)`; ver possession/tracking.py.
 """
@@ -44,6 +45,8 @@ def proximity(trk, frames=None):
       la misma distancia gana el de índice más bajo, como en el baseline;
     - `dist`: forma (k, 2), la distancia en metros del balón al slot más cercano de cada equipo (columna 0
       `H`, columna 1 `A`), o infinito si no hay balón o ese equipo no tiene slots en el frame.
+
+    La usa también possession/ball.py (la protección del relleno de huecos): si cambia, cambia la limpieza.
     """
     frames = np.arange(len(trk.bx)) if frames is None else np.asarray(frames, dtype=np.int64)
     team = np.full(len(frames), NOBODY, dtype=np.int8)
