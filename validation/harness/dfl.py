@@ -158,7 +158,7 @@ def a_tracking(partes, campo, rng):
 
 
 def cargar(partido):
-    """Un partido de la caché con sus etiquetas: {"partido", "indice", "partes", "campo", "gt"}.
+    """Un partido de la caché con sus etiquetas: {"partido", "indice", "partes", "campo", "meta", "gt"}.
 
     `gt` es {convención: códigos por frame}, con `X` en el hueco entre las dos partes, alineado con el
     `Tracking` que devuelve `tracking_de`.
@@ -169,7 +169,7 @@ def cargar(partido):
     hueco = np.full(HUECO, X, dtype=np.int8)
     gt = {c: np.concatenate([por_parte[1][c], hueco, por_parte[2][c]]) for c in CONVENCIONES}
     return {"partido": partido, "indice": PARTIDOS.index(partido), "partes": partes,
-            "campo": tuple(datos["meta"]["campo"]), "gt": gt}
+            "campo": tuple(datos["meta"]["campo"]), "meta": datos["meta"], "gt": gt}
 
 
 def tracking_de(cargado, condicion):
