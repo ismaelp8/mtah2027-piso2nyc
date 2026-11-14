@@ -329,8 +329,8 @@ antes de ver el ATD: `validation/perfil_atd/leer_atd.py`, que lee la salida del 
   5 casos), con 10 minutos con balón o más, cuenta como el suelo de 0,5 por minuto.
 - **R5,** con cada `DISPUTAS` que queda y el suavizado de R4', en la severidad media. El que no cuadra,
   sale. En la baja y en la alta se apunta y no decide, como decía la sección 5.
-- **R7'.** El harness mide con todos los `DISPUTAS` que quedan tras R5, y un candidato tiene que ganar con
-  todos, como con las dos convenciones de etiquetas.
+- **R7'.** El harness mide con todos los `DISPUTAS` que quedan tras R5. **Cambiado por decisión de Ismael
+  el 14/11** (sección 8, punto 3): decide el que más se parece al ATD, y los demás solo vetan.
 
   | resultado | qué decide |
   |---|---|
@@ -443,8 +443,8 @@ esto:
    - Sin barajar, cada slot es una persona: 2.765 s de mediana [medido, sección 7.2], y 0,55 tramos y 0,87
      saltos por minuto [medido, revisión].
    - R6' compara el ATD con la DFL sin barajar.
-9. **En 3b, la zona «a 5 m o menos de una línea» incluye el balón fuera del campo,** y la etiqueta lo dice.
-   Es descriptivo.
+9. **En 3b, la zona «a 5 m o menos de una línea» incluía el balón fuera del campo,** y la etiqueta lo
+   decía. Ya no aplica: la sección 7.7 quita la densidad y la zona del 3b.
 10. **Las rachas de balón en la misma posición** van en intervalos [inicio, fin): una de 30 s justos cae en
     «30 s o más».
 11. **Límite que se apunta y no se corrige:** el `V` del ATD incluye balón muerto que se ve y que la DFL
@@ -503,8 +503,11 @@ siquiera el verdadero (0). [medido] Hay dos causas:
 
 - La tolerancia de cada celda es la mayor de ±10 puntos y 2,5 errores típicos del reparto del ATD,
   √(p·(1 − p)/n). Aquí p es la proporción de la DFL y n, los huecos impresos del ATD en esa severidad.
+- **El 2,5 se fijó después de ver el ensayo de J03WR9 con 0,02,** antes de ver nada del ATD: allí la peor
+  celda se separaba 15,08 puntos y la tolerancia nueva es de 15,1. Por eso se comprueba con otros dos
+  partidos que no se miraron al fijarlo (J03WPY y J03WOH, abajo).
 - Con 157 huecos o más es ±10, como antes. Los cuatro ensayos de la sección 7.5 tienen 204 o más en las
-  severidades que deciden, así que no cambian. [medido]
+  severidades que deciden. [medido] Por eso no cambian. [inferencia: no se han vuelto a ejecutar]
 - Si la DFL no tiene ningún hueco en una severidad, cuadra solo si el ATD tampoco tiene 5 o más.
 
 **Resultado con R2'** [medido]:
@@ -514,9 +517,44 @@ siquiera el verdadero (0). [medido] Hay dos causas:
 | J03WR9 | 0 · 0 · 25 | 0 | 25 |
 | J03WR9 | 0,02 · 0 · 25 | 0 | 25 |
 | J03WPY | 0,02 · 0 · 25 | 0 | 25 |
+| J03WOH | 0,02 · 0 · 25 | 0 | 25 |
 
-- **Queda solo el `DISPUTAS` verdadero** en los tres.
+- **Queda solo el `DISPUTAS` verdadero** en los cuatro.
+- **Con J03WOH, que no se miró al fijar el 2,5, no va justo:** `OBJETIVO` sale 0,021 y 0,019 (plantado,
+  0,02) y la mayor diferencia del reparto es de 6 puntos, con 13 de tolerancia. [medido]
+- **El ensayo de J03WR9 con 0,02, repetido con el código del commit `74e2c6d`, da una salida idéntica** a la
+  de antes: la regla del commit es la que se ensayó. [medido]
 - **Con pocos huecos, R1' apenas separa:** una `s` de pocos puntos queda a ±5 del suelo de casi todo. Lo que
   separa es R2: la parte dirigida deja otro reparto de duraciones que los bloques al azar. [inferencia]
 - **Límite:** sigue sin ensayarse un ATD que pierda el balón en huecos largos con el juego vivo, que la
   degradación de la DFL no sabe producir (sección 7.5).
+
+## 8. Lo que decide Ismael antes de ejecutar nada en el partido
+
+Cada punto pendiente tiene un valor por defecto, y un «sí» sin más quiere decir ese valor. La respuesta se
+apunta aquí, con fecha, y se sube antes de ejecutar `validation/partido/perfil_atd.py`.
+
+1. **Los cambios de las secciones 7.1 a 7.7.** Pendiente. Por defecto: sí.
+2. **Las celdas «< 5» que se pueden deducir de los totales** (sección 7.6, punto 2). Son recuentos del
+   partido entero, sin frame ni instante. Pendiente. Por defecto: se aceptan, con los agregados 2 y 3b
+   más gruesos (sección 7.7).
+3. **R7', con qué `DISPUTAS` se decide: decidido por Ismael el 14/11, antes de ver ningún número del ATD.**
+   - Se lo planteó la sesión planificadora, en otra conversación, como dos opciones:
+     - A: ganar con todos los `DISPUTAS` que queden;
+     - B: ganar con el que más se parece al ATD y no perder con los demás.
+   - Su respuesta, que transmite esa sesión: «vale la B, pásaselo tú a la otra sesión».
+   - El texto que aceptó: «Para R7': decide el valor de DISPUTAS que más se parezca al ATD. Los demás que
+     queden se puntúan y se enseñan al lado, y solo le quitan la victoria a un candidato si con alguno
+     queda 0,03 o más por debajo del control. Apúntalo en la bitácora antes de que yo ejecute el script.»
+   - **Cuál se parece más al ATD**, fijado antes de medir: el `DISPUTAS` que queda tras R5 cuyo % de
+     disputas en la DFL (los 7 partidos juntos, con el `OBJETIVO` de la severidad media) está más cerca del
+     del ATD. Es el mismo criterio con que R4' elige con qué `DISPUTAS` se mide el suavizado. Si empatan, el
+     menor.
+   - `leer_atd.py` lo aplica. En el ensayo de J03WPY (plantado 0,2 · 0 · 5) quedan el 0 y el 0,25: decide el
+     0, que es el verdadero, y el 0,25 solo veta. [medido]
+   - Lo de exigir las dos convenciones de etiquetas es del plan (`docs/PLAN_ENTREGA.md` §4) y no cambia.
+4. **Qué condiciones del balón votan en la regla de §5.8 cuando el harness use la degradación nueva.**
+   Pendiente. Por defecto, la propuesta de la sección 5:
+   - votan las tres severidades, con el `DISPUTAS` del punto 3, el `OBJETIVO` de R1' de cada una y el
+     suavizado de R4';
+   - «limpio» y la condición de hoy (41 % de los frames vivos) se siguen puntuando, sin voto.

@@ -246,9 +246,13 @@ def leer(salida_atd, dfl, ensayo=False):
         r5[d] = {"por_severidad": por_sev, "cuadra": por_sev["media"]["cuadra"]}
     informe["R5"] = r5
 
-    # R7': queda un DISPUTAS con R1', R2 y R3', y con él cuadra R5.
+    # R7' (decisión de Ismael del 14/11, bitácora §8.3): queda un DISPUTAS con R1', R2 y R3', y con él cuadra
+    # R5. Decide el que queda más cerca del ATD en % de disputas (si empatan, el menor: `min` se queda con el
+    # primero y `finales` va de menor a mayor); los demás se puntúan al lado y solo vetan.
     finales = [d for d in quedan if r5[d]["cuadra"]]
-    informe["R7"] = {"quedan": quedan, "finales": finales, "R4": informe["R4"]["cuadra"],
+    decide = min(finales, key=cerca_del_atd) if finales else None
+    informe["R7"] = {"quedan": quedan, "finales": finales, "decide": decide,
+                     "vetan": [d for d in finales if d != decide], "R4": informe["R4"]["cuadra"],
                      "proximidad": bool(finales), "velocidad": bool(finales) and informe["R4"]["cuadra"],
                      "falta_R6": bool(quedan) and not finales}
     return informe
@@ -306,8 +310,13 @@ def imprimir(informe):
                     for k, a, b, ok in x["comprobaciones"]]
     r7 = informe["R7"]
     finales = ", ".join("{:g}".format(d) for d in r7["finales"]) or "ninguno"
+    vetan = ", ".join("{:g}".format(d) for d in r7["vetan"]) or "ninguno"
+    decide = "{:g}".format(r7["decide"]) if r7["decide"] is not None else "ninguno"
     out += ["", "### R7", "",
             "- `DISPUTAS` con los que mide el harness (R1', R2, R3' y R5): **{}**".format(finales),
+            "- decide (el más cercano al ATD en % de disputas; si empatan, el menor): **{}**".format(decide),
+            "- se puntúan al lado y solo vetan (si el candidato queda 0,03 o más por debajo del control): "
+            "**{}**".format(vetan),
             "- el orden entre evidencias de equipo por proximidad: **{}**".format(
                 "se puede decidir" if r7["proximidad"] else "todavía no"),
             "- lo que use la velocidad del balón: **{}**".format("se puede decidir" if r7["velocidad"] else "todavía no")]
