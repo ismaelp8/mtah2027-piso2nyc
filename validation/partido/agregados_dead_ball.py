@@ -4,7 +4,8 @@ Lee datos del partido: lo ejecuta una persona en local, nunca Claude (CLAUDE.md,
 se puede pegar en el chat: recuentos, porcentajes y cuantiles, sin números de frame ni jugadas sueltas.
 - **Los goles van siempre juntos, sin desglose por gol:** con 4, cualquier desglose identifica cada
   parada. Las pruebas de cada tramo se hacen dentro del script, y solo se imprime cuántos pasan y cuántos
-  fallan.
+  fallan. Las medianas de duración, solo con 3 tramos o más. Si anclan 1 o 2 goles, la suma de frames y
+  la fila «de gol a saque» describen esas paradas: siguen siendo agregados, sin ningún frame.
 - **Los reinicios se desglosan por tipo solo con 5 casos o más;** los demás van juntos en «otros».
 
     python validation/partido/agregados_dead_ball.py
@@ -23,9 +24,10 @@ Responde, con la regla apuntada en docs/decisiones.md (14/11, «fronteras y ancl
 4. La capa del hueco sin balón antes de cada reinicio (idea de Ismael): cuántas ventanas lo tienen,
    frente a un placebo, y si ahí dentro el modelo de jugadores de Ana ve el juego parado.
 
-`measure` hace todas las cuentas de las secciones 1, 2 y 4 sin abrir ningún fichero, así que se puede
-probar con un partido inventado: es la sección 9 de validation/scripts/comprobar_balon_muerto.py. Solo
-`main` lee el partido.
+`measure` hace todas las cuentas de las secciones 1, 2 y 4 sin abrir ningún fichero, y `goal_rule` y
+`gap_rule` aplican la regla. Las tres las importa validation/scripts/comprobar_balon_muerto.py (sección 9),
+que ejecuta Claude con un partido inventado y con la apertura de ficheros prohibida. Por eso **nada fuera
+de `main` puede abrir un fichero:** solo `main` lee el partido.
 """
 
 import os
@@ -55,7 +57,8 @@ FAST_LIMIT = 0.5
 MIN_SEEN_FRAMES = FPS  # 1 s
 # Los bordes se miran durante EDGE_S, empezando EDGE_SKIP_S dentro del tramo. La velocidad de un frame usa
 # las posiciones de ±0,96 s a su alrededor (dos medias de ±0,5 s separadas 1 s), así que, desde 1 s dentro,
-# ninguna velocidad mira frames de fuera del tramo.
+# ninguna velocidad mira frames de fuera del tramo. Salvo el suavizado propio del balón del ATD, de unos
+# 25 frames (2026-11-14_perfil_atd.md): mete en el borde alrededor de 0,5 s de lo de fuera.
 EDGE_SKIP_S = 1
 EDGE_S = 5
 # Placebo: los tramos (y los inicios de ventana de la sección 4) desplazados estos segundos. Los tramos de
@@ -149,6 +152,29 @@ def by_type(windows):
     return out
 
 
+def goal_rule(verdicts, control, placebo):
+    """La regla de gol a saque (docs/decisiones.md, 14/11) a partir de los veredictos de los tramos
+    anclados, del control y de los tramos del placebo. Devuelve (control_ok, power, spans_ok, entra)."""
+    n_pass = sum(v == PASS for v in verdicts)
+    n_fail = sum(v == FAIL for v in verdicts)
+    deciding = [v for v in placebo if v != UNDECIDED]
+    placebo_fail = sum(v == FAIL for v in deciding)
+    control_ok = bool(control) and all(v == PASS for v in control)
+    power = bool(verdicts) and len(deciding) >= 2 * len(verdicts) and placebo_fail >= 0.5 * len(deciding)
+    spans_ok = bool(verdicts) and n_fail == 0 and n_pass >= 0.5 * len(verdicts)
+    return control_ok, power, spans_ok, control_ok and power and spans_ok
+
+
+def gap_rule(coverage, coverage_placebo, g_match, g_ctrl, g_gap):
+    """La regla del hueco antes de cada reinicio (docs/decisiones.md, 14/11). Devuelve (covers,
+    beats_placebo, instrument, looks_dead, entra). Un NaN hace falsa la comparación en la que entra."""
+    covers = coverage >= 0.5
+    beats_placebo = coverage >= 2 * coverage_placebo
+    instrument = g_ctrl > g_match
+    looks_dead = instrument and g_gap >= (g_match + g_ctrl) / 2
+    return covers, beats_placebo, instrument, looks_dead, covers and beats_placebo and looks_dead
+
+
 def measure(trk, events, game=games.GAME):
     """Las cuentas de las secciones 1, 2 y 4, y la regla aplicada. No abre ningún fichero.
 
@@ -174,9 +200,7 @@ def measure(trk, events, game=games.GAME):
     # 1. De cada gol a su saque
     goals = [e for e in events if e["code"] == dead_ball.GOALS_CODE]
     spans = dead_ball.goal_to_kickoff(events, fps)
-    anchored = np.zeros(n_frames, dtype=bool)
-    for start, stop in spans:
-        anchored[max(start, 0):max(min(stop, n_frames), 0)] = True
+    anchored = dead_ball.spans_mask(spans, n_frames)  # lo mismo que dead_ball.goal_to_kickoff_mask
     hard = dead_ball.pre_kickoff(game) | anchored  # las anclas duras si entrara la capa
     m.update(goals=len(goals), spans=len(spans),
              kickoffs=sum(e["code"] == dead_ball.SET_PIECES_CODE and e["type"] == dead_ball.AFTER_GOAL_KICKOFF
@@ -195,16 +219,15 @@ def measure(trk, events, game=games.GAME):
     placebo = [span_verdict(lo, hi, visible, fast, limit)[0]
                for lo, hi in shifted_spans(spans, trk.blocks, hard, fps)]
     deciding = [v for v in placebo if v != UNDECIDED]
-    n_pass = sum(v == PASS for v, _ in verdicts)
-    n_fail = sum(v == FAIL for v, _ in verdicts)
-    placebo_fail = sum(v == FAIL for v in deciding)
-    control_ok = bool(control) and all(v == PASS for v in control)
-    power = bool(spans) and len(deciding) >= 2 * len(spans) and placebo_fail >= 0.5 * len(deciding)
-    spans_ok = bool(spans) and n_fail == 0 and n_pass >= 0.5 * len(spans)
-    m.update(f_match=f_match, limit=limit, n_pass=n_pass, n_fail=n_fail,
+    control_ok, power, spans_ok, gol_entra = goal_rule([v for v, _ in verdicts], control, placebo)
+    m.update(f_match=f_match, limit=limit, n_pass=sum(v == PASS for v, _ in verdicts),
+             n_fail=sum(v == FAIL for v, _ in verdicts),
+             # (a) y (b) solo se comprueban donde el ATD ve el balón en el borde (descriptivo)
+             pass_without_edges=sum(v == PASS and tests[1] == tests[2] == UNDECIDED for v, tests in verdicts),
              fails_by_test=tuple(sum(tests[i] == FAIL for _, tests in verdicts) for i in range(3)),
-             control=control, placebo=len(placebo), placebo_deciding=len(deciding), placebo_fail=placebo_fail,
-             control_ok=control_ok, power=power, spans_ok=spans_ok, gol_entra=control_ok and power and spans_ok,
+             control=control, placebo=len(placebo), placebo_deciding=len(deciding),
+             placebo_fail=sum(v == FAIL for v in deciding),
+             control_ok=control_ok, power=power, spans_ok=spans_ok, gol_entra=gol_entra,
              regions=[region("partido entero (evaluados)", graded),
                       region("tramo antes del saque de la 2ª parte (D, FAQ)", pre),
                       region("de gol a saque (anclado)", anchored)])
@@ -231,12 +254,13 @@ def measure(trk, events, game=games.GAME):
     gap_ids = {id(r[0]) for r in with_gap}
     coverage = len(with_gap) / len(results) if results else 0.0
     coverage_placebo = placebo_gaps / len(shifted) if shifted else float("nan")
-    g_match, g_ctrl = dead_share(odds, graded), dead_share(odds, pre)
+    # Control del modelo de Ana: el tramo antes del saque y, si gol a saque entra (validado con el balón en
+    # la sección 2), también sus tramos.
+    ana_control = pre | (anchored & graded if gol_entra else np.zeros(n_frames, dtype=bool))
+    g_match, g_ctrl = dead_share(odds, graded), dead_share(odds, ana_control)
     g_gap = dead_share(odds, gap_region & graded)
-    covers = coverage >= 0.5
-    beats_placebo = coverage >= 2 * coverage_placebo  # False si el placebo es NaN
-    instrument = g_ctrl > g_match  # False si alguno es NaN
-    looks_dead = instrument and g_gap >= (g_match + g_ctrl) / 2  # False si g_gap es NaN
+    covers, beats_placebo, instrument, looks_dead, hueco_entra = gap_rule(
+        coverage, coverage_placebo, g_match, g_ctrl, g_gap)
     m.update(windows=len(results), states={s: sum(r[1] == s for r in results) for s in dead_ball.GAP_STATES},
              by_type=[(kind, len(group), sum(id(w) in gap_ids for w in group))
                       for kind, group in sorted(by_type([r[0] for r in results]).items(),
@@ -250,7 +274,7 @@ def measure(trk, events, game=games.GAME):
                         dead_share(odds, group_regions[label] & graded)) for label, kinds in TYPE_GROUPS],
              gap_players=quantiles(players[gap_region & graded]),
              covers=covers, beats_placebo=beats_placebo, instrument=instrument, looks_dead=looks_dead,
-             hueco_entra=covers and beats_placebo and looks_dead)
+             hueco_entra=hueco_entra)
     return m
 
 
@@ -270,9 +294,10 @@ def main():
         m["goals"], m["kickoffs"], m["spans"], m["goals"]))
     print("   frames anclados (evaluados), sumados: {} ({} de los evaluados)".format(
         m["anchored_frames"], pct(m["anchored_frames"], n_graded)))
-    if m["spans"]:
+    # Las medianas, solo con 3 o más: con menos describirían una o dos paradas concretas.
+    if m["spans"] >= 3:
         print("   duración de los tramos anclados, mediana: {:.0f} s".format(m["span_median_s"]))
-    if m["goals"]:
+    if m["goals"] >= 3:
         print("   duración de las ventanas GOALS, mediana: {:.0f} s".format(m["goal_median_s"]))
     print("   anclas duras si entrara la capa (también el tramo antes del saque): {} frames ({} de los"
           " evaluados)   fuera de los evaluados {}".format(m["hard_frames"], pct(m["hard_frames"], n_graded),
@@ -286,6 +311,8 @@ def main():
     print("   tramos anclados {}   pasan {}   fallan {}   no deciden {}".format(
         m["spans"], m["n_pass"], m["n_fail"], m["spans"] - m["n_pass"] - m["n_fail"]))
     print("   fallos por prueba: tramo entero {}   borde inicial {}   borde final {}".format(*m["fails_by_test"]))
+    print("   tramos que pasan sin que decida ningún borde (ahí (a) y (b) quedan sin comprobar): {}".format(
+        m["pass_without_edges"]))
     print("   control (tramo antes del saque de la 2ª parte): {}".format(", ".join(m["control"]) or "no hay"))
     print("   placebo (desplazados {} s): {} tramos, deciden {}, fallan {} ({} de los que deciden)".format(
         "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), m["placebo"], m["placebo_deciding"],
@@ -319,6 +346,8 @@ def main():
     print_bins("duración de los huecos", m["gap_lengths_s"], GAP_LENGTH_EDGES_S, indent="   ")
     print("   frames de hueco (evaluados), sumados: {} ({} de los evaluados)".format(
         m["gap_frames"], pct(m["gap_frames"], n_graded)))
+    print("   control del modelo de Ana: el tramo antes del saque{}".format(
+        " y los tramos de gol a saque" if m["gol_entra"] else ""))
     print("   modelo de Ana, D en: partido {}   control {}   punto medio {}   huecos {}   primeros {} s de los"
           " huecos {}".format(share(m["g_match"]), share(m["g_ctrl"]), share((m["g_match"] + m["g_ctrl"]) / 2),
                               share(m["g_gap"]), EDGE_S, share(m["g_first"])))

@@ -70,17 +70,24 @@ def dead_mask(paths=None, game=games.GAME):
     return pre_kickoff(game)
 
 
+def spans_mask(spans, n):
+    """Máscara de `n` posiciones con True en los tramos (inicio, fin), con el fin sin incluir, recortados a
+    [0, n)."""
+    mask = np.zeros(n, dtype=bool)
+    for start, stop in spans:
+        mask[max(start, 0):max(min(stop, n), 0)] = True
+    return mask
+
+
 def goal_to_kickoff_mask(paths, game=games.GAME):
     """Máscara de los tramos de cada gol a su saque, que salen del Smart Tagging de `paths`.
 
-    Medida, pero todavía fuera de dead_mask y de `evidence`: la usa validation/partido/agregados_dead_ball.py.
+    Medida, pero todavía fuera de dead_mask y de `evidence`. validation/partido/agregados_dead_ball.py mide
+    los mismos tramos con spans_mask(goal_to_kickoff(...)), a partir de los eventos ya leídos.
     """
-    n = games.GAMES[game]["n_video_frames"]
     fps = games.GAMES[game]["fps"]
-    mask = np.zeros(n, dtype=bool)
-    for start, stop in goal_to_kickoff(smart_tagging_events(paths["smart_tagging"], fps), fps):
-        mask[max(start, 0):max(min(stop, n), 0)] = True
-    return mask
+    events = smart_tagging_events(paths["smart_tagging"], fps)
+    return spans_mask(goal_to_kickoff(events, fps), games.GAMES[game]["n_video_frames"])
 
 
 def _norm(text):

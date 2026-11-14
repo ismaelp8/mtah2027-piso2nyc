@@ -24,7 +24,9 @@ import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import games  # noqa: E402
+import prueba_pipeline as pp  # noqa: E402  (no_files: la guarda de la regla nº 1)
 from possession import dead_ball, tracking  # noqa: E402
 from starter.load_smart_tagging import KICKOFF_VIDEO_FRAMES  # noqa: E402
 
@@ -223,21 +225,39 @@ def synthetic_match(game, variant=""):
       lo siguen con un desfase fijo.
     - Balón muerto: balón y jugadores quietos en el tramo antes del saque y de cada gol a su saque.
     - Huecos: sin balón los segundos fijados antes de algunas ventanas; ahí los jugadores se paran.
-    Variantes: "gol_falso" (entre el primer gol y su saque hay juego), "huecos_en_juego" (en los huecos los
-    jugadores siguen corriendo), "sin_goles", "control_en_juego" (en el tramo antes del saque, que es el
-    control, hay juego), "huecos_por_todo" (el balón falta 45 s de cada minuto en todo el partido, no
-    solo antes de los reinicios), y "gol_temprano" y "saque_tarde" (5 s de juego deprisa al principio o
-    al final de cada tramo de gol a saque: fallan las suposiciones (a) o (b)).
+    - Fuera de los tramos evaluados, el balón quieto en el centro.
+
+    Variantes, cada una para que falle una parte de la regla:
+    - "gol_falso": entre el primer gol y su saque hay juego;
+    - "gol_temprano" y "saque_tarde": 5 s de juego deprisa al principio o al final de cada tramo de gol a
+      saque (fallan las suposiciones (a) o (b));
+    - "sin_balon_en_goles" y "sin_balon_en_control": no se ve el balón en esos tramos;
+    - "juego_lento": el balón nunca va deprisa, así que el placebo no puede fallar;
+    - "sin_goles";
+    - "control_en_juego": en el tramo antes del saque, que es el control, hay juego;
+    - "jugadores_en_control": en el control el balón está quieto, pero los jugadores corren;
+    - "huecos_en_juego": en los huecos los jugadores siguen corriendo;
+    - "pocos_huecos": solo hay hueco antes de 2 de las 8 ventanas;
+    - "huecos_por_todo": el balón falta 45 s de cada minuto en todo el partido, no solo antes de los
+      reinicios.
     """
     info = games.GAMES[game]
     n, fps = info["n_video_frames"], info["fps"]
     length, width = info["pitch"]
     t = np.arange(n) / fps
-    step = np.where(t % 20 < 10, 10.0, 1.0) * np.where((t // 4) % 2 == 0, 1.0, -1.0) / fps
-    x = length / 2 + np.cumsum(step) % 60 - 30
+    if variant == "juego_lento":
+        x = length / 2 + 3 * np.sin(2 * np.pi * t / 60)  # 0,3 m/s como mucho
+    else:
+        step = np.where(t % 20 < 10, 10.0, 1.0) * np.where((t // 4) % 2 == 0, 1.0, -1.0) / fps
+        x = length / 2 + np.cumsum(step) % 60 - 30
+    graded = np.zeros(n, dtype=bool)
+    for first, stop in tracking.evaluated_blocks(game):
+        graded[first:stop] = True
+    x[~graded] = length / 2  # fuera de lo evaluado, el balón quieto: no debe contar para nada
     y = np.full(n, width / 2)
     rows = [  # (código, tipo, inicio_s, fin_s, segundos sin balón antes del inicio)
-        ("goals", "", 1000, 1010, 0), ("set pieces", "kick off (after goal)", 1100, 1105, 0),
+        ("set pieces", "throw-in", 460, 495, 0), ("goals", "", 1000, 1010, 0),
+        ("set pieces", "kick off (after goal)", 1100, 1105, 0),
         ("set pieces", "corner kick", 1500, 1535, 20), ("set pieces", "goal kick", 1600, 1635, 10),
         ("set pieces", "throw-in", 1700, 1735, 0), ("set pieces", "free kick", 1800, 1835, 70),
         ("set pieces", "throw-in", 2000, 2035, 8), ("set pieces", "corner kick", 2500, 2535, 15),
@@ -245,14 +265,18 @@ def synthetic_match(game, variant=""):
         ("set pieces", "corner kick", 6500, 6535, 12)]
     if variant == "sin_goles":
         rows = [r for r in rows if r[0] != "goals" and r[1] != "kick off (after goal)"]
+    if variant == "pocos_huecos":
+        rows = [r if r[2] in (1500, 1600) else r[:4] + (0,) for r in rows]
     events = [{"code": code, "type": kind, "start": int(round(s * fps)), "end": int(round(e * fps))}
               for code, kind, s, e, _ in rows]
-    dead = dead_ball.pre_kickoff(game) if variant != "control_en_juego" else np.zeros(n, dtype=bool)
+    pre = dead_ball.pre_kickoff(game)
+    dead = pre.copy() if variant != "control_en_juego" else np.zeros(n, dtype=bool)
     goals = [e for e in events if e["code"] == "goals"]
     kicks = [e for e in events if e["type"] == "kick off (after goal)"]
     for i, (goal, kick) in enumerate(zip(goals, kicks)):
         if not (variant == "gol_falso" and i == 0):
             dead[goal["end"]:kick["start"]] = True
+    motion = x.copy()  # el movimiento de juego, antes de parar el balón
     x[dead], y[dead] = length / 2, width / 2
     edges = {"gol_temprano": lambda goal, kick: slice(goal["end"], goal["end"] + 5 * fps),
              "saque_tarde": lambda goal, kick: slice(kick["start"] - 5 * fps, kick["start"])}
@@ -265,8 +289,15 @@ def synthetic_match(game, variant=""):
         x[event["start"] - row[4] * fps:event["start"]] = np.nan
     if variant == "huecos_por_todo":
         x[(t % 60) < 45] = np.nan
+    if variant == "sin_balon_en_goles":
+        for goal, kick in zip(goals, kicks):
+            x[goal["end"]:kick["start"]] = np.nan
+    if variant == "sin_balon_en_control":
+        x[pre] = np.nan
     y[np.isnan(x)] = np.nan
     anchor = running if variant == "huecos_en_juego" else np.where(np.isnan(x), length / 2, x)
+    if variant == "jugadores_en_control":
+        anchor = np.where(pre, motion, anchor)
     offsets = ((-5, -3), (4, 6), (-8, 2), (6, -7))
     px = np.stack([anchor + dx for dx, _ in offsets], axis=1)
     py = np.stack([np.full(n, width / 2 + dy) for _, dy in offsets], axis=1)
@@ -276,45 +307,143 @@ def synthetic_match(game, variant=""):
 
 
 def check_rules(game):
-    """La regla de agregados_dead_ball.py (su `measure`, que no abre ficheros) con el partido inventado."""
+    """La regla de agregados_dead_ball.py con el partido inventado y en sus umbrales exactos.
+
+    Importa sus cuentas (`measure`, `goal_rule`, `gap_rule` y `dead_share`), nunca su `main`, que es lo que
+    lee el partido, y llama a `measure` con la apertura de ficheros prohibida (pp.no_files), como hace
+    prueba_perfil_atd.py. Si alguien añade una lectura fuera de `main`, falla aquí en vez de leer el partido.
+    """
     sys.path.insert(0, os.path.join(ROOT, "validation", "partido"))
-    import agregados_dead_ball as agg  # solo sus cuentas: su main, que lee el partido, no se ejecuta
+    import agregados_dead_ball as agg  # solo sus cuentas
 
     fps = games.GAMES[game]["fps"]
-    m = agg.measure(*synthetic_match(game), game)
+    PASS, FAIL, UNDECIDED = agg.PASS, agg.FAIL, agg.UNDECIDED
+
+    def measure(variant=""):
+        trk, events = synthetic_match(game, variant)
+        try:
+            with pp.no_files():
+                return agg.measure(trk, events, game)
+        except AssertionError:
+            check("measure no abre ningún fichero ({})".format(variant or "partido normal"), False)
+            raise
+
+    m = measure()
     check("partido inventado: entran las dos capas", m["gol_entra"] and m["hueco_entra"],
           "control {} placebo {} tramos {}".format(m["control_ok"], m["power"], m["spans_ok"]))
     check("partido inventado: 2 goles anclan, 3.938 frames", m["spans"] == 2 and m["anchored_frames"] == 3938,
           "{} y {}".format(m["spans"], m["anchored_frames"]))
-    expected_states = {dead_ball.GAP: 5, dead_ball.BALL_SEEN: 1, dead_ball.GAP_TOO_LONG: 1,
+    expected_states = {dead_ball.GAP: 5, dead_ball.BALL_SEEN: 2, dead_ball.GAP_TOO_LONG: 1,
                        dead_ball.RESTART_INSIDE: 0}
-    check("partido inventado: 7 ventanas, 5 con hueco que puntúa, 65 s de hueco",
-          m["windows"] == 7 and m["states"] == expected_states and m["gap_frames"] == 65 * fps,
-          "{} {} {}".format(m["windows"], m["states"], m["gap_frames"]))
-    m = agg.measure(*synthetic_match(game, "gol_falso"), game)
+    check("partido inventado: 8 ventanas, 5 con hueco que puntúa (cobertura 5/8), 65 s de hueco",
+          m["windows"] == 8 and m["states"] == expected_states and m["gap_frames"] == 65 * fps
+          and m["coverage"] == 5 / 8, "{} {} {}".format(m["windows"], m["states"], m["gap_frames"]))
+    check("partido inventado: placebo del hueco con 2 de 45 inicios (3 caen fuera de lo evaluado)",
+          m["shifted"] == 45 and m["placebo_gaps"] == 2 and m["coverage_placebo"] == 2 / 45,
+          "{} de {}".format(m["placebo_gaps"], m["shifted"]))
+    trk, _ = synthetic_match(game)
+    graded = np.zeros(len(trk.bx), dtype=bool)
+    for first, stop in trk.blocks:
+        graded[first:stop] = True
+    seen = ~np.isnan(trk.bx) & graded
+    fast = seen & (agg.ball_speed(trk.bx, trk.by) >= agg.FAST_BALL_MS)
+    check("partido inventado: el balón deprisa se cuenta solo en lo evaluado, y el límite es la mitad",
+          m["f_match"] == fast.sum() / seen.sum() and m["limit"] == 0.5 * m["f_match"],
+          "{:.4f}".format(m["f_match"]))
+
+    m = measure("gol_falso")
     check("un gol falso: falla su tramo entero y gol a saque no entra; el hueco sí",
           not m["gol_entra"] and m["n_fail"] == 1 and m["fails_by_test"][0] == 1 and m["hueco_entra"])
-    m = agg.measure(*synthetic_match(game, "huecos_en_juego"), game)
-    check("jugadores corriendo en los huecos: el hueco no entra; gol a saque sí",
-          m["gol_entra"] and not m["hueco_entra"] and m["instrument"] and not m["looks_dead"])
-    m = agg.measure(*synthetic_match(game, "sin_goles"), game)
-    check("sin goles: gol a saque no entra y el placebo no tiene potencia",
-          not m["gol_entra"] and m["spans"] == 0 and not m["power"])
-    m = agg.measure(*synthetic_match(game, "control_en_juego"), game)
-    check("con juego en el control: no decide y no entra ninguna de las dos capas",
-          not m["control_ok"] and not m["gol_entra"] and not m["instrument"] and not m["hueco_entra"],
-          "control {} modelo de Ana: partido {} control {}".format(
-              m["control"], agg.share(m["g_match"]), agg.share(m["g_ctrl"])))
     for variant, test, name in (("gol_temprano", 1, "la ventana GOALS acaba antes del gol: falla el borde inicial"),
                                 ("saque_tarde", 2, "la del saque empieza tarde: falla el borde final")):
-        m = agg.measure(*synthetic_match(game, variant), game)
+        m = measure(variant)
         check(name + " (no el tramo entero) y gol a saque no entra",
               not m["gol_entra"] and m["fails_by_test"][test] == 2 and m["fails_by_test"][0] == 0,
               "fallos por prueba {}".format(m["fails_by_test"]))
-    m = agg.measure(*synthetic_match(game, "huecos_por_todo"), game)
+    m = measure("sin_balon_en_goles")
+    check("sin balón en los tramos: ninguno decide y gol a saque no entra",
+          m["n_pass"] == m["n_fail"] == 0 and not m["spans_ok"] and not m["gol_entra"])
+    m = measure("sin_balon_en_control")
+    check("sin balón en el control: el control no decide y gol a saque no entra",
+          m["control"] == [UNDECIDED] and not m["control_ok"] and not m["gol_entra"], str(m["control"]))
+    m = measure("juego_lento")
+    check("el balón nunca va deprisa: el placebo no falla, no tiene potencia y gol a saque no entra",
+          m["placebo_fail"] == 0 and not m["power"] and not m["gol_entra"])
+    m = measure("sin_goles")
+    check("sin goles: gol a saque no entra y el placebo no tiene potencia",
+          not m["gol_entra"] and m["spans"] == 0 and not m["power"])
+    m = measure("control_en_juego")
+    check("con juego en el control: el control falla y no entra ninguna de las dos capas",
+          m["control"] == [FAIL] and not m["gol_entra"] and not m["instrument"] and not m["hueco_entra"],
+          "control {} modelo de Ana: partido {} control {}".format(
+              m["control"], agg.share(m["g_match"]), agg.share(m["g_ctrl"])))
+    m = measure("huecos_en_juego")
+    check("jugadores corriendo en los huecos: el hueco no entra; gol a saque sí",
+          m["gol_entra"] and not m["hueco_entra"] and m["instrument"] and not m["looks_dead"])
+    m = measure("pocos_huecos")
+    check("hueco solo antes de 2 de 8 ventanas: cobertura 2/8 y el hueco no entra",
+          m["coverage"] == 2 / 8 and not m["covers"] and not m["hueco_entra"])
+    m = measure("jugadores_en_control")
+    check("jugadores corriendo en el control: los tramos de gol a saque lo completan y el hueco entra",
+          m["gol_entra"] and m["instrument"] and m["hueco_entra"],
+          "modelo de Ana: partido {} control {}".format(agg.share(m["g_match"]), agg.share(m["g_ctrl"])))
+    m = measure("huecos_por_todo")
     check("sin balón a menudo en todo el partido: el hueco no gana al placebo y no entra",
           not m["beats_placebo"] and not m["hueco_entra"],
           "cobertura {} placebo {}".format(agg.share(m["coverage"]), agg.share(m["coverage_placebo"])))
+
+    # Las dos reglas en sus umbrales exactos (números exactos en binario: 0,25, 0,5 y 0,75).
+    two_pass, placebo_ok = [PASS, PASS], [FAIL, FAIL, PASS, PASS, UNDECIDED]
+    rule = agg.goal_rule
+    check("gol a saque, en el límite: entra", rule(two_pass, [PASS], placebo_ok) == (True, True, True, True))
+    check("gol a saque: pasa la mitad justa y el resto no decide: entra",
+          rule([PASS, UNDECIDED], [PASS], placebo_ok)[3])
+    check("gol a saque: ninguno pasa: no entra", not rule([UNDECIDED, UNDECIDED], [PASS], placebo_ok)[3])
+    check("gol a saque: uno falla: no entra", not rule([PASS, FAIL], [PASS], placebo_ok)[3])
+    check("gol a saque: el control no decide, falla o no hay: no entra",
+          not any(rule(two_pass, control, placebo_ok)[0] for control in ([UNDECIDED], [PASS, FAIL], [])))
+    check("gol a saque: el placebo decide 3 veces (menos del doble de 2): sin potencia",
+          not rule(two_pass, [PASS], [FAIL, FAIL, PASS, UNDECIDED])[1])
+    check("gol a saque: el placebo falla 1 de 4 (menos de la mitad): sin potencia",
+          not rule(two_pass, [PASS], [FAIL, PASS, PASS, PASS])[1])
+    gap = agg.gap_rule
+    nan = float("nan")
+    check("hueco, en el límite: entra", gap(0.5, 0.25, 0.25, 0.75, 0.5) == (True, True, True, True, True))
+    covers, *_, enters = gap(0.4999, 0.0, 0.25, 0.75, 0.5)
+    check("hueco: cobertura por debajo del 50 %: no entra", not covers and not enters)
+    check("hueco: cobertura por debajo del doble del placebo: no entra", not gap(0.5, 0.2501, 0.25, 0.75, 0.5)[4])
+    check("hueco: por debajo del punto medio: no entra", not gap(0.5, 0.25, 0.25, 0.75, 0.4999)[4])
+    check("hueco: el control no ve más D que el partido: el instrumento no separa",
+          gap(0.5, 0.25, 0.5, 0.5, 1.0)[2:] == (False, False, False))
+    check("hueco: un NaN (placebo, control o huecos) no deja entrar",
+          not any(gap(*values)[4] for values in ((0.5, nan, 0.25, 0.75, 0.5), (0.5, 0.25, 0.25, nan, 0.5),
+                                                 (0.5, 0.25, 0.25, 0.75, nan))))
+    # Dónde miran los bordes: desde 1 s dentro y durante 5 s, con arrays hechos a mano (todo visto).
+    seen = np.ones(4000, dtype=bool)
+
+    def verdict_with_fast(lo, hi):
+        fast = np.zeros(4000, dtype=bool)
+        fast[lo:hi] = True
+        return agg.span_verdict(1000, 3000, seen, fast, 0.1)[1]
+
+    check("balón deprisa solo en el primer segundo del tramo: el borde inicial no lo ve",
+          verdict_with_fast(1000, 1000 + fps) == (PASS, PASS, PASS))
+    check("deprisa desde el segundo 1: falla el borde inicial",
+          verdict_with_fast(1000 + fps, 1000 + 2 * fps) == (PASS, FAIL, PASS))
+    check("deprisa justo después de los 5 s del borde: no cuenta",
+          verdict_with_fast(1000 + 6 * fps, 1000 + 7 * fps) == (PASS, PASS, PASS))
+    check("lo mismo en el borde final: el último segundo no cuenta y el anterior sí",
+          verdict_with_fast(3000 - fps, 3000) == (PASS, PASS, PASS)
+          and verdict_with_fast(3000 - 2 * fps, 3000 - fps) == (PASS, PASS, FAIL))
+    blocked = np.zeros(200000, dtype=bool)
+    blocked[20000 + 240 * fps:20100 + 240 * fps] = True
+    shifted = agg.shifted_spans([(20000, 20100)], ((0, 200000),), blocked, fps)
+    check("el placebo no usa tramos desplazados que pisan un ancla",
+          len(shifted) == 5 and (20000 + 240 * fps, 20100 + 240 * fps) not in shifted, str(len(shifted)))
+    odds = np.array([0.0, 0.0, 1.0, -1.0])
+    check("el modelo de Ana solo cuenta donde opina",
+          agg.dead_share(odds, np.ones(4, dtype=bool)) == 0.5
+          and np.isnan(agg.dead_share(odds, np.array([True, True, False, False]))))
 
 
 def main():

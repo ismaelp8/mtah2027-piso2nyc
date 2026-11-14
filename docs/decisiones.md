@@ -836,8 +836,12 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
     con 1 s (25 frames) de balón visto o más.
   - **Cada tramo pasa tres pruebas:** el tramo entero (para (c)) y 5 s en cada borde, empezando 1 s dentro
     (para (a) y (b)). La velocidad de un frame usa las posiciones de ±0,96 s a su alrededor, así que desde
-    1 s dentro ninguna mira frames de fuera del tramo. El tramo falla si falla alguna, y no decide si no
-    decide ninguna.
+    1 s dentro ninguna mira frames de fuera del tramo, salvo por el suavizado propio del balón del ATD
+    (unos 25 frames, que meten en el borde alrededor de 0,5 s de lo de fuera). El tramo falla si falla
+    alguna, y no decide si no decide ninguna.
+  - **(a) y (b) solo se comprueban donde el ATD ve el balón en el borde.** Un tramo puede pasar por el
+    tramo entero sin que decida ningún borde (lo probable si el ATD no ve el balón tras el gol). El script
+    imprime cuántos lo hacen; esos tramos tienen sus fronteras **[sin verificar]**, y la PR lo dice.
   - **El script solo imprime cuántos tramos pasan y cuántos fallan,** nunca cuál: con 4 goles, cualquier
     desglose identifica cada parada.
 - **De gol a saque entra si se cumplen las tres cosas.** Si no, queda fuera entera:
@@ -867,20 +871,27 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
     partido entero y el control. Es decir, los huecos se parecen más al `D` seguro que al partido medio.
     Se cuenta solo en los frames en que el modelo opina. Si en el control no ve más `D` que en el partido
     entero, el instrumento no separa y la capa no entra.
+    - **El control** es el tramo antes del saque de la 2ª parte y, si gol a saque entra (es decir, si sus
+      tramos pasan la prueba del balón de arriba), también esos tramos. El tramo antes del saque solo
+      puede no bastar: en sus primeros 30 s los jugadores van a 1,30 m/s de mediana, con el 33,9 % por
+      debajo de 1,2, casi como el partido entero (1,50 y 35,4 %) [medido, agregado 4]. Si el modelo no
+      ve ahí más `D` que en el partido, la capa no entraría sin haber aprendido nada de los huecos. Si
+      aun así no separa, se dice así en el resultado: no es un fallo de los huecos.
     - **Puede ver peor los huecos de banda y saque de puerta [inferencia]:** antes de esos reinicios la
       velocidad media de los jugadores no baja (44 % y 36 % de los 10 s previos por debajo de 1,2 m/s,
       frente al 91 % y el 73 % antes de córner y falta; medida de Ismael en
       `validation/resultados/2026-11-14_agregados_jugadores_atd.md`, que él marca como observación). Pero
       el modelo también mira cuántos jugadores hay fuera del campo (`fuera_2s`, con peso 3,32), y hay
-      alguno fuera en el 84,6 % de las ventanas de banda y el 70 % de las de puerta [medido, agregado 6].
+      alguno fuera en el 84,6 % de las ventanas de banda y el 70 % de las de puerta [medido, agregado 6,
+      contando desde 5 s antes de la ventana hasta su fin; no en el hueco].
       Si los ve peor, la condición es más difícil de pasar: la regla queda conservadora, no al revés.
     - **Dos cambios antes de medir:** la primera versión era esta. La segunda, al ver la medida de Ismael,
       juzgaba solo los huecos de córner y falta con «la mayoría de los frames». La revisión la tumbó por
       tres motivos:
       - daba por hecho, sin etiqueta, que el modelo no ve las paradas de banda y de puerta;
       - casi no podía fallar, porque se eligieron justo los tipos con los jugadores ya lentos antes de la
-        ventana, y «la mayoría» está cerca de lo que el modelo ve como `D` en general (el 45 % de los
-        frames en la DFL);
+        ventana, y «la mayoría» está cerca de la proporción de `D` (el 44,8 % de los frames de la DFL con
+        los que se entrenó el modelo);
       - la capa se aplicaría también a banda y puerta sin que nada mirara esos huecos.
     - **Lo que no comprueba:** que el hueco empiece justo en la parada. El modelo llega tarde al instante
       (entrada anterior de Ismael), así que solo dice si el hueco es sobre todo `D`. **[sin verificar]**
@@ -891,19 +902,23 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
   (180 s, 5 s, 60 s), ni los umbrales (5 m/s, la mitad, el 50 %, el doble, el punto medio), ni los
   desplazamientos.
 - **El script imprime la regla aplicada** (las líneas «regla: … -> la capa entra»). Si lo impreso y este
-  texto no cuadran, manda este texto. Que el código aplica este texto se comprueba en el repo: la sección
-  9 de `validation/scripts/comprobar_balon_muerto.py` pasa la función `measure` del script por un partido
-  inventado en memoria y por siete variantes, cada una con su resultado esperado:
-  - el partido normal: entran las dos capas;
-  - un gol falso: falla su tramo entero;
-  - una ventana `GOALS` que acaba antes del gol: falla el borde inicial y no el tramo entero;
-  - un saque que empieza tarde: falla el borde final y no el tramo entero;
-  - jugadores corriendo en los huecos: no pasa el modelo de Ana;
-  - sin goles: el placebo no tiene potencia;
-  - juego en el control: no decide ninguna de las dos;
-  - sin balón 45 s de cada minuto: el hueco no gana al placebo.
+  texto no cuadran, manda este texto. Que el código aplica este texto se comprueba en el repo, en la
+  sección 9 de `validation/scripts/comprobar_balon_muerto.py`, con la apertura de ficheros prohibida:
+  - **la regla en sus umbrales exactos:** `goal_rule` y `gap_rule` justo en cada límite y un poco por
+    debajo, dónde miran los bordes (desde 1 s dentro y durante 5 s), el placebo que no pisa anclas y el
+    modelo de Ana contado solo donde opina;
+  - **`measure` con un partido inventado y doce variantes,** cada una con su resultado esperado: el
+    partido normal (entran las dos capas, con sus recuentos exactos), un gol falso (falla el tramo
+    entero), una ventana `GOALS` que acaba antes del gol y un saque que empieza tarde (falla el borde, no
+    el tramo entero), sin balón en los tramos o en el control (no deciden), el balón siempre lento (el
+    placebo no tiene potencia), sin goles, juego en el control (el control falla y no entra ninguna),
+    jugadores corriendo en el control (los tramos de gol a saque lo completan), jugadores corriendo en
+    los huecos (no pasa el modelo de Ana), hueco antes de solo 2 de 8 ventanas (no llega a la
+    cobertura) y sin balón 45 s de cada minuto (no gana al placebo).
 
-  Romper la regla a propósito (14 cambios, uno a uno) hace fallar alguna de esas pruebas.
+  Se comprobó rompiendo la regla a propósito, condición a condición (32 roturas, entre ellas las 24 que
+  probó la segunda revisión): todas hacen fallar alguna prueba. El script de esas roturas no está en el
+  repo **[sin verificar en el repo]**; las pruebas que las detectan, sí.
 - **Descriptivo, no decide:** el desglose por tipo, la duración de los huecos, la velocidad de los
   jugadores, el modelo de Ana en lo anclado, en los primeros 5 s de los huecos y en cada grupo (córner y
   falta; banda y saque de puerta), y el recuento de equipos del Smart Tagging que coinciden con los

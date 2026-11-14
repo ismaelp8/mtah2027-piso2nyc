@@ -22,6 +22,11 @@ La salida, tal cual. Solo se han quitado las líneas del prompt de PowerShell y 
 línea. En un punto, el copiado pegó el final de un script con el comando del siguiente; aquí van
 separados.
 
+**Faltan dos líneas** de la sección 5 de `agregados_balon_reinicios.py`: «salto entre frames ×25 …» y
+«desplazamiento a 0,5 s …». El script las imprime siempre, pero no llegaron en lo que pegó Manuel. No se
+reconstruyen; si hacen falta, se vuelve a ejecutar ese script. Lo que cita `docs/decisiones.md` de esa
+sección (a 1 s: correlación de 0,08 y cociente de medianas de 0,27) sí está.
+
 ## `python validation/partido/agregados_smart_tagging.py`
 
 ```
