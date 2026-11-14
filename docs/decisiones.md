@@ -533,11 +533,28 @@ Añadido tras entrenar y antes de medir en el harness (14/11):
     recibe los 7 partidos;
   - `prueba_harness.py` y `prueba_pipeline.py` pasan.
 
-Resultado: pendiente.
+Resultado (14/11; `validation/resultados/2026-11-14_apuesta_b.md`, código `b63374d`) [medido]:
+- **B2 gana con la regla de §5.8 al control y a `main`,** en las dos condiciones que votan y con las dos
+  convenciones:
+  - con el flag, +0,062 [+0,050 a +0,075] y +0,045 [+0,032 a +0,058] frente a `main`, en 7 de 7;
+  - con las etiquetas de control, +0,161 y +0,158, en 7 de 7.
+- **B1 gana al control y empata con `main`:** con el flag, +0,016 y +0,011.
+- **Eventos humanos (descriptivo):** B2 es un compromiso frente a `main`. Pierde 15,4 puntos en las
+  recuperaciones y gana 14,2 en los duelos sin cambio: cambia de equipo menos y más tarde.
+- **Límites que el harness no ve:**
+  - lo que separa a B2 de B1 son los rasgos de los jugadores, y el harness no los degrada;
+  - B2 puntúa de media 4,2 por frame a favor de un equipo en los `D` (N1, 0) y 7,7 en juego con balón
+    (N1, 1), así que en la entrega compite con las piezas de `D` que puntúan.
 
-Decisión y por qué: pendiente. Si no gana el lunes 16 a las 14:00, se abandona y se apunta aquí.
+Decisión y por qué: **pendiente de Ismael.** Con la regla, B2 sustituiría a N1. Antes de cambiar
+`pipeline.PIECES` hace falta:
+- medir B2 con los jugadores degradados como el ATD;
+- decidir qué se hace con su escala frente al `D`.
+
+Corte: lunes 16 a las 14:00.
 
 Descartado:
+- **B1:** empata con `main`, y entre empatados se queda lo de `main`.
 - **Un `D` aprendido** (punto 3).
 - **Gradient boosting** (§4.2): no cabe sin dependencias nuevas, y sus árboles no se pueden escribir en el
   módulo con solo numpy.
