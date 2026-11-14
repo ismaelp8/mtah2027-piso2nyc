@@ -1,0 +1,13 @@
+{
+  "main: N1 y coste 25": {
+    "nota": "lo que hay en main: sin params ni piezas"
+  },
+  "B1: proximidad aprendida": {
+    "nota": "regresión logística H/A con rasgos de proximidad al balón en 4 ventanas (docs/decisiones.md, 14/11); cada partido con el pliegue que no lo vio",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b1", "dejar_fuera": true}}
+  },
+  "B2: proximidad y forma aprendidas": {
+    "nota": "B1 más rasgos de los jugadores (juego, balón y velocidad en la dirección de ataque, dispersión), que opinan también sin balón; cada partido con el pliegue que no lo vio",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b2", "dejar_fuera": true}}
+  }
+}

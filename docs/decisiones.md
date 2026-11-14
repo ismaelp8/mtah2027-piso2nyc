@@ -459,3 +459,74 @@ Descartado:
   calibrado por la regla.
 - **Tomar `OBJETIVO` de las severidades baja y media:** con bloques de 5 a 15 s no lo identifican
   (bitácora §9.2).
+
+### 2026-11-14 · candidatos · apuesta B: evidencia de equipo aprendida (candidatos, antes de medir)
+
+Quién: Ismael (las tres decisiones de abajo, «Sí a las tres»); Claude escribe los candidatos y mide.
+
+Qué se prueba: la apuesta B del plan (`docs/PLAN_ENTREGA.md` §3, «Ismael»; `docs/investigacion_metodos.md`
+§4.2). Es una evidencia de equipo aprendida en la DFL que sustituye a N1 en la pieza `candidates`. El resto
+del pipeline no cambia: el decodificador va con los costes de `main` (25) y el `D` sale del oráculo.
+
+Decisiones de Ismael (14/11, antes de escribir código):
+1. **La función va en un módulo nuevo, `possession/aprendida.py`,** y el harness acepta para la pieza
+   `candidates` una función de ese módulo. Así no se toca `candidates.py`, que es de Antonio.
+2. **El harness deja un partido fuera.** Cuando la versión lo pide en el JSON, el harness pasa a la pieza
+   el partido que puntúa. El módulo guarda 7 juegos de coeficientes, cada uno entrenado sin un partido, y
+   además el de los 7, que es el de la entrega y el de por defecto. Sin `--versiones`, la salida del
+   harness no cambia.
+3. **Solo `H` frente a `A`,** con la columna `D` a cero, como N1. Con el `D` oráculo la columna `D` no
+   cambia ninguna etiqueta, y el harness tapa el balón en todos los `D`: un `D` aprendido en la DFL
+   aprendería «sin balón = `D`». El `D` sigue siendo de Ana y Manuel. Por eso el modelo es de dos clases y
+   no de tres, como decía §4.2.
+
+Lo común a los dos candidatos (fijado antes de medir):
+- **Modelo:** regresión logística de `H` frente a `A`, entrenada en numpy (Newton, iteraciones fijas, L2
+  pequeña). No hay scikit-learn ni LightGBM, y en el pipeline solo va numpy: los coeficientes quedan
+  escritos en el módulo.
+- **Simétrica por construcción:** todos los rasgos son «lo del local menos lo del visitante» y no hay
+  término independiente. Así no aprende la ventaja de jugar en casa de siete partidos de otra liga.
+- **Rasgos sin identidad,** invariantes al orden de los slots, calculados dentro de cada tramo evaluado
+  (ninguna ventana cruza el descanso). Las ventanas son medias centradas con el balón ausente a cero.
+- **Datos de entrenamiento:** los partidos de la DFL con el balón «como el ATD» (la misma degradación que
+  vota en el harness), solo los frames vivos en los que las dos convenciones coinciden (`flag` = `control`),
+  uno de cada 5. Así el modelo no aprende ninguna de las dos convenciones en los frames en que discrepan.
+- **Escala:** la puntuación es α·z a favor del equipo que el modelo da como poseedor (z, el logit) y cero
+  para el otro y para `D`, redondeada a 6 decimales. α se elige dentro de cada pliegue, con los partidos de
+  entrenamiento de ese pliegue: de la rejilla 1/16, 1/8, 1/4, 1/2, 1 y 2, la que da más `spellF1` medio en
+  las dos condiciones que votan y con las dos convenciones, con el decodificador de `main` y el `D` oráculo.
+  Si empatan, la más pequeña.
+- **Dejando un partido fuera:** 7 pliegues. En el harness, cada partido se puntúa con el pliegue que no lo
+  vio.
+
+Candidatos (solo cambia el conjunto de rasgos):
+- **B1, proximidad aprendida.** Rasgos del balón: el signo del equipo más cercano (N1); la suma de núcleos
+  gaussianos de las distancias de cada equipo al balón, con σ de 1, 2,5 y 6 m; y la distancia del más
+  cercano de cada equipo, con un tope de 15 m. Cada uno, en ventanas de 1, 13, 51 y 151 frames: 20 rasgos.
+- **B2, proximidad y forma aprendidas.** B1 más rasgos de los jugadores, que también opinan sin balón. La
+  dirección de ataque de cada equipo sale de la x media de sus jugadores en cada tramo. Con ella:
+  - la posición del juego (los dos centroides) a lo largo del ataque del local;
+  - la del balón, en ventanas de 1 y 51 frames;
+  - la velocidad media de los jugadores de los dos equipos en esa dirección, en ventanas de 25 y 101 frames,
+    sin las velocidades de más de 12 m/s, que son cambios de slot;
+  - la dispersión de cada equipo, en una ventana de 51 frames.
+
+  Además, el juego, las dos velocidades y la dispersión, repetidos solo donde no hay balón a ±12 frames:
+  30 rasgos.
+
+Cómo se medirá: `validation/harness/puntuar.py --versiones validation/harness/versiones/apuesta_b.json
+--eventos`, con el control y la versión de `main` (`{}`) en el mismo fichero. Gana con la regla de §5.8 en
+las dos condiciones que votan y con las dos convenciones, frente al control **y** frente a `main`. Los
+eventos humanos son descriptivos. Antes de medir se comprobará que, sin `--versiones`, la salida no cambia
+y que N1 por el camino nuevo da lo mismo que `{}`.
+
+Resultado: pendiente.
+
+Decisión y por qué: pendiente. Si no gana el lunes 16 a las 14:00, se abandona y se apunta aquí.
+
+Descartado:
+- **Un `D` aprendido** (punto 3).
+- **Gradient boosting** (§4.2): no cabe sin dependencias nuevas, y sus árboles no se pueden escribir en el
+  módulo con solo numpy.
+- **Entrenar con las etiquetas `control`:** son circulares con los rasgos de proximidad (README del
+  harness).
