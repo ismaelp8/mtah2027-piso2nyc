@@ -36,7 +36,7 @@ se prueba una versión nueva»).
 | | |
 |---|---|
 | **etiquetas** | dos convenciones: `flag` (el de la DFL tal cual, que cambia en el primer toque del rival) y `control` (corregido con "C0-12 o dos toques", experimento 1). La de la GT del reto sigue sin medir |
-| **balón** | tres condiciones: `limpio`, `huecos` (falta en el 41 % de los frames de juego) y `huecos y suavizado` (además, media móvil de 25 frames). En las tres se tapa el balón en los `D` y en sus bordes |
+| **balón** | desde el 14/11, calibrado con el perfil del ATD (`validation/resultados/2026-11-14_harness_como_el_atd.md`). **Votan** «como el ATD» (microcortes de hasta 0,5 s, el 11,3 % del juego en bloques de 5 a 15 s y el balón suavizado con una media móvil de 25 frames) y «como el ATD, sin bloques». **Sin voto:** `limpio` y «huecos y suavizado» (la de antes, con el 41 % del juego tapado en bloques de 1 s). En todas se tapa el balón en los `D` y en sus bordes |
 | **control** | el baseline oficial: jugador más cercano y voto por mayoría de ±50 frames |
 | **`D`** | copiado de las etiquetas para todas las versiones, el control incluido (`D` oráculo) |
 | **métrica** | `spellF1` oficial con los 7 partidos juntos y por partido, y la diferencia con el control con un intervalo por bootstrap pareado sobre las posesiones |
@@ -47,16 +47,16 @@ Un candidato gana (`docs/investigacion_metodos.md` §5.8) si:
 
 - gana al control en 6 de los 7 partidos o más;
 - la diferencia es de 0,03 o más y su intervalo no incluye el cero;
-- todo eso se mantiene en las tres condiciones del balón **y** con las dos convenciones.
+- todo eso se mantiene en las condiciones del balón que votan **y** con las dos convenciones.
 
 Si no, es un empate y entra la versión más simple. La sección «Regla de §5.8» de la salida aplica esta
 regla frente al control.
 
 **Frente a lo que ya hay en `main`:** la sección «Frente a la versión de main» aplica la misma regla
 frente a la versión de `main` (`{}` en el fichero de versiones). Para sustituir a lo de `main`, un
-candidato tendría que ganar al control **y** ganar a `main`. Si empata con `main`, se queda lo de `main`,
-que es lo más simple. Es la regla del empate de arriba aplicada a `main`; pendiente de que Ismael la
-confirme.
+candidato tiene que ganar al control **y** ganar a `main`. Si empata con `main`, se queda lo de `main`,
+que es lo más simple. Es la regla del empate de arriba aplicada a `main`. Decidido por Ismael el 14/11
+(`docs/decisiones.md`).
 
 La fila «coste elegido dejando un partido fuera» elige, para cada partido, la versión que más saca en los
 otros seis y la puntúa en ese. Es el número honesto de un parámetro ajustado.
@@ -179,7 +179,8 @@ se ha roto.
   - **empeora:** al revés;
   - **compromiso:** uno por encima y otro por debajo;
   - **no concluye:** ninguno se separa de cero.
-- **Veredicto de la versión:** el mismo en las tres condiciones, o «depende del balón».
+- **Veredicto de la versión:** el mismo en las condiciones del balón que votan, o «depende del balón».
+  Cuando se escribió eran tres; desde el 14/11 votan dos (`dfl.VOTAN`).
 - **Es descriptivo.** No entra en la regla de §5.8 ni cambia su veredicto. Si puede vetar a un candidato
   lo decide Ismael. Razones:
   - el significado oficial de `PossessionChange` está [sin verificar];
@@ -204,10 +205,12 @@ Hace falta el XML de eventos de cada partido, que baja `descargar_datos_abiertos
   La referencia sin circularidad son los eventos humanos de la DFL (experimento 1), que el harness mira
   con `--eventos`, de momento solo como descripción (sección «Eventos humanos»).
 - **El `D` no se puede validar aquí con el balón.** La DFL congela el balón mientras está muerto, así que
-  hay que taparlo, y entonces «no hay balón» casi equivale a «`D`». En el ATD no pasa. Por eso el `D` va
+  hay que taparlo, y entonces «no hay balón» casi equivale a «`D`». En el ATD quizá pase bastante
+  (`validation/resultados/2026-11-14_perfil_atd.md`, inferencia), pero no se puede medir. Por eso el `D` va
   copiado de las etiquetas. Con `--d propio` cada versión pone el suyo, pero ese número no decide nada.
-- **La degradación es provisional.** Falta comprobarla contra la medida del balón del ATD en todo el
-  partido. Hasta entonces, el orden entre evidencias de equipo no se da por bueno.
+- **La degradación imita al ATD en lo que se pudo medir sin etiquetas:** los huecos, el suavizado y la
+  proximidad (14/11). No se sabe si los huecos largos del ATD caen en juego o en paradas, y por eso votan
+  dos condiciones. La DFL ve más disputas que el ATD (20 % frente a 14,5 %).
 - **Los jugadores no se degradan:** están todos, sin ruido. Los slots sí se barajan, para que nada dependa
   de que un slot sea una persona.
 - **No hay Smart Tagging en la DFL.** Lo que lo usa (`possession/dead_ball.py`) no se mide aquí.

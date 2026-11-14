@@ -767,3 +767,23 @@ ATD (`leer_atd.py --ensayo J03WR9 0.05 0 25 --forma atd`).
 - **Se puntúan sin voto** «limpio» y «huecos y suavizado».
 - **Esto cambia la sección 9.1,** que decía «el `OBJETIVO` de cada severidad». Se le enseña a Ismael antes
   de subir.
+
+### 9.3 La relectura con la forma «atd» (14/11)
+
+`leer_atd.py <salida del ATD> --forma atd`. La salida ya estaba escrita cuando se apuntó la sección 9.2,
+pero no se había mirado.
+
+- **R0 cuadra. Queda `DISPUTAS` 0 y decide él** [medido]. Distancia al ATD: 3,66, frente a 13,57 con la
+  forma de antes. R2 cuadra en todas las celdas, también en la severidad alta.
+- **`OBJETIVO`:**
+  - baja y media: 0,41, sin identificar, como predecía la sección 9.2;
+  - alta: 0,113.
+- **R4': 25 frames. R5 cuadra.** Repetidos con `OBJETIVO` 0,113 sale lo mismo [medido].
+- **R7:** el orden entre evidencias de equipo por proximidad y lo que use la velocidad del balón **se
+  pueden decidir**.
+- **En el harness** (`validation/harness/dfl.py`):
+  - votan «como el ATD» (`OBJETIVO` 0,113) y «como el ATD, sin bloques» (`OBJETIVO` 0), con
+    `DISPUTAS` 0, microcortes y suavizado 25;
+  - se puntúan sin voto «limpio» y «huecos y suavizado».
+
+  La tabla de referencia nueva está en `validation/resultados/2026-11-14_harness_como_el_atd.md`.

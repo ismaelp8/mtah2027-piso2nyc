@@ -144,8 +144,13 @@ Todo [medido]. Lectura:
 
 ## 3. Qué cambia en el harness
 
-**Nada todavía.** El paso 3 (cambiar la forma de tapar y volver a leer) espera a que Ismael decida. Los
-dos candidatos fijados antes de medir (§7.4) son:
+**Actualizado el 14/11 por la noche.** Ismael decidió «Como el ATD». Con la ley de huecos del ATD
+(microcortes y bloques de 5 a 15 s), la misma regla deja `DISPUTAS` 0 y el suavizado de 25 frames. El
+harness usa esa forma desde entonces (`2026-11-14_harness_como_el_atd.md`, y la bitácora del perfil §9).
+Lo que se escribió antes de esa decisión:
+
+Nada todavía. El paso 3 (cambiar la forma de tapar y volver a leer) espera a que Ismael decida. Los dos
+candidatos fijados antes de medir (§7.4) son:
 
 - la ley de huecos del ATD;
 - los argumentos `dilatar` y `aire` de la parte dirigida.

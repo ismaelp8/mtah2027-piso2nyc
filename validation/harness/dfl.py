@@ -11,15 +11,19 @@ Qué hace con cada partido:
 - **Tracking en el formato de `possession/tracking.py`:** metros con el origen en una esquina, las dos
   partes seguidas con un hueco sin datos en medio, y los slots de cada equipo barajados a trozos, para
   que ningún código pueda apoyarse en que un slot sea un jugador.
-- **Balón degradado, en tres condiciones.** En las tres se tapa el balón en los frames `D` y en sus
+- **Balón degradado, en cuatro condiciones.** En todas se tapa el balón en los frames `D` y en sus
   bordes, porque la DFL lo congela mientras está muerto y eso delataría la etiqueta (experimento 0).
-  - "limpio": nada más;
-  - "huecos": además falta en el 41 % de los frames vivos, con la mitad de las disputas y de los balones
-    altos tapados y el resto en bloques al azar (la condición elegida en el experimento 2);
-  - "huecos y suavizado": los mismos huecos, sobre un balón suavizado con una media móvil de 25 frames
-    (lo que el experimento 2 apunta que hace el ATD; es una inferencia).
+  Desde el 14/11 se calibran con el perfil del balón del ATD en todo el partido
+  (validation/resultados/2026-11-14_perfil_atd.md y la bitácora del perfil, §9):
+  - "como el ATD" (vota): microcortes de hasta 0,5 s al ritmo del ATD, el 11,3 % de los frames vivos en
+    bloques de 5 a 15 s y el balón suavizado con una media móvil de 25 frames;
+  - "como el ATD, sin bloques" (vota): lo mismo sin los bloques, como si todos los huecos largos del ATD
+    fueran paradas;
+  - "limpio" (sin voto): nada más;
+  - "huecos y suavizado" (sin voto): la condición de antes del perfil, con el 41 % de los frames vivos sin
+    balón (la mitad de las disputas y de los balones altos, y bloques de 1 s de media) y el balón
+    suavizado. Es mucho más dura que el ATD: se queda como prueba de estrés.
 
-  La degradación es provisional: falta comprobarla contra la medida del balón del ATD en todo el partido.
   Los jugadores no se degradan.
 
 Todo con semilla fija: dos ejecuciones dan lo mismo.
@@ -59,11 +63,21 @@ MICROCORTES = 1000.0 * 15 / 94214  # por cada 1.000 frames vivos
 MEDIA_MICROCORTE = 51 / 15  # frames
 MAX_MICROCORTE = 12  # frames (0,5 s)
 BLOQUE_ATD = (125, 375)  # frames (de 5 a 15 s)
-CONDICIONES = ("limpio", "huecos", "huecos y suavizado")
-VOTAN = CONDICIONES  # las condiciones con las que se aplica la regla de §5.8 (las demás se puntúan sin voto)
+# Lo que salió de volver a leer el ATD con la forma «atd» (validation/perfil_atd/BITACORA.md §9): queda
+# `DISPUTAS` 0, el suavizado es de 25 frames y la severidad alta pide tapar el 11,3 % de los frames vivos
+# en bloques de 5 a 15 s.
+OBJETIVO_ATD = 0.113
+CONDICIONES = ("como el ATD", "como el ATD, sin bloques", "limpio", "huecos y suavizado")
+# Las dos que votan acotan lo que el perfil no puede medir: si los huecos de 5 a 15 s que el ATD tiene de
+# más son juego («como el ATD») o paradas («sin bloques»). «limpio» y la condición de antes del perfil (41 %
+# de los vivos en bloques de 1 s) se puntúan sin voto.
+VOTAN = ("como el ATD", "como el ATD, sin bloques")
 PARAMETROS_DE = {
+    "como el ATD": {"forma": "atd", "objetivo": OBJETIVO_ATD, "disputas": 0.0, "media_bloque": MEDIA_BLOQUE,
+                    "microcortes": MICROCORTES, "suavizado": SUAVIZADO},
+    "como el ATD, sin bloques": {"forma": "atd", "objetivo": 0.0, "disputas": 0.0, "media_bloque": MEDIA_BLOQUE,
+                                 "microcortes": MICROCORTES, "suavizado": SUAVIZADO},
     "limpio": None,
-    "huecos": {"objetivo": OBJETIVO, "disputas": DISPUTAS, "media_bloque": MEDIA_BLOQUE, "suavizado": 1},
     "huecos y suavizado": {"objetivo": OBJETIVO, "disputas": DISPUTAS, "media_bloque": MEDIA_BLOQUE,
                            "suavizado": SUAVIZADO},
 }
@@ -237,8 +251,8 @@ def cargar(partido):
 def tracking_de(cargado, condicion):
     """El `Tracking` de un partido cargado, con el balón como en `condicion`.
 
-    Los huecos son los mismos en "huecos" y en "huecos y suavizado", y los slots se barajan igual en las
-    tres condiciones: lo único que cambia entre ellas es el balón.
+    Cada condición sortea sus huecos con la misma semilla por parte, y los slots se barajan igual en todas:
+    lo único que cambia entre ellas es el balón.
     """
     partes = {k: degradar_parte(cargado["partes"][k], condicion,
                                 np.random.default_rng([SEMILLA, cargado["indice"], k]))
