@@ -107,7 +107,9 @@ Los datos del partido no pasan por Claude.
     anunciarlo en la sección 2 del plan. Dueños: `temporal.py`, David; `dead_ball.py`, Manuel;
     `dead_state.py`, Ana; `candidates.py` y `ball.py`, Antonio; el resto, Ismael;
   - sube cambios de `validation/harness/`, salvo su propio fichero de versiones en
-    `validation/harness/versiones/`. El harness es el árbitro de todos y lo cambia Ismael;
+    `validation/harness/versiones/`. El harness es el árbitro de todos y lo cambia Ismael. Si trae un
+    fichero de versiones, ejecuta `python validation/scripts/prueba_harness.py` (comprueba que todo lo que
+    hay en esa carpeta es un fichero de versiones pequeño);
   - no trae `python validation/scripts/prueba_pipeline.py` en verde, la tabla del harness con el control
     al lado y el fichero de versiones con el que se midió, o los candidatos escritos en
     `docs/decisiones.md` antes de medir;

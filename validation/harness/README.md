@@ -49,7 +49,14 @@ Un candidato gana (`docs/investigacion_metodos.md` §5.8) si:
 - la diferencia es de 0,03 o más y su intervalo no incluye el cero;
 - todo eso se mantiene en las tres condiciones del balón **y** con las dos convenciones.
 
-Si no, es un empate y entra la versión más simple. La última sección de la salida aplica esta regla.
+Si no, es un empate y entra la versión más simple. La sección «Regla de §5.8» de la salida aplica esta
+regla frente al control.
+
+**Frente a lo que ya hay en `main`:** la sección «Frente a la versión de main» aplica la misma regla
+frente a la versión de `main` (`{}` en el fichero de versiones). Para sustituir a lo de `main`, un
+candidato tendría que ganar al control **y** ganar a `main`. Si empata con `main`, se queda lo de `main`,
+que es lo más simple. Es la regla del empate de arriba aplicada a `main`; pendiente de que Ismael la
+confirme.
 
 La fila «coste elegido dejando un partido fuera» elige, para cada partido, la versión que más saca en los
 otros seis y la puntúa en ese. Es el número honesto de un parámetro ajustado.
@@ -117,7 +124,8 @@ python validation/harness/puntuar.py --versiones validation/harness/versiones/ej
 
 Su última versión escribe las funciones de siempre una a una, así que tiene que dar lo mismo que la
 primera. Comprobado (14/11): con el ejemplo, las versiones que también están en `VERSIONES` dan los mismos
-números en las 24 celdas, y sin `--versiones` la salida es idéntica byte a byte a la de antes del cambio.
+números en las 24 celdas. Sin `--versiones` salen los mismos números que antes del cambio. La salida
+solo añade la sección frente a la versión de `main`.
 
 **Con `--versiones`, la fila «dejando un partido fuera»** se llama «elegida dejando un partido fuera» y
 elige entre las versiones del pipeline de tu fichero.
@@ -137,9 +145,10 @@ Es la tabla de referencia (`validation/resultados/2026-11-14_harness_dfl.md`).
 ## Eventos humanos (`--eventos`): la referencia sin circularidad
 
 **Por qué.** Las etiquetas `control` salen de una regla de proximidad, y una versión que se le parezca gana
-con ellas por construcción. Los eventos que anota una persona en la DFL no dependen de nuestro tracking ni
-de nuestras reglas. Con `--eventos`, el harness mira además la etiqueta de cada versión en esos eventos,
-con las guardas y los retardos del experimento 1 (`eventos.py`):
+con ellas por construcción. Los eventos los anota una persona en la DFL, no nuestras reglas. Para
+situarlos en el tiempo sí se usa el tracking limpio: el jugador del evento a 1,5 m o menos del balón. Con
+`--eventos`, el harness mira además la etiqueta de cada versión en esos eventos, con las guardas y los
+retardos del experimento 1 (`eventos.py`):
 
 | punto | etiqueta que se espera | cuántos (7 partidos) |
 |---|---|---|
@@ -172,9 +181,14 @@ se ha roto.
   - **no concluye:** ninguno se separa de cero.
 - **Veredicto de la versión:** el mismo en las tres condiciones, o «depende del balón».
 - **Es descriptivo.** No entra en la regla de §5.8 ni cambia su veredicto. Si puede vetar a un candidato
-  lo decide Ismael. Dos razones:
+  lo decide Ismael. Razones:
   - el significado oficial de `PossessionChange` está [sin verificar];
-  - la selección de los duelos usa el flag (quién tenía el balón 10 frames antes).
+  - la selección de los duelos usa el flag (quién tenía el balón 10 frames antes);
+  - (añadida tras la revisión del 14/11, sin cambiar la regla) los puntos se sitúan en el frame en que el
+    jugador del evento está más cerca del balón limpio, a 1,5 m o menos. Eso puede favorecer a la
+    evidencia por proximidad [inferencia];
+  - el bootstrap remuestrea puntos sueltos, aunque se agrupan por partido y por posesión. Con intervalos
+    del 90 % y tres tipos, salir de «no concluye» por azar no es raro.
 - **Complementa al `spellF1`, no lo sustituye.** Mide aciertos en puntos sueltos, así que no ve la
   fragmentación: una versión que parpadea puede acertar en todos los puntos.
 

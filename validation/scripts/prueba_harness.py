@@ -21,7 +21,7 @@ import tempfile
 
 import numpy as np
 
-ROOT =os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "validation", "harness"))
 sys.path.insert(0, ROOT)
 import puntuar  # noqa: E402
@@ -153,6 +153,7 @@ def comprobar_erratas(carpeta):
         ("la otra fila de dejar uno fuera", json.dumps({puntuar.DEJAR_UNO_FUERA: {}})),
         ("NaN como coste", "{\"v\": {\"params\": {\"switch\": NaN}}}"),
         ("Infinity como coste", "{\"v\": {\"params\": {\"switch\": Infinity}}}"),
+        ("1e999 como coste (se leería como infinito)", "{\"v\": {\"params\": {\"switch\": 1e999}}}"),
         ("una función que el módulo importa pero no es una pieza (no_evidence)",
          "{\"v\": {\"piezas\": {\"candidates\": \"no_evidence\"}}}"),
         ("una función del módulo que devuelve otra cosa (nearest_team)",
@@ -226,6 +227,7 @@ def comprobar_lectura_eventos():
     versiones = puntuar.leer_versiones(EJEMPLO)[0]
     comprobar("la versión de main es la primera del pipeline sin params ni piezas",
               puntuar.version_de_main(versiones) == "Viterbi, coste 25 (v0)"
+              and puntuar.version_de_main({"a": {"tipo": "pipeline", "params": {}, "piezas": {}}}) == "a"
               and puntuar.version_de_main(puntuar.VERSIONES) == "Viterbi, coste 25 (v0)")
 
 

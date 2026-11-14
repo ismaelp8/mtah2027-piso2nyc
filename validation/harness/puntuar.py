@@ -100,8 +100,14 @@ def leer_versiones(ruta):
 
     with open(ruta, "rb") as handle:
         crudo = handle.read()
+    def numero_finito(texto):  # 1e999 se leería como infinito sin pasar por parse_constant
+        valor = float(texto)
+        if not np.isfinite(valor):
+            raise ValueError("{}: «{}» no es un número finito".format(ruta, texto))
+        return valor
+
     contenido = json.loads(crudo.decode("utf-8-sig"), object_pairs_hook=sin_repetidas,
-                           parse_constant=sin_constantes)
+                           parse_constant=sin_constantes, parse_float=numero_finito)
     if not isinstance(contenido, dict) or not contenido:
         raise ValueError("{}: tiene que ser un objeto JSON con al menos una versión".format(ruta))
     versiones = collections.OrderedDict([(CONTROL, VERSIONES[CONTROL])])
@@ -129,8 +135,12 @@ def partido_de_prueba():
     by = np.clip(ancho / 2 + np.cumsum(rng.normal(0, 0.4, n)), 0, ancho)
     sin_balon = np.repeat(rng.random(n // 25) < 0.4, 25)
     bx[sin_balon], by[sin_balon] = np.nan, np.nan
-    team = np.repeat(np.array([0, 1], dtype=np.int8), por_equipo)
-    trk = tracking.Tracking(bx, by, px, py, team, (largo, ancho), ((100, n - 100),), 25)
+    # Como en la DFL y el ATD: slots vacíos (suplentes) y un tramo sin nada (el hueco entre partes).
+    vacios = np.full((n, 2), np.nan, dtype=np.float32)
+    px, py = np.hstack([px, vacios]), np.hstack([py, vacios])
+    px[700:800], py[700:800], bx[700:800], by[700:800] = np.nan, np.nan, np.nan, np.nan
+    team = np.repeat(np.array([0, 1, 0, 1], dtype=np.int8), [por_equipo, por_equipo, 1, 1])
+    trk = tracking.Tracking(bx, by, px, py, team, (largo, ancho), ((100, 650), (850, n - 100)), 25)
     return solo_lectura(trk)
 
 
@@ -182,6 +192,11 @@ def version_de(spec, donde):
         salida = pipeline.run(prueba, params=params, pieces=funciones, report={})
         if np.shape(salida) != (FRAMES_PRUEBA,):
             raise ValueError("devuelve {} etiquetas en vez de una por frame".format(np.shape(salida)))
+        evaluado = np.zeros(FRAMES_PRUEBA, bool)
+        for inicio, fin in prueba.blocks:
+            evaluado[inicio:fin] = True
+        if not np.isin(salida, (H, A, D, X)).all() or not np.array_equal(salida == X, ~evaluado):
+            raise ValueError("las etiquetas tienen que ser H, A o D dentro de los tramos evaluados y X fuera")
     except Exception as error:  # cualquier fallo, con su tipo y su mensaje: no se ha medido nada
         raise ValueError("{}: falla en la prueba con un partido inventado de {} frames, antes de medir: "
                          "{}: {}".format(donde, FRAMES_PRUEBA, type(error).__name__, error))
@@ -415,6 +430,8 @@ def medir(partidos, modo_d, n_draws, avisar=None, versiones=None, con_eventos=Fa
     comprobado = False
     if con_eventos:
         import eventos  # solo con --eventos: necesita los XML de eventos de la DFL
+        for partido in partidos:  # todos al principio: si falta uno, el error sale antes de medir nada
+            eventos.fichero_de_eventos(partido)
     en_eventos = collections.defaultdict(list)  # versión o etiquetas, y condición -> aciertos por partido
     tipos = []
     for partido in partidos:
@@ -467,9 +484,9 @@ LEIDOS = ("recuperación", "duelo con cambio", "duelo sin cambio")  # los pases 
 
 
 def version_de_main(versiones):
-    """La primera versión del pipeline sin `params` ni `piezas`: la que hay en `main`. None si no hay."""
+    """La primera versión del pipeline sin `params` ni `piezas` (o vacíos): la de `main`. None si no hay."""
     for nombre, version in versiones.items():
-        if version["tipo"] == "pipeline" and version.get("params") is None and not version.get("piezas"):
+        if version["tipo"] == "pipeline" and not version.get("params") and not version.get("piezas"):
             return nombre
     return None
 
@@ -509,6 +526,9 @@ def lectura_eventos(difs):
 
 def resumir_eventos(en_eventos, tipos, versiones, n_draws):
     """Aciertos en los eventos humanos de cada versión, por condición, y sus diferencias con el control y main."""
+    import eventos
+    if tuple(eventos.TIPOS) != TIPOS_EVENTO:  # los códigos de tipo de eventos.py son índices de esta tupla
+        raise AssertionError("TIPOS_EVENTO no coincide con eventos.TIPOS")
     tipos = np.concatenate(tipos)
     juntos = {clave: np.concatenate(partes) for clave, partes in en_eventos.items()}
     main = version_de_main(versiones)
@@ -688,10 +708,11 @@ def version_del_codigo():
     try:
         commit = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, capture_output=True,
                                 text=True, check=True).stdout.strip()
-        sucio = subprocess.run(["git", "diff", "--quiet", "HEAD", "--"], cwd=ROOT).returncode != 0
+        sucio = bool(subprocess.run(["git", "status", "--porcelain", "--", "possession", "validation/harness"],
+                                    cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip())
     except (OSError, subprocess.CalledProcessError):
         return "desconocido (sin git)"
-    return commit + (", con cambios sin commit" if sucio else "")
+    return commit + (", con cambios sin commit en possession/ o validation/harness/" if sucio else "")
 
 
 def cabecera_versiones(ruta, contenido, huella, codigo):
@@ -721,6 +742,9 @@ def main():
             versiones, contenido, huella = leer_versiones(args.versiones)
         except (OSError, ValueError) as error:  # json.JSONDecodeError es un ValueError
             sys.exit("--versiones: {}".format(error))
+        if version_de_main(versiones) is None:
+            print("AVISO: {} no trae la versión de main ({{}}): no habrá comparación frente a main.".format(
+                args.versiones), file=sys.stderr)
     salida, perfil, en_eventos = medir(args.partidos, args.d, args.bootstrap,
                                        avisar=lambda texto: print(texto, file=sys.stderr), versiones=versiones,
                                        con_eventos=args.eventos)
