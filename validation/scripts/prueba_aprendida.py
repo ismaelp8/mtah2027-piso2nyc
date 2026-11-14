@@ -9,11 +9,11 @@ Con el partido inventado del harness (`puntuar.partido_de_prueba`) comprueba:
 - el determinismo: dos ejecuciones dan lo mismo;
 - la simetría: cambiar los equipos intercambia `H` y `A` exactamente;
 - que no depende del orden de los slots: una permutación fija da la misma puntuación tras redondear;
-- los coeficientes: los 32 juegos (B1 a B4; los 7 partidos y un pliegue sin cada partido), con tantos
+- los coeficientes: los 40 juegos (B1 a B5; los 7 partidos y un pliegue sin cada partido), con tantos
   pesos como rasgos, y el bloque del módulo es el que escribe `validation/apuesta_b/entrenar.py`;
 - B3 y B4 (15/11): con la misma α, B3 con el balón a la vista en todos los frames es B2, B3 no opina sin
-  balón, B4 da la misma diferencia `H` − `A` que B2 y su ganador nunca supera a `D`; B3 y B4 llevan los
-  pesos de B2.
+  balón, B4 da la misma diferencia `H` − `A` que B2 y su ganador nunca supera a `D`; B5 es B4 más N1;
+  B3, B4 y B5 llevan los pesos de B2.
 
 No usa datos del partido ni de la DFL. Sale con código 1 si falla alguna comprobación. Claude puede
 ejecutarlo.
@@ -31,7 +31,7 @@ sys.path.insert(0, ROOT)
 import dfl  # noqa: E402
 import entrenar  # noqa: E402
 import puntuar  # noqa: E402
-from possession import aprendida, tracking  # noqa: E402
+from possession import aprendida, candidates, tracking  # noqa: E402
 
 fallos = []
 
@@ -48,7 +48,8 @@ def main():
     for inicio, fin in trk.blocks:
         fuera_de_tramos[inicio:fin] = False
     for nombre, funcion in (("B1", aprendida.evidence_b1), ("B2", aprendida.evidence_b2),
-                            ("B3", aprendida.evidence_b3), ("B4", aprendida.evidence_b4)):
+                            ("B3", aprendida.evidence_b3), ("B4", aprendida.evidence_b4),
+                            ("B5", aprendida.evidence_b5)):
         print(nombre)
         score, allowed = funcion(trk)
         comprobar("arrays (n, 3), puntuación finita y todo permitido",
@@ -70,7 +71,7 @@ def main():
         for partido in dfl.PARTIDOS:
             if not np.isfinite(funcion(trk, fuera=partido)[0]).all():
                 comprobar("el pliegue sin {} da una puntuación finita".format(partido), False)
-    print("B3 y B4 frente a B2, con la misma α")
+    print("B3, B4 y B5 frente a B2, con la misma α")
     juego = aprendida.coeficientes("b2")
     z = aprendida.logit(aprendida.rasgos(trk, "b2"), juego["pesos"])
     visible = aprendida.balon_visible(trk)
@@ -85,9 +86,21 @@ def main():
               np.array_equal(b4[:, tracking.H] - b4[:, tracking.A], b2[:, tracking.H] - b2[:, tracking.A]))
     comprobar("el ganador de B4 nunca supera a D (margen cero)",
               (np.max(b4[:, :2], axis=1) == b4[:, tracking.D]).all() and (b4[:, tracking.D] == 0).all())
-    comprobar("B3 y B4 llevan los pesos de B2 en todos los pliegues",
+    cercano = candidates.nearest_team(trk)
+    b5, _ = aprendida.puntuacion_de("b5", z, visible, juego["alfa"], cercano)
+    n1, _ = candidates.evidence(trk)
+    tramos = ~fuera_de_tramos
+    b5_modulo, _ = aprendida.evidence_b5(trk)
+    b4_con_alfa_de_b5, _ = aprendida.puntuacion_de("b4", z, visible, aprendida.coeficientes("b5")["alfa"])
+    comprobar("B5 es exactamente B4 más la puntuación de N1", np.array_equal(b5, b4 + n1))
+    comprobar("evidence_b5 es B4 más N1 en los tramos y cero fuera",
+              np.array_equal(b5_modulo[tramos], (b4_con_alfa_de_b5 + n1)[tramos]) and (b5_modulo[~tramos] == 0).all())
+    comprobar("la diferencia H − A de B5 es la de B2 más la de N1",
+              np.allclose(b5[:, tracking.H] - b5[:, tracking.A],
+                          (b2[:, tracking.H] - b2[:, tracking.A]) + (n1[:, tracking.H] - n1[:, tracking.A]), atol=1e-9))
+    comprobar("B3, B4 y B5 llevan los pesos de B2 en todos los pliegues",
               all(aprendida.COEFICIENTES[c][k]["pesos"] == aprendida.COEFICIENTES["b2"][k]["pesos"]
-                  for c in ("b3", "b4") for k in aprendida.COEFICIENTES["b2"]))
+                  for c in ("b3", "b4", "b5") for k in aprendida.COEFICIENTES["b2"]))
     print("Coeficientes")
     claves = {"todos"} | set(dfl.PARTIDOS)
     for conjunto in aprendida.CONJUNTOS:
