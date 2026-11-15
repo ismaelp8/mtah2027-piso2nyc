@@ -369,3 +369,17 @@ decide Ismael. Esto solo le da el número.
 **Regla de lectura, antes de medir (descriptiva).** «Es una apuesta razonable hacia el control» si el paquete gana a
 `main` por +0,015 o más en todas las celdas del control y de SkillCorner, y con el flag no pierde más de 0,010 en
 ninguna. Si no, se dice qué falla.
+
+## S10. ¿Está el balón de Metrica sample-data pegado al jugador? (regla, antes de medir)
+
+**Por qué.** Bischofberger, Baca y Schikuta (PLOS ONE, 2024) dicen que en los datos de muestra de Metrica el balón
+suele ser exactamente la posición del jugador que lo tiene. Si es así, la medida de B5 en Metrica
+(`validation/resultados/2026-11-15_metrica.md`) premia por construcción la proximidad, como las etiquetas de control
+de la DFL.
+
+**Qué se mide** (`balon_metrica.py`): en los frames de juego con balón, la distancia al jugador más cercano, en
+Metrica («tal cual») y en la DFL con el balón limpio (la referencia de un balón medido).
+
+**Regla, antes de medir.** «El balón de Metrica está pegado» si está a menos de 0,3 m del más cercano en el 40 % o más
+de los frames de juego con balón y en la DFL limpia en menos de la mitad de esa proporción. Si lo está, la medida de
+Metrica no vale como prueba de los rasgos de proximidad y se dice en el documento técnico.
