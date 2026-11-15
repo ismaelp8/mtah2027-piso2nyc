@@ -21,10 +21,12 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
   desfase fijo desde su inicio, por tipo, con dos candidatos (alargar el `D` del hueco hasta el instante,
   o empujar a los dos lados del instante). Medida el 15/11 con su regla: no entra ninguno, porque ningún tipo
   de reinicio tiene un instante fijo (docs/decisiones.md, 15/11, «el instante del reinicio»). Queda fuera de
-  `evidence`, programada y probada, para una repetición.
+  `evidence`, programada y probada. El veredicto está cerrado: no se repite aunque cambien el modelo de Ana,
+  la limpieza del balón, la evidencia de equipo o los costes (decisión de Manuel, 15/11).
 - **El juego vivo en el saque de cada parte** (tarea 4 del plan, 15/11): en el frame del saque no se permite
-  `D`, porque desde ese frame el balón está en juego. Son los mismos frames de saque que el tramo antes del
-  saque, así que las dos anclas se tocan sin pisarse: el tramo acaba en el frame anterior.
+  `D`. FAQ.md da el saque en ese frame, así que desde él el balón está en juego [inferencia]. Son los mismos
+  frames de saque que el tramo antes del saque, así que las dos anclas se tocan sin pisarse: el tramo acaba en
+  el frame anterior.
 - **D7, el balón visto fuera del campo** (Ismael, 15/11; la tarea 2 del plan): `ball_out` y `ball_out_hold`,
   dos capas apagadas que `evidence` no llama. Se probaron con sus reglas y se quedaron apagadas
   (docs/decisiones.md, 15/11, «D7»).
@@ -32,11 +34,11 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
 **En `evidence` van la primera y la del saque** (anclas duras: en el tramo antes del saque solo se permite `D`,
 y en el frame del saque, `D` no) **y la tercera** (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla
 apuntada en docs/decisiones.md antes de medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por
-Manuel el 15/11). La del saque entra solo si pasa su propia regla, escrita antes de regenerar la entrega y
-pendiente de ejecutar (docs/decisiones.md, 15/11, «juego vivo en el saque»;
-`validation/partido/agregados_saque_juego_vivo.py`): esta rama no se mergea hasta aplicarla. De
-gol a saque está programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol
-(las ventanas `GOALS` parecen llegar hasta el saque [inferencia]).
+Manuel el 15/11). La del saque pasó su propia regla, escrita antes de regenerar la entrega (docs/decisiones.md,
+15/11, «juego vivo en el saque»; `validation/partido/agregados_saque_juego_vivo.py`, ejecutado por Ana el 15/11):
+entra y no cambia ningún frame de la entrega (`equipo_v6` es `equipo_v5` byte a byte). De gol a saque está
+programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol (las ventanas
+`GOALS` parecen llegar hasta el saque [inferencia]).
 
 Lo que se probó y lo que se midió está en docs/decisiones.md y en validation/resultados/
 (2026-11-12_balon_muerto_atd.md, 2026-11-13_revision_balon_muerto.md, 2026-11-14_agregados_balon_muerto.md
