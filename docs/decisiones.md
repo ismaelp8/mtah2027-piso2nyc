@@ -2691,3 +2691,26 @@ Lo que no cambia:
 
 Descartado: buscar y cambiar cada frase de las bitácoras, los resultados y los comentarios del código. Basta
 con la regla general de `CLAUDE.md`, que todas las sesiones leen al empezar.
+
+### 2026-11-15 · validación · visionado de la ventana pública junto al vídeo (reglas, escritas antes de mirar)
+
+Quién: Ismael (mira el vídeo); Claude prepara la herramienta y ordena lo que cuente, sin ver nada del partido.
+
+Qué se hace:
+- Ismael mira, junto al vídeo táctico, los tramos de los 5 minutos públicos en que `equipo_v3` y la GT
+  pública no coinciden, con `validation/partido/clips_ventana.py`. Esa página la abre solo él, y su guía es
+  `validation/partido/GUIA_VISIONADO.md`.
+- Lo que vea se convierte en hipótesis generales, cada una con su forma de medirla en la DFL y en
+  SkillCorner y su criterio escrito antes de medir.
+
+Con qué reglas (`RULES.md` §1 y §2; `CHALLENGE.md`, «The reference is the ground truth»):
+- mirar el vídeo y la GT pública para entender cómo se etiquetan los casos está permitido;
+- no se convierte nada en etiquetas, correcciones ni reglas o constantes ligadas a momentos del partido;
+- no se ajusta ni se elige nada con la ventana: son 17 posesiones;
+- Ismael cuenta patrones generales, sin minutos, frames ni recuentos tramo a tramo. No es una medida, a
+  diferencia del recuento a ojo de la PR 1 (zona gris, `docs/revision_externa_2026-11-15.md` §3.4);
+- Claude no ve el vídeo, ni la página, ni la entrega, ni notas con tiempos.
+
+Resultado: pendiente del visionado.
+
+Decisión y por qué: ninguna todavía. Lo que salga solo propone qué medir en datos abiertos.
