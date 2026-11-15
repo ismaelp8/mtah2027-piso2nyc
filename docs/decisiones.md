@@ -2357,3 +2357,28 @@ Decisión y por qué: **no cumple ni la lectura 1 ni la 2. Es un empate: B5 sigu
 
 Descartado: B9 tal cual. Se queda en la rama, con sus coeficientes, como referencia del documento técnico.
 
+### 2026-11-15 · candidatos · posesiones cortas, fase 3: con estos rasgos no hay más, ni con un modelo flexible
+
+Quién: lo pidió la sesión principal (orquestadora, por encargo de Ismael). Claude escribió la puerta con su
+regla (`validation/posesiones_cortas/BITACORA.md` §10, commit `3193b43`) antes de ejecutarla.
+
+Qué se probó: si lo que limita es la forma lineal de B5 y B9 o los rasgos. Una red de una capa de 32, en
+numpy y sin sesgos, con los rasgos de B9, y con ellos más 6 señales de los jugadores alrededor de un cambio.
+Mismas filas, pliegues y elección de α que B9.
+
+Cómo se midió: fuera de muestra, con el `D` de las etiquetas. En la DFL, cada partido con el pliegue que no lo
+vio; en `lector.ENTRENAMIENTO` de SkillCorner, con el modelo de los 7 partidos. El examen no se abrió.
+
+Resultado [medido]:
+- con el control, la red empata con `main` (−0,005 a −0,003) y con su versión lineal;
+- en SkillCorner pierde (−0,019 a −0,025);
+- con el flag gana mucho (+0,061 a +0,092 frente a `main`).
+
+Encuentra más posesiones de 2 a 10 s, pero predice tantas de más que con el control no gana.
+
+Decisión y por qué: **se cierra la pregunta. Con estos rasgos no hay más, ni con un modelo flexible.** No se
+abre ningún candidato, B5 sigue en la entrega y `pipeline.PIECES` no cambia. Lo que la red gana con el flag
+es una apuesta de convención que no se traslada a SkillCorner.
+
+Descartado: la red, en sus dos brazos, y las señales de los jugadores alrededor de un cambio.
+

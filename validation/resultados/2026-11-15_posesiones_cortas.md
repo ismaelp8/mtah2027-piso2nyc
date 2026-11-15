@@ -98,6 +98,20 @@
 12. **`main` con el balón tarde** [medido, descriptivo, `D` de las etiquetas, «como el ATD»]: con 6, 12 y 25
     frames de retraso cae −0,001, −0,027 y −0,057 con el flag, y −0,019, −0,088 y −0,184 con el control. La
     medida del retraso del ATD la hace Antonio (rama `exp/retraso-balon-atd`).
+13. **Fase 3: con estos rasgos no hay más, ni con un modelo flexible** [medido, puerta con la regla subida
+    antes en `3193b43`; fuera de muestra, `D` de las etiquetas]. Se probó una red de una capa de 32 con los
+    rasgos de B9, y con ellos más 6 señales de los jugadores alrededor de un cambio.
+
+    | | control, DFL | flag, DFL | SkillCorner |
+    |---|---|---|---|
+    | red frente a `main` | −0,005 a −0,003 | +0,061 a +0,092 | −0,025 a −0,019 |
+    | red frente a la lineal con los mismos rasgos | +0,001 a +0,008 (intervalos que cruzan el cero) | +0,022 a +0,033 | −0,023 a −0,010 |
+
+    - Con el control, la red encuentra más posesiones de 2 a 10 s (del 65 al 74–76 %), pero predice tantas
+      de más (1.912–2.005 frente a 1.661) que el spellF1 no se mueve.
+    - Lo que la red saca de más son cambios del tipo del flag, y solo en la DFL. Es la misma apuesta de
+      convención que B9, más grande, y en SkillCorner pierde [inferencia].
+    - Detalle: `validation/posesiones_cortas/BITACORA.md` §10.
 
 ## Estado de cada idea
 
@@ -109,7 +123,8 @@
 | proponer trozos del rival y clasificarlos | techo bajo, ni con un oráculo llega a +0,03 con el control [medido] |
 | la dirección en que se mueve el balón (B9) | medido con regla: empate |
 | deshacer el suavizado del balón | no se puede validar en el harness (allí es una media exacta sin ruido) |
-| señales de los jugadores alrededor de un cambio (quién acelera, cambio de forma) | sin medir |
+| señales de los jugadores alrededor de un cambio (medias hacia delante y hacia atrás) | puerta de la fase 3: no ganan con el control ni en SkillCorner [medido] |
+| un modelo no lineal con los mismos rasgos (red de una capa) | puerta de la fase 3: no gana con el control ni en SkillCorner [medido] |
 | quitar las posesiones inventadas (fase 2) | ni con un oráculo llega a +0,03 en las que lo son con las dos convenciones [medido] |
 | un arreglo del decodificador para las posesiones largas (fase 2) | no hay de dónde: ninguna se pierde por cómo se colocan los cambios [medido] |
 

@@ -290,3 +290,23 @@ un rato, ignora las lentas» no es lineal. Script: `python validation/posesiones
   - `main` repite 0,498 / 0,512 / 0,728 / 0,748 por este camino, y B9, 0,537 / 0,560 / 0,722 / 0,743;
   - la red es impar: con los rasgos cambiados de signo da el logit cambiado de signo.
 - **Nada de lo medido cambia la red,** ni los rasgos de los jugadores, ni los umbrales.
+
+**Resultado** [medido; salida en `salidas/2026-11-15_puerta_no_lineal.md`; regla en `3193b43`]:
+- **Instrumento:** `main` y B9 repiten 0,728 / 0,748 / 0,498 / 0,512 y 0,722 / 0,743 / 0,537 / 0,560 por este
+  camino. La red es impar. Su α sale 2 en los 8 pliegues.
+- **a) DFL con el control, frente a `main`: no.** La red 33 da −0,005 y −0,004, y la red 39, −0,003 y −0,003.
+  Todos los intervalos cruzan el cero.
+- **b) Posesiones de 2 a 10 s con el control: sí.** Pasan del 65 y el 68 % al 74–79 %. Pero se predicen
+  1.912–2.005 posesiones frente a 1.661, y lo que se gana se pierde en las que sobran.
+- **c) SkillCorner: no.** Las dos redes pierden frente a `main`: de −0,019 a −0,025, ganando en 0 a 2 de 10.
+- **Descriptivo:**
+  - frente a su lineal, con el control, +0,001 y +0,001 (red 33) y +0,005 y +0,008 (red 39), con intervalos
+    que cruzan el cero;
+  - con el flag, la red 39 gana a `main` por +0,087 y +0,092 y a su lineal por +0,031 y +0,033;
+  - en SkillCorner, la red pierde también frente a su lineal.
+
+**Se cierra la pregunta:** con estos rasgos no hay más, ni con un modelo flexible (una red de una capa de 32).
+- La forma lineal no limita con el control [medido].
+- Con el flag, la red saca más cambios de toque en la DFL, pero eso no se traslada a SkillCorner. Es una
+  apuesta de convención, más grande que la de B9 [inferencia].
+- Las señales de los jugadores alrededor de un cambio ayudan solo con el flag.
