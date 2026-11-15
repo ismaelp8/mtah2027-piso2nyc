@@ -6,8 +6,10 @@ Comprueba la interfaz de las piezas, los tramos evaluados, el tramo antes del sa
 (contra la búsqueda exhaustiva), los errores que no pueden pasar en silencio, el determinismo, el CSV y
 el lector del ATD con un fichero sintético.
 
-Nunca llama a `pipeline.build()` ni a `pipeline.main()`, que son los que leen el partido. Además, mientras
-ejecuta las piezas, abrir cualquier fichero es un error (`no_files`).
+Nunca llama a `pipeline.main()`, que lee el partido. A `pipeline.build()`, que también lo lee, solo lo
+llama con `games.require` cambiado por uno que corta antes de leer nada, con una carpeta temporal vacía
+como datos y sin poder abrir ficheros. Además, mientras ejecuta las piezas, abrir cualquier fichero es un
+error (`no_files`).
 
 Sale con código 1 si falla alguna comprobación. Claude puede ejecutarlo (validation/README.md).
 """
@@ -285,6 +287,29 @@ def check_pieces(rng):
           raises(ValueError, lambda: pipeline.run(trk, pieces={"decoder": temporal.decode})))
 
 
+def check_build_requires(folder):
+    print("Ficheros que pide la entrega")
+    asked = []
+
+    class Stop(Exception):
+        pass
+
+    def cut(names, *args, **kwargs):
+        asked.extend(names)
+        raise Stop()
+
+    real = games.require
+    games.require = cut
+    try:
+        with no_files():  # aunque build cambiara de orden, no podría abrir nada
+            stopped = raises(Stop, lambda: pipeline.build(data_dir=folder))
+    finally:
+        games.require = real
+    wanted = {"atd_meta", "atd_raw", "smart_tagging"}
+    check("pipeline.build pide el ATD y el Smart Tagging (dead_ball) antes de leer nada",
+          stopped and wanted <= set(asked), "pide {}".format(sorted(asked)))
+
+
 def check_csv(codes, folder):
     print("CSV de la entrega")
     path = pipeline.write_submission(os.path.join(folder, "prueba.csv"), codes)
@@ -349,6 +374,7 @@ def main():
             check_pieces(np.random.default_rng(SEED + 1))  # su propio azar: no cambia el de las demás
         check_csv(codes, folder)
         check_reader(folder, rng)
+        check_build_requires(folder)
     finally:
         shutil.rmtree(folder, ignore_errors=True)
     print()
