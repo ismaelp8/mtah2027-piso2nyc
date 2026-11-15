@@ -1298,6 +1298,14 @@ circular.
 
 Quién: Manuel
 
+**Estado (15/11), para quien llegue aquí:**
+- **entra en `evidence`:** la capa 4, el hueco sin balón antes de cada reinicio;
+- **no entran:** de gol a saque (no ancla ningún gol), R1 y la capa 3 (la salida del balón);
+- **pendientes:** el final de cada parte y el equipo que reanuda.
+
+Todo lo que sigue se escribió en este orden: las reglas, antes de cada medida. El resultado del 15/11 está
+al final, antes de «Abierto».
+
 Qué se va a probar: la pieza de `possession/dead_ball.py` (función `evidence`), por capas, en este orden.
 Cada capa entra con la PR de la medida que la respalda (ver «Abierto»). Sale de
 `docs/PLAN_ENTREGA.md` §3 y de `validation/resultados/2026-11-13_revision_balon_muerto.md` §6.
@@ -1336,7 +1344,8 @@ Cada capa entra con la PR de la medida que la respalda (ver «Abierto»). Sale d
      («usar la falta de balón como `D`»): es una puntuación blanda, solo antes de un reinicio del Smart
      Tagging, y decide el decodificador. Así lo planteó Ismael en su mensaje a Manuel del 14/11: «como
      evidencia para el decodificador (no como D a pelo, que es lo que se descartó el 13/11)».
-   - Código: `gaps_before_restarts` en `possession/dead_ball.py`, todavía fuera de `evidence`.
+   - Código: `gaps_before_restarts` en `possession/dead_ball.py`, todavía fuera de `evidence` (entró el
+     15/11: ver «Resultado de `validation/partido/agregados_dead_ball.py`», al final).
 
 **Lo que no entra:**
 - **el silbato:** según el mensaje de Antonio del 14/11, su sondeo no pasa su criterio porque la señal
@@ -1592,18 +1601,6 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
   - los desplazamientos de 4, 6 y 8 minutos: los tramos de gol a saque duran 3 minutos como mucho, así
     que desplazados no se pisan consigo mismos.
 
-Abierto:
-- **Dos ficheros más, además de `dead_ball.py`, los dos de esta pieza:** las pruebas de las capas con un
-  Smart Tagging inventado y de la regla con un partido inventado (secciones 7, 8 y 9 de
-  `validation/scripts/comprobar_balon_muerto.py`) y `validation/partido/agregados_dead_ball.py`. Las dos
-  filas de `validation/README.md` que los describen se tocan solo para eso.
-- **La salida de los tres agregados de arriba,** tal cual, está en
-  `validation/resultados/2026-11-14_agregados_balon_muerto.md`.
-- **Una PR por medida:** las capas que se miden en la misma ejecución del script (gol a saque y la capa 4)
-  van en la misma PR, cada una con sus agregados. Una capa que no pasa no entra en `evidence`.
-- **Aviso para Ismael:** `possession/pipeline.py` no pide el Smart Tagging en `games.require`. Si falta,
-  el error sale de `ET.parse` y se entiende peor.
-
 Resultado de `validation/partido/agregados_dead_ball.py` (ejecutado por Manuel el 15/11, con la regla ya en
 GitHub en `e677893`; la salida, tal cual, en `validation/resultados/2026-11-15_agregados_dead_ball.md`):
 - **[medido] De gol a saque:** 4 goles y 4 saques tras gol, pero no ancla ninguno. Las ventanas `GOALS`
@@ -1656,3 +1653,21 @@ Lo que la regla no preveía (no cambia la decisión):
   - `validate_submission.py`: válida, y ninguna `X` en frames evaluados;
   - ventana pública, solo para ver que no está rota (no elige ni mide la mejora): `spellF1` 0,658 y
     `macroF1` 0,851, con 14 posesiones frente a las 17 de la GT.
+
+Abierto:
+- **Dos ficheros más, además de `dead_ball.py`, los dos de esta pieza:** las pruebas de las capas con un
+  Smart Tagging inventado y de la regla con un partido inventado (secciones 7, 8 y 9 de
+  `validation/scripts/comprobar_balon_muerto.py`) y `validation/partido/agregados_dead_ball.py`. Las dos
+  filas de `validation/README.md` que los describen se tocan solo para eso.
+- **La salida de los tres agregados de arriba,** tal cual, está en
+  `validation/resultados/2026-11-14_agregados_balon_muerto.md`.
+- **Una PR por medida:** las capas que se miden en la misma ejecución del script (gol a saque y la capa 4)
+  van en la misma PR, cada una con sus agregados. Una capa que no pasa no entra en `evidence`.
+- **Aviso para Ismael:** `possession/pipeline.py` no pide el Smart Tagging en `games.require`. Si falta,
+  el error sale de `ET.parse` y se entiende peor.
+- **La capa 4 se midió con la limpieza del balón v0 (`ball.clean`, que lo deja igual).** Si la entrega
+  pasa a `clean_v1` de Antonio, que quita detecciones aisladas, los huecos pueden alargarse: habría que
+  volver a ejecutar `agregados_dead_ball.py` con la misma regla. La salida dice con qué limpieza se midió.
+- **Las paradas tras un gol se quedan sin capa de esta pieza:** de gol a saque no ancla, y la capa 4 no
+  mira los saques iniciales (la regla se fijó así). Ahí solo opina el modelo de Ana. Meter los saques tras
+  gol en la capa 4 sería un candidato nuevo, que se escribe y se mide antes de entrar.

@@ -25,7 +25,8 @@ programada y probada, pero no entra: con el Smart Tagging de este partido no anc
 `GOALS` parecen llegar hasta el saque [inferencia]).
 
 Lo que se probó y lo que se midió está en docs/decisiones.md y en validation/resultados/
-(2026-11-12_balon_muerto_atd.md y 2026-11-13_revision_balon_muerto.md).
+(2026-11-12_balon_muerto_atd.md, 2026-11-13_revision_balon_muerto.md, 2026-11-14_agregados_balon_muerto.md
+y 2026-11-15_agregados_dead_ball.md).
 """
 
 import xml.etree.ElementTree as ET
@@ -168,8 +169,9 @@ GAP_STATES = (GAP, BALL_SEEN, GAP_TOO_LONG, RESTART_INSIDE)
 
 
 def restart_windows(events):
-    """Ventanas `SET PIECES` que no son saques iniciales. Antes de un saque inicial ya hay otras capas: el
-    tramo antes del saque de cada parte y el de cada gol a su saque."""
+    """Ventanas `SET PIECES` que no son saques iniciales. Los saques iniciales quedaron fuera de la regla
+    fijada antes de medir: antes del de cada parte ya está el tramo antes del saque. Los de después de un
+    gol, como de gol a saque no ancla, se quedan sin capa de esta pieza (docs/decisiones.md, 15/11)."""
     return [e for e in events if e["code"] == SET_PIECES_CODE and not e["type"].startswith("kick off")]
 
 
