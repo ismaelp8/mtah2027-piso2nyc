@@ -1,9 +1,9 @@
 """Comprueba possession/dead_ball.py sin datos del partido: solo el código, la GT pública y un Smart Tagging
 inventado, que se escribe en una carpeta temporal y se borra al terminar.
 
-Las secciones 9 y 11 (la 10, el equipo que reanuda, está en la rama `feat/d-equipo-reanuda`, que no
-entró) prueban las reglas de validation/partido/agregados_dead_ball.py y
-agregados_instante_reinicio.py con partidos inventados en memoria: importan sus cuentas, que no abren
+Las secciones 9, 11 y 12 (la 10, el equipo que reanuda, está en la rama `feat/d-equipo-reanuda`, que no
+entró) prueban las reglas de validation/partido/agregados_dead_ball.py, agregados_instante_reinicio.py y
+agregados_saque_juego_vivo.py con partidos inventados en memoria: importan sus cuentas, que no abren
 ficheros (se comprueba con la apertura de ficheros prohibida), y nunca ejecutan su `main`, que es lo que
 lee el partido.
 
@@ -153,9 +153,10 @@ def check_goal_to_kickoff(game, folder):
     check("con rutas, dead_mask sigue siendo solo el tramo antes del saque",
           bool(np.array_equal(dead_ball.dead_mask({"smart_tagging": path}, game), pre)))
     score, allowed = dead_ball.evidence(trk, {"smart_tagging": path}, game)
-    check("evidence con rutas: solo D en el tramo antes del saque, fuera todo permitido, y no puntúa",
+    check("evidence con rutas: solo D en el tramo antes del saque, D no en el frame del saque de cada parte, el resto "
+          "permitido, y no puntúa",
           bool(np.array_equal(~allowed[:, tracking.H], pre)) and bool(np.array_equal(~allowed[:, tracking.A], pre))
-          and bool(allowed[:, tracking.D].all()) and not score.any())
+          and bool(np.array_equal(~allowed[:, tracking.D], dead_ball.kickoff_mask(game))) and not score.any())
     _, allowed_none = dead_ball.evidence(trk, None, game)
     check("evidence sin rutas: lo mismo", bool(np.array_equal(allowed_none, allowed)))
 
@@ -1181,6 +1182,212 @@ def check_restart_instant(game, folder):
           "{} {} {}".format(m["play_frames"], a, m["chosen"]))
 
 
+def check_kickoff_anchor(game, folder):
+    """El juego vivo en el saque de cada parte (tarea 4): el ancla en evidence y las cuentas de
+    validation/partido/agregados_saque_juego_vivo.py, con datos inventados. Importa sus funciones, nunca su `main`,
+    y llama a `measure_kickoff` con la apertura de ficheros prohibida."""
+    sys.path.insert(0, os.path.join(ROOT, "validation", "partido"))
+    import agregados_saque_juego_vivo as sjv  # solo sus cuentas
+    from possession import pipeline
+
+    fps = games.GAMES[game]["fps"]
+    n = games.GAMES[game]["n_video_frames"]
+    blocks = tracking.evaluated_blocks(game)
+    H, A, D = tracking.H, tracking.A, tracking.D
+    kick = dead_ball.kickoff_mask(game)
+    first_kick, second_kick = KICKOFF_VIDEO_FRAMES["1st Half"], KICKOFF_VIDEO_FRAMES["2nd Half"]
+
+    check("kickoff_mask: el frame del saque de cada parte (11.185 y 113.742, los de FAQ.md) y ninguno más",
+          [int(f) for f in np.flatnonzero(kick)] == [first_kick, second_kick] == [11185, 113742])
+    try:
+        dead_ball.kickoff_mask("OTRO-PARTIDO")
+        other = False
+    except ValueError:
+        other = True
+    check("kickoff_mask: con otro partido da un error, como pre_kickoff", other)
+    real_kickoffs = dead_ball.KICKOFF_VIDEO_FRAMES
+    dead_ball.KICKOFF_VIDEO_FRAMES = {"1st Half": 5, "2nd Half": second_kick}  # un saque fuera de lo evaluado
+    try:
+        outside = [int(f) for f in np.flatnonzero(dead_ball.kickoff_mask(game))]
+    finally:
+        dead_ball.KICKOFF_VIDEO_FRAMES = real_kickoffs
+    check("kickoff_mask: un saque que cayera fuera de su tramo evaluado no se ancla", outside == [second_kick])
+
+    trk = tracking.Tracking(np.zeros(n), np.zeros(n), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
+                            games.GAMES[game]["pitch"], blocks, fps)
+    path = smart_tagging_xml(folder, "saque.xml", [("SET PIECES", 3000, 3035, "Throw-in")])
+    pre = dead_ball.pre_kickoff(game)
+    for name, paths in (("sin rutas", None), ("con rutas", {"smart_tagging": path})):
+        score, allowed = dead_ball.evidence(trk, paths, game)
+        check("evidence {}: D prohibido justo en los 2 frames del saque, con H y A permitidos ahí; el tramo antes del "
+              "saque acaba en el frame anterior, así que ningún frame se queda sin estado permitido".format(name),
+              bool(np.array_equal(~allowed[:, D], kick)) and bool(allowed[kick, H].all()) and bool(allowed[kick, A].all())
+              and bool(np.array_equal(~allowed[:, H], pre)) and not pre[second_kick] and pre[second_kick - 1]
+              and bool(allowed.any(axis=1).all()))
+    old_score, old_allowed = dead_ball.evidence(trk, None, game)
+    old_allowed[:, D] = True  # antes de la tarea 4 dead_ball no prohibía D en ningún frame
+    new_score, new_allowed = sjv.without_anchor(lambda c: dead_ball.evidence(c, None, game), game)(trk)
+    shared = dead_ball.evidence(trk, None, game)
+    sjv.without_anchor(lambda c: shared, game)(trk)
+    check("without_anchor: quita el ancla y nada más (lo de antes de la tarea 4), sin tocar la evidencia que recibe",
+          bool(np.array_equal(new_allowed, old_allowed)) and bool(np.array_equal(new_score, old_score))
+          and not dead_ball.evidence(trk, None, game)[1][kick, D].any() and not shared[1][kick, D].any())
+
+    codes = np.full(n, tracking.X, dtype=np.int8)
+    for start, stop in blocks:
+        codes[start:stop] = H
+        codes[start + 500:start + 900] = D
+        codes[start + 2000:start + 2600] = A
+    written = pipeline.write_submission(os.path.join(folder, "entrega_inventada.csv"), codes)
+    check("csv_sha256: el mismo sha256 que el CSV que escribe pipeline.write_submission",
+          sjv.csv_sha256(codes) == pipeline.sha256(written) and sjv.csv_sha256(codes) != sjv.csv_sha256(np.roll(codes, 1)))
+
+    check("la regla está congelada: lo que cambia, antes de 60 s después del saque; los intervalos descriptivos, y la "
+          "banda del plan (del 15 al 60 % de D y 250 paradas)",
+          (sjv.FAR_S, sjv.DISTANCE_EDGES_S, sjv.BAND_D, sjv.MAX_STOPS) == (60, (1, 5, 30, 60), (0.15, 0.60), 250)
+          and len(sjv.RULE) == 5)
+
+    # Las cuentas de la regla con etiquetas a mano, con fps 1: dos tramos, [0, 100) y [120, 300), con el saque en el 0
+    # y en el 150; antes del saque de la 2ª parte, D. Sin el ancla, el D sigue 5 frames después del saque.
+    small_blocks = ((0, 100), (120, 300))
+    small_kick = np.zeros(300, dtype=bool)
+    small_kick[[0, 150]] = True
+    small_graded = np.zeros(300, dtype=bool)
+    small_graded[0:100] = small_graded[120:300] = True
+
+    def labels(*spans):
+        out = np.full(300, tracking.X, dtype=np.int8)
+        out[0:100] = H
+        out[40:70] = D
+        out[120:300] = A
+        for a, b, code in spans:
+            out[a:b] = code
+        return out
+
+    def rule(without, with_layer, conflicts=0, kick_mask=small_kick):
+        counts = sjv.kickoff_counts(without, with_layer, small_blocks, kick_mask, small_graded, 1)
+        return counts, sjv.kickoff_rule(counts, conflicts)
+
+    base = labels((120, 155, D))
+    shorter = labels((120, 150, D))
+    counts, (checks, ok) = rule(base, shorter)
+    check("kickoff_counts y kickoff_rule: el D que seguía 5 frames tras el saque acaba en él; cambian 5 frames, de D a "
+          "A, a 0–4 s del saque; no sube nada y entra",
+          ok and list(checks) == list(sjv.RULE) and all(checks.values()) and counts["changed"] == 5 and counts["pairs"] == {(D, A): 5} and counts["distances_s"] == [0, 1, 2, 3, 4]
+          and counts["before"] == counts["far"] == 0 and counts["kick_frames"] == [1, 1] and counts["kick_dead"] == 0
+          and counts["blocks"][1]["runs"] == ((1, 1), (1, 1)) and counts["stops"] == (2, 2)
+          and abs(counts["dead_share"][0] - 65 / 280) < 1e-12 and abs(counts["dead_share"][1] - 60 / 280) < 1e-12,
+          "{} {}".format(counts["changed"], counts["pairs"]))
+    same = rule(shorter, shorter)
+    check("kickoff_rule: si no cambia nada (la entrega ya salía del D en el saque), entra",
+          same[1][1] and same[0]["changed"] == 0)
+    bounce = rule(base, labels((120, 150, D), (151, 155, D)))
+    check("kickoff_rule: si la entrega vuelve a D justo después del saque (una posesión de 1 frame), suben las "
+          "posesiones, las paradas y las rachas cortas, y no entra",
+          not bounce[1][1] and not bounce[1][0][sjv.RULE[3]] and bounce[0]["blocks"][1]["runs"] == ((1, 1), (2, 2))
+          and all(v for k, v in bounce[1][0].items() if k != sjv.RULE[3]))
+    shorter_run = rule(labels((120, 150, D), (150, 175, H)), labels((120, 150, D), (150, 160, H)))
+    check("kickoff_rule: si solo sube una racha corta (una posesión que pasa de 25 a 10 frames), no entra",
+          not shorter_run[1][1] and shorter_run[0]["blocks"][1]["runs"][0] == shorter_run[0]["blocks"][1]["runs"][1]
+          and not shorter_run[1][0][sjv.RULE[3]])
+    near = rule(base, labels((120, 155, D), (209, 210, H)))
+    far = rule(base, labels((120, 155, D), (210, 211, H)))
+    check("kickoff_rule: lo que cambia a 59 s del saque vale; a 60 s, no",
+          near[1][0][sjv.RULE[4]] and near[0]["far"] == 0 and 59 in near[0]["distances_s"]
+          and far[0]["far"] == 1 and not far[1][0][sjv.RULE[4]] and not far[1][1])
+    early = rule(labels((120, 155, D)), labels((120, 140, D), (140, 150, A)))
+    check("kickoff_rule: un cambio antes del saque de su parte cuenta como «antes» y no entra",
+          early[0]["before"] == 10 and not early[1][0][sjv.RULE[4]] and not early[1][1])
+    dead_kick = rule(base, labels((120, 151, D)))
+    no_kick = np.zeros(300, dtype=bool)
+    no_kick[0] = True
+    missing = rule(base, shorter, kick_mask=no_kick)
+    check("kickoff_rule: no entra con D en el frame del saque, ni si una parte no tiene su saque (y lo que cambia ahí "
+          "cuenta como lejos)",
+          dead_kick[0]["kick_dead"] == 1 and not dead_kick[1][0][sjv.RULE[1]] and not dead_kick[1][1]
+          and missing[0]["kick_frames"] == [1, 0] and missing[0]["far"] == 5 and not missing[1][1])
+    lone = rule(shorter, shorter, kick_mask=no_kick)
+    twice = small_kick.copy()
+    twice[160] = True
+    doubled = rule(shorter, shorter, kick_mask=twice)
+    check("kickoff_rule: no entra si una parte no tiene su saque o tiene dos, aunque no cambie nada",
+          not lone[1][1] and not lone[1][0][sjv.RULE[1]] and lone[0]["changed"] == 0 and lone[1][0][sjv.RULE[4]]
+          and not doubled[1][1] and doubled[0]["kick_frames"] == [1, 2] and not doubled[1][0][sjv.RULE[1]])
+    new_possession = rule(labels((120, 150, D)), labels((120, 150, D), (150, 180, H)))
+    check("kickoff_rule: si sube solo el número de posesiones (una nueva de 30 frames, sin parada nueva ni racha "
+          "corta), no entra",
+          not new_possession[1][1] and new_possession[0]["blocks"][1]["runs"] == ((1, 1), (2, 1))
+          and new_possession[0]["blocks"][1]["short"][0] == new_possession[0]["blocks"][1]["short"][1]
+          and not new_possession[1][0][sjv.RULE[3]] and new_possession[1][0][sjv.RULE[4]])
+    leaves_band = rule(labels((0, 100, H), (120, 165, D)), labels((0, 100, H), (120, 150, D)))  # 45 y 30 de 280
+    check("kickoff_rule: la banda se mira en la entrega con el ancla (sin ella, dentro; con ella, fuera)",
+          leaves_band[0]["dead_share"][0] >= 0.15 > leaves_band[0]["dead_share"][1]
+          and not leaves_band[1][0][sjv.RULE[2]] and not leaves_band[1][1])
+    conflicted = rule(base, shorter, conflicts=1)
+    out_of_band = rule(labels((0, 100, H), (120, 150, D)), labels((0, 100, H), (120, 150, D)))
+    check("kickoff_rule: no entra con conflictos ni fuera de la banda",
+          not conflicted[1][1] and not conflicted[1][0][sjv.RULE[0]]
+          and not out_of_band[1][1] and not out_of_band[1][0][sjv.RULE[2]] and out_of_band[0]["dead_share"][1] < 0.15)
+
+    # measure_kickoff de punta a punta, sin abrir ficheros y con piezas controladas, en un partido del tamaño del real.
+    # El equipo empuja a H (0,3) siempre, y una parada larga en la 2ª parte deja la entrega dentro de la banda. Tras el
+    # saque de la 2ª parte, 3 s de evidencia de D: sin el ancla el D sigue esos 3 s; con el ancla, si esa evidencia
+    # suma menos de lo que cuesta volver a D y salir otra vez (50), sale en el saque; si suma más, vuelve a D.
+    def dead_after_kickoff(strength):
+        def piece(c):
+            score, allowed = tracking.no_evidence(n)
+            score[120000:160000, D] = 1.0
+            score[second_kick:second_kick + 3 * fps, D] = strength
+            return score, allowed
+        return piece
+
+    def team_piece(c):
+        score, allowed = tracking.no_evidence(n)
+        score[:, H] = 0.3
+        return score, allowed
+
+    def measured(strength, team=team_piece):
+        try:
+            with pp.no_files():
+                return sjv.measure_kickoff(trk, lambda c: dead_ball.evidence(c, None, game), game,
+                                           pieces={"candidates": team, "dead_state": dead_after_kickoff(strength)})
+        except AssertionError:
+            check("measure_kickoff no abre ningún fichero", False)
+            raise
+
+    weak = measured(0.5)  # 0,2 más que H durante 75 frames: 15 < 50
+    with pp.no_files():
+        weak_pieces = {"candidates": team_piece, "dead_state": dead_after_kickoff(0.5)}
+        delivered = pipeline.run(trk, extra=[lambda c: dead_ball.evidence(c, None, game)], pieces=weak_pieces)
+        before_task = pipeline.run(trk, extra=[sjv.without_anchor(lambda c: dead_ball.evidence(c, None, game), game)],
+                                   pieces=weak_pieces)
+    check("measure_kickoff: el primer sha256 es el de la entrega sin el ancla y el segundo, el de la entrega con ella",
+          weak["sha256"] == (sjv.csv_sha256(before_task), sjv.csv_sha256(delivered))
+          and before_task[second_kick] == D and delivered[second_kick] == H)
+    check("measure_kickoff: con poca evidencia de D tras el saque, el ancla saca la 2ª parte del D en el saque: cambian "
+          "75 frames de D a H a 0–3 s, sin conflictos, no sube nada y entra",
+          weak["entra"] and weak["changed"] == 3 * fps and weak["pairs"] == {(D, H): 3 * fps}
+          and weak["conflicts"] == (0, 0) and weak["far"] == weak["before"] == 0
+          and max(weak["distances_s"]) < 3 and weak["kick_dead"] == 0 and weak["sha256"][0] != weak["sha256"][1]
+          and all(weak["checks"].values()), "{} {} {}".format(weak["changed"], weak["pairs"], weak["conflicts"]))
+    strong = measured(2.0)  # 1,7 más que H durante 75 frames: 127,5 > 50
+    check("measure_kickoff: con mucha evidencia de D tras el saque, la entrega sale a H 1 frame y vuelve a D: suben las "
+          "posesiones y las paradas, y no entra",
+          not strong["entra"] and strong["changed"] == 1 and strong["pairs"] == {(D, H): 1}
+          and strong["blocks"][1]["runs"][1] == (strong["blocks"][1]["runs"][0][0] + 1, strong["blocks"][1]["runs"][0][1] + 1)
+          and not strong["checks"][sjv.RULE[3]], "{} {} {}".format(strong["changed"], strong["pairs"],
+                                                                   strong["blocks"][1]["runs"]))
+
+    def team_conflict(c):
+        score, allowed = team_piece(c)
+        allowed[second_kick, :2] = False
+        return score, allowed
+
+    conflict = measured(0.5, team_conflict)
+    check("measure_kickoff: si otra pieza solo permite D en el frame del saque, hay conflicto con el ancla y no entra",
+          conflict["conflicts"] == (0, 1) and not conflict["entra"] and not conflict["checks"][sjv.RULE[0]])
+
+
 def main():
     game = games.GAME
     n_frames = games.GAMES[game]["n_video_frames"]
@@ -1263,10 +1470,17 @@ def main():
     print("\n9. La regla de validation/partido/agregados_dead_ball.py, con un partido inventado en memoria")
     check_rules(game)
 
-    print("\n11. El instante del reinicio (sin medir, todavía fuera de evidence), con datos inventados")
+    print("\n11. El instante del reinicio (medido el 15/11: no entra; fuera de evidence), con datos inventados")
     folder = tempfile.mkdtemp(prefix="comprobar_balon_muerto_")
     try:
         check_restart_instant(game, folder)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
+
+    print("\n12. El juego vivo en el saque de cada parte (tarea 4, en evidence), con datos inventados")
+    folder = tempfile.mkdtemp(prefix="comprobar_balon_muerto_")
+    try:
+        check_kickoff_anchor(game, folder)
     finally:
         shutil.rmtree(folder, ignore_errors=True)
 

@@ -19,14 +19,20 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
   pierde el balón hasta el inicio de la ventana `SET PIECES`.
 - **El instante del reinicio** (15/11): ancla blanda del fin del `D` de cada ventana `SET PIECES`, en un
   desfase fijo desde su inicio, por tipo, con dos candidatos (alargar el `D` del hueco hasta el instante,
-  o empujar a los dos lados del instante). Todavía sin medir y fuera de `evidence`: entra uno, o ninguno,
-  según su regla (docs/decisiones.md, 15/11, «el instante del reinicio»).
+  o empujar a los dos lados del instante). Medida el 15/11 con su regla: no entra ninguno, porque ningún tipo
+  de reinicio tiene un instante fijo (docs/decisiones.md, 15/11, «el instante del reinicio»). Queda fuera de
+  `evidence`, programada y probada, para una repetición.
+- **El juego vivo en el saque de cada parte** (tarea 4 del plan, 15/11): en el frame del saque no se permite
+  `D`, porque desde ese frame el balón está en juego. Son los mismos frames de saque que el tramo antes del
+  saque, así que las dos anclas se tocan sin pisarse: el tramo acaba en el frame anterior.
 
-**En `evidence` van la primera** (un ancla dura: en esos frames solo se permite `D`) **y la tercera**
-(GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla apuntada en docs/decisiones.md antes de
-medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por Manuel el 15/11). De gol a saque está
-programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol (las ventanas
-`GOALS` parecen llegar hasta el saque [inferencia]).
+**En `evidence` van la primera y la última** (anclas duras: en el tramo antes del saque solo se permite `D`, y
+en el frame del saque, `D` no) **y la tercera** (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla
+apuntada en docs/decisiones.md antes de medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por
+Manuel el 15/11). La del saque entra con su propia regla, escrita antes de regenerar la entrega
+(docs/decisiones.md, 15/11, «juego vivo en el saque»; `validation/partido/agregados_saque_juego_vivo.py`). De
+gol a saque está programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol
+(las ventanas `GOALS` parecen llegar hasta el saque [inferencia]).
 
 Lo que se probó y lo que se midió está en docs/decisiones.md y en validation/resultados/
 (2026-11-12_balon_muerto_atd.md, 2026-11-13_revision_balon_muerto.md, 2026-11-14_agregados_balon_muerto.md
@@ -64,6 +70,19 @@ def pre_kickoff(game=games.GAME):
         kickoff = KICKOFF_VIDEO_FRAMES[HALF_NAMES[half]]
         if kickoff > first:
             mask[first:kickoff] = True
+    return mask
+
+
+def kickoff_mask(game=games.GAME):
+    """Máscara con el frame del saque de cada parte, donde el balón ya está en juego: los de FAQ.md
+    (KICKOFF_VIDEO_FRAMES), solo los que caen en un tramo evaluado."""
+    if game != KICKOFF_GAME:
+        raise ValueError("los frames de saque solo son de {}, no de {}".format(KICKOFF_GAME, game))
+    mask = np.zeros(games.GAMES[game]["n_video_frames"], dtype=bool)
+    for half, first, last in games.half_video_blocks(game):
+        kickoff = KICKOFF_VIDEO_FRAMES[HALF_NAMES[half]]
+        if first <= kickoff <= last:
+            mask[kickoff] = True
     return mask
 
 
@@ -231,7 +250,8 @@ def evidence(trk, paths=None, game=games.GAME):
     """Lo que este módulo aporta al pipeline, con la interfaz común: `(score, allowed)`, de forma (n, 3).
 
     Columnas en el orden `H`, `A`, `D` (possession/tracking.py). En los frames de `dead_mask` solo se
-    permite `D`. Con `paths`, además, suma GAP_SCORE en la columna `D` en el hueco sin balón antes de cada
+    permite `D`, y en el frame del saque de cada parte (`kickoff_mask`), `D` no. Con `paths`, además, suma
+    GAP_SCORE en la columna `D` en el hueco sin balón antes de cada
     reinicio cuya ventana empieza en un tramo evaluado (gaps_before_restarts; las mismas ventanas que midió
     validation/partido/agregados_dead_ball.py), con el balón de `trk`, que el pipeline ya ha limpiado. No
     prohíbe nada más.
@@ -251,6 +271,7 @@ def evidence(trk, paths=None, game=games.GAME):
         raise ValueError("la máscara de D tiene {} frames y el tracking {}".format(len(mask), n))
     allowed[mask, H] = False
     allowed[mask, A] = False  # ni H ni A: solo D
+    allowed[kickoff_mask(game), D] = False  # en el saque el balón ya está en juego (no choca: el tramo acaba antes)
     if paths is not None:
         fps = games.GAMES[game]["fps"]
         events = smart_tagging_events(paths["smart_tagging"], fps)
@@ -261,7 +282,7 @@ def evidence(trk, paths=None, game=games.GAME):
     return score, allowed
 
 
-# -- El instante del reinicio (15/11). Se mide con su regla; fuera de `evidence` hasta que pase.
+# -- El instante del reinicio (15/11). Medido con su regla el 15/11: no entra ninguno. Fuera de `evidence`.
 
 # La capa lleva el fin del `D` de cada ventana `SET PIECES` a un instante fijo desde su inicio, uno por tipo de
 # reinicio, que sale de validation/partido/agregados_instante_reinicio.py con la regla de docs/decisiones.md
