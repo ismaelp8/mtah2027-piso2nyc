@@ -186,7 +186,12 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
 - **Evidencia de equipo y limpieza de Antonio en `main`** (PR 6, 14/11): N2 y la retención pierden
   frente a `main` con el flag, así que se quedan como opciones (`candidates.evidence(trk, method=...)`). La
   limpieza va como variante (`ball.clean_v1`): empata en el harness, que no puede ver los saltos falsos del
-  ATD, y tiene un fallo conocido que hay que arreglar antes de usarla. La entrega no cambia.
+  ATD. La entrega no cambia.
+  - **El arreglo de la limpieza está en `main`** (PR 7, 15/11): `ball.clean_v1` ya está corregida y tiene
+    sus pruebas (`validation/scripts/prueba_limpieza.py`). Sigue empatando con `main` en el harness, y en el
+    partido cambiaría el 0,23 % de los frames con balón [medido por Antonio].
+  - **No está encendida:** `ball.clean` devuelve el balón tal cual y la entrega no cambia. Encenderla
+    obligaría a medir o reentrenar B5 y a repetir la medida de Manuel, que se hicieron con `ball.clean` v0.
 - **La evidencia de equipo de la entrega es B5 desde el 14/11 por la noche** (apuesta B de Ismael;
   `validation/resultados/2026-11-14_apuesta_b.md` y `docs/decisiones.md`).
   - **Qué es:** un modelo aprendido en la DFL, con la proximidad al balón y la forma de los equipos, decide
