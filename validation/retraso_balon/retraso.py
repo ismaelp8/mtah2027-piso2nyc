@@ -36,6 +36,10 @@ CORTE = 3  # |L̂| ≤ CORTE: no se toca nada
 MAX_DIFERENCIA_PARTES = 4  # frames
 MAX_ANCHO_INTERVALO = 8  # frames, del percentil 5 al 95
 NADA, DESPLAZAR, NO_CONCLUYENTE = "candidato 1", "candidato 2", "no concluyente"
+# Cambio de Ismael (15/11, bitácora §11), pedido después de ejecutar en el partido y sin efecto en su resultado
+# (d̂ = +4): con un desfase de −4 o menos se apunta y no se toca nada. Un suavizado centrado más ancho que el
+# de la familia, o unos jugadores que llegan tarde, también dan negativo.
+NEGATIVO = "negativo, se apunta"
 
 
 def ids_de_tramo(trk):
@@ -261,6 +265,9 @@ def lectura(res):
             p95 - p5, MAX_ANCHO_INTERVALO)
     if abs(d) <= CORTE:
         return NADA, "|desfase| = {} ≤ {}: no se toca nada".format(abs(d), CORTE)
+    if d < 0:
+        return NEGATIVO, "desfase = {} ≤ −{}: se apunta y no se toca nada (un suavizado centrado más ancho o unos " \
+            "jugadores que llegan tarde también dan negativo)".format(d, CORTE + 1)
     return DESPLAZAR, "|desfase| = {} ≥ {}: variante en possession/ball.py que {} el balón {} frames".format(
         abs(d), CORTE + 1, "adelanta" if d > 0 else "retrasa", abs(d))
 

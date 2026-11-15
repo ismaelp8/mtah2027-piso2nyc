@@ -1,0 +1,9 @@
+{
+  "main (balón a su hora)": {
+    "nota": "lo que hay en main: en la DFL el balón no llega tarde"
+  },
+  "balón 4 frames tarde": {
+    "nota": "simula en la DFL el retraso medido en el ATD (validation/retraso_balon/BITACORA.md §10): lo que se pierde si no se corrige, que es lo que ganaría encender ball.advance_ball. Descriptivo, no decide",
+    "piezas": {"ball": {"funcion": "advance_ball", "opciones": {"frames": -4}}}
+  }
+}

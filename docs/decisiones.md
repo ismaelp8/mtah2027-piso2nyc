@@ -2211,3 +2211,87 @@ combinaciones.
 Descartado: B6, B7 y B8. Y arreglar el slot duplicado de los núcleos: sería un cuarto candidato.
 `validation/partido/slots_duplicados.py` dice cuánto pasa en el partido, si Ismael lo ejecuta.
 
+### 2026-11-15 · balón · el balón del ATD llega unos 4 frames tarde: la corrección queda escrita y apagada
+
+Quién: Antonio Azuero. Encenderla o no lo decide Ismael.
+
+Qué se probó: la tarea 1 de Antonio en `docs/PLAN_ENTREGA.md` §3 (P1 de la revisión externa): si el balón
+del ATD, suavizado unos 25 frames, llega tarde respecto a los jugadores. Si fuera una media hacia atrás,
+serían unos 12 frames, y eso costaría más que cualquier mejora medida.
+- **La medida** (`validation/retraso_balon/`, con su bitácora): en las rachas en que el mismo slot está a
+  1,5 m o menos del balón durante 1 s o más, la correlación entre la velocidad del balón y la del jugador,
+  para cada desfase de −25 a +25 frames. Es relativa al jugador.
+- **v1:** el desfase del máximo de esa curva.
+- **v2:** la curva entera, comparada con una familia de curvas de la DFL con retrasos conocidos (de −18 a
+  +18). Se diseñó después de ver las curvas de la v1 en la DFL, nunca el partido.
+- Las reglas de las dos se escribieron antes de medir. La de la v2 se subió antes de calibrar (`3e92064`).
+
+Cómo se midió:
+- **Calibración:** en los 7 partidos de la DFL, con el tracking del harness y retrasos conocidos. La v2,
+  dejando un partido fuera, con retrasos de −9 a +12; los de −9, −3, +3 y +9 no se habían mirado antes.
+- **Partido:** `validation/partido/retraso_balon.py`, ejecutado por Antonio en local, solo agregados. 572
+  rachas, 29.183 frames.
+- **Coste, descriptivo:** el harness con el balón de la DFL retrasado 4 frames frente a `main`
+  (`validation/harness/versiones/retraso_balon_2026-11-15.json`).
+
+Resultado [medido]:
+- **La v1 no pasa la calibración:** con el balón centrado da −7 (se esperaba 0), y adelantado 6 frames da
+  −11. La curva tiene dos jorobas, hacia −6 y hacia +3, y el máximo salta de una a otra. No se ejecutó en el
+  partido.
+- **La v2 pasa:** 8 de 8 pruebas, con los 7 partidos a ±2 en todas. Intervalos de 1 a 4 frames y residuo de
+  referencia 0,027. Con un suavizado exponencial, que no está en la familia, se queda corta, pero su residuo
+  es de 3 a 8 veces el de referencia: la regla la habría dado por no concluyente.
+- **Partido:** `d̂` = **+4** (del 5 al 95 %, de +2 a +5; por parte, +3 y +4; residuo 0,018). Es el candidato 2
+  de la regla.
+- **Coste de ese retraso en el harness,** frente a `main`:
+  - con el flag, +0,001 («como el ATD») y +0,002 («sin bloques»);
+  - con control, −0,007 y −0,006.
+
+  Con §5.8, **empate**.
+
+Decisión y por qué:
+- **Se escribe la variante `ball.advance_ball`,** que adelanta el balón `BALL_LEAD` = 4 frames, como pide el
+  candidato 2. Tiene sus pruebas en `validation/scripts/prueba_retraso_balon.py`.
+  - `BALL_LEAD` **sí sale del partido:** es un agregado del tracking entero, sin ninguna etiqueta, que
+    calcula un algoritmo con la regla fijada antes de medir. Entra en lo que RULES.md permite («learning
+    without human labels… provided no person decided any of them»). No está ligado a frames concretos ni
+    sale de la ventana pública.
+- **Queda apagada:** `ball.clean` y la entrega no cambian. Encenderla ganaría como mucho unas 0,007
+  [inferencia, del harness], muy por debajo del 0,03 de §5.8. Y obligaría a tres cosas:
+  - reentrenar o medir B5;
+  - repetir la medida de Manuel;
+  - que la degradación «como el ATD» del harness retrase el balón 4 frames. Hoy llega a su hora (media
+    centrada), así que el harness mediría un balón adelantado, no una corrección.
+- **Propuesta para Ismael: no encenderla.** El riesgo de la revisión (unos 12 frames) queda descartado y la
+  tarea se cierra.
+- **Para Ismael, dueño del harness:** la degradación «como el ATD» no imita ese +4. Según esta medida, en la
+  DFL cuesta entre −0,007 y +0,002.
+
+**Después de medir el partido** (bitácora §11):
+- **La revisión de Ismael** llegó cuando el partido ya se había medido; él había revisado `3e92064`. Pidió
+  que, con `d̂` de −4 o menos, se apunte y no se toque nada: un suavizado centrado de 49 frames sin retraso da
+  entre −6 y −1, y unos jugadores que llegan tarde también dan negativo.
+  - Entra en `retraso.lectura` («negativo, se apunta»), pero ya no se pudo subir antes de ejecutar.
+  - No cambia la lectura del partido: +4 es positivo.
+- **Sensibilidad al ancho del suavizado** (DFL, descriptivo; `calibrar_dfl_v2.py --anchos 13 37 49`). Con el
+  balón centrado sin retraso:
+
+  | ancho | `d̂` en los 7 partidos |
+  |---|---|
+  | 13 | de −1 a +2 |
+  | 37 | de −3 a +1 |
+  | 49 | de −6 a −1 |
+
+  Un suavizado centrado de otro ancho no fabrica un +4. Si el ATD suavizara menos de 25 frames, el retraso
+  de verdad podría estar más cerca de +2. La decisión no cambia.
+- La salida entera del partido está en `validation/resultados/2026-11-15_retraso_balon.md`.
+
+Descartado:
+- la v1, porque no pasó la calibración;
+- una tercera versión, que la regla de la v2 ya excluía;
+- la latencia de la ventana pública como puerta (plan §3).
+
+Límites:
+- La medida es relativa: si los jugadores del ATD también llegaran tarde, no se vería.
+- `d̂` está en el corte: el intervalo incluye +2 y +3, que habrían sido el candidato 1.
+

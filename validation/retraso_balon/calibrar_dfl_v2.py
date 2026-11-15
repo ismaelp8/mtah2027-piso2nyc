@@ -109,9 +109,39 @@ def fila(partido, res, esperado, decide=True):
         "—" if res["desfase_maximo"] is None else "{:+d}".format(res["desfase_maximo"]), res["rachas"], marca)
 
 
+def sensibilidad_anchos(anchos):
+    """Bitácora §11 (descriptivo, después de medir el partido): el balón centrado sin retraso con otros anchos
+    de suavizado, cada partido medido con la familia de caja de 25 de los otros 6. Lo correcto sería 0."""
+    sumas, otros = collections.OrderedDict(), collections.OrderedDict()
+    for partido in dfl.PARTIDOS:
+        cargado = dfl.cargar(partido)
+        sumas[partido] = sumas_partido(cargado)
+        cond = v1.condiciones(cargado)
+        limpio, atd = cond["limpio"], cond["centrado"]
+        mascara = np.isnan(atd.bx) | np.isnan(atd.by)
+        otros[partido] = {w: rt.sumas(limpio._replace(bx=np.where(mascara, np.nan, dfl.media_movil(limpio.bx, w)),
+                                                      by=np.where(mascara, np.nan, dfl.media_movil(limpio.by, w))))
+                          for w in anchos}
+        print("  leído {}".format(partido), flush=True)
+    _, referencia = pruebas(sumas)
+    print("\nSensibilidad al ancho del suavizado centrado, sin retraso (bitácora §11; se espera 0). Residuo de "
+          "referencia: {:.3f}".format(referencia))
+    for w in anchos:
+        print("\ncentrado, ancho {}".format(w))
+        for partido in sumas:
+            familia = familia_de(sumas, [q for q in sumas if q != partido])
+            res = rt.resumen_v2([otros[partido][w]], familia)
+            print(fila(partido, res, 0, decide=False) + "  lectura: {}".format(rt.lectura_v2(res, referencia)[0]))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.parse_args(argv)
+    ap.add_argument("--anchos", nargs="*", type=int, default=None,
+                    help="en vez de la calibración, la sensibilidad a estos anchos del suavizado centrado (§11)")
+    args = ap.parse_args(argv)
+    if args.anchos:
+        return sensibilidad_anchos(args.anchos)
     inicio = time.time()
     sumas = cargar_todo(list(dfl.PARTIDOS), eco=lambda texto: print(texto, flush=True))
     salida, referencia = pruebas(sumas)

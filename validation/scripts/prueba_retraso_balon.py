@@ -8,6 +8,7 @@ Sin datos del partido: todo el tracking es inventado, y abrir un fichero durante
 - `validation/retraso_balon/retraso.py`: que recupera desfases conocidos (0, +12 con la media hacia atrás,
   ±6 desplazando), las rachas, el filtro de los intercambios de slot, los empates, el determinismo y la
   lectura de la bitácora §5;
+- `possession/ball.py`: la variante del candidato 2, `advance_ball`;
 - `validation/partido/retraso_balon.py`: que la salida solo lleva agregados y que sin datos avisa y sale.
 """
 
@@ -27,6 +28,7 @@ sys.path.insert(0, os.path.join(ROOT, "validation", "retraso_balon"))
 sys.path.insert(0, os.path.join(ROOT, "validation", "partido"))
 import retraso as rt  # noqa: E402
 import retraso_balon as script_partido  # noqa: E402  (validation/partido/retraso_balon.py)
+from possession import ball  # noqa: E402
 from possession.tracking import Tracking  # noqa: E402
 
 FALLOS = []
@@ -166,7 +168,8 @@ def empates_y_lectura():
         (res(2, (1.0, 3.0), [2, 1]), rt.NADA),
         (res(-3, (-4.0, -2.0), [-3, -2]), rt.NADA),
         (res(4, (3.0, 6.0), [4, 5]), rt.DESPLAZAR),
-        (res(-7, (-9.0, -5.0), [-7, -6]), rt.DESPLAZAR),
+        (res(-7, (-9.0, -5.0), [-7, -6]), rt.NEGATIVO),  # cambio de Ismael (15/11): el negativo se apunta
+        (res(-4, (-5.0, -3.0), [-4, -4]), rt.NEGATIVO),
         (res(12, (10.0, 14.0), [11, 12]), rt.DESPLAZAR),
         (res(5, (3.0, 6.0), [1, 7]), rt.NO_CONCLUYENTE),  # partes a 6 frames
         (res(5, (0.0, 9.0), [5, 5]), rt.NO_CONCLUYENTE),  # intervalo de 9 frames
@@ -279,18 +282,50 @@ def script_del_partido(familia):
         with contextlib.redirect_stdout(salida):
             codigo = script_partido.main(["--data-dir", vacia])
         check("sin los datos del partido avisa y sale con 1", codigo == 1 and "No encuentro el ATD" in salida.getvalue())
-        # con el partido «encontrado» (require no hace nada) y la caché de la DFL vacía: avisa antes de leer nada
+        # con el partido «encontrado» (require no hace nada) y la caché de la DFL vacía: avisa antes de leer nada.
+        # Con --data-dir a una carpeta que no existe: aunque cambie el orden de las comprobaciones de main(), no
+        # hay partido que leer (nunca la MTAH_DATA_DIR de verdad).
         require, cache = script_partido.games.require, script_partido.cal.dfl.dfl_lector.carpeta_cache
         script_partido.games.require = lambda *a, **k: []
         script_partido.cal.dfl.dfl_lector.carpeta_cache = lambda: vacia
         try:
             salida = io.StringIO()
             with contextlib.redirect_stdout(salida), sin_ficheros():
-                codigo = script_partido.main([])
+                codigo = script_partido.main(["--data-dir", os.path.join(vacia, "no-existe")])
         finally:
             script_partido.games.require, script_partido.cal.dfl.dfl_lector.carpeta_cache = require, cache
         check("sin la caché de la DFL avisa y sale con 1, sin abrir nada",
               codigo == 1 and "Falta la caché de la DFL" in salida.getvalue())
+
+
+def variante_del_balon(familia):
+    print("La variante del candidato 2 (possession/ball.py, advance_ball)")
+    n = 8
+    bx, by = np.arange(n, dtype=float), 10.0 + np.arange(n, dtype=float)
+    px, py = np.zeros((n, 2)), np.ones((n, 2))
+    trk = Tracking(bx.copy(), by.copy(), px, py, np.array([0, 1], np.int8), (LARGO, ANCHO), ((0, n),), FPS)
+    adelantado = ball.advance_ball(trk, 2)
+    check("adelanta 2: el balón de t es el de t + 2 y los dos últimos quedan sin balón",
+          np.allclose(adelantado.bx, [2, 3, 4, 5, 6, 7, np.nan, np.nan], equal_nan=True) and
+          np.allclose(adelantado.by, [12, 13, 14, 15, 16, 17, np.nan, np.nan], equal_nan=True))
+    check("con un número negativo, retrasa",
+          np.allclose(ball.advance_ball(trk, -2).bx, [np.nan, np.nan, 0, 1, 2, 3, 4, 5], equal_nan=True))
+    check("con 0 no cambia nada", np.array_equal(ball.advance_ball(trk, 0).bx, bx))
+    check("por defecto adelanta BALL_LEAD = 4", ball.BALL_LEAD == 4 and
+          np.allclose(ball.advance_ball(trk).bx[:4], [4, 5, 6, 7]))
+    check("no cambia el tracking de entrada ni los jugadores, y el balón nuevo es de solo lectura",
+          np.array_equal(trk.bx, bx) and adelantado.px is trk.px and adelantado.py is trk.py and
+          not adelantado.bx.flags.writeable)
+    check("es lo contrario de retrasar con la herramienta de la calibración",
+          np.array_equal(ball.advance_ball(trk, 3).bx, rt.desplazar(bx, -3), equal_nan=True))
+    # con el balón del partido inventado retrasado 4, la variante lo devuelve a su sitio: d̂ vuelve a 0
+    trk2, bola, hueco = partido_inventado(24)
+    cx, cy = media_centrada(bola[0], 25), media_centrada(bola[1], 25)
+    tarde = con_balon(trk2, rt.desplazar(cx, 4), rt.desplazar(cy, 4), hueco)
+    antes = rt.resumen_v2([rt.sumas(tarde)], familia)["desfase"]
+    despues = rt.resumen_v2([rt.sumas(ball.advance_ball(tarde, 4))], familia)["desfase"]
+    check("un balón 4 frames tarde da d̂ = +4, y con advance_ball vuelve a 0", antes == 4 and despues == 0,
+          "antes {}, después {}".format(antes, despues))
 
 
 def main():
@@ -299,6 +334,7 @@ def main():
     empates_y_lectura()
     herramientas()
     familia = version_2()
+    variante_del_balon(familia)
     script_del_partido(familia)
     print()
     if FALLOS:
