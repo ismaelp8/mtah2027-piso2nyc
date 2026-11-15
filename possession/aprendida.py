@@ -43,8 +43,17 @@ VEL_MAX = 12.0  # m/s: una velocidad mayor es un cambio de slot, no un jugador
 VENTANA_CERCA = 25  # frames: «sin balón cerca» es ningún frame con balón en ±12
 DECIMALES = 6
 # B3, B4 y B5 (14/11) usan los rasgos y los pesos de B2; solo cambia cómo se convierte el logit en puntuación.
-CONJUNTOS = ("b1", "b2", "b3", "b4", "b5")
-RASGOS_DE = {"b1": "b1", "b2": "b2", "b3": "b2", "b4": "b2", "b5": "b2"}
+# B6, B7 y B8 (15/11, la ronda de reentrenamiento) puntúan como B5 con sus propios pesos: B6 sin las ventanas
+# de 151 frames, B7 con los rasgos de B2 entrenados con peso cerca de los cambios y B8 con el evento de toque.
+CONJUNTOS = ("b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8")
+COMO_B5 = ("b5", "b6", "b7", "b8")
+RASGOS_DE = {"b1": "b1", "b2": "b2", "b3": "b2", "b4": "b2", "b5": "b2", "b6": "b6", "b7": "b2", "b8": "b8"}
+# El evento de toque de B8 (anexo A.4 de la revisión externa; docs/decisiones.md, 15/11, antes de medir).
+TOQUE_CERCA, TOQUE_LEJOS = 12, 25  # frames: velocidad del balón de t+12 a t+25 frente a la de t−25 a t−12
+TOQUE_UMBRAL = 3.0  # m/s: cambio de velocidad mínimo (el umbral de toque del experimento 0)
+TOQUE_MAXIMO = 12  # frames: el evento es el máximo del cambio en ±12
+TOQUE_RADIO = 3.0  # m: el jugador más cercano tiene que estar a esta distancia o menos (el radio de ELASTIC)
+VENTANAS_TOQUE = (13, 51)  # frames: ventanas centradas del rasgo
 N1_PUNTOS = 1.0  # el +1 de N1 que suma B5 (candidates.NEAREST_SCORE el 14/11), escrito aquí para que no cambie con él
 BLOQUE_CERCANO = 20000  # frames por bloque al buscar el más cercano (candidates.CHUNK el 14/11)
 BASE_BALON = ["signo del más cercano"] + ["núcleo {} m".format(s) for s in SIGMAS] + ["distancia del más cercano"]
@@ -63,7 +72,9 @@ NOMBRES["b2"] = NOMBRES["b1"] + [
     "velocidad en la dirección de ataque, ventana 101, sin balón cerca",
     "dispersión, ventana 51, sin balón cerca",
 ]
-NOMBRES["b3"] = NOMBRES["b4"] = NOMBRES["b5"] = NOMBRES["b2"]
+NOMBRES["b3"] = NOMBRES["b4"] = NOMBRES["b5"] = NOMBRES["b7"] = NOMBRES["b2"]
+NOMBRES["b6"] = [nombre for nombre in NOMBRES["b2"] if not nombre.endswith("ventana 151")]
+NOMBRES["b8"] = NOMBRES["b2"] + ["evento de toque, ventana {}".format(v) for v in VENTANAS_TOQUE]
 
 
 def media_centrada(valores, ancho):
@@ -153,6 +164,57 @@ def _rasgos_forma(bx, by, visible, equipos, largo, fps):
     return forma + [np.where(sin_balon, r, 0.0) for r in (forma[0], forma[3], forma[4], forma[5])]
 
 
+def cambio_de_velocidad(bx, by, fps):
+    """Cambio de velocidad del balón en cada frame de un tramo (m/s), a la escala del suavizado del ATD.
+
+    La norma de la diferencia entre la velocidad media de t+12 a t+25 y la de t−25 a t−12 (anexo A.4 de la
+    revisión externa). NaN si falta el balón en alguno de esos cuatro frames o si alguno cae fuera del tramo.
+    """
+    n = len(bx)
+    salida = np.full(n, np.nan)
+    if n <= 2 * TOQUE_LEJOS:
+        return salida
+    t = np.arange(TOQUE_LEJOS, n - TOQUE_LEJOS)
+    escala = fps / float(TOQUE_LEJOS - TOQUE_CERCA)
+    antes_x = (bx[t - TOQUE_CERCA] - bx[t - TOQUE_LEJOS]) * escala
+    antes_y = (by[t - TOQUE_CERCA] - by[t - TOQUE_LEJOS]) * escala
+    despues_x = (bx[t + TOQUE_LEJOS] - bx[t + TOQUE_CERCA]) * escala
+    despues_y = (by[t + TOQUE_LEJOS] - by[t + TOQUE_CERCA]) * escala
+    salida[t] = np.hypot(despues_x - antes_x, despues_y - antes_y)
+    return salida
+
+
+def eventos_de_toque(bx, by, equipos, fps):
+    """Signo del evento de toque en cada frame de un tramo: +1 local, −1 visitante, 0 sin evento o sin nadie.
+
+    Evento: un frame con un cambio de velocidad (`cambio_de_velocidad`) de `TOQUE_UMBRAL` o más que es el
+    máximo en ±`TOQUE_MAXIMO` frames; si hay empate, cuenta el primero. Su signo es el equipo del jugador más
+    cercano al balón en ese frame si está a `TOQUE_RADIO` o menos.
+    """
+    cambio = cambio_de_velocidad(bx, by, fps)
+    valor = np.where(np.isnan(cambio), -np.inf, cambio)
+    n = len(valor)
+    es_evento = valor >= TOQUE_UMBRAL
+    for k in range(1, TOQUE_MAXIMO + 1):
+        anterior = np.concatenate((np.full(k, -np.inf), valor[:-k])) if k < n else np.full(n, -np.inf)
+        siguiente = np.concatenate((valor[k:], np.full(k, -np.inf))) if k < n else np.full(n, -np.inf)
+        es_evento &= (valor > anterior) & (valor >= siguiente)
+    signo = np.zeros(n)
+    t = np.flatnonzero(es_evento)
+    if not len(t):
+        return signo
+    cercanos = []
+    for x, y, hay in equipos:
+        d2 = (x[t] - bx[t, None]) ** 2 + (y[t] - by[t, None]) ** 2
+        d2 = np.where(hay[t], d2, np.inf)
+        cercanos.append(d2.min(axis=1) if d2.shape[1] else np.full(len(t), np.inf))
+    local, visitante = cercanos
+    radio = TOQUE_RADIO * TOQUE_RADIO
+    signo[t] = np.where((local <= visitante) & (local <= radio), 1.0,
+                        np.where((visitante < local) & (visitante <= radio), -1.0, 0.0))
+    return signo
+
+
 def rasgos(trk, conjunto):
     """Matriz (n, k) de rasgos del conjunto (`NOMBRES[conjunto]`), en float64, a cero fuera de los tramos."""
     if conjunto not in CONJUNTOS:
@@ -161,14 +223,20 @@ def rasgos(trk, conjunto):
     salida = np.zeros((n, len(NOMBRES[conjunto])))
     team = np.asarray(trk.team)
     columnas = [np.flatnonzero(team == equipo) for equipo in (H, A)]
+    tipo = RASGOS_DE[conjunto]
     for inicio, fin in trk.blocks:
         bx = np.asarray(trk.bx[inicio:fin], dtype=np.float64)
         by = np.asarray(trk.by[inicio:fin], dtype=np.float64)
         equipos = [_por_equipo(trk.px[inicio:fin], trk.py[inicio:fin], c) for c in columnas]
         base, visible = _rasgos_balon(bx, by, equipos)
         lista = [media_centrada(r, v) for r in base for v in VENTANAS_BALON]
-        if RASGOS_DE[conjunto] == "b2":
+        if tipo in ("b2", "b6", "b8"):
             lista += _rasgos_forma(bx, by, visible, equipos, float(trk.pitch[0]), float(trk.fps))
+        if tipo == "b6":
+            lista = [r for r, nombre in zip(lista, NOMBRES["b2"]) if nombre in NOMBRES["b6"]]
+        if tipo == "b8":
+            signo = eventos_de_toque(bx, by, equipos, float(trk.fps))
+            lista += [media_centrada(signo, v) for v in VENTANAS_TOQUE]
         salida[inicio:fin] = np.column_stack(lista)
     return salida
 
@@ -202,7 +270,10 @@ def puntuacion_de(conjunto, z, visible, alfa, cercano=None):
       de `D`.
     - b5: b4 más N1 (`N1_PUNTOS` al equipo de `cercano`, el equipo del jugador más cercano al balón de
       `equipo_mas_cercano`, −1 donde nadie). Frente a `D` empuja como N1.
+    - b6, b7 y b8: como b5, con su propio logit (15/11).
     """
+    if conjunto in COMO_B5[1:]:
+        conjunto = "b5"
     if conjunto in ("b1", "b2"):
         return puntuacion(z, alfa)
     if conjunto == "b3":
@@ -261,7 +332,7 @@ def _evidencia(trk, conjunto, fuera):
     juego = coeficientes(conjunto, fuera)
     z = logit(rasgos(trk, conjunto), juego["pesos"])
     cercano = None
-    if conjunto == "b5":
+    if conjunto in COMO_B5:
         # Como N1, pero a cero fuera de los tramos, como el resto de este módulo (ahí se escribe `X`).
         todos = equipo_mas_cercano(trk)
         cercano = np.full(len(trk.bx), -1, dtype=np.int8)
@@ -293,6 +364,21 @@ def evidence_b4(trk, fuera=None):
 def evidence_b5(trk, fuera=None):
     """B5: B4 más el +1 de N1 donde se ve el balón (14/11)."""
     return _evidencia(trk, "b5", fuera)
+
+
+def evidence_b6(trk, fuera=None):
+    """B6: B5 sin las ventanas de 151 frames, con sus pesos (15/11, ronda de reentrenamiento)."""
+    return _evidencia(trk, "b6", fuera)
+
+
+def evidence_b7(trk, fuera=None):
+    """B7: B5 con los pesos entrenados con peso 5 a ±2 s de un cambio de equipo (15/11)."""
+    return _evidencia(trk, "b7", fuera)
+
+
+def evidence_b8(trk, fuera=None):
+    """B8: B5 con el evento de toque a la escala del suavizado, con sus pesos (15/11)."""
+    return _evidencia(trk, "b8", fuera)
 
 
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------

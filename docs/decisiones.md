@@ -2073,3 +2073,114 @@ Descartado:
 - **numpy 2.4.6 para poder usar Python 3.11:** habría que regenerar y comprobar otra vez, y las normas no lo
   piden.
 - **Fijar las versiones en `requirements.txt`:** es oficial y su comentario promete 3.8 y 3.11.
+
+
+### 2026-11-15 · candidatos · apuesta B: una sola ronda de reentrenamiento de B5 (candidatos, antes de medir)
+
+Quién: tarea 4 de Ismael en el plan (`docs/PLAN_ENTREGA.md` §3), que sale de la propuesta P4 de la revisión
+externa (`docs/revision_externa_2026-11-15.md`). Ismael la arrancó por la sesión de revisión («pásaselo tú a
+las dos sesiones»). El borrador es de la sesión de integración; Claude lo completa, entrena y mide. La regla
+tiene commit antes de entrenar.
+
+Por qué:
+- **Dónde se pierde:** con B5, sobre todo en la evidencia de equipo con el balón a la vista, en las
+  recuperaciones y en las posesiones de 2 a 5 s (diagnóstico de David, entrada del 15/11).
+- **Por qué B5 llega tarde a los cambios** [inferencia de la revisión]: pesa mucho las ventanas de 151
+  frames y se entrenó con una pérdida por frame. Está hecha para acertar el equipo, no el instante del
+  cambio.
+- **Lo que ya empató:** dos añadidos encima de B5 con una escala fija (anexos A.3 y A.5 de la revisión, sin
+  repetir aquí). Lo que falta probar es cambiar lo que aprende el modelo. La revisión espera poco: de −0,01
+  a +0,02.
+
+Candidatos. Los tres salen de `validation/apuesta_b/entrenar.py` y son iguales que B5 en todo lo demás:
+- las mismas filas de entrenamiento: frames vivos en los que el flag y el control coinciden, uno de cada 5,
+  con el balón «como el ATD» y `ball.clean`;
+- la misma regresión (`LAMBDA`, `ITERACIONES` y `CIFRAS`) y los mismos pliegues;
+- la misma puntuación que B5: −α·|z| al equipo que no da el modelo, más el +1 de N1 donde se ve el balón;
+- la misma elección de α: rejilla de 1/8 a 8, con la pieza de `D` de `main` dentro y sin oráculo. Si
+  empatan, la más pequeña.
+
+Lo único que cambia en cada uno:
+- **B6, B5 sin las ventanas de 151 frames:** los rasgos de B2 menos los cinco de «ventana 151». Quedan 25.
+- **B7, B5 con peso 5 cerca de los cambios:** los rasgos de B2. Cada fila de entrenamiento pesa 5 si está a
+  50 frames o menos (±2 s) de un cambio de equipo, y 1 si no.
+  - Un cambio de equipo es un frame cuya etiqueta y la del frame anterior son `H` o `A` y distintas, **en
+    el control**, dentro del mismo tramo. Un cambio a través de una parada no cuenta.
+  - **Por qué el control y no el flag:** cerca de un cambio que solo está en el flag (un toque breve del
+    rival), las filas que se entrenan son todas del equipo que retiene, porque el toque no se entrena.
+    Pesarlas enseñaría a aguantar más. Contadas antes de entrenar: 9.847 filas así, frente a 18.846 cerca
+    de un cambio del control (que también está en el flag). Elegido antes de ver ningún resultado.
+  - La regresión pondera cada fila por su peso, en el gradiente y en la hessiana, con la misma L2.
+- **B8, B5 con el evento de toque:** los rasgos de B2 más dos, el evento de toque con signo en ventanas
+  centradas de 13 y de 51 frames. El evento sigue el anexo A.4 de la revisión, reescrito con lo que trae un
+  `Tracking` (el balón tal como llega, ya limpio, sin suavizarlo otra vez). Se calcula por tramo, sin
+  cruzar sus bordes:
+  - **cambio de velocidad en t:** la norma de la diferencia entre la velocidad media del balón del frame
+    t+12 al t+25 y la del t−25 al t−12. No hay valor si falta el balón en alguno de esos cuatro frames o si
+    alguno cae fuera del tramo;
+  - **evento:** un t con un cambio de 3 m/s o más que es el máximo en ±12 frames. Si hay empate, cuenta el
+    primero;
+  - **signo:** +1 si el jugador más cercano al balón en t es del local y está a 3 m o menos; −1 si es del
+    visitante; 0 si no hay nadie a 3 m. Si los dos están a la misma distancia, cuenta el local;
+  - **rasgo:** la media centrada del signo en 13 y en 51 frames (`aprendida.media_centrada`), como los
+    rasgos del balón de B2.
+
+Comprobaciones del instrumento, antes de leer nada:
+- **Los coeficientes de B1 a B5 no cambian al reentrenar,** así que la entrega no cambia. Además, las α de
+  B1 a B5 son las del 14/11.
+- **Las columnas:** B7 con peso 1 en todas las filas da los pesos de B2. Las primeras 30 columnas de B8 son
+  los rasgos de B2, y las de B6 son las de B2 sin las cinco de 151.
+- **El detector, con un balón inventado:**
+  - un cambio brusco de velocidad, suavizado con una media de 25 frames, da un solo evento a ±2 frames de
+    su sitio;
+  - un balón a velocidad constante no da ninguno;
+  - un jugador a 2 m da el signo de su equipo, y uno a 4 m da 0.
+- **El detector, en la DFL, frente al anexo A.4:** eventos por minuto de juego.
+  - Tiene que quedar a ±20 % de lo que mide la revisión: 24,2 «como el ATD» (de 19,4 a 29,0) y 27,6 «sin
+    bloques» (de 22,1 a 33,1).
+  - A.4 es una medida de fuera que nadie ha repetido. Si no cuadra, se para y se dice. No se ajusta el
+    detector.
+
+Cómo se mide (los tres frente a `main`, que es B5):
+1. **Harness con el `D` oráculo:** `validation/harness/puntuar.py --eventos`, con
+   `validation/harness/versiones/apuesta_b_ronda.json`, cada candidato con `dejar_fuera`. Regla de §5.8
+   frente a `main` y frente al control, en las dos condiciones que votan y con las dos convenciones.
+2. **Eventos humanos, en la misma ejecución:** en las dos condiciones que votan, se lee la estimación de la
+   diferencia frente a `main`, no el intervalo.
+   - La de las recuperaciones tiene que ser mayor que cero (son 195 puntos: una recuperación vale 0,5
+     puntos).
+   - La de los duelos sin cambio no puede bajar de −5 puntos.
+   - Con B5, el acierto es del 70 y el 73 % en las recuperaciones, y del 75 y el 74 % en los duelos sin
+     cambio.
+3. **Criterios 2 y 3 de B5,** con `validation/apuesta_b/d_propio.py --versiones` y el mismo fichero. La
+   referencia es la fila de `main` (`{}`) de esa misma ejecución, que tiene que repetir 629 / 628 paradas
+   vistas con el balón tapado y 545 con el balón a la vista. Si no las repite, algo del `D` cambió en
+   `main`: se para y se dice.
+   - **Con el balón tapado:**
+     - al menos tantas paradas vistas como `main`;
+     - la precisión del `D` a 2 puntos o menos de la de `main`;
+     - un `spellF1` con el `D` propio no por debajo del de `main` en las cuatro celdas.
+   - **Con el balón a la vista en los `D`:** las paradas vistas no más de 1 punto por debajo de las de
+     `main`.
+
+Regla de lectura, fijada antes de medir:
+- **Entra** el candidato que cumple 1, 2 y 3. Si cumplen varios, el más simple: B6 antes que B7, y B7 antes
+  que B8.
+  - El cambio de `pipeline.PIECES` va en un último commit aparte.
+  - Ismael tiene un sí permanente para la apuesta B, pero este arranque no da permiso nuevo para `main`.
+    Lo sube la sesión de integración.
+- **Si ninguno cumple los tres, es un empate y se cierra la evidencia de equipo.**
+  - «Empate» incluye perder.
+  - Un candidato que mejora en los eventos pero no gana a `main` con §5.8 no entra.
+  - Es la regla de parada: una sola ronda, sin segunda vuelta ni combinaciones. Se apunta aquí.
+- **Nada de lo medido cambia los candidatos:** ni el peso 5, ni los ±2 s, ni la convención de los cambios,
+  ni las ventanas, ni los umbrales del evento.
+
+De paso, solo para mirar: **un slot duplicado cuenta doble en los núcleos de B5** (`possession/aprendida.py`,
+`_rasgos_balon`).
+- La DFL no tiene slots duplicados, así que el harness no lo ve.
+- Arreglarlo cambiaría los rasgos de B5 y la entrega: sería un cuarto candidato, y la regla de parada no lo
+  deja. No entra en esta ronda.
+- Cuánto pasa en el partido solo lo dice un agregado de `validation/partido/` que ejecute una persona.
+
+Resultado: pendiente.
