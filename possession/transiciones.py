@@ -29,6 +29,12 @@ Qué hace:
 Las demás fases no entran, y menos las «de zona», que son las que se solapan con equipos distintos. Las
 `DEFENSIVE TRANSITION` son el espejo exacto de las de ataque y no añaden nada.
 
+Segunda versión, `evidence_equipo` (15/11, docs/decisiones.md, «la primera versión crea paradas»): lo mismo,
+pero el peso va solo a la columna del equipo de la fase. La primera, con el mismo peso en `D`, convirtió en
+paradas los frames que tenía que pasar al equipo de la fase: B5 no premia al equipo que prefiere, resta al otro,
+así que la columna del equipo de la fase quedaba por debajo de la de `D` y el empujón le daba la ventaja a `D`.
+También apagada: `--capa transiciones.evidence_equipo`.
+
 Interfaz: la de possession/dead_ball.py, `evidence(trk, paths=None, game=games.GAME)` → `(score, allowed)`, de
 forma (n, 3) y con las columnas `H`, `A`, `D`. Como dead_ball, es una pieza del partido: abre el Smart Tagging de
 `paths`. **Sin `paths` no abre nada y no opina:** en la DFL y en validation/scripts/prueba_pipeline.py no cambia
@@ -80,10 +86,12 @@ def transitions(path, fps):
     return sorted(out)
 
 
-def push(n, blocks, transitions, fps, weight=WEIGHT, cap_s=CAP_S):
+def push(n, blocks, transitions, fps, weight=WEIGHT, cap_s=CAP_S, neutral=True):
     """(score, allowed) con el empujón de `transitions` ([(equipo, inicio, fin)]) en un tracking de n frames.
 
     Función pura: no abre nada. `blocks` son los tramos evaluados, como (inicio, fin) con el fin sin incluir.
+    Con `neutral` (la primera versión), el mismo peso va también a la columna `D`. Sin él (la segunda), solo a
+    la del equipo de la fase.
     """
     score, allowed = no_evidence(n)
     covered = np.zeros((2, n), dtype=bool)
@@ -97,12 +105,22 @@ def push(n, blocks, transitions, fps, weight=WEIGHT, cap_s=CAP_S):
             covered[team, start:stop] = True
     score[covered[H], H] = weight
     score[covered[A], A] = weight
-    score[covered.any(axis=0), D] = weight  # neutral entre jugar y parar: solo empuja contra el otro equipo
+    if neutral:
+        score[covered.any(axis=0), D] = weight  # neutral entre jugar y parar: solo empuja contra el otro equipo
     return score, allowed
 
 
 def evidence(trk, paths=None, game=games.GAME):
     """La capa con la interfaz común. Sin `paths`, no opina y no abre nada; con `paths`, lee su Smart Tagging."""
+    return _capa(trk, paths, game, neutral=True)
+
+
+def evidence_equipo(trk, paths=None, game=games.GAME):
+    """La segunda versión: como `evidence`, pero el peso va solo a la columna del equipo de la fase."""
+    return _capa(trk, paths, game, neutral=False)
+
+
+def _capa(trk, paths, game, neutral):
     n = len(trk.bx)
     if paths is None:
         return no_evidence(n)
@@ -113,4 +131,4 @@ def evidence(trk, paths=None, game=games.GAME):
     if not found:
         raise ValueError("el Smart Tagging no tiene ninguna ATTACKING TRANSITION con Team de los de TEAMS: "
                          "revisa los nombres de los equipos")
-    return push(n, trk.blocks, found, fps)
+    return push(n, trk.blocks, found, fps, neutral=neutral)

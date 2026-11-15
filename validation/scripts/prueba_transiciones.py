@@ -183,12 +183,34 @@ def con_el_pipeline(paths):
           not any("transiciones" in str(v) for v in pipeline.PIECES.values()))
 
 
+def segunda_version(paths):
+    print("Segunda versión: el peso solo a la columna del equipo")
+    trk = tracking()
+    with sin_ficheros():
+        score, allowed = transiciones.evidence_equipo(trk)
+    check("sin paths no opina y no abre nada", not score.any() and allowed.all())
+    score, allowed = transiciones.evidence_equipo(trk, paths=paths)
+    primera = transiciones.evidence(trk, paths=paths)[0]
+    check("H y A reciben lo mismo que en la primera versión",
+          np.array_equal(score[:, H], primera[:, H]) and np.array_equal(score[:, A], primera[:, A]))
+    check("la columna D se queda a cero", not score[:, D].any())
+    check("donde empuja, el equipo de la fase queda 8 por encima del otro y de D",
+          (score[250:375, H] - score[250:375, A] == 8).all() and (score[250:375, H] - score[250:375, D] == 8).all())
+    check("no prohíbe nada y todo es finito", allowed.all() and np.isfinite(score).all())
+    check("la primera versión no cambia: sigue con 8 en D", (primera[250:375, D] == 8).all())
+    capa = pipeline.resolve("transiciones.evidence_equipo", any_possession_module=True)
+    check("--capa transiciones.evidence_equipo se resuelve", capa is transiciones.evidence_equipo)
+    enchufada = pipeline.with_paths(capa, paths, games.GAME)
+    check("with_paths le pasa las rutas", np.array_equal(enchufada(trk)[0], score))
+
+
 def main():
     sin_paths()
     carpeta = tempfile.mkdtemp(prefix="prueba_transiciones_")
     try:
         paths = con_smart_tagging(carpeta)
         con_el_pipeline(paths)
+        segunda_version(paths)
     finally:
         shutil.rmtree(carpeta, ignore_errors=True)
     print()

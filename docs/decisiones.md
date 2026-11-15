@@ -3177,3 +3177,42 @@ siguen en `possession/dead_ball.py`, apagadas, con su evidencia.
 
 [inferencia, sin medir] En las 7 rachas que quedan, o el balón se ve fuera menos de 1 s antes de perderse, o
 no vuelve a verse dentro en 60 s. No se mide, porque D7 está cerrada.
+
+### 2026-11-15 · candidatos · el empujón en los contraataques: la primera versión crea paradas; segunda versión, solo al equipo
+
+Quién: lo prueba la sesión principal de Ismael (Claude), con su encargo del 15/11: «haz todo lo que necesites no
+dependas de que yo te diga que si a las cosas». La capa es de Antonio (PR 14).
+
+**Resultado de la primera versión** (`transiciones.evidence`; entrega de prueba `prueba_transiciones`, generada
+por Ismael con `main` en `9f89d10`; solo agregados) [medido]:
+- cambian 2.202 frames evaluados (el 1,386 %): de `H` a `A` 171, de `A` a `H` 226, de `H` a `D` 660 y de `A` a
+  `D` 1.145;
+- las posesiones pasan de 215 a 219 y las paradas de 113 a 131. Aparecen 2 paradas y 1 posesión de menos de 25
+  frames;
+- **con los cuatro criterios escritos antes, fallan dos:** el 1 (el 18 % de los cambios son de equipo; se pedía
+  el 90 %) y el 2 (18 paradas más; se pedían 2 como mucho). Pasan el 3 (4 posesiones más) y el 4 (2.202 frames).
+  **Se queda apagada.**
+
+**Por qué crea paradas** [inferencia, con el código]:
+- B5 no premia al equipo que prefiere: resta al otro. En `possession/aprendida.py`, la columna del equipo que B5
+  no prefiere lleva −α·|z|, y la del que prefiere, 0.
+- Donde B5 prefiere al otro equipo, la columna del equipo de la fase queda por debajo de la de `D`, que en el
+  juego vivo ronda −3,4 (la mediana de `dead_state` en la DFL, entrada de D7).
+- Al sumar 8 a las dos, `D` queda por encima del equipo de la fase y también del otro, y el decodificador elige
+  `D`. La capa «neutra frente a `D`» le daba la ventaja a `D`.
+
+**Segunda versión, `transiciones.evidence_equipo`,** escrita antes de generar ninguna entrega con ella:
+- lo mismo que la primera, pero el peso va **solo a la columna del equipo de la fase.** Es lo que se pidió al
+  principio y lo que hacía la pista de la cota de la DFL (`validation/posesiones_cortas/BITACORA.md` §13);
+- el mismo peso (8) y el mismo tope (5 s). No se tocan;
+- **el riesgo,** el que señaló el revisor de la PR 14: también empuja contra `D`, así que puede acortar una
+  parada que caiga en esos 5 s, por ejemplo una falta que corta el contraataque. Lo vigila el criterio 2;
+- **los mismos cuatro criterios, con los mismos umbrales.** Si falla alguno, se queda apagada;
+- es la segunda versión y se diseñó después de ver el resultado de la primera. Si no pasa, la idea se cierra:
+  no se prueba otro peso ni otro tope.
+
+Cómo se prueba (lo ejecuta Ismael):
+`python -m possession.pipeline --name prueba_transiciones2 --capa transiciones.evidence_equipo` y
+`python validation/partido/comparar_entregas.py equipo_v3 prueba_transiciones2`.
+
+Si pasa los cuatro, sigue apagada: encenderla es una decisión aparte, y obliga a regenerar y validar la entrega.
