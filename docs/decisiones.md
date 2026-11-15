@@ -2835,3 +2835,7 @@ Qué se midió y resultado [medido]:
 
 Decisión: ninguna. B5 sigue en la entrega. Cambiar a B9 sería una decisión de Ismael, apuntada como suya: ni
 §5.8 ni la ventana pública lo eligen.
+
+**Decisión de Ismael (15/11): «Me quedo con B5».** B9 queda apagado en `possession/aprendida.py`, fuera de
+`pipeline.PIECES`, y no se genera ninguna entrega de prueba con él. Se le recomendó así porque B9 no gana ni en
+SkillCorner ni con el control, y la GT pública no apunta al flag.
