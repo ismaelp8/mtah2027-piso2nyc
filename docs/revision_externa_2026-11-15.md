@@ -49,6 +49,41 @@
 6. **Tres cosas que dije en el chat han cambiado al medirlas** (sección 2): retiro el prior de reinicio,
    bajo la expectativa de la evidencia de equipo y cambio la lectura de la convención.
 
+> **Añadido después (15/11, tarde): B5 aguanta con un tracking automático.** A petición de Ismael se midió
+> el pipeline en los 20 partidos abiertos de SkillCorner (A-League 2024/25, tracking automático de la
+> retransmisión), con una regla escrita antes (`validation/skillcorner/BITACORA.md`). Resultado en
+> `validation/resultados/2026-11-15_skillcorner.md`:
+> - con el `D` oráculo, `main` gana al baseline por +0,13 en 20 de 20 partidos y a N1 por +0,06 en 19 de 20
+>   [medido]. La ventaja de B5 ya no sale solo de la DFL;
+> - con solo los jugadores que la retransmisión detecta, la ventaja sobre N1 baja a +0,03 [medido, sin voto];
+> - con el `D` propio, el baseline saca 0,249, cerca de su 0,2433 del partido, y `main` 0,381 [medido;
+>   descriptivo, bajo D21]. Apunta al centro del rango de 0,30 a 0,50 del punto 2 [inferencia];
+> - la huella de las etiquetas de SkillCorner (0,678 a 25 frames) es la más cercana a la oficial (0,654) de
+>   todas las medidas, entre el flag y el control de la DFL [medido; descriptivo, bajo D21].
+>
+> Cambia la sección 3.2, punto 10 («los jugadores del harness son perfectos»): con jugadores automáticos, la
+> ventaja de B5 aguanta. Y la tabla de propuestas: la P9 (segundo dataset) ya está hecha como validación.
+>
+> **Añadido después (15/11, tarde): la convención de los eventos de Metrica tampoco tumba a B5.** Los 3
+> partidos de sample-data, con las etiquetas derivadas de sus eventos (toque con impacto) y la regla escrita
+> antes en `validation/metrica/BITACORA.md`. Resultado en `validation/resultados/2026-11-15_metrica.md`:
+> - con el `D` oráculo, `main` gana al baseline por +0,118 en 3 de 3 y a N1 por +0,058 en 2 de 3 [medido].
+>   Son 3 partidos: confirma, no sustituye a la DFL ni a SkillCorner;
+> - esas etiquetas tienen 4,70 posesiones por minuto vivo y una huella de 0,724 a 25 frames: entre el flag
+>   de la DFL (0,552) y el control (0,808), y menos cerca de la oficial (0,654) que SkillCorner (0,678)
+>   [medido; descriptivo, bajo D21]. No se usa para elegir la convención de la entrega. La regla de eventos
+>   a etiquetas quedó escrita en `validation/metrica/BITACORA.md` §3 antes de esa huella, y no se ha tocado
+>   después;
+> - **nota de la revisión (Ismael, 15/11):** la comparación de esa huella con la tabla oficial no es firme.
+>   Con la parada en el frame final del evento salen 4,99 posesiones por minuto y una huella de 0,690, y la
+>   regla deja paradas sin marcar (`validation/metrica/BITACORA.md` §8). La ventaja de B5 sí aguanta: +0,112
+>   frente al baseline y +0,067 frente a N1.
+>
+> **Nota para Claude sobre el Mundial, sin descarga** (`validation/pff/BITACORA.md`). Ismael dice que las
+> normas del reto no prohíben los 64 partidos de PFF FC del Mundial 2022. Claude pide no bajarlos hasta
+> que la organización conteste la licencia. Son el único conjunto abierto con tracking de retransmisión y,
+> en cada frame, balón vivo o muerto y equipo.
+
 ---
 
 ## 0. Lo que he entendido del reto y de dónde se partía
