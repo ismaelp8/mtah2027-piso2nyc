@@ -410,3 +410,25 @@ dejarla en menos de 25 frames. Versiones fijadas aquí: (f, i) = (6, 0), (12, 0)
 **Regla de lectura, antes de medir.** «Hay candidato para David, Manuel y Ana» si una misma versión gana a `main` por
 +0,010 o más con el flag y con el control, en las dos condiciones y en los dos modos del balón, y en 5 de 7 partidos o
 más en cada celda. El número de f se ha sacado de la DFL (la mediana de la pieza de estado), no del partido.
+
+## S9. Resultado [medido]
+
+Diferencia de `spellF1` frente a `main`, con el `D` propio (en cuántos partidos gana):
+
+| etiquetas | balón en los `D` | coste 40 | cortas a `D` | las dos |
+|---|---|---|---|---|
+| DFL flag | a la vista | −0,004 / −0,005 | +0,004 / +0,004 (5 de 7) | −0,001 / −0,003 |
+| DFL flag | tapado | −0,003 / −0,004 | −0,002 / −0,002 | −0,007 / −0,008 |
+| DFL control | a la vista | +0,006 / +0,006 | +0,018 / +0,019 (7 de 7) | +0,021 / +0,021 |
+| DFL control | tapado | +0,008 / +0,008 | +0,007 / +0,009 | +0,011 / +0,012 |
+| SkillCorner | – | +0,007 / +0,007 (10 de 10) | +0,010 / +0,009 (10 de 10) | +0,015 / +0,015 (10 de 10) |
+
+(las dos cifras de cada celda: «como el ATD» y «sin bloques» en la DFL; «detectado» y «detectado, suavizado» en
+SkillCorner)
+
+**Con la regla: no es «una apuesta razonable»** tal como se escribió: con el control y el balón tapado el paquete da
++0,011 / +0,012, por debajo de +0,015. Con el flag no pierde más de 0,010 en ninguna celda.
+
+**Lo que enseña [inferencia]:** de las dos partes, la limpia es «cortas a `D`». Gana en SkillCorner en los 10 partidos,
+con el control en 13 de 14 celdas-partido… y con el flag se queda entre −0,002 y +0,004. El coste 40 es el que paga con
+el flag. Si se quiere apostar por algo, es por «cortas a `D`» sola.
