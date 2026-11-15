@@ -69,6 +69,16 @@
    - SkillCorner también exige control, y B9 también empata con el control de la DFL. **No se puede separar**
      si en SkillCorner falla por el tracking automático o por la convención.
 
+10. **Fase 2: las posesiones largas se pierden por lo mismo** [medido, con el `D` de las etiquetas]. De las
+    de 10 s o más que existen con las dos convenciones se pierden pocas: 41 de 646 con el control y 42 de
+    578 con el flag.
+    - El 73–81 % se pierde solo porque no vemos una posesión del rival pegada a ella; esa vecina dura 2 s o
+      más en la mitad de los casos.
+    - En las de 5 a 10 s, la mitad es eso y la otra mitad, que decimos el otro equipo.
+    - Ninguna se pierde por cómo el decodificador coloca los cambios.
+    - Con nuestro `D` (descriptivo) se suman los bordes con un `D` y las paradas falsas dentro de las largas.
+    - Detalle: `validation/posesiones_cortas/BITACORA.md` §8.
+
 ## Estado de cada idea
 
 | idea | estado |
@@ -81,6 +91,7 @@
 | deshacer el suavizado del balón | no se puede validar en el harness (allí es una media exacta sin ruido) |
 | señales de los jugadores alrededor de un cambio (quién acelera, cambio de forma) | sin medir |
 | las 402 posesiones que sobran con el control | sin estudiar: se miraron las 477 que faltan |
+| un arreglo del decodificador para las posesiones largas (fase 2) | no hay de dónde: ninguna se pierde por cómo se colocan los cambios [medido] |
 
 ## Qué se recomienda
 

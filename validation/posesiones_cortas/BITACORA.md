@@ -122,3 +122,41 @@ Resultado [medido]: **empate.**
 - En la mitad de entrenamiento de SkillCorner da −0,005 y +0,004.
 
 El examen no se ejecutó. B5 se queda.
+
+## 8. Fase 2: las posesiones de 2 s o más que no encontramos
+
+Lo pidió Ismael por la sesión principal: mirar también las otras posesiones, no solo las cortas.
+`python validation/posesiones_cortas/largas.py`; salida en `salidas/2026-11-15_largas.md`. Descriptivo, sin
+regla. Por cada posesión real no encontrada se prueban arreglos locales (las vecinas del otro equipo bien
+puestas; el borde con un `D` real; los `D` nuestros dentro) y se apunta el primero que basta para llegar a
+IoU ≥ 0,5.
+
+Resultado con el `D` de las etiquetas [medido], en las posesiones que existen con las dos convenciones:
+
+| | no encontradas | por una vecina del otro equipo | decimos el otro equipo | otra cosa |
+|---|---|---|---|---|
+| control, 2–5 s | 183 de 384 | 40 % | 60 % | 0 % |
+| control, 5–10 s | 79 de 382 | 46 % | 54 % | 0 % |
+| control, ≥ 10 s | 41 de 646 | 73 % | 15 % | 12 % |
+| flag, 2–5 s | 203 de 410 | 45 % | 55 % | 0 % |
+| flag, 5–10 s | 100 de 409 | 60 % | 40 % | 0 % |
+| flag, ≥ 10 s | 42 de 578 | 81 % | 7 % | 12 % |
+
+- **Ninguna se pierde por el emparejamiento** (0 %): ninguna llega a IoU ≥ 0,5 sin arreglar nada.
+- **La vecina que falta no siempre es corta:** dura menos de 2 s en el 24–50 % de los casos.
+- **En SkillCorner sale lo mismo:** la vecina explica el 45 %, el 55 % y el 67 % en las de 2 a 5, de 5 a 10 y
+  de 10 s o más.
+- **Con el `D` propio** (descriptivo: el balón tapado en los `D` de la DFL delata la etiqueta) salen dos
+  causas más:
+  - el borde con un `D`: el 23–37 % de las no encontradas de 2 a 10 s que existen con las dos convenciones;
+  - un `D` nuestro dentro, una parada falsa que parte una posesión larga: el 21–22 % de las de 10 s o más.
+
+Lectura [inferencia]:
+- **Las largas no son un problema aparte.** Con el `D` de las etiquetas, o se pierden por una posesión del
+  rival que no vemos a su lado, o porque decimos el otro equipo. Las dos cosas son lo de la fase 1: el
+  signo de la evidencia.
+- **No hay un arreglo del decodificador:** con el emparejamiento a 0 %, nada se pierde por cómo se colocan
+  los cambios una vez que la evidencia es la que es.
+- **Lo que añade nuestro `D`** (bordes y paradas falsas) es de las piezas de `D` (Manuel y Ana), y el harness
+  no puede medirlo bien.
+- **No sale ningún candidato de esta fase.**
