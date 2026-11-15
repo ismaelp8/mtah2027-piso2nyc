@@ -249,3 +249,41 @@ Como en §5, con `d̂` en lugar de `L̂` y una condición más:
   que conserve la forma de la curva.
 - **La familia solo tiene el suavizado de caja de 25 frames.** Si el del ATD tiene otra forma, la prueba
   exponencial de 8.3 dice cuánto pesa eso, pero no decide.
+
+## 9. Resultado de la calibración v2 (15/11, después de medir)
+
+La regla de la sección 8 se subió a GitHub en el commit `3e92064` (rama `exp/retraso-balon-atd`) antes de
+ejecutar nada. Calibración con `python validation/retraso_balon/calibrar_dfl_v2.py`, 7 partidos, 41 s.
+
+**Pasa. La medida se puede ejecutar en el partido** (§8.3).
+
+| prueba | retraso de verdad | `d̂` por partido | en la banda |
+|---|---|---|---|
+| `centrado −9` | −9 | de −10 a −7 | 7 de 7 |
+| `centrado −6` | −6 | de −7 a −5 | 7 de 7 |
+| `centrado −3` | −3 | de −4 a −1 | 7 de 7 |
+| `centrado 0` | 0 | de −2 a +2 | 7 de 7 |
+| `centrado +3` | +3 | de +2 a +5 | 7 de 7 |
+| `centrado +6` | +6 | de +5 a +7 | 7 de 7 |
+| `centrado +9` | +9 | de +8 a +10 | 7 de 7 |
+| `hacia atrás` | +12 | de +11 a +14 | 7 de 7 |
+
+[medido] Con cada partido medido con la familia de los otros 6:
+
+- **El intervalo del 5 al 95 % mide de 1 a 4 frames,** y las dos partes se separan como mucho 3 frames.
+  Ninguna prueba habría salido «no concluyente» por esas dos condiciones.
+- **El residuo de referencia** (el mayor de las 8 pruebas) es **0,027**, el de `hacia atrás` en J03WOH. El
+  resto va de 0,000 a 0,018.
+- **El máximo de la versión 1** sigue saltando: con `centrado +3` da −6 o −7 en los 7 partidos.
+
+**La prueba descriptiva** (exponencial hacia atrás, retraso medio +8, fuera de la familia):
+
+- `d̂` va de **+3 a +7**: se queda corto, de 1 a 5 frames;
+- su residuo va de **0,082 a 0,205**, de 3 a 8 veces el de referencia.
+
+Con la regla de §8.5, las 7 habrían salido «no concluyente» por el residuo. [inferencia] Si el ATD
+suavizara con una forma así, la medida no se daría por buena: la protección hace su papel. Y si saliera
+concluyente con un filtro de otra forma, podría quedarse corta.
+
+**Lo siguiente:** Antonio ejecuta `python validation/partido/retraso_balon.py` y pega la salida. Se lee con
+§8.5, sin retocar nada.
