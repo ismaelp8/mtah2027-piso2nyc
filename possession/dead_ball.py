@@ -21,8 +21,8 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
 **En `evidence` van la primera** (un ancla dura: en esos frames solo se permite `D`) **y la tercera**
 (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla apuntada en docs/decisiones.md antes de
 medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por Manuel el 15/11). De gol a saque está
-programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol, porque las
-ventanas `GOALS` llegan hasta el saque.
+programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol (las ventanas
+`GOALS` parecen llegar hasta el saque [inferencia]).
 
 Lo que se probó y lo que se midió está en docs/decisiones.md y en validation/resultados/
 (2026-11-12_balon_muerto_atd.md y 2026-11-13_revision_balon_muerto.md).
@@ -223,8 +223,9 @@ def evidence(trk, paths=None, game=games.GAME):
 
     Columnas en el orden `H`, `A`, `D` (possession/tracking.py). En los frames de `dead_mask` solo se
     permite `D`. Con `paths`, además, suma GAP_SCORE en la columna `D` en el hueco sin balón antes de cada
-    reinicio (gaps_before_restarts), con el balón de `trk`, que el pipeline ya ha limpiado. No prohíbe nada
-    más.
+    reinicio cuya ventana empieza en un tramo evaluado (gaps_before_restarts; las mismas ventanas que midió
+    validation/partido/agregados_dead_ball.py), con el balón de `trk`, que el pipeline ya ha limpiado. No
+    prohíbe nada más.
 
     Es la pieza del partido: usa las constantes de saque y, cuando los necesite, los ficheros de `paths`
     (Smart Tagging), así que no corre en la DFL. Lo que solo necesita el tracking va en
@@ -244,7 +245,8 @@ def evidence(trk, paths=None, game=games.GAME):
     if paths is not None:
         fps = games.GAMES[game]["fps"]
         events = smart_tagging_events(paths["smart_tagging"], fps)
-        for _, _, span in gaps_before_restarts(trk.bx, trk.by, events, fps):
-            if span is not None:
+        for window, _, span in gaps_before_restarts(trk.bx, trk.by, events, fps):
+            # Solo las ventanas que empiezan en un tramo evaluado: las mismas que se midieron.
+            if span is not None and any(first <= window["start"] < stop for first, stop in trk.blocks):
                 score[span[0]:span[1], D] += GAP_SCORE
     return score, allowed

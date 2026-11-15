@@ -1623,7 +1623,11 @@ Decisión según la regla, sin cambiarla:
 - **De gol a saque no entra:** no ancla ningún gol, y además el control no pasa. Queda programada y probada
   (`goal_to_kickoff` y `goal_to_kickoff_mask`), fuera de `dead_mask`.
 - **El hueco antes de cada reinicio entra en `evidence`:** `GAP_SCORE` de 1 por frame en la columna `D`,
-  sin ajustar. La escala la ajusta David con los costes del decodificador.
+  sin ajustar, en las mismas ventanas que se midieron (las que empiezan en un tramo evaluado). La escala la
+  ajusta David con los costes del decodificador.
+- **Desde aquí la entrega usa el Smart Tagging** (a través de `dead_ball.evidence`). El aviso de abajo para
+  Ismael (`pipeline.py` no lo pide en `games.require`) pasa a importar, y el documento técnico lo tiene que
+  decir.
 
 Lo que la regla no preveía (no cambia la decisión):
 - **[inferencia] Las ventanas `GOALS` parecen cubrir la parada entera hasta el saque,** no acabar con el
@@ -1637,9 +1641,9 @@ Lo que la regla no preveía (no cambia la decisión):
 - **[medido, descriptivo] En los primeros 5 s de los huecos el modelo de Ana solo ve `D` en el 60,9 %,**
   por debajo del punto medio, frente al 84,5 % del hueco entero. [inferencia] O algunos huecos empiezan
   antes de la parada, o el modelo llega tarde al instante (entrada de Ismael). El inicio de la capa sigue
-  **[sin verificar]**. Si la entrega muestra paradas que empiezan antes de tiempo, lo primero es bajar
-  `GAP_SCORE`, con los costes.
-- **Por tipo, el hueco aparece sobre todo antes de los córners** (11 de 12) y casi nunca antes de los
+  **[sin verificar]**. La escala de `GAP_SCORE` la decide David con los costes del decodificador, o un
+  criterio escrito antes de medir; nunca la ventana pública.
+- **[medido] Por tipo, el hueco aparece sobre todo antes de los córners** (11 de 12) y casi nunca antes de los
   saques de puerta (2 de 10).
 - **El `Team` coincide siempre con los nombres del ATD:** la capa del equipo que reanuda (27 reinicios:
   córner, saque de puerta y falta) se puede escribir. Queda pendiente.

@@ -233,6 +233,21 @@ def check_gap_before_restart(game, folder):
     check("evidence con rutas: GAP_SCORE en D justo en el hueco, nada en H ni A, y no prohíbe más",
           bool(np.array_equal(score[:, tracking.D], expected)) and not score[:, :2].any()
           and bool(np.array_equal(allowed, dead_ball.evidence(trk, None, game)[1])))
+    first_stop = tracking.evaluated_blocks(game)[0][1]  # primer frame después de la 1ª parte evaluada
+
+    def scored(start):
+        """Frames de D puntuados con un hueco de 20 s antes de una ventana que empieza en `start`."""
+        bx = np.zeros(n_frames)
+        bx[start - 500:start] = np.nan
+        path = smart_tagging_xml(folder, "borde.xml", [("SET PIECES", start / fps, start / fps + 35, "Throw-in")])
+        trk = tracking.Tracking(bx, bx.copy(), np.empty((n_frames, 0)), np.empty((n_frames, 0)),
+                                np.empty(0, dtype=np.int8), games.GAMES[game]["pitch"],
+                                tracking.evaluated_blocks(game), fps)
+        return int(np.count_nonzero(dead_ball.evidence(trk, {"smart_tagging": path}, game)[0][:, tracking.D]))
+
+    check("ventana en el último frame evaluado: puntúa; justo después del tramo: no (como se midió)",
+          scored(first_stop - 1) == 500 and scored(first_stop) == 0,
+          "{} y {}".format(scored(first_stop - 1), scored(first_stop)))
     check("la puntuación del hueco es la de la regla: 1 por frame, sin ajustar (docs/decisiones.md)",
           dead_ball.GAP_SCORE == 1.0)
     check("evidence sin rutas no puntúa el hueco (no abre el Smart Tagging)",

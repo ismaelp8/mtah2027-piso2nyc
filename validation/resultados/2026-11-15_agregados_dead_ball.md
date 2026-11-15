@@ -9,8 +9,9 @@
 - **Para qué:** decidir con la regla fijada antes si entran las dos capas medidas de
   `possession/dead_ball.py`.
 - **Lectura en tres líneas:**
-  1. **De gol a saque no entra:** no ancla ninguno de los 4 goles. Las ventanas `GOALS` duran 169 s de
-     mediana y llegan hasta el saque [medido]; además, el control falla, porque en el tramo antes del
+  1. **De gol a saque no entra:** no ancla ninguno de los 4 goles, y las ventanas `GOALS` duran 169 s de
+     mediana [medido]. Parecen llegar hasta el saque [inferencia: comparando esa mediana con la de 168 s del
+     inicio de `GOALS` al saque, del 14/11]. Además, el control falla, porque en el tramo antes del
      saque de la 2ª parte (`D` seguro) el balón del ATD va deprisa el 46,7 % del tiempo visto, frente al
      50,5 % del partido [medido].
   2. **El hueco antes de cada reinicio entra:** cobertura 52,8 % (≥ 50 %), placebo 23,3 % (el doble,
