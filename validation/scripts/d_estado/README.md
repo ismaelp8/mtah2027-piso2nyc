@@ -14,6 +14,7 @@ incluido, y solo imprimen agregados y coeficientes.
 | `medir.py` | mide los tres candidatos (E1, E2 y E3) dejando un partido fuera: AUC por frame, el criterio del 13/11 por parada, el `spellF1` oficial con el equipo oráculo frente al control, el placebo y la sensibilidad |
 | `prueba_d_estado.py` | prueba la pieza con un partido inventado, sin cargar ninguno de verdad: que no mira fuera de los tramos evaluados (lo que haya fuera no cambia la puntuación de dentro, y donde fuera no hay datos, como en la DFL, el resultado es el de siempre, bit a bit) y que la opción de escala hace lo que dice. No necesita la caché ni `scikit-learn` |
 | `referencia_agregado4.py` | cómo se mueven los jugadores en la DFL, tal cual y con un temblor añadido, en las mismas dos líneas que imprime `validation/partido/agregados_jugadores.py` en su punto 4. Es con lo que se compara la salida del partido para saber si el modelo se traslada al ATD |
+| `retraso_transicion.py` | con cuánto retraso pasa el modelo E2 de parado a juego al acabar una parada, por tipo de reinicio de los eventos de la DFL, dejando un partido fuera. Es la medida de los retrasos que se restan al ancla del instante del reinicio (`DFL_DELAY` de `validation/partido/agregados_instante_reinicio.py`): los tipos con 50 paradas o más con transición y la mediana positiva |
 | `traslado_atd.py` | la referencia de la DFL **partido a partido** para leer los puntos 4 y 6 de `validation/partido/agregados_jugadores.py` (velocidades, jugadores fuera del campo y slots vistos), y qué hace la pieza si faltan jugadores a ratos. Con ella se fijaron los umbrales de `validation/resultados/2026-11-14_agregados_jugadores_atd.md` |
 
 ## Cómo se ejecutan
@@ -47,6 +48,10 @@ python validation/scripts/d_estado/referencia_agregado4.py
 
 ```bash
 python validation/scripts/d_estado/traslado_atd.py
+```
+
+```bash
+python validation/scripts/d_estado/retraso_transicion.py
 ```
 
 `medir.py` tarda unos minutos con los 7 partidos. Con `--sin-sensibilidad` hace solo la medida principal.

@@ -21,6 +21,13 @@ ejecutarlo:
    etiqueta con ella, cuántos caen en los primeros 5 s de cada hueco, y un histograma grueso de la
    distancia entre el inicio de cada hueco y el inicio del D que sale del decodificador.
 
+**Añadidos para cualquier repetición** (decisión de Ana, 15/11; docs/decisiones.md, misma entrada, «Añadidos
+a la regla después de la ejecución del 15/11»). La ejecución del 15/11 no los llevaba:
+- el ancla es la mediana de la transición menos el retraso de esa transición medido en la DFL (DFL_DELAY), y la
+  condición «la mediana gana» sigue con la mediana sin corregir;
+- el control de juego no incluye el tramo antes del saque de la 2ª parte (es el control de D), el script dice
+  cuántos frames tiene y, si son menos del 5 % de lo evaluado, A no se cumple.
+
 `measure_instant` y las funciones de la regla no abren ningún fichero; los importa
 validation/scripts/comprobar_balon_muerto.py (sección 11), que ejecuta Claude con un partido inventado y
 con la apertura de ficheros prohibida. Por eso **nada fuera de `main` puede abrir un fichero.**
@@ -68,11 +75,22 @@ SHARP_NUM, SHARP_DEN = 4, 5  # el 80 %, en enteros para que la frontera no depen
 #    dead_ball.PUSH_AFTER_S después), con el criterio del punto medio de la capa del hueco, por separado en
 #    las ventanas con hueco y en las demás, con 5 ventanas o más en cada grupo. El control de D es el tramo
 #    antes del saque de la 2ª parte (D según el FAQ); el de juego, los frames evaluados a más de PLAY_FAR_S de
-#    cualquier GOALS o SET PIECES, el mismo horizonte que dead_ball.MAX_GAP_BEFORE_RESTART_S. El balón
+#    cualquier GOALS o SET PIECES, el mismo horizonte que dead_ball.MAX_GAP_BEFORE_RESTART_S, sin el control de D
+#    (esto último, desde los añadidos de abajo; la ejecución del 15/11 lo incluía). El balón
 #    deprisa no vale: no separa D de juego en este partido (docs/decisiones.md, 15/11, «fronteras»);
 # 3. el placebo (los mismos instantes en las ventanas desplazadas, todas juntas y 5 o más) no pasa el
 #    punto medio del punto 2.
 PLAY_FAR_S = 60
+# Los añadidos de Ana (pedidos antes de ejecutar, llegaron después de la ejecución del 15/11; valen para cualquier
+# repetición):
+# - el control de juego tiene que tener por lo menos el 5 % de los frames evaluados; si no, el instrumento no
+#   separa y A no se cumple. En enteros, para que la frontera no dependa de la coma flotante;
+PLAY_MIN_NUM, PLAY_MIN_DEN = 1, 20
+# - el ancla es la mediana de la transición menos su retraso mediano en la DFL, en frames, medido por Ana con
+#   validation/scripts/d_estado/retraso_transicion.py: solo los tipos con 50 paradas o más en la DFL y la transición
+#   tarde (mediana positiva). Las faltas y los saques de puerta pasan de 50 paradas, pero su mediana es negativa (la
+#   transición llega antes del fin real): no es un retraso y no se corrigen. Es un número de la DFL, no del partido.
+DFL_DELAY = {"throw-in": 20, "corner kick": 16}
 GAP_GROUP, OTHER_GROUP = "con hueco", "sin hueco"
 BACK, SEEN_AT_START, NOT_BACK = "vuelve a verse", "visto al empezar", "no vuelve"
 
@@ -180,8 +198,20 @@ def spread(values):
 
 
 def anchor_of(transitions):
-    """El ancla de un tipo: la mediana de la transición, en frames desde el inicio de la ventana."""
+    """La mediana de la transición de un tipo, en frames desde el inicio de la ventana. Con ella se calcula «la
+    mediana gana» (anchor_rule); el ancla de la capa es layer_anchor."""
     return int(round(float(np.median(transitions))))
+
+
+def layer_anchor(kind, transitions, delays):
+    """El ancla de la capa (añadido de Ana): la mediana de la transición menos el retraso del tipo en la DFL
+    (`delays`, en frames; un tipo que no está no se corrige)."""
+    return anchor_of(transitions) - int(delays.get(kind, 0))
+
+
+def enough_play(play_frames, graded_frames):
+    """El control de juego tiene por lo menos el 5 % de los frames evaluados (añadido de Ana)."""
+    return play_frames * PLAY_MIN_DEN >= PLAY_MIN_NUM * graded_frames
 
 
 def anchor_rule(transitions, ball, pairs, fps):
@@ -245,11 +275,12 @@ def far_from_restarts(events, graded, fps):
     return far
 
 
-def a_conditions(t, kind, anchor, spans, gap_windows, shifted, odds, n, fps, controls):
-    """Las tres condiciones del candidato A en un tipo con ancla. `t` es su entrada de by_type; `spans`, los de
-    dead_ball.restart_anchor_spans; `gap_windows`, las ventanas que puntúa la capa del hueco; `shifted`, las de
-    placebo_windows; `controls`, las proporciones de D del modelo de Ana (partido, control de D, control de
-    juego)."""
+def a_conditions(t, kind, anchor, spans, gap_windows, shifted, odds, n, fps, controls, play_enough):
+    """Las tres condiciones del candidato A en un tipo con ancla. `t` es su entrada de by_type; `anchor`, el ancla
+    de la capa (layer_anchor); `spans`, los de dead_ball.restart_anchor_spans con esas anclas; `gap_windows`, las
+    ventanas que puntúa la capa del hueco; `shifted`, las de placebo_windows; `controls`, las proporciones de D
+    del modelo de Ana (partido, control de D, control de juego). Sin `play_enough` (enough_play), el instrumento
+    no separa y A no se cumple."""
     instants = {GAP_GROUP: [], OTHER_GROUP: []}
     for window, _, instant, _ in spans:
         if window["type"] == kind:
@@ -264,8 +295,8 @@ def a_conditions(t, kind, anchor, spans, gap_windows, shifted, odds, n, fps, con
     placebo = {"n": len(shifted_instants), "before": before, "after": after,
                "passes": ana_agrees(before, after, *controls)}
     a = {"sharp": sharp(t["transitions"], t["n"], fps), "sharp_count": sharp_count(t["transitions"], fps),
-         "sides": sides, "placebo": placebo}
-    a["ok"] = (a["sharp"] and all(s["ok"] for s in sides.values())
+         "sides": sides, "placebo": placebo, "play_enough": bool(play_enough)}
+    a["ok"] = (a["play_enough"] and a["sharp"] and all(s["ok"] for s in sides.values())
                and placebo["n"] >= MIN_CASES_PER_TYPE and not placebo["passes"])
     return a
 
@@ -363,17 +394,20 @@ def try_layer(trk, clean, events, anchors, modes, without, conflicts_without, de
     return r
 
 
-def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces=None, odds_fn=None):
+def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces=None, odds_fn=None, delays=None):
     """Las cuentas de las cuatro secciones y la regla aplicada. No abre ningún fichero por sí misma.
 
     `trk` es el tracking sin limpiar; `events`, los de dead_ball.smart_tagging_events. `delivery_fn` es la
     evidencia de dead_ball de la entrega (con la capa del hueco) y `no_gap_fn` la misma sin la capa del hueco;
     las dos son funciones del tracking limpio. `pieces` cambia piezas del pipeline (en el partido, None) y
-    `odds_fn` el instrumento (por defecto, dead_state.log_odds, el modelo de Ana).
+    `odds_fn` el instrumento (por defecto, dead_state.log_odds, el modelo de Ana). `delays` son los retrasos que
+    se restan a la mediana para el ancla de la capa (por defecto, DFL_DELAY; las pruebas de antes de los
+    añadidos pasan {}).
     """
     n, fps = len(trk.bx), trk.fps
     graded = graded_mask(game, n)
     pieces = pieces or {}
+    delays = DFL_DELAY if delays is None else delays
     clean = (pieces["ball"] if "ball" in pieces else pipeline.default_piece("ball"))(trk)  # como pipeline.run
     odds = (odds_fn or dead_state.log_odds)(clean)
     seen = ~np.isnan(clean.bx) & ~np.isnan(clean.by)
@@ -417,21 +451,28 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
     for kind, t in by_type.items():
         t["placebo"] = placebo.get(kind, []) if kind != "otros" else []
         t["placebo_ok"] = not tight(t["placebo"], fps)
-    anchors = {kind: anchor_of(t["transitions"]) for kind, t in by_type.items()
-               if t["rule"][4] and t["placebo_ok"]}
-    m.update(by_type=by_type, anchors=anchors)
+    anchored = [kind for kind, t in by_type.items() if t["rule"][4] and t["placebo_ok"]]
+    # El ancla de la capa es la mediana menos el retraso de la DFL (añadido de Ana); la mediana se imprime aparte.
+    medians = {kind: anchor_of(by_type[kind]["transitions"]) for kind in anchored}
+    anchors = {kind: layer_anchor(kind, by_type[kind]["transitions"], delays) for kind in anchored}
+    m.update(by_type=by_type, anchors=anchors, medians=medians, delays=dict(delays))
 
-    # 3a. Las condiciones del candidato A, por tipo con ancla
-    g_match, g_dead = agg.dead_share(odds, graded), agg.dead_share(odds, dead_ball.pre_kickoff(game) & graded)
-    g_play = agg.dead_share(odds, far_from_restarts(events, graded, fps))
-    m.update(g_match=g_match, g_dead=g_dead, g_play=g_play)
+    # 3a. Las condiciones del candidato A, por tipo con ancla. El control de juego no incluye el tramo antes del
+    # saque de la 2ª parte, que es el control de D (añadido después de la ejecución del 15/11).
+    pre = dead_ball.pre_kickoff(game)
+    g_match, g_dead = agg.dead_share(odds, graded), agg.dead_share(odds, pre & graded)
+    play = far_from_restarts(events, graded & ~pre, fps)
+    g_play = agg.dead_share(odds, play)
+    m.update(g_match=g_match, g_dead=g_dead, g_play=g_play, play_frames=int(play.sum()),
+             graded_frames=int(graded.sum()))
+    m["play_enough"] = enough_play(m["play_frames"], m["graded_frames"])
     gap_windows = [w for w, _, span in dead_ball.gaps_before_restarts(clean.bx, clean.by, events, fps)
                    if span is not None]
     spans = dead_ball.restart_anchor_spans(events, anchors, trk.blocks)
     shifted = placebo_windows(events, trk.blocks, fps)
     for kind, anchor in anchors.items():
         by_type[kind]["a"] = a_conditions(by_type[kind], kind, anchor, spans, gap_windows, shifted, odds, n, fps,
-                                         (g_match, g_dead, g_play))
+                                         (g_match, g_dead, g_play), m["play_enough"])
 
     # 3b. Los candidatos en el pipeline: A (con A en los tipos que lo cumplen y B en los demás) si algún tipo
     # cumple A; si no entra, B en todos los tipos con ancla; si no, ninguno.
@@ -499,6 +540,9 @@ def main():
     print("regla: sostén {} s   búsqueda hasta {} s tras el fin de la ventana   capa ±{:g} en D: {} s antes del"
           " instante (sin hueco) y {} s después (A)".format(SUSTAIN_S, SEARCH_AFTER_S, dead_ball.ANCHOR_SCORE,
                                                        dead_ball.PUSH_BEFORE_S, dead_ball.PUSH_AFTER_S))
+    print("añadidos de Ana: ancla = mediana − retraso de la DFL en frames {} (los demás tipos, 0)   control de juego"
+          " sin el tramo antes del saque de la 2ª parte y con ≥ {} % de lo evaluado".format(
+              json.dumps(m["delays"], sort_keys=True), 100 * PLAY_MIN_NUM // PLAY_MIN_DEN))
     print("\n1. Dónde cae el reinicio dentro de cada ventana SET PIECES (no los saques iniciales)")
     print("   ventanas en lo evaluado: {}   duración mediana {:.1f} s   a más de {:g} s de esa mediana: {}".format(
         cases(m["windows"]), m["duration_median_s"], OFF_DURATION_S, cases(m["off_duration"])))
@@ -515,16 +559,16 @@ def main():
         print("      balón: " + "   ".join("{} {}".format(s, cases(k)) for s, k in t["states"].items()))
         pairs = t["pairs"]
         if len(pairs) >= MIN_CASES_PER_TYPE and len(t["transitions"]) >= MIN_WINDOWS:
-            anchor = anchor_of(t["transitions"])
-            print("      con las dos señales (n={}): distancia mediana entre ellas {:.1f} s; del balón al ancla fija"
+            median = anchor_of(t["transitions"])
+            print("      con las dos señales (n={}): distancia mediana entre ellas {:.1f} s; del balón a la mediana fija"
                   " {:.1f} s".format(len(pairs), float(np.median([abs(a - b) for a, b in pairs])) / fps,
-                                     float(np.median([abs(b - anchor) for _, b in pairs])) / fps))
+                                     float(np.median([abs(b - median) for _, b in pairs])) / fps))
         elif len(pairs) >= MIN_CASES_PER_TYPE:
             print("      con las dos señales (n={}): distancia mediana entre ellas {:.1f} s".format(
                 len(pairs), float(np.median([abs(a - b) for a, b in pairs])) / fps))
 
     print("\n2. La regla, por tipo (≥ {} con transición, recorrido ≤ {:g} s, ≥ {} con balón y medianas a ≤ {:g} s,"
-          " y el ancla fija más cerca del balón que la transición de cada ventana)".format(
+          " y la mediana fija más cerca del balón que la transición de cada ventana)".format(
               MIN_WINDOWS, MAX_IQR_S, MIN_BALL, MAX_AGREE_S))
     print("   placebo: las ventanas desplazadas {} min, lejos de reinicios reales: {}; un tipo no tiene ancla si"
           " su placebo también tiene poca dispersión".format(
@@ -532,17 +576,21 @@ def main():
     for kind, t in m["by_type"].items():
         enough, narrow, agree, beats, _ = t["rule"]
         ok = kind in m["anchors"]
-        anchor = "   ancla a {:+.2f} s ({} frames) del inicio".format(
-            m["anchors"][kind] / fps, m["anchors"][kind]) if ok else ""
-        print("   {:<22} suficientes {}   poca dispersión {}   el balón coincide {}   el ancla gana {}   el placebo"
+        anchor = ("   ancla a {:+.2f} s ({} frames) del inicio: la mediana ({} frames) menos el retraso de la DFL ({}"
+                  " frames)".format(m["anchors"][kind] / fps, m["anchors"][kind], m["medians"][kind],
+                                    m["delays"].get(kind, 0)) if ok else "")
+        print("   {:<22} suficientes {}   poca dispersión {}   el balón coincide {}   la mediana gana {}   el placebo"
               " no se concentra {} (n={})   -> ancla: {}{}".format(
                   kind, yes(enough), yes(narrow), yes(agree), yes(beats), yes(t["placebo_ok"]),
                   cases(len(t["placebo"])), yes(ok), anchor))
 
     print("\n3. Los dos candidatos de la capa")
     print("   modelo de Ana, D en: partido {}   control de D (antes del saque de la 2ª parte) {}   control de juego"
-          " (a más de {} s de cualquier reinicio) {}".format(agg.share(m["g_match"]), agg.share(m["g_dead"]),
-                                                           PLAY_FAR_S, agg.share(m["g_play"])))
+          " (a más de {} s de cualquier reinicio, sin el tramo antes del saque) {}".format(
+              agg.share(m["g_match"]), agg.share(m["g_dead"]), PLAY_FAR_S, agg.share(m["g_play"])))
+    print("   control de juego: {} frames, el {:.1f} % de los {} evaluados (hace falta el {} %) -> suficiente {}".format(
+        m["play_frames"], 100.0 * m["play_frames"] / max(m["graded_frames"], 1), m["graded_frames"],
+        100 * PLAY_MIN_NUM // PLAY_MIN_DEN, yes(m["play_enough"])))
     print("   puntos medios: parado antes si ≥ {}   juego después si ≤ {}".format(
         agg.share((m["g_match"] + m["g_dead"]) / 2), agg.share((m["g_match"] + m["g_play"]) / 2)))
     for kind in m["anchors"]:
@@ -557,7 +605,7 @@ def main():
         p = a["placebo"]
         print("      placebo (n={}): antes {}   después {}   -> pasa {}".format(
             cases(p["n"]), masked_share(p["before"], p["n"]), masked_share(p["after"], p["n"]), yes(p["passes"])))
-        print("      -> cumple A: {}".format(yes(a["ok"])))
+        print("      control de juego suficiente {}   -> cumple A: {}".format(yes(a["play_enough"]), yes(a["ok"])))
     if not m["anchors"]:
         print("   ningún tipo tiene ancla: no se prueba ningún candidato")
     for name, r in m["tested"].items():

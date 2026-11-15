@@ -519,6 +519,18 @@ def check_restart_instant(game, folder):
            air.PLAY_FAR_S)
           == (2, 10, 10, 2.0, 5, 1.0, 5, (-480, -360, -240, 240, 360, 480), (0.15, 0.60), 250, 1.0, 5, 1.0,
               (0, 1, 3, 5), 1.0, 4, 5, 60))
+    check("los añadidos de Ana están congelados: el control de juego con el 5 % de lo evaluado como mínimo, y 20 y "
+          "16 frames de retraso de la DFL solo en los saques de banda y los córners",
+          (air.PLAY_MIN_NUM, air.PLAY_MIN_DEN, air.DFL_DELAY) == (1, 20, {"throw-in": 20, "corner kick": 16}))
+    check("enough_play: el 5 % justo vale (en enteros, sin coma flotante); un frame menos, no",
+          air.enough_play(5, 100) and not air.enough_play(4, 100) and air.enough_play(7943, 158857)
+          and not air.enough_play(7942, 158857) and not air.enough_play(0, 100))
+    check("layer_anchor: la mediana menos el retraso del tipo; un tipo sin retraso no se corrige",
+          air.layer_anchor("throw-in", [190, 200, 210], air.DFL_DELAY) == 180
+          and air.layer_anchor("corner kick", [190, 200, 210], air.DFL_DELAY) == 184
+          and air.layer_anchor("goal kick", [190, 200, 210], air.DFL_DELAY) == 200
+          and air.layer_anchor("free kick", [190, 200, 210], air.DFL_DELAY) == 200
+          and air.layer_anchor("throw-in", [190, 200, 210], {}) == 200)
     check("band_ok: del 15 al 60 % de D, ambos incluidos, y 250 paradas como mucho",
           air.band_ok(0.15, 250) and air.band_ok(0.60, 10) and not air.band_ok(0.1499, 10)
           and not air.band_ok(0.6001, 10) and not air.band_ok(0.3, 251))
@@ -711,9 +723,10 @@ def check_restart_instant(game, folder):
           far[239] and not far[240] and not far[459] and far[460] and far[600] and far[839] and not far[840]
           and not far[1009] and far[1010] and int(far.sum()) == 1200 - 220 - 170)
 
-    def a_case(transitions=(100,) * 10, n_windows=10, gaps=5, shifted_types=("x",) * 5, fooled=False):
+    def a_case(transitions=(100,) * 10, n_windows=10, gaps=5, shifted_types=("x",) * 5, fooled=False, play=True):
         """Las condiciones de A con fps 1: 10 ventanas del tipo x cada 150 frames, el instante a 100, el modelo de
-        Ana parado 3 frames antes de cada instante y en juego después; en el placebo, en juego, salvo «fooled»."""
+        Ana parado 3 frames antes de cada instante y en juego después; en el placebo, en juego, salvo «fooled».
+        `play` es si el control de juego tiene frames suficientes."""
         odds = np.full(3000, -1.0)
         wins = [{"type": "x", "start": 10 + 150 * k} for k in range(10)]
         spans = [(w_, w_["start"], w_["start"] + 100, np.inf) for w_ in wins]
@@ -724,13 +737,17 @@ def check_restart_instant(game, folder):
             for p in shifted:
                 odds[p["start"] + 97:p["start"] + 100] = 1.0
         entry = {"transitions": list(transitions), "n": n_windows}
-        return air.a_conditions(entry, "x", 100, spans, wins[:gaps], shifted, odds, 3000, 1, (0.3, 1.0, 0.0))
+        return air.a_conditions(entry, "x", 100, spans, wins[:gaps], shifted, odds, 3000, 1, (0.3, 1.0, 0.0), play)
 
     good = a_case()
     check("a_conditions: nítido, Ana de acuerdo en los dos grupos y placebo que no pasa: A se cumple",
           good["ok"] and good["sharp"] and [s["n"] for s in good["sides"].values()] == [5, 5]
           and all(s["ok"] for s in good["sides"].values()) and good["placebo"]["n"] == 5
-          and not good["placebo"]["passes"], str(good))
+          and not good["placebo"]["passes"] and good["play_enough"], str(good))
+    few_play = a_case(play=False)
+    check("a_conditions: con todo lo demás cumplido, sin frames suficientes en el control de juego A no se cumple",
+          not few_play["ok"] and not few_play["play_enough"] and few_play["sharp"]
+          and all(s["ok"] for s in few_play["sides"].values()) and not few_play["placebo"]["passes"])
     blurry = a_case(transitions=(100,) * 10, n_windows=13)
     check("a_conditions: no se cumple con 4 ventanas en el placebo, con el placebo pasando, con 10 transiciones "
           "nítidas de 13 ventanas (77 %) ni con un grupo de 4; el placebo solo usa su tipo",
@@ -755,8 +772,10 @@ def check_restart_instant(game, folder):
     # hasta su inicio. El balón vuelve a verse a los 8,4 s (210 frames), y el pipeline sale del D a los 9,6 s.
     # El modelo de Ana pasa a juego a los 7,6 u 8,4 s (190 o 210): nítido, con el ancla a 8 s (200), más cerca
     # del balón (10) que cada transición en las ventanas con hueco (mediana 20). Ve D antes del saque de la 2ª
-    # parte (el control de D) y en una parada larga de la 2ª parte (sube el D del partido); ve juego con el
-    # balón deprisa (de los 2.400 a los 2.800 s, el control de juego).
+    # parte (el control de D) y de los 15 a los 95 s de cada ventana (sube el D del partido, cerca de los
+    # reinicios); en el resto, juego: el control de juego sale con un 0 % de D.
+    # Estas pruebas son las de la regla de antes de los añadidos de Ana: pasan `delays={}` (ancla = mediana). Las
+    # del retraso de la DFL van después.
     starts = [(1000 + 100 * i) * fps for i in range(12)]
     events = [window(s) for s in starts]
     gaps = starts[0::2]
@@ -800,11 +819,11 @@ def check_restart_instant(game, folder):
 
     no_gap = lambda trk: tracking.no_evidence(n)  # noqa: E731
 
-    def measured(pieces, odds=instrument, tagged=events, trk=match):
+    def measured(pieces, odds=instrument, tagged=events, trk=match, delays=None):
         try:
             with pp.no_files():
                 return air.measure_instant(trk, tagged, with_gap, no_gap, game, pieces=pieces,
-                                           odds_fn=lambda c: odds)
+                                           odds_fn=lambda c: odds, delays={} if delays is None else delays)
         except AssertionError:
             check("measure_instant no abre ningún fichero", False)
             raise
@@ -824,8 +843,16 @@ def check_restart_instant(game, folder):
           a.get("sharp") and a.get("sharp_count") == 12 and a["sides"]["con hueco"]["n"] == 6
           and a["sides"]["sin hueco"]["n"] == 6 and all(s["ok"] for s in a["sides"].values())
           and a["placebo"]["n"] >= 5 and not a["placebo"]["passes"] and a["ok"] and 0.15 < m["g_match"] < 0.25
-          and m["g_dead"] == 1.0 and 0.0 < m["g_play"] < 0.05,
+          and m["g_dead"] == 1.0 and m["g_play"] == 0.0,
           "{} {} {}".format(a.get("sides"), a.get("placebo"), (m["g_match"], m["g_dead"], m["g_play"])))
+    graded_frames = int(air.graded_mask(game, n).sum())
+    far_all = air.far_from_restarts(events, air.graded_mask(game, n), fps)
+    check("measure_instant: el control de juego no incluye el tramo antes del saque de la 2ª parte (los 2.934 "
+          "frames, que aquí están lejos de todo reinicio), dice cuántos frames tiene y tiene bastantes",
+          m["play_frames"] == int(far_all.sum()) - FAQ_SECOND_HALF_DEAD_FRAMES
+          and int((far_all & dead_ball.pre_kickoff(game)).sum()) == FAQ_SECOND_HALF_DEAD_FRAMES
+          and m["graded_frames"] == graded_frames == 158857 and m["play_enough"] and a["play_enough"],
+          "{} {}".format(m["play_frames"], int(far_all.sum())))
     r = m["tested"].get("A", {})
     check("measure_instant: entra A, el primero que se prueba; con él el pipeline sale del D en el instante (antes, "
           "1,6 s tarde), y lo que cambia cae todo después del instante",
@@ -874,11 +901,14 @@ def check_restart_instant(game, folder):
           "{} {}".format(a["sides"], m["chosen"]))
 
     # A no se cumple si el placebo pasa: en las ventanas desplazadas Ana ve parado justo antes del instante y juego
-    # justo después (con dos destellos de D), aunque su transición queda dispersa.
+    # justo después (con dos destellos de D), aunque su transición queda dispersa. Los 3 s de después se ponen en
+    # juego también en las ventanas desplazadas que caen en una parada de las reales: antes de quitar del control de
+    # juego el tramo antes del saque (añadido de Ana), ese tramo subía el punto medio y la prueba pasaba sin esto.
     fooled = instrument.copy()
     for k, p in enumerate(air.placebo_windows(events, blocks, fps)):
         i = p["start"] + 8 * fps
         fooled[i - 3 * fps:i] = 1.0
+        fooled[i:i + 3 * fps] = -1.0
         for b in range(25, (50, 150, 250, 350)[k % 4] + 1, 25):
             fooled[i + b] = 1.0
     m = measured(pieces, fooled)
@@ -1037,7 +1067,8 @@ def check_restart_instant(game, folder):
 
     # De punta a punta, con 10 saques de banda separados 10 minutos (5 en cada parte): sin transiciones en el
     # placebo hay ancla; si el modelo de Ana pasa a juego a los 8 s también en las ventanas desplazadas, el
-    # placebo se concentra y no hay ancla.
+    # placebo se concentra y no hay ancla. Va con los retrasos por defecto (DFL_DELAY): la mediana es 200 y el
+    # ancla de la capa, 20 frames antes.
     spaced = [s * fps for s in (500, 1100, 1700, 2300, 2900, 4500, 5100, 5700, 6300, 6900)]
     spaced_events = [window(s) for s in spaced]
     bx_spaced = np.zeros(n)
@@ -1057,12 +1088,97 @@ def check_restart_instant(game, folder):
                                                pieces={"candidates": team_piece, "dead_state": no_gap},
                                                odds_fn=lambda trk, o=odds_now: o))
     clean_placebo, concentrated = (r["by_type"]["throw-in"] for r in results)
-    check("measure_instant: sin transiciones en el placebo hay ancla; con el placebo tan concentrado como las "
-          "ventanas reales, no",
-          clean_placebo["rule"][4] and clean_placebo["placebo_ok"] and results[0]["anchors"] == {"throw-in": 200}
+    check("measure_instant: sin transiciones en el placebo hay ancla (por defecto, la mediana menos 20 frames); con "
+          "el placebo tan concentrado como las ventanas reales, no",
+          clean_placebo["rule"][4] and clean_placebo["placebo_ok"] and results[0]["anchors"] == {"throw-in": 180}
+          and results[0]["medians"] == {"throw-in": 200} and results[0]["delays"] == air.DFL_DELAY
           and concentrated["rule"][4] and not concentrated["placebo_ok"] and len(concentrated["placebo"]) >= 10
           and results[1]["anchors"] == {} and not results[1]["entra"],
           "{} {} {}".format(results[0]["placebo_windows"], len(concentrated["placebo"]), results[1]["anchors"]))
+
+    # Los añadidos de Ana, de punta a punta, en el partido de los 12 saques de banda. Un modelo de Ana que deja de
+    # ver parado a los 7,2 s (180 frames), 20 antes de su transición: un destello de D justo antes la retrasa a los
+    # 7,6 u 8,4 s, como en el partido base. Es el caso del retraso medido en la DFL.
+    def late_ana():
+        odds = np.full(n, -1.0)
+        odds[dead_ball.pre_kickoff(game)] = 1.0
+        for s, offset in zip(starts, sharp_offsets):
+            odds[s - 10 * fps:s + 180] = 1.0
+            odds[s + offset - 1] = 1.0
+            odds[s + 15 * fps:s + 95 * fps] = 1.0
+        return odds
+
+    late_odds = late_ana()
+    corrected = measured(pieces, late_odds, delays=air.DFL_DELAY)
+    plain = measured(pieces, late_odds)
+    rc, rp = corrected["tested"].get("A", {}), plain["tested"].get("A", {})
+    check("measure_instant: con el retraso de la DFL, el ancla de la capa en los saques de banda es la mediana menos "
+          "20 frames: A entra en el 180, donde el modelo de Ana deja de ver parado, y el D sale ahí (sin el retraso, "
+          "en el 200)",
+          corrected["by_type"]["throw-in"]["transitions"] == sharp_offsets
+          and corrected["medians"] == plain["medians"] == {"throw-in": 200}
+          and corrected["anchors"] == {"throw-in": 180} and plain["anchors"] == {"throw-in": 200}
+          and corrected["chosen"] == plain["chosen"] == "A" and rc["near"] == rp["near"] == (0, 12)
+          and rc["changed_after"] == (0, 0, 12 * 60) and rp["changed_after"] == (0, 0, 12 * 40)
+          and rc["changed_before"] == rp["changed_before"] == (0, 0, 0) and rc["ok"] and rp["ok"],
+          "{} {} {} {}".format(corrected["anchors"], plain["anchors"], rc.get("changed_after"), rp.get("changed_after")))
+    # Las condiciones de A se miran en el ancla de la capa: si además el modelo de Ana vuelve a ver parado de los
+    # 10,4 a los 11 s (frames 260 a 275, después del sostén de la transición), los 3 s después del 200 tienen un 21 %
+    # de D y no cumplen el punto medio, y los de después del 180, sí.
+    late_back = late_odds.copy()
+    for s in starts:
+        late_back[s + 260:s + 275] = 1.0
+    corrected = measured(pieces, late_back, delays=air.DFL_DELAY)
+    plain = measured(pieces, late_back)
+    ac, ap = corrected["by_type"]["throw-in"]["a"], plain["by_type"]["throw-in"]["a"]
+    check("measure_instant: las condiciones de A se miran en el ancla de la capa: con el retraso A se cumple en el "
+          "180; sin él, los 3 s después del 200 tienen D y entra B",
+          corrected["by_type"]["throw-in"]["transitions"] == sharp_offsets and corrected["anchors"] == {"throw-in": 180}
+          and all(s["ok"] for s in ac["sides"].values()) and ac["ok"] and corrected["chosen"] == "A"
+          and not any(s["ok"] for s in ap["sides"].values()) and not ap["ok"] and plain["chosen"] == "B",
+          "{} {}".format(ac["sides"], ap["sides"]))
+    corner = measured(pieces, late_odds, tagged=[window(s, "corner kick") for s in starts], delays=air.DFL_DELAY)
+    goal = measured(pieces, late_odds, tagged=[window(s, "goal kick") for s in starts], delays=air.DFL_DELAY)
+    check("measure_instant: el retraso es de 16 frames en los córners y de ninguno en los saques de puerta",
+          corner["anchors"] == {"corner kick": 184} and corner["medians"] == {"corner kick": 200}
+          and goal["anchors"] == {"goal kick": 200} and goal["medians"] == {"goal kick": 200}
+          and corner["chosen"] == goal["chosen"] == "A"
+          and corner["tested"]["A"]["changed_after"] == (0, 0, 12 * 56)
+          and goal["tested"]["A"]["changed_after"] == (0, 0, 12 * 40),
+          "{} {}".format(corner["anchors"], goal["anchors"]))
+
+    # El placebo de A usa el ancla de la capa: con el modelo de Ana parado justo antes del frame 180 en 4 ventanas
+    # desplazadas (pocas, para que su transición no se concentre), la proporción de antes y de después del placebo es
+    # la de los instantes a 180 frames del inicio, no a 200.
+    marked = late_odds.copy()
+    shifted_all = air.placebo_windows(events, blocks, fps)
+    for p in shifted_all[:4]:
+        marked[p["start"] + 105:p["start"] + 180] = 1.0
+    m = measured(pieces, marked, delays=air.DFL_DELAY)
+    pa = m["by_type"]["throw-in"]["a"]["placebo"]
+
+    def placebo_at(anchor):
+        return air.side_shares(marked, [p["start"] + anchor for p in shifted_all], n, fps)
+
+    check("measure_instant: el placebo de A usa el ancla de la capa (la mediana menos el retraso), no la mediana",
+          m["anchors"] == {"throw-in": 180} and pa["n"] == len(shifted_all)
+          and (pa["before"], pa["after"]) == placebo_at(180) and placebo_at(180) != placebo_at(200),
+          "{} {} {}".format(pa, placebo_at(180), placebo_at(200)))
+
+    # Sin frames suficientes en el control de juego, A no se cumple aunque se cumpla todo lo demás, y entra B. Unos
+    # GOALS cada 150 s tapan casi todo el partido fuera de los saques de banda: queda un hueco de 295 s de control de
+    # juego (7.375 frames, menos del 5 % de los 158.857 evaluados).
+    fillers = [window(s * fps, code="goals") for s in (450, 600, 750, 900)]
+    fillers += [window(s * fps, code="goals") for s in range(2250, 3601, 150)]
+    fillers += [window(s * fps, code="goals") for s in range(4560, 7561, 150) if s not in (6060, 6210)]
+    m = measured(pieces, tagged=events + fillers)
+    a = m["by_type"]["throw-in"]["a"]
+    check("measure_instant: con el control de juego por debajo del 5 % de lo evaluado, A no se cumple aunque se "
+          "cumpla todo lo demás, y entra B",
+          m["play_frames"] == 295 * fps and not m["play_enough"] and m["g_play"] == 0.0 and not a["play_enough"]
+          and a["sharp"] and all(s["ok"] for s in a["sides"].values()) and a["placebo"]["n"] >= 5
+          and not a["placebo"]["passes"] and not a["ok"] and list(m["tested"]) == ["B"] and m["chosen"] == "B",
+          "{} {} {}".format(m["play_frames"], a, m["chosen"]))
 
 
 def main():

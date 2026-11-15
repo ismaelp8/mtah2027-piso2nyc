@@ -106,3 +106,38 @@ regla: sostén 2 s   búsqueda hasta 10 s tras el fin de la ventana   capa ±1 e
   queda por encima.
 - **Sección 4:** «0 a 1 s» es de 0 s incluido a 1 s sin incluir. «< 0 s» quiere decir que el `D` de la
   entrega ya venía de antes del hueco.
+
+## Añadido el mismo día: la medida de la DFL de los retrasos que se restan al ancla
+
+Para los cambios a la regla de después de esta ejecución (`docs/decisiones.md`, misma entrada, «Cambios a la regla
+después de la ejecución del 15/11»). No cambian nada de lo de arriba.
+
+- **Fecha y quién:** 15/11/2026. Es la medida de Ana; la repitió la sesión de Claude de Ana en su máquina, con el
+  script ya en el repo. Sale igual que la primera vez.
+- **Datos:** los 7 partidos abiertos de la DFL (Bassek et al., 2025, CC BY 4.0), con la caché del harness. Nada del
+  partido.
+- **Comando:** `python validation/scripts/d_estado/retraso_transicion.py` (Python 3.10.12, numpy 2.2.4, scikit-learn
+  1.7.2).
+- **Lectura:** en los saques de banda la transición del modelo de Ana llega 20 frames tarde de mediana, y en los
+  córners 16,5 (se usa 16) [medido en la DFL]. Las faltas y los saques de puerta tienen la mediana negativa: la
+  transición llega antes del fin real, así que no se corrigen. Solo el 45 % y el 57 % caen a menos de 1 s del fin
+  real.
+
+```
+| reinicio | paradas | sin transición | transición − fin real: p10 / p25 / p50 / p75 / p90 (frames) | a < 1 s del fin real |
+|---|---|---|---|---|
+| ThrowIn | 301 | 35 | -26 / -2 / +20 / +42 / +84 | 45 % |
+| FreeKick | 160 | 12 | -289 / -33 / -6 / +20 / +54 | 46 % |
+| GoalKick | 109 | 3 | -562 / -374 / -114 / +8 / +36 | 26 % |
+| CornerKick | 57 | 3 | -3 / +8 / +16 / +35 / +70 | 57 % |
+| (ninguno) | 39 | 6 | -307 / -63 / -9 / +36 / +57 | 24 % |
+| KickOff | 18 | 1 | -1229 / -664 / +27 / +46 / +53 | 6 % |
+| RefereeBall | 12 | 2 | -30 / +3 / +54 / +88 / +140 | 20 % |
+| Penalty | 3 | 0 | (menos de 5) | |
+| todas | 699 | 62 | -334 / -25 / +9 / +33 / +67 | 41 % |
+
+retraso para el ancla (≥ 50 paradas con transición y mediana positiva), con los nombres del Smart Tagging: {'throw-in': 20, 'corner kick': 16}
+```
+
+Las medianas exactas, con las paradas que tienen transición: saques de banda +20,0 (266), córners +16,5 (54),
+faltas −5,5 (148) y saques de puerta −114,5 (106). La tabla las redondea al par.
