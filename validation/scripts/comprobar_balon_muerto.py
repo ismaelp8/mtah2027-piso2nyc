@@ -1212,29 +1212,48 @@ def check_restart_instant(game, folder):
     # Lo impreso: el `main` del script con el partido de los 12 saques de banda y el modelo de Ana que llega tarde,
     # sin datos (las funciones que leen el partido, sustituidas) y con la apertura de ficheros prohibida.
     shown_m = measured(pieces, late_odds, delays=air.DFL_DELAY)
-    passed = {}
+    match_paths = {"atd_raw": "-", "atd_meta": "-", "smart_tagging": "-"}
+    calls = {"rutas": [], "atd": []}
 
-    def spy(*args, **kwargs):
-        passed.update(kwargs)
+    def recording_evidence(clean, paths=None, game=games.GAME):  # en lugar de dead_ball.evidence, que leería el partido
+        calls["rutas"].append(("dead_ball", paths))
+        return tracking.no_evidence(len(clean.bx))
+
+    def recording_layer(clean, paths=None, game=None):  # en lugar de las capas de la entrega
+        calls["rutas"].append(("capa", paths))
+        return tracking.no_evidence(len(clean.bx))
+
+    def fake_atd(paths, game_, report=None):
+        report["atd"] = "recuento"
+        return match
+
+    def spy(trk_, events_, delivery_fn, no_gap_fn, game_, **kwargs):
+        with pp.no_files():
+            delivery_fn(trk_)
+            no_gap_fn(trk_)
+            for layer in kwargs["layers"]:
+                layer(trk_)
         return shown_m
 
-    text = run_main(air, [(games, "require", lambda *a, **k: None),
-                          (games, "asset_paths", lambda *a, **k: {"atd_raw": "-", "atd_meta": "-", "smart_tagging": "-"}),
-                          (tracking, "from_atd", lambda *a, **k: match),
+    text = run_main(air, [(games, "require", lambda *a, **k: None), (games, "asset_paths", lambda *a, **k: match_paths),
+                          (tracking, "from_atd", fake_atd), (pipeline, "check_atd", calls["atd"].append),
+                          (pipeline, "code_version", lambda: "código: (prueba)"),
+                          (pipeline, "DELIVERY_LAYERS", (recording_layer,)), (dead_ball, "evidence", recording_evidence),
                           (dead_ball, "smart_tagging_events", lambda *a, **k: events),
-                          (air, "code_fingerprint", lambda folder: "(prueba)"),
-                          (air, "measure_instant", spy)])
+                          (air, "code_fingerprint", lambda folder: "(prueba)"), (air, "measure_instant", spy)])
     copy_line = [line for line in text.splitlines() if "para copiar" in line]
-    ok = (len(passed.get("layers", ())) == len(pipeline.DELIVERY_LAYERS) >= 1
-          and "capas de la entrega, además de dead_ball.evidence: " + ", ".join(air.layer_names()) in text
+    ok = (calls["rutas"] == [("dead_ball", match_paths), ("dead_ball", None), ("capa", match_paths)]
+          and calls["atd"] == ["recuento"] and pipeline.versions() in text and "código: (prueba)" in text
+          and "capas de la entrega, además de dead_ball.evidence: " in text and ".recording_layer" in text
           and "cambios a la regla después del 15/11" in text and "decidido después de ver la salida" in text
           and "la mediana (200 frames) menos el retraso de la DFL (20 frames)" in text
           and "la mediana gana" in text and "el ancla gana" not in text and "del balón a la mediana fija" in text
           and "hacen falta 7943 (el 5 %)" in text and "-> entra: el candidato A" in text
           and len(copy_line) == 1 and '{"throw-in": 180}' in copy_line[0])
-    check("main pasa las capas de la entrega e imprime los cambios a la regla, la mediana y el ancla corregida, «la "
-          "mediana gana», el control de juego con su mínimo en frames y, para copiar, el ancla corregida", ok,
-          "" if ok else text)
+    check("main lee el ATD como pipeline.build, pasa las rutas del partido a dead_ball.evidence y a las capas de la "
+          "entrega (la del hueco, sin rutas), imprime las versiones y el commit, los cambios a la regla, la mediana y el "
+          "ancla corregida, «la mediana gana», el control de juego con su mínimo y, para copiar, el ancla corregida", ok,
+          "" if ok else "{} {}".format(calls, text))
 
     # Las demás capas de la entrega van en las tres ejecuciones del pipeline (sin la capa, con cada candidato y sin la
     # capa del hueco): una capa que deja 10 frames sin ningún estado permitido da 10 conflictos en las tres.
@@ -1254,14 +1273,15 @@ def check_restart_instant(game, folder):
 
 def run_main(module, replacements):
     """El `main` de un script del partido con unas funciones sustituidas por otras que no leen datos, con la apertura
-    de ficheros prohibida. Devuelve lo que imprime; las funciones de verdad vuelven a su sitio al acabar."""
+    de ficheros prohibida. Devuelve lo que imprime y deja en `run_main.code` lo que devuelve `main`; las funciones de
+    verdad vuelven a su sitio al acabar."""
     saved = [(owner, name, getattr(owner, name)) for owner, name, _ in replacements]
     out = io.StringIO()
     try:
         for owner, name, value in replacements:
             setattr(owner, name, value)
         with pp.no_files(), contextlib.redirect_stdout(out):
-            module.main()
+            run_main.code = module.main()
     finally:
         for owner, name, value in saved:
             setattr(owner, name, value)
@@ -1531,10 +1551,12 @@ def check_kickoff_anchor(game, folder):
                                 sjv.csv_sha256(runs_of(0.5, True, [far_layer])))
           and layered["sha256"][0] != weak["sha256"][0] and layered["sha256"][1] != weak["sha256"][1]
           and layered["changed"] == 3 * fps and layered["entra"])
+    with pp.no_files():  # las capas son de pipeline.DELIVERY_LAYERS, que cambia en main: que no lean nada sin rutas
+        none_layers = sjv.delivery_layers(None, game)
+        quiet = all(not layer(trk)[0].any() and layer(trk)[1].all() for layer in none_layers)
     check("delivery_layers: las capas de pipeline.DELIVERY_LAYERS, con las rutas, como en pipeline.build; sin rutas no "
-          "opinan",
-          len(sjv.delivery_layers(None, game)) == len(pipeline.DELIVERY_LAYERS) >= 1
-          and all(not layer(trk)[0].any() and layer(trk)[1].all() for layer in sjv.delivery_layers(None, game))
+          "opinan ni abren nada",
+          len(none_layers) == len(pipeline.DELIVERY_LAYERS) >= 1 and quiet
           and sjv.layer_names() == [f.__module__.split(".")[-1] + "." + f.__name__ for f in pipeline.DELIVERY_LAYERS])
     received = []
 
@@ -1551,37 +1573,105 @@ def check_kickoff_anchor(game, folder):
     check("delivery_layers: cada capa recibe las rutas del partido y el partido, como en pipeline.build",
           received == [({"smart_tagging": "-"}, game)], str(received))
 
-    # Lo impreso: el `main` del script, sin datos (las funciones que leen el partido, sustituidas) y con la apertura de
-    # ficheros prohibida.
+    # El script monta el pipeline igual que pipeline.build: con las lecturas del partido sustituidas, la entrega «con el
+    # ancla» del script es, byte a byte, la que sale de pipeline.build, con una capa de la entrega que solo opina si
+    # recibe las rutas.
+    match_paths = {"atd_raw": "-", "atd_meta": "-", "smart_tagging": "-"}
+    weak_pieces = {"candidates": team_piece, "dead_state": dead_after_kickoff(0.5)}
+    real_evidence = dead_ball.evidence
+
+    def offline_evidence(clean, paths=None, game=games.GAME):  # dead_ball.evidence sin leer el Smart Tagging
+        assert paths is match_paths
+        return real_evidence(clean, None, game)
+
+    def paths_layer(clean, paths=None, game=None):  # una capa de la entrega que solo opina con las rutas
+        score, allowed = tracking.no_evidence(len(clean.bx))
+        if paths is match_paths:
+            score[50000:50100, A] = 10.0
+        return score, allowed
+
     def fake_atd(paths, game_, report=None):
-        report["atd"] = {}
+        report["atd"] = "recuento"
         return trk
 
-    passed = {}
+    checked_atd = []
+    offline = [(games, "require", lambda *a, **k: None), (games, "asset_paths", lambda *a, **k: match_paths),
+               (tracking, "from_atd", fake_atd), (pipeline, "check_atd", checked_atd.append),
+               (pipeline, "DELIVERY_LAYERS", (paths_layer,)), (dead_ball, "evidence", offline_evidence)]
+    saved = [(owner, name, getattr(owner, name)) for owner, name, _ in offline]
+    try:
+        for owner, name, value in offline:
+            setattr(owner, name, value)
+        with pp.no_files():
+            built = pipeline.build(game, pieces=weak_pieces)[0]
+            mirrored = sjv.measure_kickoff(trk, lambda clean: dead_ball.evidence(clean, match_paths, game), game,
+                                           pieces=weak_pieces, layers=sjv.delivery_layers(match_paths, game))
+    finally:
+        for owner, name, value in saved:
+            setattr(owner, name, value)
+    check("measure_kickoff: con el ancla, la entrega es byte a byte la de pipeline.build (mismas capas, mismas rutas y "
+          "el mismo orden)",
+          mirrored["sha256"][1] == sjv.csv_sha256(built) and built[50050] == A and built[second_kick] == H
+          and checked_atd == ["recuento"],
+          "{} {}".format(mirrored["sha256"][1][:12], sjv.csv_sha256(built)[:12]))
 
-    def spy(*args, **kwargs):
-        passed.update(kwargs)
-        return weak
+    # Lo impreso: el `main` del script, sin datos (las funciones que leen el partido, sustituidas) y con la apertura de
+    # ficheros prohibida. El espía comprueba que `main` pasa las rutas del partido a dead_ball.evidence y a las capas de
+    # la entrega.
+    calls = {"rutas": [], "atd": []}
 
-    common = [(games, "require", lambda *a, **k: None),
-              (games, "asset_paths", lambda *a, **k: {"atd_raw": "-", "atd_meta": "-", "smart_tagging": "-"}),
-              (tracking, "from_atd", fake_atd), (pipeline, "check_atd", lambda counts: None),
-              (pipeline, "code_version", lambda: "código: (prueba)"), (sjv, "code_fingerprint", lambda folder: "(prueba)")]
+    def recording_evidence(clean, paths=None, game=games.GAME):
+        calls["rutas"].append(("dead_ball", paths))
+        return tracking.no_evidence(len(clean.bx))
+
+    def recording_layer(clean, paths=None, game=None):
+        calls["rutas"].append(("capa", paths))
+        return tracking.no_evidence(len(clean.bx))
+
+    def recording_atd(paths, game_, report=None):
+        report["atd"] = "recuento"
+        return trk
+
+    def spy(trk_, delivery_fn, game_, **kwargs):
+        with pp.no_files():
+            delivery_fn(trk_)
+            for layer in kwargs["layers"]:
+                layer(trk_)
+        return shown
+
+    common = [(games, "require", lambda *a, **k: None), (games, "asset_paths", lambda *a, **k: match_paths),
+              (tracking, "from_atd", recording_atd), (pipeline, "check_atd", calls["atd"].append),
+              (pipeline, "code_version", lambda: "código: (prueba)"), (sjv, "code_fingerprint", lambda folder: "(prueba)"),
+              (pipeline, "DELIVERY_LAYERS", (recording_layer,)), (dead_ball, "evidence", recording_evidence)]
     replaced = [(owner, name) for owner, name, _ in common] + [(sjv, "measure_kickoff")]
     originals = [getattr(owner, name) for owner, name in replaced]
     shown = dict(weak, checks=dict(weak["checks"]))
     shown["checks"][sjv.RULE[0]] = True
-    text = run_main(sjv, common + [(sjv, "measure_kickoff", lambda *a, **k: spy(*a, **k) and shown)])
-    ok = ("sha256 sin el ancla " + weak["sha256"][0] + "   ¿es la vigente (equipo_v5)? sí" in text
+    text = run_main(sjv, common + [(sjv, "measure_kickoff", spy)])
+    ok = (calls["rutas"] == [("dead_ball", match_paths), ("capa", match_paths)] and calls["atd"] == ["recuento"]
+          and run_main.code == 0 and pipeline.versions() in text and "código: (prueba)" in text
+          and "sha256 sin el ancla " + weak["sha256"][0] + "   ¿es la vigente (equipo_v5)? sí" in text
           and "sha256 con el ancla " + weak["sha256"][1] in text and "OJO" not in text
           and "de D a juego 75   de juego a D 0   de un equipo al otro 0" in text
           and "0 a 1 s        25" in text and "1 a 5 s        50" in text and "≥ 60 s         0" in text
           and "-> entra el ancla del saque: sí" in text and "sube con el ancla: nada" in text
-          and all(condition in text for condition in sjv.RULE) and "capas de la entrega" in text
-          and len(passed.get("layers", ())) == len(pipeline.DELIVERY_LAYERS))
-    check("main pasa las capas de la entrega e imprime los dos sha256 en su orden, si es la vigente, la regla, de qué "
+          and all(condition in text for condition in sjv.RULE) and ".recording_layer" in text)
+    check("main lee el ATD como pipeline.build, pasa las rutas del partido a dead_ball.evidence y a las capas de la "
+          "entrega, e imprime las versiones, el commit, los dos sha256 en su orden, si es la vigente, la regla, de qué "
           "clase son los frames que cambian (sin equipos) y a qué distancia del saque, y si entra", ok,
-          "" if ok else text)
+          "" if ok else "{} {}".format(calls, text))
+
+    def printed(case):
+        return run_main(sjv, common + [(sjv, "measure_kickoff", lambda *a, **k: case)])
+
+    stale_case = dict(weak, sha256=("0" * 64, weak["sha256"][1]))
+    stale_case["checks"], stale_case["entra"] = sjv.kickoff_rule(stale_case, 0, stale_case["sha256"][0])
+    text = printed(stale_case)
+    ok = ("¿es la vigente (equipo_v5)? no" in text and "OJO: sin el ancla no sale la entrega vigente" in text
+          and run_main.code == 1 and "D en lo evaluado" not in text and "2. Lo que cambia" not in text
+          and "-> entra" not in text and [k for k, v in stale_case["checks"].items() if not v] == [sjv.RULE[0]])
+    check("main: si solo falla la entrega vigente, avisa, no enseña nada más y sale con código 1", ok, "" if ok else text)
+
     keys = list(weak["blocks"][0]["short"][0])
     blocks = [({"runs": ((50, 40), (60, 40)), "short": ({k: 5 for k in keys}, {k: 5 for k in keys})}),
               ({"runs": ((70, 30), (70, 35)), "short": ({k: 6 for k in keys}, {k: 6 for k in keys})}),
@@ -1589,28 +1679,35 @@ def check_kickoff_anchor(game, folder):
     for b in blocks:
         b["rises"] = sjv.rising(b["runs"], b["short"])
     fake = dict(weak, conflicts=(5, 7), kick_dead=6, before=8, far=9, dead_share=(0.3012, 0.4056), stops=(120, 260),
-                blocks=blocks, pairs={(D, H): 3, (H, D): 4, (H, A): 2}, sha256=("0" * 64, "1" * 64))
+                blocks=blocks, pairs={(D, H): 3, (H, D): 4, (H, A): 2}, sha256=(good_sha, "1" * 64))
     fake["checks"], fake["entra"] = sjv.kickoff_rule(fake, fake["conflicts"][1], fake["sha256"][0])
-    text = run_main(sjv, common + [(sjv, "measure_kickoff", lambda *a, **k: fake)])
+    text = printed(fake)
     ok = ("piezas en conflicto: sin el ancla 5   con ella 7" in text and "frames del saque con D, con el ancla: 6" in text
           and "sin el ancla 30.12 %   con ella 40.56 %   paradas: 120 y 260" in text
           and "≤ 250 paradas): no" in text and "antes del saque de su parte: 8" in text
-          and "60 s o más después: 9" in text and "¿es la vigente (equipo_v5)? no" in text
-          and "OJO: sin el ancla no sale la entrega vigente" in text
+          and "60 s o más después: 9" in text and "¿es la vigente (equipo_v5)? sí" in text and "OJO" not in text
           and "tramo 1: posesiones 50 y 60   paradas 40 y 40   sube con el ancla: posesiones\n" in text
           and "tramo 2: posesiones 70 y 70   paradas 30 y 35   sube con el ancla: paradas\n" in text
           and "tramo 3: posesiones 80 y 80   paradas 20 y 20   sube con el ancla: rachas de" in text
           and "de D a juego 3   de juego a D 4   de un equipo al otro 2" in text
-          and "-> entra el ancla del saque: no" in text)
+          and "-> entra el ancla del saque: no" in text and run_main.code == 0)
     check("main imprime cada número en su sitio (sin el ancla, con ella) y lo que sube en cada tramo", ok,
           "" if ok else text)
-    text = run_main(sjv, common + [(sjv, "measure_kickoff", lambda *a, **k: strong)])
+    band_case = dict(weak, stops=(weak["stops"][0], 260))
+    band_case["checks"], band_case["entra"] = sjv.kickoff_rule(band_case, 0, band_case["sha256"][0], current)
+    text = printed(band_case)
+    ok = ("≤ 250 paradas): no" in text and "OJO" not in text and "-> entra el ancla del saque: no" in text
+          and [k for k, v in band_case["checks"].items() if not v] == [sjv.RULE[3]])
+    check("main: si solo falla la banda, la línea de la banda dice «no» y no sale el aviso de la entrega vigente", ok,
+          "" if ok else text)
+    text = printed(strong)
     ok = ("≤ 250 paradas): sí" in text and "sube con el ancla: posesiones, paradas" in text
           and "-> entra el ancla del saque: no" in text)
     check("main: la línea de la banda dice la condición de la banda (en el rebote, dentro de la banda aunque suba algo)",
           ok, "" if ok else text)
     check("run_main devuelve a su sitio las funciones que sustituye",
-          all(getattr(owner, name) is f for (owner, name), f in zip(replaced, originals)))
+          all(getattr(owner, name) is f for (owner, name), f in zip(replaced, originals))
+          and dead_ball.evidence is real_evidence)
 
 
 def main():

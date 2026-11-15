@@ -3796,8 +3796,9 @@ Lo que no cambia: el resto de la regla y todos sus números.
 **El pipeline de la entrega, con sus capas** (15/11, por la noche). `main` encendió ese día la capa de los
 contraataques (`pipeline.DELIVERY_LAYERS`), que `pipeline.build` suma a `dead_ball.evidence`. El script corre ahora el
 pipeline con esas capas en sus tres ejecuciones (sin la capa, con cada candidato y sin la capa del hueco); si no, sus
-secciones 3 y 4 no medirían la entrega. No es un cambio de la regla, que ya decía «el pipeline de la entrega», y la
-ejecución del 15/11 no se ve afectada: entonces la entrega no tenía esa capa.
+secciones 3 y 4 no medirían la entrega. También lee el ATD como `pipeline.build` (una línea rara es un error) e imprime
+las versiones y el commit. No es un cambio de la regla, que ya decía «el pipeline de la entrega», y la ejecución del
+15/11 no se ve afectada: entonces la entrega no tenía esa capa.
 
 Cómo se comprobó:
 - **Pruebas** (sección 11 de `validation/scripts/comprobar_balon_muerto.py`, con partidos inventados y la apertura de
@@ -3822,7 +3823,8 @@ Cómo se comprobó:
     prohibida, imprime los cambios a la regla, la mediana y el ancla corregida, «la mediana gana», el control de
     juego con su mínimo en frames y, en la línea para copiar, el ancla corregida;
   - las capas de la entrega: van en las tres ejecuciones del pipeline (una capa que bloquea 10 frames da 10 conflictos
-    en las tres) y `main` se las pasa;
+    en las tres); `main` lee el ATD como `pipeline.build`, pasa las rutas del partido a `dead_ball.evidence` y a las
+    capas (a la entrega sin la capa del hueco, sin rutas) e imprime las versiones y el commit;
   - las pruebas de antes de los cambios siguen, con el ancla igual a la mediana (`no_delay`), salvo la de los 10
     saques de banda separados 10 minutos, que va con los retrasos por defecto. Dos cambian por el tercer cambio:
     - en el partido base, el control de juego pasa a tener un 0 % de `D`. Antes tenía algo porque llevaba el tramo
@@ -3879,8 +3881,11 @@ Cómo se mide: `validation/partido/agregados_saque_juego_vivo.py`, que ejecuta u
 Regla de lectura, fijada antes de ejecutarlo. **Entra si se cumplen las seis:**
 0. sin el ancla sale la entrega vigente: el sha256 empieza por `27dc8aa8` y acaba en `efb7` (`equipo_v5`). Si no,
    ha cambiado algo más (el código de `main` o el entorno, por ejemplo la versión de numpy). Entonces la regla no se
-   aplica: no entra hasta explicarlo y volver a ejecutar, en un entorno que reproduzca `equipo_v5` o con esta
-   condición puesta al día antes de mirar nada más;
+   aplica: el script avisa, no enseña nada más y sale con código 1. No entra hasta explicarlo y volver a ejecutar:
+   - en un entorno que reproduzca `equipo_v5`;
+   - o con la entrega vigente puesta al día (`VIGENTE` del script). Solo se pone al día a una entrega generada con
+     `python -m possession.pipeline` desde `main`, validada y apuntada en este fichero con su sha256, en un commit
+     anterior a la nueva ejecución. Nunca al sha256 «sin el ancla» que imprime este script;
 1. con el ancla, ningún frame evaluado con piezas en conflicto (lo mismo que exige `pipeline` para escribir el CSV);
 2. cada parte tiene su saque en su tramo evaluado, y en ese frame la entrega con el ancla no tiene `D`;
 3. la entrega con el ancla queda dentro de la banda del plan: del 15 al 60 % de `D` en lo evaluado y 250 paradas
@@ -3906,6 +3911,10 @@ Lo que espero [inferencia]: que cambien pocos frames, de `D` a juego, en los pri
 parte, porque el modelo de Ana acaba las paradas tarde (sesgo mediano de +17 frames en la DFL, entrada del 14/11), y
 que en la 1ª parte cambie poco o nada. El riesgo es el rebote de arriba.
 
+**Cuándo se mergea:** la rama se sube con el ancla ya en `evidence` y con esta regla, pero no se mergea en `main`
+hasta ejecutar el script en ella. Si entrara en `main` antes, `python -m possession.pipeline` dejaría de dar `equipo_v5`
+sin que nadie hubiera aplicado la regla.
+
 Si entra:
 - una persona regenera la entrega (`python -m possession.pipeline --name equipo_v6`) y la valida
   (`python evaluation/validate_submission.py evaluation/results/equipo_v6.csv`, o `/evaluar`);
@@ -3914,7 +3923,8 @@ Si entra:
 - la entrega deja de ser `equipo_v5`: hay que avisar al equipo para que el ensayo del lunes la reproduzca con esta
   rama ya en `main`.
 
-Si no entra: se quita de `evidence` la línea del ancla (la función se queda, probada) y se apunta aquí por qué.
+Si no entra: se quita de `evidence` la línea del ancla antes del merge (la función se queda, probada) y se apunta
+aquí por qué.
 
 Lo que no comprueba [sin verificar]:
 - que el saque caiga justo en ese frame: lo dice la organización [fuente: FAQ.md]. El 12/11 se vio que las ventanas
@@ -3947,15 +3957,29 @@ Cómo se comprobó, antes de ejecutar nada:
     no entra; si la entrega sin el ancla no es la vigente, no entra; con otra pieza que solo permite `D` en el saque,
     hay conflicto y no entra; las demás capas de la entrega van en las dos ejecuciones; los dos sha256 salen en su
     orden;
-  - lo impreso: el `main` del script, con las funciones que leen el partido sustituidas: pasa las capas de la
-    entrega, y cada número sale en su sitio (sin el ancla y con ella), sin equipos.
-- **Sabotajes** (en memoria, fuera del repo): 65 roturas, una a una. En el ancla: quitarla, prohibir `H` en vez de
+  - el pipeline es el de la entrega: con las lecturas del partido sustituidas, la entrega «con el ancla» del script
+    es, byte a byte, la que sale de `pipeline.build`, con una capa de la entrega que solo opina si recibe las rutas;
+  - lo impreso: el `main` del script, con las funciones que leen el partido sustituidas. Lee el ATD como
+    `pipeline.build`, pasa las rutas del partido a `dead_ball.evidence` y a las capas de la entrega, imprime las
+    versiones y el commit, y cada número sale en su sitio (sin el ancla y con ella), sin equipos. Si solo falla la
+    condición 0, avisa, no enseña nada más y sale con código 1; si solo falla la banda, la línea de la banda dice
+    «no» y no sale el aviso.
+- **Sabotajes** (en memoria, fuera del repo): 77 roturas, una a una. En el ancla: quitarla, prohibir `H` en vez de
   `D`, ponerla un frame tarde o un frame antes, alargarla 25 frames, quitar la guarda del tramo, aplicarla a cualquier
-  partido o solo con rutas. En el script: la entrega vigente, las capas de la entrega, quitar el ancla mal, el sha256,
-  las rachas, lo que sube, las distancias, las clases de cambio, cada condición de la regla y cada número de lo
-  impreso; y que `run_main` no devuelva las funciones a su sitio. Las pruebas detectan 64. La que no, no cambia nada:
-  contar como «de `D` a juego» también de `D` a `D`, que no puede pasar en un frame que cambia.
-- **Lo impreso, a mano:** el `main` con un partido inventado, en un caso en que entra y en otro en que rebota.
-- **Tres revisiones** del agente `revisor` antes de subirla. La tercera vio que `main` había cambiado la entrega
+  partido o solo con rutas. En el script: la entrega vigente, las capas y las rutas de la entrega, la lectura del ATD,
+  quitar el ancla mal, el sha256, las rachas, lo que sube, las distancias, las clases de cambio, cada condición de la
+  regla, cada número de lo impreso y la parada en la condición 0; y que `run_main` no devuelva las funciones a su
+  sitio. Las pruebas detectan 75. Las dos que no, hoy no cambian nada:
+  - contar como «de `D` a juego» también de `D` a `D`, que no puede pasar en un frame que cambia;
+  - sumar las capas de la entrega antes que `dead_ball.evidence`: solo cambiaría el orden de la suma, y hoy cada una
+    puntúa columnas distintas. Si una capa futura puntuara la misma columna, la condición 0 lo pararía.
+  Del instante: 38 roturas, 37 detectadas, y la equivalente de siempre.
+- **Lo impreso, a mano:** el `main` con un partido inventado, en un caso en que entra y en otro en que rebota, con
+  el código de antes de la cuarta revisión. Con el partido inventado el sha256 «sin el ancla» no es el de `equipo_v5`,
+  así que se vio también el aviso de la condición 0.
+- **Cuatro revisiones** del agente `revisor` antes de subirla. La tercera vio que `main` había cambiado la entrega
   (`equipo_v5`, con la capa de los contraataques) y que la regla no decía qué hacer si el sha256 no cuadraba: de ahí la
-  condición 0, las capas de la entrega en el script y lo de no decir equipos.
+  condición 0, las capas de la entrega en el script y lo de no decir equipos. La cuarta, sin ningún 🔴, pidió que la
+  condición 0 se pudiera aplicar de verdad (el script se para y no enseña nada más, y cómo se pone al día la entrega
+  vigente), pruebas de que `main` pasa las rutas y las capas, y escribir que la rama no se mergea hasta aplicar la
+  regla.

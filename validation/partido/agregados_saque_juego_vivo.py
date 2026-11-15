@@ -14,7 +14,7 @@ Corre el pipeline de la entrega dos veces, sin escribir ningún fichero: con dea
 el ancla, y con el ancla quitada (`D` permitido otra vez en esos frames). Las dos veces van también las demás capas de
 la entrega (pipeline.DELIVERY_LAYERS), como en pipeline.build. Así no hace falta la entrega de antes. Imprime:
 - las versiones, el commit y el sha256 que tendría la entrega en los dos casos. Sin el ancla tiene que salir la
-  entrega vigente (VIGENTE); si no, la regla no se aplica: no entra hasta explicarlo y volver a ejecutar;
+  entrega vigente (VIGENTE); si no, la regla no se aplica: avisa, no enseña nada más y sale con código 1;
 - los conflictos entre piezas, el `D` en el frame del saque, el % de `D` y las paradas (la banda del plan), y las
   posesiones y las paradas de cada tramo, sin el ancla y con ella, con lo que sube;
 - cuántos frames evaluados cambian, de qué clase y a qué distancia después del saque de su parte;
@@ -191,8 +191,9 @@ def main():
                                                                     yes(c["checks"][RULE[0]])))
     print("   sha256 con el ancla {}".format(c["sha256"][1]))
     if not c["checks"][RULE[0]]:
-        print("   OJO: sin el ancla no sale la entrega vigente. La regla no se aplica: no entra hasta explicarlo y"
-              " volver a ejecutar.")
+        print("   OJO: sin el ancla no sale la entrega vigente. La regla no se aplica y no se enseña nada más: no entra"
+              " hasta explicarlo y volver a ejecutar (docs/decisiones.md, «juego vivo en el saque», condición 0).")
+        return 1
     print("   frames evaluados con piezas en conflicto: sin el ancla {}   con ella {}".format(*c["conflicts"]))
     print("   saques en su tramo: {}   frames del saque con D, con el ancla: {}".format(
         " y ".join(str(k) for k in c["kick_frames"]), c["kick_dead"]))
@@ -216,7 +217,8 @@ def main():
         print("   {:<72} {}".format(condition, yes(ok)))
     print("\n-> entra el ancla del saque: {}".format(yes(c["entra"])))
     print("\n   tiempo {:.0f} s".format(time.time() - started))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

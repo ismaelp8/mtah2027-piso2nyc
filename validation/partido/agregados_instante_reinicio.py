@@ -31,6 +31,9 @@ ejecutarlo y sus cambios posteriores:
 3. (decidido después de ver la salida del 15/11) el control de juego no incluye el tramo antes del saque de la 2ª
    parte, que es el control de D.
 
+Corre el pipeline como la entrega (pipeline.build): con dead_ball.evidence y las demás capas de la entrega
+(pipeline.DELIVERY_LAYERS), y lee el ATD como él. Imprime las versiones y el commit.
+
 `measure_instant` y las funciones de la regla no abren ningún fichero; los importa
 validation/scripts/comprobar_balon_muerto.py (sección 11), que ejecuta Claude con un partido inventado y
 con la apertura de ficheros prohibida. Por eso **nada fuera de `main` puede abrir un fichero.**
@@ -542,13 +545,17 @@ def main():
     games.require(["atd_raw", "atd_meta", "smart_tagging"], game)
     paths = games.asset_paths(game)
     started = time.time()
-    trk = tracking.from_atd(paths, game)
+    report = {}
+    trk = tracking.from_atd(paths, game, report=report)
+    pipeline.check_atd(report["atd"])  # como pipeline.build: una línea rara del ATD es un error
     events = dead_ball.smart_tagging_events(paths["smart_tagging"], games.GAMES[game]["fps"])
     delivery_fn = lambda clean: dead_ball.evidence(clean, paths, game)  # noqa: E731
     no_gap_fn = lambda clean: dead_ball.evidence(clean, None, game)  # noqa: E731
     m = measure_instant(trk, events, delivery_fn, no_gap_fn, game, layers=delivery_layers(paths, game))
     fps = trk.fps
 
+    print(pipeline.versions())
+    print(pipeline.code_version())
     print("pipeline: piezas {}   costes {}".format(json.dumps(pipeline.PIECES, sort_keys=True),
                                                    json.dumps(temporal.DEFAULTS, sort_keys=True)))
     print("capas de la entrega, además de dead_ball.evidence: {}".format(", ".join(layer_names()) or "ninguna"))

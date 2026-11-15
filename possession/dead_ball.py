@@ -29,11 +29,12 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
   dos capas apagadas que `evidence` no llama. Se probaron con sus reglas y se quedaron apagadas
   (docs/decisiones.md, 15/11, «D7»).
 
-**En `evidence` van la primera y la última** (anclas duras: en el tramo antes del saque solo se permite `D`, y
-en el frame del saque, `D` no) **y la tercera** (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla
+**En `evidence` van la primera y la del saque** (anclas duras: en el tramo antes del saque solo se permite `D`,
+y en el frame del saque, `D` no) **y la tercera** (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla
 apuntada en docs/decisiones.md antes de medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por
-Manuel el 15/11). La del saque entra con su propia regla, escrita antes de regenerar la entrega
-(docs/decisiones.md, 15/11, «juego vivo en el saque»; `validation/partido/agregados_saque_juego_vivo.py`). De
+Manuel el 15/11). La del saque entra solo si pasa su propia regla, escrita antes de regenerar la entrega y
+pendiente de ejecutar (docs/decisiones.md, 15/11, «juego vivo en el saque»;
+`validation/partido/agregados_saque_juego_vivo.py`): esta rama no se mergea hasta aplicarla. De
 gol a saque está programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol
 (las ventanas `GOALS` parecen llegar hasta el saque [inferencia]).
 
