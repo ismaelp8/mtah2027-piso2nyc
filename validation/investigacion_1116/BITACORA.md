@@ -394,3 +394,19 @@ Metrica no vale como prueba de los rasgos de proximidad y se dice en el document
 **Con la regla: el balón de Metrica está pegado al jugador.** Confirma lo que dice la fuente. La ventaja de B5 en
 Metrica (+0,118 frente al baseline) no prueba nada de los rasgos de proximidad: allí la proximidad acierta por
 construcción. Sigue valiendo como prueba de que el pipeline corre con otro proveedor.
+
+## S11. Encoger nuestras paradas (regla, antes de medir)
+
+**La idea.** Con el IoU, una posesión real de L frames sigue emparejada a 0,5 si la alargamos hasta L frames de más,
+pero solo si la acortamos hasta L/2. Alargar es el error barato. Si dudamos de un borde de parada, conviene que la
+posesión de al lado se coma el borde: empezar el `D` más tarde y acabarlo antes. Además, la pieza de estado acaba las
+paradas tarde en la DFL (mediana de +17 frames) y las empieza tarde (+14). Lo primero va en la dirección cara.
+
+**Qué se mide** (`encoger_paradas.py`; DFL, 7 partidos, `main` con su `D` propio, las dos condiciones que votan y el
+balón tapado y a la vista en los `D`): cada racha nuestra de `D` que no toca el borde del tramo se encoge: su final se
+adelanta f frames (esos frames pasan al equipo de después) y su inicio se retrasa i frames (al equipo de antes), sin
+dejarla en menos de 25 frames. Versiones fijadas aquí: (f, i) = (6, 0), (12, 0), (17, 0), (12, 6) y (17, 12).
+
+**Regla de lectura, antes de medir.** «Hay candidato para David, Manuel y Ana» si una misma versión gana a `main` por
++0,010 o más con el flag y con el control, en las dos condiciones y en los dos modos del balón, y en 5 de 7 partidos o
+más en cada celda. El número de f se ha sacado de la DFL (la mediana de la pieza de estado), no del partido.
