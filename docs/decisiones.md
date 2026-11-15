@@ -2609,3 +2609,47 @@ Descartado:
 - **No volver a redondear:** con una escala que no sea potencia de 2, las sumas del decodificador dejarían
   de ser exactas y la pieza podría deshacer empates entre `H` y `A`. El coste es que la escala 0,5 mueve la
   puntuación 1/2048 como mucho.
+
+### 2026-11-15 · validación · posesiones cortas, fase 4: el déficit no es propio del partido; cota de una pista de equipo de fuera
+
+Quién: lo pidió Ismael por la sesión principal («haga una investigacion tambien para ver como arreglar lo
+demas»). Claude escribió las dos reglas (`validation/posesiones_cortas/BITACORA.md` §11, commit `ba55354`) antes
+de ejecutar. Es descriptivo.
+
+Qué se probó y resultado [medido]:
+- **¿Es real el déficit del partido?** Con nuestro `D`, `main` saca 4,29 / 4,26 posesiones por minuto de juego
+  predicho en la DFL y 4,11 en SkillCorner, con partidos de 3,45 a 5,76. Las 3,7 del partido caen dentro: con
+  la regla, «cerca». El déficit es el de siempre, no propio del partido.
+- **¿Cuánto valdría una pista de equipo de fuera (como las fases del Smart Tagging)?** Con una pista sintética
+  en la DFL (trozos de 7,5 s que aciertan o fallan enteros, sin mirar los bordes):
+  - solo en los frames sin balón, que es el alcance del plan, no cambia nada (±0,008);
+  - en todos los frames, ayuda con el control (+0,011 a +0,022) solo si acierta el 90 % o más y pesa 2 o 4;
+  - con el flag no ayuda nunca.
+
+  Es una cota superior: los fallos son independientes de los de B5.
+
+Decisión y por qué: ninguna. Lo de la pista se pasa a Antonio y a Ismael para la tarea 2:
+- con el alcance del plan, la pista casi no tiene dónde actuar;
+- para que pese, tendría que acertar mucho y usarse en todos los frames, y eso es otra decisión de Ismael;
+- valdría más si marca dónde cambia la posesión, y eso no se ha medido.
+
+**Añadido el mismo día, con su regla antes de ejecutar** (`validation/posesiones_cortas/BITACORA.md` §13, commit
+`92b4771`): una pista sintética que marca dónde cambia la posesión, como las «Attacking Transition».
+- Con las 24 transiciones del partido (≈ 16 % de los cambios), perfectas y con peso 8 en todos los frames,
+  daría +0,013 a +0,016 si caen al azar y +0,021 a +0,027 si caen en cambios que `main` no ve [medido, cota
+  superior].
+- Para llegar a +0,03 hace falta el 30 % de los cambios, todos de los que `main` no ve y a 1 s o menos.
+- Ninguna combinación hace daño.
+- Para Antonio: lo que importa es cuántas transiciones caen a 1 s o menos de un cambio real, cuántas no las ve
+  `main` y con qué retraso.
+- Para Ismael: solo pesaría con un alcance mayor que el del plan (todos los frames, peso fuerte).
+
+**H3 y H5 del visionado, el mismo día** (regla en `validation/posesiones_cortas/BITACORA.md` §14, commit `41c3c23`,
+antes de que Ismael ejecutara `validation/partido/huecos_y_cambios.py`):
+- en el partido, nuestros cambios no se juntan con los huecos del balón más que en la DFL (R 1,19 frente a
+  1,20), y tras un hueco cambiamos menos;
+- con solo 6 cambios junto a un hueco, la regla dice que no concluye;
+- en pleno juego el ATD casi no pierde el balón (37 huecos).
+
+Decisión: ninguna. No se abre ni una degradación nueva ni un candidato antes de la entrega.
+
