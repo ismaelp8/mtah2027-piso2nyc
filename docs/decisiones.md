@@ -4008,3 +4008,91 @@ rama en `03fe7e8` y sin cambios locales en el código de la entrega. La salida e
 --name equipo_v6` da 0 conflictos, ninguna racha corta y el sha256 `27dc8aa8…efb7`, el mismo que el «con el ancla» del
 script y que `equipo_v5`. El validador oficial la da por válida (199.319 filas). La entrega vigente no cambia de
 contenido: `equipo_v6` es `equipo_v5` byte a byte. La rama ya se puede mergear.
+
+### 2026-11-16 · `D` · se enciende la capa del balón fuera (`dead_ball.ball_out`), con una entrega de prueba antes
+
+Quién: Ismael. Sus palabras (16/11): «vamos a encender la primera capa del balón. Crea otra sesión para
+implementarla». La implementa Claude, en una sesión aparte.
+
+**Qué se decide:** la entrega suma `dead_ball.ball_out`, la primera versión de D7, si pasa la lectura de abajo.
+- El peso (5) y la cola (16 frames) no se tocan.
+- La segunda versión, `ball_out_hold`, sigue apagada: salió byte a byte igual que la primera.
+
+**Por qué, contra la regla escrita:**
+- La capa tenía tres criterios, escritos antes de generar `prueba_d7` (entrada «D7, el balón fuera del campo», 15/11).
+  **Falló el 1 y pasó el 2 y el 3** [medido por Ismael]:
+  1. llegamos tarde en 12 de 47 rachas de balón fuera (25,5 %); sin la capa, en 23 (48,9 %). Se pedía menos del
+     15 %;
+  2. hay 116 paradas, 3 más que en `equipo_v3`, y el `D` ocupa el 45,4 % de los frames evaluados;
+  3. cambian 574 frames evaluados, todos de un equipo a `D` (331 de `H` y 243 de `A`). Las posesiones siguen en 215.
+- Por la regla escrita, la capa se quedaba apagada. La entrada «D7, segunda versión» cerró D7.
+- **Ismael decide encenderla igualmente.** El criterio 1 mide si el problema queda resuelto del todo, no si la capa
+  hace daño. Los dos criterios de daño se cumplieron.
+- Es la segunda excepción a «lo que no ha ganado en el harness no entra» (plan §4), después de la capa de los
+  contraataques.
+
+**Lo que no se puede medir:**
+- **En la DFL, nada:** allí el balón se queda quieto mientras está muerto y va tapado en los `D`, así que «fuera es
+  `D`» se cumple por construcción. Con la capa cambian 23 frames de 2.012.288.
+- Lo único que la apoya fuera del partido es descriptivo: en SkillCorner, un balón visto fuera es `D` el 93–94 % de
+  las veces.
+- Cuánto mueve el `spellF1` del partido no se sabe.
+
+**La lectura de la entrega de prueba, fijada antes de generarla.**
+
+Por qué hace falta otra prueba: las de ayer se hicieron sobre `equipo_v3`. Desde entonces está encendida la capa de
+los contraataques (`transiciones.evidence_equipo`), y nadie ha generado la entrega con las dos capas.
+- Donde se solapan (los 5 primeros segundos de un contraataque con el balón visto fuera), la de los contraataques
+  suma 8 a un equipo y esta suma 5 a `D`. Ahí el resultado no tiene por qué ser la suma de las dos pruebas.
+- Por eso los umbrales dejan margen sobre lo de ayer.
+
+Lo que espero [inferencia]: casi lo mismo que `prueba_d7`. `equipo_v5` tiene el mismo `D` que `equipo_v3`, y la capa
+de los contraataques no toca la columna `D`. Unos 574 frames de un equipo a `D`, 116 paradas, 219 posesiones y 12 de
+47 rachas en que llegamos tarde.
+
+Cómo se genera (lo ejecuta Ismael, desde `C:\dev\mtah2027-piso2nyc`, con `main` al día y el python del entorno
+limpio):
+1. `validation/partido/probar_entrega.py prueba_d7_v5 --capa dead_ball.ball_out --contra equipo_v5`: genera la
+   entrega de prueba, cuenta el balón fuera y la compara con `equipo_v5`;
+2. `validation/partido/comparar_entregas.py equipo_v3 prueba_d7_v5`: la compara con la de antes de las dos capas.
+
+**Pasa si se cumple todo esto:**
+0. **Procedencia:** la salida del paso 1 dice un commit de `main` que ya tiene esta entrada, «sin cambios locales en el código
+   de la entrega», «capa añadida dead_ball.ball_out», y las versiones de Python y numpy. Si no, esa salida no vale y
+   se repite.
+1. **Sin conflictos ni rachas cortas:** 0 frames con piezas en conflicto. En los dos tramos, 0 posesiones, 0 rachas
+   de juego y 0 paradas de menos de 25 frames.
+2. **La banda del plan:** el `D` no pasa del 60 % de los frames evaluados y las paradas no pasan de 250. El `D` se
+   lee en «frames por etiqueta» del resumen y se divide entre 158.857: fuera de los tramos evaluados la entrega
+   escribe `X`.
+3. **Frente a `equipo_v5`** (paso 1, la comparación):
+   - a. **cambia algo, y no mucho:** de 1 a 1.000 frames evaluados. Ayer cambiaron 574. Con el balón fuera y `H` o
+     `A` en `equipo_v3` había 843 frames; lo demás es margen para el arrastre del decodificador. Si no cambia
+     ninguno, la capa no se ha aplicado;
+   - b. el 90 % o más de los frames que cambian pasan de `H` o `A` a `D`. Ayer, el 100 %;
+   - c. de `D` a `H` o `A`, 25 frames o menos (1 s). La capa solo suma a `D`: esto solo puede venir del arrastre del
+     decodificador;
+   - d. de un equipo al otro (`H → A` más `A → H`), 82 frames o menos: el 10 % de los 817 que arregló la capa de los
+     contraataques. Es lo que esta capa podría deshacerle;
+   - e. las paradas suben 6 como mucho (de 113 a 119 o menos). Ayer subieron 3, y el doble deja margen al solape.
+     Cada parada nueva tendría que salir de una racha en que nuestro `D` no llegaba en 10 s, y eran 10;
+   - f. las posesiones no suben más que las paradas: cada posesión nueva tiene que venir de una parada nueva que
+     parte una posesión.
+4. **La capa de los contraataques no pierde lo que arregló** (paso 2, frente a `equipo_v3`): `H → A` más `A → H` suman
+   736 o más, el 90 % de los 817 de `equipo_v5` (274 de `H` a `A` y 543 de `A` a `H`). Con la capa del balón fuera
+   sola no cambió ningún frame de un equipo al otro, así que ese cambio frente a `equipo_v3` es el de los
+   contraataques.
+
+Descriptivo, no decide: el recuento del balón fuera (paso 1). Espero unas 12 rachas tarde de 47, como ayer. No es un
+criterio: es el que falló ayer y Ismael ha decidido no exigirlo.
+
+**Si falla alguna:** no se enciende nada. No se retocan ni la capa ni los umbrales. Se para, se le cuenta a Ismael con
+la salida y se apunta aquí.
+
+**Si pasan todas:**
+- se añade `dead_ball.ball_out` **al final** de `pipeline.DELIVERY_LAYERS`, detrás de la de los contraataques. Es el
+  mismo orden de suma que en la prueba, para que salga la misma huella;
+- el harness no cambia: `pipeline.run` no usa `DELIVERY_LAYERS`;
+- se pasan las pruebas y se sube a `main`;
+- Ismael regenera la entrega sin opciones, en el entorno limpio. Tiene que dar, byte a byte, el sha256 de
+  `prueba_d7_v5`. Después se valida.
