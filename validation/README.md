@@ -59,6 +59,10 @@ que faltan, los scripts y los resultados. El porqué está en
 | `scripts/prueba_perfil_atd.py` | prueba el perfil con trackings inventados de resultado conocido, la supresión de celdas, que no abre ficheros y que el script del partido no imprime valores al fallar | ninguno del partido |
 | `partido/limpieza_balon.py` | **lee el partido** (ATD): qué hace la limpieza del balón (`ball.clean_v1`) paso a paso en los frames evaluados, con las dos partes juntas y las celdas de menos de 5 casos suprimidas; regla de lectura en `docs/decisiones.md` (14/11). Lo ejecuta una persona | **datos del partido: solo una persona** |
 | `scripts/prueba_limpieza.py` | prueba la limpieza del balón (`ball.clean_v1`, también la corrección del paso 2), las evidencias N1, N2 y Ret y el recuento de `partido/limpieza_balon.py` con trackings inventados de resultado conocido | ninguno del partido |
+| `retraso_balon/retraso.py` | biblioteca: el desfase entre el balón y el jugador que lo lleva en un `Tracking` (rachas de conducción, correlación de velocidades por desfase, bootstrap y lectura), el mismo para el ATD y para la DFL. Regla en `retraso_balon/BITACORA.md` | ninguno: lo decide quien la llama |
+| `retraso_balon/calibrar_dfl.py` | calibra esa medida en los 7 partidos de la DFL: tiene que dar 0 con el balón «como el ATD», +12 con una media hacia atrás y ±6 desplazándolo (bitácora §3) | DFL |
+| `partido/retraso_balon.py` | **lee el partido** (ATD): ¿llega el balón con retraso respecto a los jugadores? El desfase en los frames evaluados, con su intervalo y la lectura de la bitácora §5; solo si la calibración pasa. Lo ejecuta una persona | **datos del partido: solo una persona** |
+| `scripts/prueba_retraso_balon.py` | prueba la medida del retraso con un tracking inventado de desfase conocido (0, +12, ±6), sus filtros, la lectura y que el script del partido solo imprime agregados | ninguno del partido |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
 
