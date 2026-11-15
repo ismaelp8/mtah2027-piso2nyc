@@ -156,6 +156,18 @@
     debajo, pero solo 6 de nuestros cambios caen junto a un hueco. En pleno juego el ATD casi no pierde el
     balón (37 huecos): la mayor parte va pegada a nuestras paradas. No se abre nada antes de la entrega.
     Detalle: `validation/resultados/2026-11-15_huecos_y_cambios.md`.
+18. **¿Cuenta la GT pública los toques sin control? No concluye** [medido, regla subida antes en `89610fd`].
+    Hay 2 posesiones de menos de 2 s metidas entre dos del otro equipo (0,50 por minuto de juego). Quedan
+    entre el control (p90 0,37) y el flag (p25 0,53), cerca de SkillCorner (mediana 0,57). Con 0 habría sido
+    «exige control» y con 3 o más, «cuenta toques». Detalle: `validation/posesiones_cortas/BITACORA.md` §15.
+19. **B9, listo para que decida Ismael** [medido; tabla completa en la §16 de la bitácora]:
+    - gana con el flag (+0,039 y +0,048) y empata con el control (−0,006 y −0,005);
+    - con el balón 4 frames tarde, como midió Antonio en el partido, sale igual: +0,035 y +0,043 con el
+      flag, y −0,005 y −0,008 con el control;
+    - no gana en SkillCorner (−0,005 y +0,004);
+    - no cumple el límite de los duelos sin cambio (−5,7 frente a −5);
+    - cumple los criterios del `D` propio;
+    - es una apuesta de convención que ni la regla ni la ventana pública eligen.
 
 ## Estado de cada idea
 

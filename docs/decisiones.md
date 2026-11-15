@@ -2817,3 +2817,21 @@ Si queda abierta, la decisión nueva tendría que contar con dos cosas, medidas 
 - **Un riesgo al final de las paradas:** el balón del ATD va suavizado unos 25 frames, así que tras un saque de
   banda se sigue viendo fuera unos frames con el juego ya en marcha. Una capa con peso retrasaría el final del
   `D`, que ya llega tarde a veces (D5 del visionado).
+
+### 2026-11-15 · validación · la GT pública no dice si cuenta los toques sin control; B9, listo para decidir
+
+Quién: Claude, por el encargo de «dos hipótesis del visionado se prueban» (más arriba). Regla en `validation/posesiones_cortas/BITACORA.md` §15,
+con commit (`89610fd`) antes de mirar la GT pública.
+
+Qué se midió y resultado [medido]:
+- **Sándwiches:** posesiones de menos de 2 s metidas entre dos del otro equipo, sin `D` en medio.
+  - Por minuto de juego, en ventanas de 7.500 frames, la mediana es 1,37 con el flag de la DFL, 0 con el
+    control y 0,57 en SkillCorner.
+  - La GT pública tiene 2 en 4,02 minutos (0,50 por minuto).
+  - La regla decía «exige control» con 0 y «cuenta toques» con 3 o más: con 2, **no concluye**.
+- **B9 con el balón 4 frames tarde** (lo que midió Antonio en el partido) sale igual que sin retraso: +0,035
+  y +0,043 con el flag, −0,005 y −0,008 con el control. La tabla completa de lo que B9 cumple y no cumple
+  está en la §16 de la bitácora.
+
+Decisión: ninguna. B5 sigue en la entrega. Cambiar a B9 sería una decisión de Ismael, apuntada como suya: ni
+§5.8 ni la ventana pública lo eligen.
