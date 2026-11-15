@@ -207,3 +207,82 @@ partidos), frente al signo de B5 solo. Es acierto por frame, no `spellF1`: el qu
 - **Si alguna señal añade,** se propone un candidato (B5 reentrenado con ella) para que lo construya otra sesión, con
   su regla de §5.8, la mitad de entrenamiento de SkillCorner y los eventos. Si ninguna añade, se dice y se cierra.
 - Además, una fila con B5 más todas las señales de equipo a la vez: la cota de lo que este cribado puede dar.
+
+---
+
+# Resultados (16/11), en el orden en que se ejecutaron
+
+Salidas tal cual en `salidas/`. Código: `main` en `ee404f6` más estos scripts, sin cambios en `possession/`.
+
+## S1. El coste de cambio, con el `D` de las etiquetas y con el propio [medido]
+
+`spellF1` con los partidos juntos; entre paréntesis, la diferencia frente a `main` (coste 25).
+
+| datos | `D` | balón | 6 | 12 | 18 | 25 | 40 |
+|---|---|---|---|---|---|---|---|
+| DFL flag | etiquetas | como el ATD | 0,495 | 0,498 | **0,499** | 0,498 | 0,496 |
+| DFL flag | etiquetas | sin bloques | 0,510 | 0,512 | **0,513** | 0,512 | 0,510 |
+| DFL flag | propio | como el ATD | 0,414 | **0,418** | 0,417 | 0,416 | 0,413 |
+| DFL flag | propio | sin bloques | 0,431 | 0,434 | **0,435** | 0,433 | 0,429 |
+| DFL control | etiquetas | como el ATD | 0,698 | 0,712 | 0,721 | 0,728 | **0,735** (+0,007, 6 de 7) |
+| DFL control | etiquetas | sin bloques | 0,720 | 0,733 | 0,742 | 0,748 | **0,755** (+0,008, 7 de 7) |
+| DFL control | propio | como el ATD | 0,588 | 0,602 | 0,610 | 0,616 | **0,624** (+0,008, 6 de 7) |
+| DFL control | propio | sin bloques | 0,615 | 0,628 | 0,637 | 0,642 | **0,649** (+0,008, 7 de 7) |
+| SkillCorner | etiquetas | detectado | 0,498 | 0,506 | 0,514 | 0,519 | **0,529** (+0,010) |
+| SkillCorner | etiquetas | detectado, suavizado | 0,494 | 0,505 | 0,510 | 0,514 | **0,524** (+0,010) |
+| SkillCorner | propio | detectado | 0,366 | 0,371 | 0,376 | 0,382 | **0,389** (+0,007) |
+| SkillCorner | propio | detectado, suavizado | 0,363 | 0,370 | 0,375 | 0,378 | **0,386** (+0,008) |
+
+**Con la regla:**
+- «El efecto del nivel se ve»: **no.** Al pasar al `D` propio el mejor coste solo baja en una de las cinco celdas
+  (flag «como el ATD», de 18 a 12). Con el control y en SkillCorner sigue en 40.
+- «Hay candidato para David»: **no.** Ningún coste menor que 25 gana a `main`.
+
+**Lectura [inferencia]:** el umbral F/2 no manda aquí porque los cambios de más que da un coste bajo aciertan
+menos que F/2: no son las posesiones que faltan (su evidencia tiene el signo contrario, posesiones cortas, punto 3).
+**Lo nuevo es que SkillCorner, que no se había medido con otros costes, se pone del lado del control:** subir el
+coste a 40 da +0,007 a +0,010 allí y con el control, y −0,002 a −0,004 con el flag. No llega a +0,03 y vuelve a ser
+una apuesta de convención; lo que sí dice es que, si hubiera que moverlo, sería hacia arriba.
+
+## S2. Riesgo mínimo con la evidencia de B5 [medido]
+
+- La temperatura que mejor explica las etiquetas frame a frame es T = 16 en los 7 pliegues. Con ella, una muestra
+  tiene una mediana de 2.685 posesiones por parte (las reales son unas 220 con el flag): la distribución se
+  fragmenta, porque la evidencia de frames vecinos no es independiente.
+- **La duda del modelo:** Spearman anchura–error 0,09 (flag) y 0,14 (control); AUC de los cambios sin pareja 0,60 y
+  0,69. **No cumple** (pedía 0,3 o un AUC de 0,65 con las dos convenciones).
+- **La elección por parte:** el riesgo mínimo elige el coste 8 en 13 de 14 partes y pierde: 0,497 frente a 0,498
+  (flag) y 0,704 frente a 0,728 (control). **No merece construirse.**
+- **El techo de elegir el coste por parte** (un oráculo que elige el mejor en cada parte): 0,504 (+0,006) y 0,741
+  (+0,013). Ni con un oráculo llega a +0,03.
+
+## S3. La cámara frente al centroide de los jugadores (SkillCorner) [medido]
+
+- El centro del encuadre explica la x del balón igual que el centroide de los jugadores detectados (de 9,3 a 9,4 m
+  y de 7,7 a 8,4 m de error) y la y peor (13 m frente a 10 m).
+- Los dos juntos frente al centroide solo: +1 %, −9 %, −2 % y −2 % de error. **No cumple** (pedía −20 % en x).
+- La cámara va unos 0,4 s detrás del balón (correlación máxima de 0,74 con 4 muestras de desfase).
+- **Lectura:** el encuadre es, a efectos prácticos, el centroide de lo que se ve, que B5 y E2 ya usan. Además va
+  tarde. Se cierra sin agregado del partido.
+
+## S4. Paradas con tracking en SkillCorner [medido]
+
+- 1.019 paradas entre dos fases de juego en los 10 partidos; solo 133 tienen jugadores detectados en el 80 % de sus
+  frames, y casi todas son cortas (63 de menos de 5 s). Por tipo, con tracking: 80 saques de banda, 12 faltas, 7
+  córners, 5 saques de puerta.
+- **No cumple** (pedía 150 y 30 de tres tipos). SkillCorner no sirve para validar los bordes de las paradas.
+
+## S5. Posesiones cortas justo antes de una parada nuestra [medido]
+
+- Con el corte de 5 s hay de 108 a 160 en los 7 partidos. Solo entre el 8 y el 26 % se emparejan con una real; de
+  sus frames, entre el 39 y el 58 % son `D` de verdad. Son, sobre todo, un `D` que llega tarde.
+- Quitarlas (pasarlas a `D`): con el control, +0,007 a +0,009 con el balón tapado en los `D` y +0,018 / +0,019 con el
+  balón a la vista (7 de 7). Con el flag, −0,002 tapado y +0,004 a la vista.
+- **Con la regla: no hay candidato** (con el flag y el balón tapado no gana). Queda como observación: con el balón a la
+  vista en los `D`, que es lo que pasa en el ATD (se ve en el 68 % de los frames de las ventanas `SET PIECES`), da
+  +0,02 con el control y no hace daño con el flag.
+
+## S6. El arranque del balón en Metrica sample-data [medido]
+
+- El balón se ve en el 20 % de los frames `D` y en el segundo anterior al saque solo en 2 de 210 saques (1 %).
+- **Se cierra sin medir nada más,** como decía la regla: en estos datos el balón tampoco se ve antes del saque.
