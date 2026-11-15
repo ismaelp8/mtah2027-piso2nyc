@@ -282,6 +282,89 @@ def evidence(trk, paths=None, game=games.GAME):
     return score, allowed
 
 
+# -- D7: el balón visto fuera del campo (15/11). Capa APAGADA: no la llama `evidence` ni la entrega. -------
+# Se prueba con `python -m possession.pipeline --name prueba_d7 --capa dead_ball.ball_out`. Reglas, peso y
+# criterios para encenderla, fijados antes de generar esa entrega: docs/decisiones.md, 15/11, «D7».
+
+BALL_OUT_MARGIN = 1.0  # m fuera de las líneas (docs/PLAN_ENTREGA.md §3, tarea 2 de Manuel)
+BALL_OUT_MIN_RUN = 5  # frames: una racha más corta es temblor (como validation/partido/balon_fuera.py)
+# Frames del final de cada racha que no se puntúan: el balón del ATD va suavizado unos 25 frames (la mitad,
+# 12) y llega unos 4 tarde respecto a los jugadores (PR 11), así que tras un saque de banda se sigue viendo
+# fuera unos 16 frames con el juego ya en marcha.
+BALL_OUT_TAIL = 16
+# Puntuación de `D` por frame. El entero más grande con el que, en el juego vivo típico (mediana de
+# dead_state en la DFL, −3,42), un balón visto fuera tiene que durar 3 s o más para crear una parada él solo:
+# cada frame gana W + ds − 1 (el −1 es el +1 de N1) y una parada nueva cuesta to_dead + from_dead = 50.
+BALL_OUT_SCORE = 5.0
+
+
+def ball_out(trk):
+    """`(score, allowed)` de la capa D7: BALL_OUT_SCORE en la columna `D` donde el balón se ve fuera.
+
+    Solo en las rachas de BALL_OUT_MIN_RUN frames o más con el balón visto a más de BALL_OUT_MARGIN m fuera
+    de las líneas, sin sus últimos BALL_OUT_TAIL frames y dentro de los tramos evaluados. No prohíbe nada.
+    Solo usa el tracking (con el balón ya limpio), así que también corre en la DFL.
+    """
+    n = len(trk.bx)
+    score, allowed = no_evidence(n)
+    length, width = trk.pitch
+    bx, by = np.asarray(trk.bx, dtype=np.float64), np.asarray(trk.by, dtype=np.float64)
+    with np.errstate(invalid="ignore"):
+        out = ((bx < -BALL_OUT_MARGIN) | (bx > length + BALL_OUT_MARGIN)
+               | (by < -BALL_OUT_MARGIN) | (by > width + BALL_OUT_MARGIN))
+    out &= np.isfinite(bx) & np.isfinite(by)
+    for first, stop in trk.blocks:
+        edges = np.diff(np.concatenate(([0], out[first:stop].astype(np.int8), [0])))
+        for start, end in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
+            if end - start >= BALL_OUT_MIN_RUN and end - start > BALL_OUT_TAIL:
+                score[first + start:first + end - BALL_OUT_TAIL, D] = BALL_OUT_SCORE
+    return score, allowed
+
+
+# -- D7, segunda versión (15/11): mantener la parada hasta que el balón vuelva a verse dentro. APAGADA. -----
+# Diseñada después de ver la primera (prueba_d7: tarde en 12 de 47 rachas, y en 7 nuestro `D` no llega).
+# Se prueba con `--capa dead_ball.ball_out_hold`. Reglas fijadas antes de generar la entrega: docs/decisiones.md,
+# 15/11, «D7, segunda versión».
+
+# Racha visible mínima para mantener la parada en el hueco que la sigue: con 1 s, en SkillCorner (mitad de
+# entrenamiento) hay 0,7 rachas por partido enteras en juego, menos de una aunque todas acabaran con el balón
+# perdido (validation/scripts/balon_fuera_abiertos.py).
+BALL_OUT_HOLD_MIN_RUN = 25
+# Tope del hueco: si el balón no vuelve a verse dentro en 60 s, no se mantiene (el de la capa del hueco).
+BALL_OUT_HOLD_MAX_S = 60
+
+
+def ball_out_hold(trk):
+    """`(score, allowed)` de la segunda versión de D7: `ball_out` y, además, mantiene la parada en el hueco.
+
+    Lo de `ball_out`, y en cada racha visible de BALL_OUT_HOLD_MIN_RUN frames o más con el balón fuera, sigue
+    puntuando BALL_OUT_SCORE en `D` mientras el balón no se ve o se ve fuera, hasta BALL_OUT_TAIL frames antes
+    de que vuelva a verse dentro (a BALL_OUT_MARGIN m o menos de las líneas). Si no vuelve a verse dentro en
+    BALL_OUT_HOLD_MAX_S segundos, o se acaba el tramo, no se mantiene. No prohíbe nada.
+    """
+    score, allowed = ball_out(trk)
+    length, width = trk.pitch
+    bx, by = np.asarray(trk.bx, dtype=np.float64), np.asarray(trk.by, dtype=np.float64)
+    seen = np.isfinite(bx) & np.isfinite(by)
+    with np.errstate(invalid="ignore"):
+        out = seen & ((bx < -BALL_OUT_MARGIN) | (bx > length + BALL_OUT_MARGIN)
+                      | (by < -BALL_OUT_MARGIN) | (by > width + BALL_OUT_MARGIN))
+    inside = seen & ~out
+    limit = int(round(BALL_OUT_HOLD_MAX_S * trk.fps))
+    for first, stop in trk.blocks:
+        edges = np.diff(np.concatenate(([0], out[first:stop].astype(np.int8), [0])))
+        for start, end in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
+            if end - start < BALL_OUT_HOLD_MIN_RUN:
+                continue
+            back = np.flatnonzero(inside[first + end:min(first + end + limit + 1, stop)])
+            if not len(back):
+                continue
+            hold_end = first + end + int(back[0]) - BALL_OUT_TAIL
+            if hold_end > first + start:
+                score[first + start:hold_end, D] = BALL_OUT_SCORE
+    return score, allowed
+
+
 # -- El instante del reinicio (15/11). Medido con su regla el 15/11: no entra ninguno. Fuera de `evidence`.
 
 # La capa lleva el fin del `D` de cada ventana `SET PIECES` a un instante fijo desde su inicio, uno por tipo de

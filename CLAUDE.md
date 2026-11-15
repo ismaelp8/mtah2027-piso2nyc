@@ -234,7 +234,13 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
+- **Entrega vigente: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
+  más la capa de los contraataques (más abajo). Es válida, con 219 posesiones de 15,9 s de media, 113
+  paradas, el mismo `D` que `equipo_v3` y sha256 `27dc8aa8…efb7`.
+  - Sale byte a byte igual que `prueba_transiciones2`, que se generó con numpy 2.3.4.
+  - Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro.
+  - Falta reproducirla en otra máquina.
+- **Entrega anterior: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
@@ -276,7 +282,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       un 30 % (4,25 frente a 6,05).
     - **B9, que es B5 más la dirección en que se mueve el balón, empata.** Gana con el flag (+0,039 y
       +0,048), pero empata con el control, empeora los duelos sin cambio más de lo permitido y no mejora en
-      SkillCorner (−0,005 y +0,004). Queda en `aprendida.py`, fuera de `PIECES`.
+      SkillCorner (−0,005 y +0,004). Queda en `aprendida.py`, fuera de `PIECES`. **Ismael se queda con B5**
+      (`5fc02b8`). La entrega de prueba con B9 cambia poco: 216 posesiones frente a 215.
     - **Las fases 2 y 3 se cerraron sin candidato.** Quitar las posesiones inventadas no llega a +0,03 ni
       con un oráculo, y una red de una capa con los mismos rasgos no gana con el control ni en SkillCorner.
     - **La fase 4 tampoco abre nada** (`a950880`; `docs/decisiones.md`):
@@ -318,8 +325,37 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     **apagada**: `ball.clean` y `pipeline.PIECES` no cambian.
   - **La entrega no cambia:** el código de antes es idéntico y solo se añade la función. Se confirma al
     regenerar en el ensayo del lunes.
-- **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio): con el sí de Ismael del 15/11,
-  en marcha. La regla del plan no cambia.
+- **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio, PR 13, `4ceff85`): la tabla de
+  fases vale, y llegamos de 2 a 10 s tarde en 17 de los 24 contraataques. Con la cota de la DFL, ningún uso
+  llega a +0,03.
+  - **Capa apagada `transiciones.evidence`** (PR 14, `9f89d10`): suma 8 por frame al equipo de cada «Attacking
+    Transition» durante sus 5 primeros segundos, y lo mismo a `D`, así que solo empuja contra el otro equipo.
+  - Antonio escribió cuatro criterios antes de generar nada (`docs/decisiones.md`). **La primera versión los falla:**
+    crea 18 paradas, así que se queda apagada.
+  - **La segunda, `transiciones.evidence_equipo`** (`5920c7f`), pone el peso solo al equipo de la fase y **pasa los
+    cuatro:**
+    - cambian 817 frames, todos de un equipo al otro;
+    - las paradas no se mueven y hay 4 posesiones más.
+  - **Encendida desde el 15/11** (Ismael: «Sí, enciéndela»): `pipeline.DELIVERY_LAYERS`. Es una excepción a la
+    regla del harness, porque la DFL no tiene Smart Tagging.
+  - **La entrega cambia:** es `equipo_v5` (arriba), igual byte a byte que `prueba_transiciones2`.
+  - Si se enciende, hay que añadir en `possession/tracking.py` y en el plan (§2) la excepción de que abre
+    ficheros del partido, como `dead_ball.py`.
+- **D7, el balón fuera del campo como señal de `D`** (`docs/decisiones.md`; capas apagadas en
+  `possession/dead_ball.py`):
+  - **El recuento del partido la deja abierta:** con `equipo_v3` llegamos tarde en 23 de 47 rachas en que el
+    ATD ve el balón fuera. En SkillCorner, un balón visto fuera es `D` el 93–94 % de las veces.
+  - **Primera versión, `ball_out`: se queda apagada.** Con ella llegamos tarde en 12 de 47 (25,5 %), y el
+    criterio pedía menos del 15 %. No hace daño: los 574 frames que cambia pasan todos de `H` o `A` a `D`.
+  - **Segunda versión, `ball_out_hold`** (`0043a3c`): mantiene la parada hasta que el balón vuelve a verse
+    dentro. Su entrega de prueba sale byte a byte igual que la de la primera, así que tampoco cumple el
+    criterio 1. **D7 se cierra:** las dos capas quedan apagadas.
+- **Entregas de prueba sin tocar `PIECES`:**
+  - `python -m possession.pipeline --name <prueba> --pieza nombre=modulo.funcion --capa modulo.funcion`. Con
+    el nombre de la entrega da error, y la salida dice qué se ha cambiado.
+  - `python validation/partido/probar_entrega.py <prueba> --capa ...` hace la prueba entera en un solo comando:
+    genera la entrega, cuenta el balón fuera y la compara con `equipo_v3`.
+  - Lo ejecuta una persona (regla nº 1).
 - **`D` de estado: tareas 1 a 3 de Ana en `main`** (PR 12, `98c38ca`; `docs/decisiones.md`).
   - Las ventanas de `dead_state` ya no cruzan el principio ni el final de los tramos evaluados.
   - `evidence` admite una escala, con 1 por defecto, para la medida de David.
@@ -608,8 +644,8 @@ validation/                  validación externa con datos abiertos: pasos, scri
   `games.half_video_blocks()`), y los datos se localizan con `MTAH_DATA_DIR`.
 - **Interfaz común** (`possession/tracking.py` y `docs/PLAN_ENTREGA.md` §2):
   - cada pieza recibe un `Tracking`: arrays indexados por **frame de vídeo**, **199.319** en el partido.
-    No recibe rutas ni abre ficheros; solo `possession/dead_ball.py` usa además los del partido, con las
-    rutas de `games.asset_paths()`;
+    No recibe rutas ni abre ficheros; solo `possession/dead_ball.py` y `possession/transiciones.py` (desde
+    el 15/11) usan además los del partido, con las rutas de `games.asset_paths()`;
   - las piezas de evidencia devuelven `(score, allowed)`: dos arrays de forma (n, 3), con las columnas
     `H`, `A` y `D`;
   - el decodificador devuelve una etiqueta por frame de vídeo.
