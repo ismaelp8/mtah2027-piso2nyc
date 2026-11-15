@@ -48,6 +48,8 @@ que faltan, los scripts y los resultados. El porqué está en
 | `perfil_atd/leer_atd.py` | la regla de lectura de la bitácora como código: lee la salida del perfil del ATD, mide la DFL y dice qué degradación sale y qué puede decidir el harness; con `--ensayo`, un partido de la DFL hace de ATD | salida pegada del ATD (agregados) y DFL |
 | `partido/perfil_atd.py` | **lee el partido** (ATD y Smart Tagging): el perfil del balón del ATD en todos los frames evaluados, con las dos partes juntas y las celdas de menos de 5 casos suprimidas. Lo ejecuta una persona | **datos del partido: solo una persona** |
 | `scripts/prueba_perfil_atd.py` | prueba el perfil con trackings inventados de resultado conocido, la supresión de celdas, que no abre ficheros y que el script del partido no imprime valores al fallar | ninguno del partido |
+| `partido/limpieza_balon.py` | **lee el partido** (ATD): qué hace la limpieza del balón (`ball.clean_v1`) paso a paso en los frames evaluados, con las dos partes juntas y las celdas de menos de 5 casos suprimidas; regla de lectura en `docs/decisiones.md` (14/11). Lo ejecuta una persona | **datos del partido: solo una persona** |
+| `scripts/prueba_limpieza.py` | prueba la limpieza del balón (`ball.clean_v1`, también la corrección del paso 2), las evidencias N1, N2 y Ret y el recuento de `partido/limpieza_balon.py` con trackings inventados de resultado conocido | ninguno del partido |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
 

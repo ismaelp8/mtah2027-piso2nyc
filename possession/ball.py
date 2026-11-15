@@ -4,8 +4,8 @@
 con el recuento del partido (validation/partido/limpieza_balon.py), y no por ganar en el harness: en la DFL
 no hay saltos falsos que quitar, así que el harness no los ve. Ahí solo tiene que no empeorar frente a
 main. La limpieza entra fija, sin competir (docs/PLAN_ENTREGA.md §3 y §8; docs/decisiones.md, 14/11). El
-recuento salió como se esperaba; para hacer el cambio falta reentrenar la evidencia B5, que se entrenó con
-`clean` tal cual (validation/apuesta_b/entrenar.py, la pieza de Ismael).
+cambio lo decide Ismael con el recuento, y exige reentrenar la evidencia B5, que se entrenó con `clean` tal
+cual (validation/apuesta_b/entrenar.py).
 
 `clean_v1` (docs/investigacion_metodos.md §2.1, A1 + A2) es una sola versión, sin variantes. Los pasos 1 y 2
 se calculan los dos sobre el balón de entrada y se quitan juntos; después va el 3:
@@ -25,8 +25,12 @@ se calculan los dos sobre el balón de entrada y se quitan juntos; después va e
 Solo cambia el balón; los jugadores no se tocan. Lo de fuera de los límites del campo no se toca aquí: es
 señal para el `D` (possession/dead_ball.py).
 
-Límite conocido: una detección falsa de 2 frames pegada a balón bueno sobrevive a los pasos 1 y 2, porque
-el paso 1 exige el salto a los dos lados de cada punto.
+Límites conocidos:
+- una detección falsa de 2 frames pegada a balón bueno sobrevive a los pasos 1 y 2, porque el paso 1 exige
+  el salto a los dos lados de cada punto;
+- en un salto grande suavizado (varios frames seguidos a más de MAX_SPEED), el paso 1 quita el tránsito,
+  pero el salto queda: el balón sigue en el sitio de llegada. En el ATD del partido hay 15 así, y ningún
+  pico de un frame (recuento del 14/11 en docs/decisiones.md).
 """
 
 import numpy as np

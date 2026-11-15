@@ -1056,9 +1056,9 @@ Decisión y por qué:
 - **La limpieza v1 no entra todavía:** `ball.clean` sigue siendo lo de `main`.
   - En la DFL empata, como se esperaba: no hay saltos falsos que quitar y casi no hay huecos cortos.
   - Lo que puede aportar está en los saltos del ATD, y el harness no lo ve. [inferencia] El perfil cuenta
-    216 pares de frames seguidos a más de 40 m/s, no puntos que la regla quite: un salto que se queda o una
-    excursión de varios frames no los toca. Cuánto quita en el partido: **sin medir**. (Corregido el 14/11
-    por la noche, tras la revisión de Ismael.)
+    216 pares de frames seguidos a más de 40 m/s, no puntos que la regla quite: en un salto que se queda o
+    en una excursión de varios frames, como mucho quita el tránsito, y el salto queda. Cuánto quita en el
+    partido: **sin medir**. (Corregido el 14/11 por la noche, tras la revisión de Ismael.)
   - Hace falta saber qué hace con el ATD antes de decidir, con un script de `validation/partido/` que
     ejecuta una persona.
   - Si entra con una prueba que no es el harness, lo decide Ismael, porque su regla dice que un empate con
@@ -1367,8 +1367,19 @@ Cómo se lee el recuento (fijado antes de ejecutarlo):
 
 Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado):
 
-- **Harness** (código b0625fa, antes de ejecutar el recuento): la limpieza corregida da ±0,000 frente a
-  `main` (B5 sin limpieza) en las cuatro combinaciones que votan. **No empeora.** [medido]
+- **Harness, antes de ejecutar el recuento:**
+  `python validation/harness/puntuar.py --versiones validation/harness/versiones/limpieza_balon_2026-11-14.json`
+  (huella 0163fe4b792a; código b0625fa de la rama `feat/limpieza-balon`, la PR que sigue a la 6). 7
+  partidos, `D` oráculo, bootstrap de 1.000 remuestreos. En las condiciones que votan: [medido]
+
+  | etiquetas | balón | control | `main` (B5 sin limpieza) | limpieza v1 corregida | limpieza − `main` |
+  |---|---|---|---|---|---|
+  | flag | como el ATD | 0,406 | 0,498 (+0,093, 7 de 7) | 0,498 (+0,093, 7 de 7) | +0,000 [+0,000 a +0,000], 0 de 7 |
+  | flag | como el ATD, sin bloques | 0,435 | 0,512 (+0,078, 7 de 7) | 0,512 (+0,077, 7 de 7) | −0,000 [−0,000 a +0,000], 0 de 7 |
+  | control | como el ATD | 0,464 | 0,728 (+0,265, 7 de 7) | 0,728 (+0,265, 7 de 7) | +0,000 [+0,000 a +0,000], 0 de 7 |
+  | control | como el ATD, sin bloques | 0,494 | 0,748 (+0,254, 7 de 7) | 0,748 (+0,254, 7 de 7) | +0,000 [+0,000 a +0,000], 0 de 7 |
+
+  Entre paréntesis, la diferencia con el control y en cuántos partidos gana. **No empeora.**
 - **Recuento en el partido** (`python validation/partido/limpieza_balon.py`; lo ejecutó Antonio en local,
   4 s; solo agregados): [medido]
 
@@ -1385,10 +1396,11 @@ Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado):
   | saltos imposibles entre puntos con balón seguidos | 227 antes y 26 después |
   | pares a más de 40 m/s después | 0 |
 
-- **Con la regla fijada antes, sale como se esperaba:** los controles cuadran, (a) los saltos bajan de 227
-  a 26 y (b) cambia el 0,23 % de los frames. [medido]
-- **Lo que dicen las clases, y por qué (a) no significa lo que se esperaba:** [inferencia, cuadra exacto
-  con los recuentos]
+- **A la letra, la regla se cumple:** los controles cuadran, (a) los saltos bajan de 227 a 26 y (b) cambia
+  el 0,23 % de los frames. [medido]
+- **En sustancia, (a) no midió lo que pretendía y es el caso de «Si falla (a)»:** la regla decía que esa
+  cuenta «dice si se quitan saltos», y los saltos no se quitan. Son saltos que se quedan y excursiones, como
+  avisaba «Lo que espero». [inferencia, cuadra exacto con los recuentos] El detalle:
   - **Los 216 pares no son picos.** Son 15 tramos largos de pares seguidos, de unos 14 pares de media: 6
     tramos que forman 3 excursiones de menos de 1 s y 9 saltos que se quedan. Parece un salto grande del
     balón (más de 40 m) suavizado en unos 25 frames.
@@ -1398,21 +1410,34 @@ Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado):
     un hueco que ya había antes. El balón sigue apareciendo en el sitio equivocado al final de cada salto
     que se queda y durante cada excursión.
   - **(a) baja tanto porque antes cada tramo contaba unas 14 veces y después cuenta una.** Al escribir la
-    regla supuse que los saltos serían cortos. Se apunta y el veredicto no cambia: la regla estaba fijada
-    antes y no se retoca.
+    regla supuse que los saltos serían cortos. Contados por tramo, siguen los 15 de 15. La regla no se
+    retoca; se apunta que su (a) no sirvió para lo que se escribió.
+  - Las definiciones de arriba dicen que el paso 1 «no toca» las excursiones. Es inexacto cuando el tramo
+    tiene dos pares o más: también les quita el tránsito, aunque el salto queda.
   - Los 215 frames con otro equipo como el más cercano son casi todos frames que se quedan sin balón: esa
     línea no informa.
+- **Las pruebas** (después de la revisión de esta PR): `prueba_limpieza.py` tiene 65 comprobaciones. Además
+  de las 62 de arriba, prueba un salto y una excursión en la frontera entre dos tramos evaluados. Arriba
+  dice «los 36 casos de la PR 6»: eran 38, con los que se añadieron al pasarlos al repo. [medido, sintético]
 - **El paso 2 no hace nada en el partido** (0 puntos), como decía el perfil (menos de 5 rachas cortas). El
   paso 3 rellena 14 frames y deja sin rellenar los huecos de los 15 tramos, porque el salto que los cruza
   es imposible. Es lo que pide la regla. [medido]
 
 Decisión y por qué:
-- **Con la regla, se propone que `clean` pase a ser `clean_v1`.** No empeora en el harness, y en el partido
-  quita los 201 frames de tránsito imposible tocando el 0,23 % de los frames con balón.
-- **No se hace en esta PR.** B5 se entrenó con `ball.clean` tal cual, y `validation/scripts/prueba_aprendida.py`
-  lo comprueba. Cambiar `clean` obliga a reentrenarla con `validation/apuesta_b/entrenar.py`, que escribe
-  en `possession/aprendida.py`, la pieza de Ismael. Lo decide y lo hace él.
-- **Lo que no arregla, para que Ismael lo sepa al decidir:** los 15 saltos grandes (3 excursiones y 9
-  saltos que se quedan) siguen. Una regla para ellos sería una variante nueva, con su propia entrada antes
-  de medir. Afecta a muy pocos frames del partido, así que solo merece la pena si sobra tiempo antes del
-  corte. [inferencia]
+- **No se propone el cambio de `clean` como «salió como se esperaba».** A la letra cumple; en sustancia,
+  no quita los saltos.
+- **Lo decide Ismael, con lo que sí aguanta:**
+  - no empeora en el harness (±0,000);
+  - en el partido toca el 0,23 % de los frames con balón;
+  - quita los 201 frames de tránsito a más de 40 m/s, posiciones en las que el balón no puede estar;
+  - no arregla los 15 saltos grandes (3 excursiones y 9 saltos que se quedan).
+- **Si se cambia, no va en esta PR.** B5 se entrenó con `ball.clean` tal cual, y
+  `validation/scripts/prueba_aprendida.py` lo comprueba. Cambiar `clean` obliga a reentrenarla con
+  `validation/apuesta_b/entrenar.py`, que escribe en `possession/aprendida.py`, la pieza de Ismael.
+- **Una regla para los 15 saltos** sería una variante nueva, con su propia entrada antes de medir. Afecta a
+  muy pocos frames del partido, así que solo merece la pena si sobra tiempo antes del corte. [inferencia]
+
+Descartado:
+- **Retocar los umbrales o la definición de (a) después de ver el recuento:** la regla estaba fijada antes.
+- **Cambiar `clean` en esta PR:** rompería `prueba_aprendida.py` y dejaría a B5 con coeficientes
+  entrenados sobre otro balón.

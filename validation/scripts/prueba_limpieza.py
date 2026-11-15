@@ -2,7 +2,8 @@
 
     python validation/scripts/prueba_limpieza.py
 
-Sin datos del partido: todo el tracking es inventado, y abrir un fichero durante las pruebas es un error.
+Sin datos del partido: todo el tracking es inventado, y abrir un fichero durante las pruebas es un error
+(`sin_ficheros` intercepta `builtins.open` e `io.open`, no las lecturas de numpy o de otras librerías).
 Lo puede ejecutar cualquiera, Claude incluido. Prueba:
 
 - `possession/ball.py`: los tres pasos de `clean_v1`, sus bordes y la corrección del 14/11 (el paso 2 se
@@ -268,17 +269,30 @@ def recuento():
     check("la salida suprime las celdas de 1 a 4 casos", any("< 5" in linea for linea in lineas))
     check("la salida no tiene números con decimales, salvo porcentajes con coma",
           not any(re.search(r"\d\.\d", linea) for linea in lineas))
-    # Dos tramos evaluados: un par que cruzaría de uno a otro no cuenta.
-    dos = pista(n, bx, by, px, py, [0, 1], blocks=((0, 200), (200, 400)))
-    with sin_ficheros():
-        check("con dos tramos, un salto no cruza de uno a otro", lb.recuento(dos)["frames_evaluados"] == 400)
+    # Frontera entre tramos: un salto o una excursión que cruzan de un tramo a otro no cuentan como tales.
+    m = 100
+    fx, fy = 10.0 + 0.05 * np.arange(m), np.full(m, 30.0)
+    fx[50:] += 30.0  # salto que se queda justo en la frontera 49/50
+    fpx, fpy = np.array([[0.0, 105.0]] * m), np.array([[0.0, 68.0]] * m)
+    uno = lb.recuento(pista(m, fx, fy, fpx, fpy, [0, 1]))
+    dos = lb.recuento(pista(m, fx, fy, fpx, fpy, [0, 1], blocks=((0, 50), (50, m))))
+    check("un salto en la frontera cuenta con un tramo", uno["pares_a_mas_de_40_m_s"] == 1 and uno["saltos_antes"] == 1)
+    check("y no cuenta con dos tramos", dos["pares_a_mas_de_40_m_s"] == 0 and dos["saltos_antes"] == 0)
+    ex = 10.0 + 0.05 * np.arange(m)
+    ex[45:55] += 30.0  # excursión: se va en 44/45 y vuelve en 54/55
+    uno = lb.recuento(pista(m, ex, fy, fpx, fpy, [0, 1]))["clases_de_los_pares"]
+    dos = lb.recuento(pista(m, ex, fy, fpx, fpy, [0, 1], blocks=((0, 50), (50, m))))["clases_de_los_pares"]
+    check("una excursión dentro de un tramo es excursión", uno["excursión"] == {"pares": 2, "tramos": 2}, uno)
+    check("una excursión que cruza la frontera son dos saltos que se quedan",
+          dos["excursión"]["tramos"] == 0 and dos["salto que se queda"] == {"pares": 2, "tramos": 2}, dos)
 
 
 def main():
-    limpieza()
-    correccion_paso2()
-    evidencia()
-    recuento()
+    with sin_ficheros():
+        limpieza()
+        correccion_paso2()
+        evidencia()
+        recuento()
     print("\nTODO BIEN" if not FALLOS else "\nFALLAN {}: {}".format(len(FALLOS), FALLOS))
     return 1 if FALLOS else 0
 

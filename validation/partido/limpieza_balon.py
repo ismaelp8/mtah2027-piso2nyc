@@ -86,8 +86,10 @@ def clasificar(imposible, bx, by, fps, bid):
     - pico: dos pares o más, y de p a q el balón va a MAX_SPEED o menos. El paso 1 quita todo su interior;
     - excursión: un tramo que no es pico y otro que empieza como mucho EXCURSION_MAX frames después, en el
       mismo tramo evaluado, con el balón de vuelta donde se le espera (de p del primero a q del segundo, a
-      MAX_SPEED o menos). El paso 1 no los quita;
+      MAX_SPEED o menos);
     - salto que se queda: el resto.
+    En las excursiones y en los saltos que se quedan, el paso 1 quita el interior de cada tramo de dos pares
+    o más (el tránsito), pero el salto queda.
     """
     inicios, fines = ball.runs(imposible)
     def vel(p, q):
