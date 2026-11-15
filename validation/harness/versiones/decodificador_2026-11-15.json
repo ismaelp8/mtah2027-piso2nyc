@@ -1,0 +1,19 @@
+{
+  "main: B5 y coste 25": {},
+  "(a) coste de cambio 12": {
+    "nota": "solo switch; to_dead y from_dead no cambian nada con el D oráculo",
+    "params": {"switch": 12.0}
+  },
+  "(a) coste de cambio 50": {
+    "nota": "solo switch; to_dead y from_dead no cambian nada con el D oráculo",
+    "params": {"switch": 50.0}
+  },
+  "(b) mínimo 12 vivo y 25 D": {
+    "nota": "Viterbi con duración mínima dura; lo prohibido manda sobre el mínimo",
+    "piezas": {"temporal": {"funcion": "decode_min", "opciones": {"min_live": 12, "min_dead": 25}}}
+  },
+  "(c) poda de 12": {
+    "nota": "Viterbi de main y poda de las posesiones de menos de 12 frames, la más corta primero",
+    "piezas": {"temporal": {"funcion": "decode_prune", "opciones": {"min_len": 12}}}
+  }
+}
