@@ -4,7 +4,7 @@
     python -m possession.pipeline --name mi_prueba
 
 Lee el ATD y el Smart Tagging del partido, así que **solo lo ejecuta una persona**. Imprime solo agregados:
-las versiones de Python y numpy, las líneas del ATD leídas y saltadas, posesiones, paradas y rachas cortas
+las versiones de Python y numpy, el commit del código, las líneas del ATD leídas y saltadas, posesiones, paradas y rachas cortas
 por tramo, los conflictos entre piezas y el sha256. Si hay conflictos, no escribe el CSV.
 
     tracking -> limpieza del balón -> evidencias (equipo, estado de D, anclas de D) -> decodificador -> CSV
@@ -17,6 +17,7 @@ import argparse
 import hashlib
 import os
 import platform
+import subprocess
 import sys
 
 import numpy as np
@@ -191,6 +192,26 @@ def check_atd(counts):
                          "no se genera la entrega.\n" + atd_lines(counts))
 
 
+# Lo que genera la entrega: si cambia algo aquí sin commitear, el CSV no sale del commit que se imprime.
+DELIVERY_CODE = ("possession", "games.py", "starter", "requirements-entrega.txt")
+
+
+def code_version():
+    """El commit con el que se genera y si el código de la entrega tiene cambios sin commitear. Sin git, lo dice."""
+    def git(*args):
+        return subprocess.run(["git", "-C", ROOT] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              universal_newlines=True, timeout=30)
+    try:
+        head = git("rev-parse", "--short", "HEAD")
+        local = git("status", "--porcelain", "--", *DELIVERY_CODE)
+    except (OSError, subprocess.SubprocessError):
+        return "código: sin git"
+    if head.returncode or local.returncode:
+        return "código: sin git"
+    return "código: commit {}, {}".format(head.stdout.strip(), "CON CAMBIOS SIN COMMITEAR en el código de la entrega"
+                                          if local.stdout.strip() else "sin cambios locales en el código de la entrega")
+
+
 def versions():
     """Python y numpy con los que se ha generado. La huella solo se repite con los mismos (requirements.txt)."""
     return "python {}, numpy {}".format(platform.python_version(), np.__version__)
@@ -238,6 +259,7 @@ def main():
     codes, blocks, report = build()
     path = os.path.join(args.out, args.name + ".csv")
     print(versions())
+    print(code_version())
     print(atd_lines(report["atd"]))
     for line in summary(codes, blocks):
         print(line)

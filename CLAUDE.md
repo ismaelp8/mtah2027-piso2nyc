@@ -80,8 +80,8 @@ La protección de verdad es esta regla, no la configuración.
 
 | persona | GitHub | papel |
 |---|---|---|
-| Ismael Pintor | `ismaelp8` | infraestructura y entrega (esqueleto, harness, integración), reviewer, dueño del documento técnico |
-| David Ortega | `ortegafer` | decodificador (`possession/temporal.py`), reviewer |
+| Ismael Pintor | `ismaelp8` | infraestructura y entrega (esqueleto, harness, integración), dueño del documento técnico |
+| David Ortega | `ortegafer` | decodificador (`possession/temporal.py`) |
 | Antonio Azuer | `antonioazuero11-wq` | evidencia de equipo y limpieza del balón (`possession/candidates.py`, `possession/ball.py`) |
 | Manuel Herrero | `manuelherrero` | `D`: fronteras y anclas (`possession/dead_ball.py`) |
 | Ana Aparicio | — | `D`: estado (`possession/dead_state.py`) y documento técnico |
@@ -91,7 +91,16 @@ Qué tiene que hacer cada uno hasta la entrega: [`docs/PLAN_ENTREGA.md`](docs/PL
 - **Si alguien delega el git en Claude** (lo dice en su `CLAUDE.local.md` o lo pide en la
   conversación), hazlo tú con las skills. Explica cada paso en una frase sencilla, sin jerga, y pide
   confirmación antes de subir nada.
-- **Ismael y David revisan las PR.** Nadie aprueba su propia PR.
+- **Cualquiera del equipo puede contestar una duda, tomar una decisión y revisar, aprobar o mergear la PR
+  de otra persona** (decisión de Ismael, 15/11). Ismael no es una puerta: Claude no frena a nadie por no ser
+  él.
+  - Donde este brief, el plan, una bitácora o un comentario del código digan «lo decide Ismael», «se le
+    pasa a Ismael» o «pendiente de permiso de Ismael», léelo como «lo decide el equipo».
+  - Quien decide lo apunta en `docs/decisiones.md` (`/decision`), con su nombre y el porqué.
+  - Lo que viene después de una decisión no cambia: si toca `pipeline.PIECES`, un valor por defecto o código
+    que usa la entrega, alguien regenera la entrega y la valida.
+- **Cada uno puede mergear su propia PR,** sin esperar una aprobación. Si quiere otra opinión, se la pide a
+  quien esté disponible.
 - **Nombre de equipo para la entrega: por confirmar.** Tiene que coincidir exactamente con el que puso
   cada uno al inscribirse. Hasta entonces, `<NOMBRE_EQUIPO>`.
 
@@ -225,7 +234,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v3`** (Ismael, 15/11, con `main` en `6e8fb27`): válida, con el 45,1 % de `D`
+- **Entrega vigente: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
@@ -270,8 +279,13 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       SkillCorner (−0,005 y +0,004). Queda en `aprendida.py`, fuera de `PIECES`.
     - **Las fases 2 y 3 se cerraron sin candidato.** Quitar las posesiones inventadas no llega a +0,03 ni
       con un oráculo, y una red de una capa con los mismos rasgos no gana con el control ni en SkillCorner.
-    - **Tiene en marcha una fase 4,** por encargo de Ismael: si el déficit de posesiones del partido es real
-      contando igual por igual, y cuánto valdría una pista de equipo como las fases del Smart Tagging.
+    - **La fase 4 tampoco abre nada** (`a950880`; `docs/decisiones.md`):
+      - el déficit de posesiones no es propio del partido: con nuestro `D`, 4,29 y 4,26 por minuto en la DFL
+        y 4,11 en SkillCorner, y las 3,7 del partido caen dentro;
+      - una pista de equipo de fuera, como las fases del Smart Tagging, daría poco, y solo con un alcance
+        mayor que el del plan;
+      - H3 y H5 del visionado no concluyen: en el partido, nuestros cambios no se juntan con los huecos del
+        balón más que en la DFL. No se abre ninguna degradación nueva antes de la entrega.
   - **La entrega no cambia con B9** [medido sin datos del partido]: los rasgos de B2, los coeficientes de B1 a
     B8 y `evidence_b5` son idénticos, y la huella del partido inventado es la misma. Ismael la confirma al
     regenerar.
@@ -306,6 +320,17 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     regenerar en el ensayo del lunes.
 - **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio): con el sí de Ismael del 15/11,
   en marcha. La regla del plan no cambia.
+- **`D` de estado: tareas 1 a 3 de Ana en `main`** (PR 12, `98c38ca`; `docs/decisiones.md`).
+  - Las ventanas de `dead_state` ya no cruzan el principio ni el final de los tramos evaluados.
+  - `evidence` admite una escala, con 1 por defecto, para la medida de David.
+  - Queda apuntada la versión de scikit-learn del entrenamiento (1.7.2).
+  - En la DFL, el resultado es idéntico bit a bit, según Ana.
+  - La mergeó Ana (cada uno puede mergear su propia PR); la sesión planificadora la revisó después.
+  - **La entrega no cambia** [medido por Ismael]. Cambian los rasgos de los 52 primeros y 52 últimos frames de
+    cada tramo, pero ninguna etiqueta:
+    - `equipo_v4` se regeneró en el entorno limpio con `main` en `8f90dea` y sale byte a byte igual que
+      `equipo_v3` (`9539ce42…cc17a`);
+    - `validation/partido/comparar_entregas.py` da 0 frames distintos, y el validador da `Valid`.
 - **Sin entrar todavía en `main`:** la PR 10 de David. Ismael le ha pedido que antes termine su tarea 1.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
@@ -314,8 +339,12 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     mismo sha256 `9539ce42…cc17a`, con `main` en `988ce88` y validado.
   - **Con `main` en `4305576`** (después de la PR 11 y del estudio de posesiones cortas), Ismael sacó la misma
     huella. Lo hizo en otro entorno, con numpy 2.3.4, así que la huella también aguanta ese cambio de versión.
-  - **En el ensayo del lunes por la noche** se repite con lo que haya en `main`, y esta vez con el python del
-    entorno limpio: `C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline`.
+  - **Con `main` en `8f90dea`** (después de la PR 12), ya en el entorno limpio, sale otra vez el mismo
+    sha256.
+  - **En el ensayo del lunes por la noche** se repite con lo que haya en `main`, con el python del entorno
+    limpio: `C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline`.
+    - El comando imprime el commit con el que se genera. Si el código de la entrega tiene cambios sin
+      commitear, lo avisa.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.
@@ -372,7 +401,7 @@ Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal par
 **Si quien abre la sesión no sabe cuál es su pieza,** enséñale su parte de la sección 3 del plan antes de
 proponer nada.
 
-**Pendiente de permiso de Ismael:**
+**Pendiente de que el equipo lo decida:**
 
 - descargar los tiempos humanos de ELASTIC, en 3 partidos de la DFL;
 - instalar `databallpy`.
@@ -671,16 +700,11 @@ Las normas completas están en `CONTRIBUTING.md`. Esto es lo que Claude no se sa
 - **Mensaje de commit:** una frase en español que diga qué cambia y por qué (`CONTRIBUTING.md` §3).
 - **Pide confirmación** antes de cada push, de abrir una PR, de aprobarla y de mergearla. Que alguien
   pida `/subir` es pedir que se suba, pero antes enséñale el resumen.
-- **Reviewers de cada PR:**
-
-  | abre la PR | revisa |
-  |---|---|
-  | Ismael | `ortegafer` |
-  | David | `ismaelp8` |
-  | cualquier otra persona | los dos |
-
-  Basta con **una aprobación**, y nadie aprueba su propia PR.
-- **Merge:** lo hace quien aprueba.
+- **Revisión de cada PR:** puede revisarla, aprobarla y mergearla cualquier persona del equipo, también
+  quien la abre: cada uno puede mergear su propia PR sin esperar una aprobación. `/subir` pide la revisión a
+  Ismael (`ismaelp8`) y a David (`ortegafer`) para que alguien se entere, pero no hace falta esperarlos.
+- **Merge:** lo hace quien la revisa o quien la abre. Si la PR toca código que usa la entrega, avísalo al
+  mergearla: alguien tiene que regenerar la entrega y validarla.
   - Por defecto con squash.
   - Las PR `sync/*` (cambios de `upstream`) con merge commit.
 - **Prohibido:**
@@ -697,7 +721,7 @@ Las normas completas están en `CONTRIBUTING.md`. Esto es lo que Claude no se sa
 | `/empezar <tarea>` | actualiza `main` y crea la rama con nombre convencional |
 | `/subir` | limpia notebooks, revisa, hace el commit con tu autoría, push y PR con plantilla y reviewers; Ismael puede subir directo a `main` |
 | `/actualizar` | trae lo último de `main` a tu rama; si tu PR ya está mergeada, vuelve a `main` y borra la rama |
-| `/revisar-pr <n>` | para Ismael y David: revisa una PR con el agente `revisor`, aprueba o pide cambios, y mergea |
+| `/revisar-pr <n>` | para quien revise la PR de otra persona: revisa una PR con el agente `revisor`, aprueba o pide cambios, y mergea |
 | `/sincronizar-upstream` | trae las correcciones de Metrica en una rama `sync/` con su PR |
 | `/evaluar [csv]` | valida y puntúa una entrega, solo agregados |
 | `/decision <título>` | apunta una decisión de método en `docs/decisiones.md` |

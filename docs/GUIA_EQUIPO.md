@@ -246,7 +246,7 @@ de Metrica; dudas de inscripción o términos, hackathon.talentarena@mobileworld
   - `CLAUDE.md`, el brief compartido que lee al empezar cada sesión en este repo;
   - tu `CLAUDE.local.md`, si lo tienes. Es personal y no se sube (`CONTRIBUTING.md` §1).
 - **Si no quieres pelearte con git,** usa las skills: `/empezar`, `/subir`, `/actualizar`, `/evaluar` y
-  `/decision`. Los reviewers tienen además `/revisar-pr`. Están explicadas en `CONTRIBUTING.md` §10.
+  `/decision`. Quien revise la PR de otra persona tiene además `/revisar-pr`. Están explicadas en `CONTRIBUTING.md` §10.
 - **Tus commits salen a tu nombre, nunca al de Claude.** El repo ya tiene desactivada la atribución a
   Claude. Comprueba tu identidad de git antes del primer commit (`CONTRIBUTING.md` §1 y §4).
 
@@ -373,8 +373,8 @@ Las normas completas están en **`CONTRIBUTING.md`**. En resumen:
 - solo Ismael sube directo a `main`; los demás, nunca;
 - una rama `tipo/descripcion` por tarea;
 - cada commit sale con tu identidad;
-- cada rama entra por PR con plantilla, con revisión de Ismael (`ismaelp8`) o David (`ortegafer`);
-- basta una aprobación y se mergea con squash.
+- cada rama entra por PR con plantilla; puede revisarla y mergearla cualquiera, también quien la abre;
+- se mergea con squash.
 
 Lo que **nunca entra en git** (datos, vídeos, cachés, CSV de entregas, outputs de notebooks, PDFs,
 `CLAUDE.local.md`) está en la tabla de `CONTRIBUTING.md` §7.
