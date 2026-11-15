@@ -429,6 +429,14 @@ SkillCorner)
 **Con la regla: no es «una apuesta razonable»** tal como se escribió: con el control y el balón tapado el paquete da
 +0,011 / +0,012, por debajo de +0,015. Con el flag no pierde más de 0,010 en ninguna celda.
 
-**Lo que enseña [inferencia]:** de las dos partes, la limpia es «cortas a `D`». Gana en SkillCorner en los 10 partidos,
-con el control en 13 de 14 celdas-partido… y con el flag se queda entre −0,002 y +0,004. El coste 40 es el que paga con
+**Lo que enseña [inferencia]:** de las dos partes, la limpia es «cortas a `D`». Gana en SkillCorner en los 10 partidos
+de las dos condiciones, con el control en 26 de 28 (7 partidos por dos condiciones y dos modos del balón), y con el
+flag se queda entre −0,002 y +0,004. El coste 40 es el que paga con
 el flag. Si se quiere apostar por algo, es por «cortas a `D`» sola.
+
+## S11. Resultado [medido]
+
+Encoger nuestras paradas no gana nada: de +0,001 a −0,007 en todas las celdas, y cuanto más se encoge, peor. **Con la
+regla: no hay candidato.** [inferencia] El error de los bordes de la pieza de estado no es un sesgo fijo que se pueda
+restar: es ancho (del p10 al p90 va de −127 a +116 frames en el inicio), y adelantar un final que ya llegaba a tiempo
+cuesta lo que gana con los que llegaban tarde. Se cierra.
