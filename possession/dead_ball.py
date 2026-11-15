@@ -18,8 +18,9 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
 - **El hueco sin balón antes de cada reinicio** (idea de Ismael): puntuación blanda de `D` desde que se
   pierde el balón hasta el inicio de la ventana `SET PIECES`.
 - **El instante del reinicio** (15/11): ancla blanda del fin del `D` de cada ventana `SET PIECES`, en un
-  desfase fijo desde su inicio, por tipo. Todavía sin medir y fuera de `evidence`: entra solo si pasa su
-  regla (docs/decisiones.md, 15/11, «el instante del reinicio»).
+  desfase fijo desde su inicio, por tipo, con dos candidatos (alargar el `D` del hueco hasta el instante,
+  o empujar a los dos lados del instante). Todavía sin medir y fuera de `evidence`: entra uno, o ninguno,
+  según su regla (docs/decisiones.md, 15/11, «el instante del reinicio»).
 
 **En `evidence` van la primera** (un ancla dura: en esos frames solo se permite `D`) **y la tercera**
 (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla apuntada en docs/decisiones.md antes de
@@ -262,13 +263,21 @@ def evidence(trk, paths=None, game=games.GAME):
 
 # -- El instante del reinicio (15/11). Se mide con su regla; fuera de `evidence` hasta que pase.
 
-# La capa ancla el fin del `D` de cada ventana `SET PIECES` en un desfase fijo desde su inicio, uno por tipo
-# de reinicio, que sale de validation/partido/agregados_instante_reinicio.py con la regla de
-# docs/decisiones.md (15/11, «el instante del reinicio»). Es blanda: +ANCHOR_SCORE en `D` desde el inicio de
-# la ventana hasta el instante, y −ANCHOR_SCORE en `D` durante los ANCHOR_AFTER_S siguientes. Sin ajustar y
-# fijas por la regla: la capa no corre en la DFL, así que nadie puede medir su escala.
-ANCHOR_SCORE = 1.0
-ANCHOR_AFTER_S = 5
+# La capa lleva el fin del `D` de cada ventana `SET PIECES` a un instante fijo desde su inicio, uno por tipo de
+# reinicio, que sale de validation/partido/agregados_instante_reinicio.py con la regla de docs/decisiones.md
+# (15/11, «el instante del reinicio»). Hay dos candidatos, y la regla decide cuál entra, o ninguno:
+# - BRIDGE (el candidato 1, «B»): solo en las ventanas con hueco (las que puntúa la capa del hueco),
+#   +ANCHOR_SCORE en `D` desde el inicio de la ventana hasta el instante. Alarga el `D` del hueco.
+# - BOTH_SIDES (el candidato 2, «A»): en todas las ventanas del tipo. En las que tienen hueco, lo mismo que
+#   BRIDGE; en las demás, el empuje a `D` no empieza en el inicio de la ventana, sino PUSH_BEFORE_S antes del
+#   instante. Y en todas, −ANCHOR_SCORE en `D` durante los PUSH_AFTER_S siguientes.
+# Blandos y cortos, para que un instante mal puesto cueste poco: la misma escala que GAP_SCORE (1 por frame) y
+# nada prohibido. Sin ajustar y fijos por la regla: la capa no corre en la DFL, así que nadie puede medir su
+# escala.
+ANCHOR_SCORE = GAP_SCORE
+PUSH_BEFORE_S = 3
+PUSH_AFTER_S = 3
+BRIDGE, BOTH_SIDES = "B", "A"
 
 
 def next_restart(events, window):
@@ -279,13 +288,13 @@ def next_restart(events, window):
 
 
 def restart_anchor_spans(events, anchors, blocks, fps):
-    """[(ventana, inicio, instante, fin)] de la capa, para las ventanas de restart_windows(events) (nunca los
-    saques iniciales) cuyo tipo tiene ancla y que empiezan en un tramo evaluado (`blocks`, con el fin sin
-    incluir). `anchors` es {tipo: frames desde el inicio de la ventana}.
+    """[(ventana, inicio, instante, corte)] para las ventanas de restart_windows(events) (nunca los saques
+    iniciales) cuyo tipo tiene ancla y que empiezan en un tramo evaluado (`blocks`, con el fin sin incluir).
+    `anchors` es {tipo: frames desde el inicio de la ventana}.
 
-    El instante es inicio + anchors[tipo], y `fin` es el instante + ANCHOR_AFTER_S. Todo se corta en el
-    inicio del siguiente `GOALS` o `SET PIECES`, de cualquier tipo; si el instante no cae antes de ese
-    corte, la ventana no entra."""
+    El instante es inicio + anchors[tipo]. El corte es el inicio del siguiente `GOALS` o `SET PIECES`, de
+    cualquier tipo (next_restart); si el instante no cae antes de él, la ventana no entra. `fps` no se usa:
+    está por simetría con restart_anchor_pushes."""
     spans = []
     for window in restart_windows(events):
         start = window["start"]
@@ -295,17 +304,39 @@ def restart_anchor_spans(events, anchors, blocks, fps):
         instant = start + int(anchors[window["type"]])
         if not start <= instant < cut:
             continue
-        spans.append((window, start, instant, int(min(instant + ANCHOR_AFTER_S * fps, cut))))
+        spans.append((window, start, instant, cut))
     return spans
 
 
-def restart_anchor_evidence(trk, events, anchors):
-    """`(score, allowed)` de la capa: en cada tramo de restart_anchor_spans, +ANCHOR_SCORE en `D` desde el
-    inicio de la ventana hasta el instante, y −ANCHOR_SCORE en `D` desde el instante hasta `fin`. No prohíbe
-    nada."""
+def restart_anchor_pushes(bx, by, events, anchors, modes, blocks, fps):
+    """[(ventana, con hueco, desde, instante, hasta)] de la capa: +ANCHOR_SCORE en `D` en [desde, instante) y
+    −ANCHOR_SCORE en [instante, hasta), que con BRIDGE está vacío.
+
+    `modes` es {tipo: BRIDGE o BOTH_SIDES}; un tipo con ancla y sin modo no entra. «Con hueco» es que la capa
+    del hueco puntúa esa ventana (gaps_before_restarts, con el balón `bx`, `by`). El empuje después del
+    instante se corta en el siguiente reinicio."""
+    unknown = set(modes.values()) - {BRIDGE, BOTH_SIDES}
+    if unknown:
+        raise ValueError("modos desconocidos: {}".format(sorted(unknown)))
+    gap_windows = [w for w, _, span in gaps_before_restarts(bx, by, events, fps) if span is not None]
+    pushes = []
+    for window, start, instant, cut in restart_anchor_spans(events, anchors, blocks, fps):
+        mode = modes.get(window["type"])
+        has_gap = any(w is window for w in gap_windows)
+        if mode is None or (mode == BRIDGE and not has_gap):
+            continue
+        first = start if has_gap else max(start, instant - PUSH_BEFORE_S * fps)
+        stop = int(min(instant + PUSH_AFTER_S * fps, cut)) if mode == BOTH_SIDES else instant
+        pushes.append((window, has_gap, first, instant, stop))
+    return pushes
+
+
+def restart_anchor_evidence(trk, events, anchors, modes):
+    """`(score, allowed)` de la capa, con los tramos de restart_anchor_pushes. No prohíbe nada."""
     n = len(trk.bx)
     score, allowed = no_evidence(n)
-    for _, start, instant, stop in restart_anchor_spans(events, anchors, trk.blocks, trk.fps):
-        score[max(start, 0):max(min(instant, n), 0), D] += ANCHOR_SCORE
+    for _, _, first, instant, stop in restart_anchor_pushes(trk.bx, trk.by, events, anchors, modes, trk.blocks,
+                                                             trk.fps):
+        score[max(first, 0):max(min(instant, n), 0), D] += ANCHOR_SCORE
         score[max(instant, 0):max(min(stop, n), 0), D] -= ANCHOR_SCORE
     return score, allowed

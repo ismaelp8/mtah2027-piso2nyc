@@ -2027,7 +2027,8 @@ Sigue siendo un parámetro estimado con este partido, sin etiquetas. Se declara 
 la ventana pública.
 
 Qué se va a medir: `validation/partido/agregados_instante_reinicio.py`, que ejecuta Manuel. Una sola
-ejecución mide las señales, aplica la regla y prueba la capa.
+ejecución mide las señales, aplica la regla, comprueba las condiciones del candidato A y prueba los
+candidatos en el pipeline.
 - **Las ventanas:** las `SET PIECES` que no son saques iniciales y empiezan en un tramo evaluado (53 en este
   partido). Los saques iniciales quedan fuera: el de cada parte ya tiene su ancla, y los de después de un
   gol son 4.
@@ -2066,18 +2067,52 @@ Regla de lectura, fijada antes de ejecutarlo:
 - **El juez.** El plan pide el modelo de Ana como juez, pero aquí da una de las dos señales; la que confirma es
   la otra, el balón. No hay un juez aparte.
 - **El ancla** es la mediana de la transición, en frames desde el inicio de la ventana.
-- **La capa (blanda):** en cada ventana de un tipo con ancla, +1 en `D` desde el inicio de la ventana hasta
-  el instante anclado, y −1 en `D` durante los 5 s siguientes. Se corta en el siguiente `GOALS` o
-  `SET PIECES`. Si el instante cae en ese corte o después, la ventana no entra; tampoco si otro reinicio
-  empieza en el mismo frame. Las dos puntuaciones están sin ajustar y quedan fijas por esta regla: la capa
-  no corre en la DFL, así que nadie puede medir su escala.
-- **La condición de daño,** con el pipeline de la entrega sin la capa y con ella:
+- **Los dos candidatos de la capa** (mensaje de Ismael del 15/11: «ni A ni B a ciegas»):
+  - **comunes a los dos:**
+    - empuje blando y corto, con la misma escala que `GAP_SCORE` (1 por frame), sin prohibir nada;
+    - se cortan en el siguiente `GOALS` o `SET PIECES`;
+    - una ventana no recibe nada si el instante cae en ese corte o después, o si otro reinicio empieza en
+      el mismo frame;
+  - **candidato 1, B:** solo en las ventanas con hueco (las que puntúa la capa del hueco), +1 en `D` desde el
+    inicio de la ventana hasta el instante. Alarga el `D` del hueco hasta el instante, y nada más;
+  - **candidato 2, A:** en todas las ventanas del tipo:
+    - +1 en `D` antes del instante. En las ventanas con hueco empieza en el inicio de la ventana, como en B;
+      en las demás solo cubre los 3 s anteriores al instante;
+    - −1 en `D` durante los 3 s siguientes.
+  - **Los 3 s de cada lado** están sin ajustar y quedan fijos por esta regla. Son a priori: cubren el segundo
+    de margen que se le exige al instante en A.
+  - **En las ventanas con hueco,** el empuje antes del instante dura lo que el ancla, porque alargar el `D`
+    del hueco hasta el instante es justo eso. El mensaje solo pide recortarlo en las ventanas sin hueco.
+- **Un tipo con ancla cumple A si además se cumplen tres cosas, con estos números:**
+  1. **El instante es nítido:** el 80 % de las ventanas del tipo tiene la transición a menos de 1 s
+     (25 frames) de la mediana. Las ventanas sin transición cuentan como lejos. Con menos de 10 ventanas no
+     hay ancla, así que un tipo con pocos casos no entra por separado (las faltas son 5).
+  2. **El modelo de Ana está de acuerdo a los dos lados del instante,** con el criterio del punto medio de
+     la capa del hueco:
+     - se compara con tres proporciones de `D` del modelo de Ana:
+       - la del partido, en lo evaluado;
+       - la del control de `D`: el tramo antes del saque de la 2ª parte, `D` según el FAQ;
+       - la del control de juego: los frames con el balón a 5 m/s o más, el umbral de «balón deprisa» de
+         la capa del hueco (fijado el 14/11);
+     - el instrumento tiene que separar: el control de `D` por encima del partido y el control de juego por
+       debajo;
+     - en los 3 s anteriores al instante, la proporción de `D` queda en el punto medio entre el partido y el
+       control de `D`, o por encima;
+     - en los 3 s siguientes queda en el punto medio entre el partido y el control de juego, o por debajo;
+     - se mide por separado en las ventanas con hueco y en las demás, casi todas con el balón a la vista
+       hasta el inicio. Cada grupo necesita 5 ventanas o más, y los dos tienen que cumplirlo: las segundas
+       son las que A añade y las de más riesgo.
+  3. **El placebo no pasa:** se toman los mismos instantes en las ventanas desplazadas del placebo de
+     arriba, 5 o más. Si ahí el modelo de Ana también cumple el punto 2, el acuerdo de las ventanas reales no
+     dice nada.
+- **La condición de daño** de cada candidato que se prueba, con el pipeline de la entrega sin la capa y con
+  ella:
   - ningún frame con piezas en conflicto;
-  - **ninguna ventana con ancla queda partida por la capa:** con ella tiene dos tramos de `D` o más, y más de
-    los que tenía sin ella.
+  - **ninguna ventana que recibe la capa queda partida por ella:** con la capa tiene dos tramos de `D` o más,
+    y más de los que tenía sin ella.
     - Los tramos se cuentan desde el inicio de la ventana hasta 10 s después de su fin o del fin de la capa,
       lo que llegue más tarde, sin pasar del siguiente reinicio.
-    - Así se ve si el `D` sale en el instante y vuelve donde acaba la capa (`D`, 5 s de juego y otra vez `D`):
+    - Así se ve si el `D` sale en el instante y vuelve donde acaba la capa (`D`, 3 s de juego y otra vez `D`):
       esa parada partida añade una posesión.
     - Pasar de ningún tramo a uno no cuenta: es lo que hace la capa cuando alarga hasta el instante un `D`
       que acababa en el inicio de la ventana (por ejemplo, el de la capa del hueco);
@@ -2085,16 +2120,22 @@ Regla de lectura, fijada antes de ejecutarlo:
     que la parte);
   - **la entrega con la capa queda dentro de la banda del plan** (§3, 15/11): del 15 al 60 % de `D` en lo
     evaluado y 250 paradas como mucho.
-- **La capa entra** si algún tipo tiene ancla, alguna ventana recibe la capa y se cumple la condición de
-  daño. Si no, se queda fuera, y con esta salida no se reajusta nada: ni los 2 s, ni las 10 y 5 ventanas,
-  ni el 1 s, ni los 2 s de sostén, ni los 10 s de búsqueda, ni el placebo, ni la banda, ni las puntuaciones.
-- **Si entra,** y solo entonces, el script imprime los desfases en frames, listos para copiar. Cómo se
-  conectan en `evidence` lo decide Ismael:
+- **Qué entra, en este orden:**
+  1. **Si algún tipo cumple A,** se prueba el candidato A: A en esos tipos y B en los demás tipos con ancla.
+     Entra si alguna ventana recibe la capa y se cumple la condición de daño.
+  2. **Si no,** se prueba B en todos los tipos con ancla, con la misma condición.
+  3. **Si tampoco,** no entra nada.
+
+  Con esta salida no se reajusta nada: ni los 2 s, ni las 10 y 5 ventanas, ni el 1 s, ni los 2 s de sostén,
+  ni los 10 s de búsqueda, ni el placebo, ni la banda, ni el 80 %, ni los 3 s de cada lado, ni las
+  puntuaciones.
+- **Si entra uno,** y solo entonces, el script imprime los desfases en frames y el modo de cada tipo, listos
+  para copiar. Cómo se conectan en `evidence` lo decide Ismael:
   - copiando la constante en `possession/dead_ball.py`, que es la excepción a §2;
   - o calculando el ancla al ejecutar, con estas mismas funciones.
 
   La medida es la misma en los dos casos. Después se regenera la entrega y se comprueba que no hay
-  conflictos.
+  conflictos y que sigue dentro de la banda.
 - **Con qué se midió:** el script imprime:
   - las piezas del pipeline (`pipeline.PIECES`, con la limpieza del balón) y los costes del decodificador
     (`temporal.DEFAULTS`);
@@ -2108,7 +2149,9 @@ Regla de lectura, fijada antes de ejecutarlo:
   - cuántas ventanas tienen el balón visto al empezar;
   - la distancia entre las dos señales, y la del balón al ancla fija;
   - cuántas salidas del `D` del pipeline caen a 1 s o menos del instante, sin la capa y con ella;
-  - los frames que cambian, dentro y fuera de las ventanas con ancla.
+  - cuántos frames evaluados cambian antes del instante, después y fuera de la capa, por tipo de cambio
+    (lo que pidió Ismael);
+  - las proporciones de `D` del modelo de Ana a cada lado del instante, por grupo y en el placebo.
 - **Lo que espero [inferencia]:**
   - Con 10 ventanas como mínimo, solo pueden tener ancla los saques de banda (26), los córners (12) y los
     saques de puerta (10, y tendrían que tener transición las 10). Las faltas (5) nunca.
@@ -2128,6 +2171,9 @@ Regla de lectura, fijada antes de ejecutarlo:
   - **Que «el ancla gana» distinga siempre.** Si las dos señales son precisas y el reinicio cae siempre en el
     mismo sitio, las dos medianas se parecen y, con 5 a 13 pares, la condición sale casi a cara o cruz. En
     ese caso la capa apenas movería nada, así que perderla cuesta poco.
+  - **Que el acuerdo del modelo de Ana en A sea independiente.** El instante sale de la transición del
+    propio modelo, así que el punto 2 está en parte a favor por construcción. Lo que añade es mirarlo por
+    grupos (con hueco y sin él) y frente al placebo.
   - **Que la transición sea la de esa parada.** Es la primera que aparece. Si el modelo no llega a decir
     «parado» en la ventana, puede coger un repunte suelto. Eso se ve en la dispersión: un tipo con
     transiciones así no pasa el recorrido de 2 s.
@@ -2144,18 +2190,22 @@ Regla de lectura, fijada antes de ejecutarlo:
   - las señales y la regla en sus límites exactos, en frames;
   - la capa y sus cortes;
   - la condición de daño;
-  - partidos de punta a punta:
-    - con ancla, y la capa moviendo la salida del `D` al instante;
-    - con la parada partida en dos ventanas: no entra;
-    - con dos ventanas que ya tenían dos tramos de `D` sin la capa, y la capa no las empeora: entra;
-    - con una posesión nueva sin parada: no entra;
-    - con conflictos: no entra;
-    - con el reinicio disperso: sin ancla;
-    - con tres tipos de 4 ventanas: todo va a «otros», sin ancla;
-    - con la entrega fuera de la banda, y justo en su borde (dentro sin la capa, fuera con ella): no entra;
+  - los empujes de cada candidato en las ventanas con hueco y sin él, y sus cortes;
+  - el 80 % justo, el segundo justo y el punto medio a cada lado;
+  - partidos de punta a punta (12 saques de banda, 6 con hueco y 6 con el balón a la vista):
+    - con el instante nítido y el modelo de Ana de acuerdo: entra A, y lo que cambia cae después del
+      instante;
+    - con el instante borroso: entra B, que alarga el `D` del hueco y no toca las ventanas sin hueco;
+    - con el modelo de Ana sin ver parado antes del instante en las ventanas sin hueco: entra B;
+    - con el placebo de A pasando (aunque el de la transición no se concentre): entra B;
+    - con la parada partida en dos ventanas, y con una posesión nueva sin parada: A no entra y entra B;
+    - con dos ventanas que ya tenían dos tramos de `D` sin la capa, que A no empeora: entra A;
+    - con la entrega fuera de la banda: ninguno; justo en su borde (A la saca, B no): entra B;
+    - con conflictos: ninguno;
+    - con el reinicio disperso, con tres tipos de 4 ventanas y con el siguiente reinicio cortando la
+      búsqueda: sin ancla;
     - con 10 ventanas separadas 10 minutos: sin transiciones en el placebo hay ancla; con el placebo tan
-      concentrado como las reales, no;
-    - con el siguiente reinicio cortando la búsqueda: sin señales.
+      concentrado como las reales, no.
 
   Romper la capa y el script a propósito (70 cambios, uno a uno, entre ellos los 8 que el revisor vio
   pasar sin que fallara nada) hace fallar alguna prueba.
@@ -2175,6 +2225,15 @@ También pidió nombrar el choque con §2 del plan y el retraso que hereda el an
 **El plan nuevo de Ismael (15/11, tras la revisión externa)** pide para cada capa de esta pieza un placebo
 desplazado y la entrega dentro de la banda. Las dos cosas se añadieron a la regla antes de ejecutar nada, igual
 que el histograma de la tarea 3.
+
+**Mensaje de Ismael (15/11), antes de ejecutar: «ni A ni B a ciegas».** La primera versión tenía una sola
+forma de la capa (la que ahora es A, con 5 s después del instante). El plan del 15/11 describía otra (la que
+ahora es B). Ismael pidió escribir las dos como candidatos en la misma regla, con las condiciones de A y
+sus números antes de medir, y que decida la medida. Se añadió tal cual:
+- el «por ejemplo, el 80 %» queda fijado en el 80 %;
+- el máximo de cada lado, en 3 s;
+- el control de juego del punto medio, que la capa del hueco no tenía, es el «balón deprisa» de esa misma
+  capa.
 
 **Segunda revisión (15/11), también antes de subirla y de ejecutar nada:**
 - **La condición de daño contaba como parada partida el paso de 0 a 1 tramos de `D`.** Es justo lo que hace la
@@ -2202,8 +2261,9 @@ Lo que pidió el revisor de la PR #8:
   la misma regla. Los dos imprimen con qué limpieza se midió.
 
 Abierto:
-- **El equipo que reanuda (prioridad 2 de Ismael):** una puntuación a favor del equipo que saca durante los
-  primeros segundos tras el reinicio, con los segundos medidos en la DFL, que tiene los reinicios con su
-  equipo en los eventos. La versión medida el 15/11 (restar al otro equipo durante toda la ventana) no
+- **El equipo que reanuda:** retirado de momento (plan del 15/11, tarea 6: la revisión externa midió en la
+  DFL que `main` falla el equipo en el primer segundo tras el reinicio en el 5,5–5,7 % de los casos). Si se
+  retoma: una puntuación a favor del equipo que saca durante los primeros segundos tras el reinicio, con los
+  segundos medidos en la DFL. La versión medida el 15/11 (restar al otro equipo durante toda la ventana) no
   entró: está en la rama `feat/d-equipo-reanuda`, con su resultado. Allí se midió que el `Team` del Smart
   Tagging es fiable (20 de 20 con la física).

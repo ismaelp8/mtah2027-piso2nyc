@@ -515,9 +515,10 @@ def check_restart_instant(game, folder):
           "descriptivos",
           (air.SUSTAIN_S, air.SEARCH_AFTER_S, air.MIN_WINDOWS, air.MAX_IQR_S, air.MIN_BALL, air.MAX_AGREE_S,
            air.MIN_CASES_PER_TYPE, air.PLACEBO_SHIFTS_S, air.BAND_D, air.MAX_STOPS, air.NEAR_S,
-           air.FIRST_SECONDS_S, air.OFF_DURATION_S, air.GAP_D_EDGES_S)
+           air.FIRST_SECONDS_S, air.OFF_DURATION_S, air.GAP_D_EDGES_S, air.SHARP_S, air.SHARP_NUM, air.SHARP_DEN,
+           air.agg.FAST_BALL_MS)
           == (2, 10, 10, 2.0, 5, 1.0, 5, (-480, -360, -240, 240, 360, 480), (0.15, 0.60), 250, 1.0, 5, 1.0,
-              (0, 1, 3, 5)))
+              (0, 1, 3, 5), 1.0, 4, 5, 5.0))
     check("band_ok: del 15 al 60 % de D, ambos incluidos, y 250 paradas como mucho",
           air.band_ok(0.15, 250) and air.band_ok(0.60, 10) and not air.band_ok(0.1499, 10)
           and not air.band_ok(0.6001, 10) and not air.band_ok(0.3, 251))
@@ -583,15 +584,15 @@ def check_restart_instant(game, folder):
 
     anchors = {"throw-in": 10 * fps}
     spans = dead_ball.restart_anchor_spans([window(w)], anchors, blocks, fps)
-    check("restart_anchor_spans: instante en el inicio más el ancla, y 5 s después",
-          [(s, i, e) for _, s, i, e in spans] == [(w, w + 10 * fps, w + 15 * fps)])
+    check("restart_anchor_spans: instante en el inicio más el ancla, y el corte en el siguiente reinicio",
+          [(s, i, c) for _, s, i, c in spans] == [(w, w + 10 * fps, np.inf)])
     cut = dead_ball.restart_anchor_spans([window(w), window(w + 12 * fps, "corner kick")], anchors, blocks, fps)
     late = dead_ball.restart_anchor_spans([window(w), window(w + 8 * fps, code="goals")], anchors, blocks, fps)
     equal = dead_ball.restart_anchor_spans([window(w), window(w + 10 * fps, "corner kick")], anchors, blocks, fps)
     same = dead_ball.restart_anchor_spans([window(w), window(w, "corner kick")], anchors, blocks, fps)
-    check("restart_anchor_spans: se corta en el siguiente reinicio; si el instante cae en el corte o después, o "
-          "otro reinicio empieza en el mismo frame, la ventana no entra",
-          [(s, i, e) for _, s, i, e in cut] == [(w, w + 10 * fps, w + 12 * fps)] and late == [] and equal == []
+    check("restart_anchor_spans: si el instante cae en el corte o después, o otro reinicio empieza en el mismo "
+          "frame, la ventana no entra",
+          [(s, i, c) for _, s, i, c in cut] == [(w, w + 10 * fps, w + 12 * fps)] and late == [] and equal == []
           and same == [])
     check("restart_anchor_spans: ni saques iniciales (aunque tengan ancla), ni tipos sin ancla, ni fuera de lo "
           "evaluado",
@@ -611,27 +612,65 @@ def check_restart_instant(game, folder):
           and air.harm_stop(alone, np.inf, w + 15 * fps, fps) == w + 45 * fps
           and air.harm_stop(alone, np.inf, w + 40 * fps, fps) == w + 50 * fps
           and air.harm_stop(alone, w + 30 * fps, w + 15 * fps, fps) == w + 30 * fps)
+    check("la capa es la de la regla: 1 por frame (la escala de GAP_SCORE), 3 s antes del instante sin hueco y 3 s "
+          "después con A, sin ajustar",
+          (dead_ball.ANCHOR_SCORE, dead_ball.GAP_SCORE, dead_ball.PUSH_BEFORE_S, dead_ball.PUSH_AFTER_S)
+          == (1.0, 1.0, 3, 3) and (dead_ball.BRIDGE, dead_ball.BOTH_SIDES) == ("B", "A"))
+
+    # Los empujes de cada candidato. Una ventana con hueco (sin balón los 10 s de antes) y otra con el balón a
+    # la vista hasta su inicio; el instante a los 10 s.
+    gap_w, seen_w = window(w), window(w + 100 * fps)
     bx = np.zeros(n)
+    bx[w - 10 * fps:w + 2 * fps] = np.nan
+    bx[w + 100 * fps:w + 102 * fps] = np.nan
     trk = tracking.Tracking(bx, bx.copy(), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
                             (length, width), blocks, fps)
-    score, allowed = dead_ball.restart_anchor_evidence(trk, [window(w)], anchors)
+    both = [gap_w, seen_w]
+
+    def pushes(modes, tagged=both, anchor=10 * fps):
+        return [(win is gap_w, has_gap, a, i, b) for win, has_gap, a, i, b in
+                dead_ball.restart_anchor_pushes(bx, bx, tagged, {"throw-in": anchor}, modes, blocks, fps)]
+
+    i0, i1 = w + 10 * fps, w + 110 * fps
+    check("restart_anchor_pushes, B: solo la ventana con hueco, a D desde su inicio hasta el instante, nada después",
+          pushes({"throw-in": "B"}) == [(True, True, w, i0, i0)])
+    check("restart_anchor_pushes, A: con hueco, desde el inicio; sin hueco, solo 3 s antes; y 3 s después en las "
+          "dos",
+          pushes({"throw-in": "A"}) == [(True, True, w, i0, i0 + 3 * fps), (False, False, i1 - 3 * fps, i1, i1 + 3 * fps)])
+    check("restart_anchor_pushes: sin hueco y con el instante a menos de 3 s del inicio, desde el inicio; el empuje "
+          "de después se corta en el siguiente reinicio; un tipo sin modo no entra",
+          pushes({"throw-in": "A"}, [seen_w], anchor=fps) == [(False, False, i1 - 10 * fps, i1 - 9 * fps,
+                                                               i1 - 6 * fps)]
+          and pushes({"throw-in": "A"}, [seen_w, window(i1 + fps, code="goals")]) == [(False, False, i1 - 3 * fps, i1,
+                                                                                       i1 + fps)]
+          and pushes({}) == [])
+    try:
+        pushes({"throw-in": "C"})
+        unknown_mode = False
+    except ValueError:
+        unknown_mode = True
+    check("restart_anchor_pushes: un modo desconocido es un error", unknown_mode)
+    score, allowed = dead_ball.restart_anchor_evidence(trk, both, {"throw-in": 10 * fps}, {"throw-in": "A"})
     expected = np.zeros((n, 3))
-    expected[w:w + 10 * fps, D] = dead_ball.ANCHOR_SCORE
-    expected[w + 10 * fps:w + 15 * fps, D] = -dead_ball.ANCHOR_SCORE
-    check("restart_anchor_evidence: + en D hasta el instante y − durante los 5 s siguientes; no prohíbe nada",
+    expected[w:i0, D] = 1.0
+    expected[i0:i0 + 3 * fps, D] = -1.0
+    expected[i1 - 3 * fps:i1, D] = 1.0
+    expected[i1:i1 + 3 * fps, D] = -1.0
+    check("restart_anchor_evidence: los empujes de restart_anchor_pushes, en la columna D; no prohíbe nada",
           bool(np.array_equal(score, expected)) and bool(allowed.all()))
-    check("la puntuación del ancla es la de la regla: 1 por frame y 5 s después, sin ajustar",
-          dead_ball.ANCHOR_SCORE == 1.0 and dead_ball.ANCHOR_AFTER_S == 5)
     anchored = smart_tagging_xml(folder, "ancla.xml", [("SET PIECES", w / fps, w / fps + 35, "Throw-in")])
     check("el ancla no entra todavía en evidence (con un saque de banda y sin huecos, no puntúa nada)",
-          not dead_ball.evidence(trk, {"smart_tagging": anchored}, game)[0].any())
+          not dead_ball.evidence(tracking.Tracking(np.zeros(n), np.zeros(n), np.empty((n, 0)), np.empty((n, 0)),
+                                                   np.empty(0, dtype=np.int8), (length, width), blocks, fps),
+                                 {"smart_tagging": anchored}, game)[0].any())
 
-    # Las cuentas del daño.
+    # Las cuentas del daño y las condiciones de A.
     codes = np.array([H, D, D, H, D, H, H, D, D], dtype=np.int8)
     check("dead_runs y last_exit: tramos de D y salida del último; sin salida si el D llega al final",
           air.dead_runs(codes, 0, 9) == 3 and air.dead_runs(codes, 0, 3) == 1 and air.last_exit(codes, 0, 6) == 5
           and air.last_exit(codes, 0, 9) is None and air.last_exit(codes, 5, 7) is None)
     check("runs: posesiones y paradas", air.runs(codes, ((0, 9),)) == (3, 3))
+
     def runs_of(*spans):
         codes = np.full(20, H, dtype=np.int8)
         for a, b in spans:
@@ -652,28 +691,62 @@ def check_restart_instant(game, folder):
           air.model_fingerprint({"a": 1, "b": [2]}) == air.model_fingerprint({"b": [2], "a": 1})
           and air.model_fingerprint({"a": 1}) != air.model_fingerprint({"a": 2})
           and len(air.model_fingerprint({"a": 1})) == 12)
+    check("A es nítido con el 80 % justo de las ventanas a menos de 1 s (24 frames sí, 25 no), con las que no "
+          "tienen transición contando como lejos, y con 10 ventanas o más",
+          air.sharp([100] * 8 + [124, 76], 10, 25) and not air.sharp([100] * 7 + [125, 75, 200], 10, 25)
+          and air.sharp([100] * 8, 10, 25) and not air.sharp([100] * 7, 10, 25)
+          and air.sharp([100] * 10 + [400, 400], 12, 25) and not air.sharp([100] * 9 + [400] * 3, 12, 25)
+          and not air.sharp([100] * 9, 9, 25) and not air.sharp([], 10, 25) and air.sharp_count([100] * 3 + [125], 25) == 3)
+    check("candidates_for: primero A (A donde se cumple y B en los demás tipos) si algún tipo lo cumple, después B "
+          "en todos; nada sin anclas",
+          air.candidates_for({"x": 1, "y": 2}, {"x": True, "y": False})
+          == [("A", {"x": "A", "y": "B"}), ("B", {"x": "B", "y": "B"})]
+          and air.candidates_for({"x": 1}, {"x": False}) == [("B", {"x": "B"})]
+          and air.candidates_for({"x": 1}, {"x": False, "z": True}) == [("B", {"x": "B"})]
+          and air.candidates_for({}, {}) == [])
+    shares = air.side_shares(np.array([-1, 1, 1, -1, 0, 1, -1, 0], dtype=float), [3], 8, 1)
+    check("side_shares: proporción de D del modelo de Ana en los 3 frames de antes y de después (sin contar los 0)",
+          shares == (2 / 3, 1 / 2))
+    check("ana_agrees: el punto medio a cada lado, con los controles separando; un NaN o un control al revés, no",
+          air.ana_agrees(0.65, 0.15, 0.3, 1.0, 0.0) and not air.ana_agrees(0.64, 0.15, 0.3, 1.0, 0.0)
+          and not air.ana_agrees(0.65, 0.16, 0.3, 1.0, 0.0) and not air.ana_agrees(float("nan"), 0.1, 0.3, 1.0, 0.0)
+          and not air.ana_agrees(0.9, 0.0, 0.3, 0.2, 0.0) and not air.ana_agrees(0.9, 0.0, 0.3, 1.0, 0.4))
 
-    # measure_instant de punta a punta, sin abrir ficheros y con piezas controladas: 12 saques de banda. El
-    # modelo de Ana pasa a juego a los 7, 8 o 9 s (175, 200 o 225 frames) y el balón vuelve a verse siempre a
-    # los 8,4 s (210): el ancla fija (8 s) queda más cerca del balón (10 frames) que cada transición (mediana
-    # 15). El pipeline sale del D a los 9,6 s (1,6 s tarde); con la capa, a los 8 s.
+    # measure_instant de punta a punta, sin abrir ficheros y con piezas controladas: 12 saques de banda a los
+    # 1.000 s y cada 100 s. Las pares tienen hueco (sin balón desde 10 s antes); las impares, el balón a la vista
+    # hasta su inicio. El balón vuelve a verse a los 8,4 s (210 frames), y el pipeline sale del D a los 9,6 s.
+    # El modelo de Ana pasa a juego a los 7,6 u 8,4 s (190 o 210): nítido, con el ancla a 8 s (200), más cerca
+    # del balón (10) que cada transición en las ventanas con hueco (mediana 20). Ve D antes del saque de la 2ª
+    # parte (el control de D) y en una parada larga de la 2ª parte (sube el D del partido); ve juego con el
+    # balón deprisa (de los 2.400 a los 2.800 s, el control de juego).
     starts = [(1000 + 100 * i) * fps for i in range(12)]
     events = [window(s) for s in starts]
-    offsets = [175, 200, 225, 175, 200, 225, 175, 200, 200, 225, 175, 200]
+    gaps = starts[0::2]
+    sharp_offsets = [190, 210, 190, 210, 210, 190, 190, 210, 210, 190, 190, 210]
+    blurred_offsets = [175, 200, 225, 175, 200, 225, 175, 200, 200, 225, 175, 200]
     bx = np.zeros(n)
-    instrument = np.full(n, -1.0)
-    for s, offset in zip(starts, offsets):
-        bx[s - 10 * fps:s + 210] = np.nan
-        instrument[s - 10 * fps:s + offset] = 1.0
-    match = tracking.Tracking(bx, bx.copy(), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
+    by = np.zeros(n)
+    bx[60000:70000] = (np.arange(10000) * 0.4) % 50.0  # 10 m/s
+    for s in starts:
+        bx[s - (10 * fps if s in gaps else 0):s + 210] = np.nan
+    match = tracking.Tracking(bx, by, np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
                               (length, width), blocks, fps)
 
-    def dead_piece(trk, band=40000):
+    def ana(offsets):
+        odds = np.full(n, -1.0)
+        odds[dead_ball.pre_kickoff(game)] = 1.0
+        odds[120000:160000] = 1.0
+        for s, offset in zip(starts, offsets):
+            odds[s - 10 * fps:s + offset] = 1.0
+        return odds
+
+    instrument = ana(sharp_offsets)
+
+    def dead_piece(trk, band=40000, who=starts):
         score, allowed = tracking.no_evidence(n)
-        for s in starts:
+        for s in who:
             score[s:s + 240, D] = 1.0  # hasta los 9,6 s
-        # una parada larga en la 2ª parte, lejos de las ventanas: deja la entrega dentro de la banda
-        score[120000:120000 + band, D] = 1.0
+        score[120000:120000 + band, D] = 1.0  # la parada larga: deja la entrega dentro de la banda
         return score, allowed
 
     def team_piece(trk):
@@ -683,105 +756,116 @@ def check_restart_instant(game, folder):
 
     def with_gap(trk):  # como la capa del hueco: empuja a D dos trozos del hueco, y el D lo cubre entero
         score, allowed = tracking.no_evidence(n)
-        for s in starts:
+        for s in gaps:
             score[s - 10 * fps:s - 8 * fps, D] = 5.0
             score[s - 3 * fps:s - 1 * fps, D] = 5.0
         return score, allowed
 
-    def measured(pieces, odds=instrument, tagged=events):
+    no_gap = lambda trk: tracking.no_evidence(n)  # noqa: E731
+
+    def measured(pieces, odds=instrument, tagged=events, trk=match):
         try:
             with pp.no_files():
-                return air.measure_instant(match, tagged, with_gap, no_gap, game, pieces=pieces,
-                                           odds_fn=lambda trk: odds)
+                return air.measure_instant(trk, tagged, with_gap, no_gap, game, pieces=pieces,
+                                           odds_fn=lambda c: odds)
         except AssertionError:
             check("measure_instant no abre ningún fichero", False)
             raise
 
     pieces = {"candidates": team_piece, "dead_state": dead_piece}
-    no_gap = lambda trk: tracking.no_evidence(n)  # noqa: E731
     m = measured(pieces)
     t = m["by_type"]["throw-in"]
-    check("measure_instant: 12 ventanas de 35 s; transición a los 7, 8 o 9 s y balón a los 8,4 s, en frames",
+    a = t.get("a", {})
+    check("measure_instant: 12 ventanas de 35 s; transiciones nítidas y el balón a los 8,4 s en las 6 con hueco",
           m["windows"] == 12 and m["duration_median_s"] == 35.0 and m["off_duration"] == 0
-          and t["transitions"] == offsets and t["ball"] == [210] * 12 and t["states"][air.BACK] == 12
-          and t["pairs"] == [(o, 210) for o in offsets])
-    check("measure_instant: la regla da un ancla a 8 s (200 frames) para los saques de banda",
-          t["rule"] == (True, True, True, True, True) and m["anchors"] == {"throw-in": 8 * fps}, str(m["anchors"]))
-    check("measure_instant: con la capa el pipeline sale del D en el instante; sin ella, 1,6 s tarde (más de 1 s)",
-          m["near"] == (0, 12) and m["changed_inside"] == (0, 0, 12 * 40) and m["changed_outside"] == (0, 0, 0),
-          "{} {} {}".format(m["near"], m["changed_inside"], m["changed_outside"]))
-    check("measure_instant: sin conflictos, sin ventanas con más tramos de D, el daño se cumple y la capa entra",
-          m["spans"] == 12 and m["conflicts"] == (0, 0) and m["split"] == 0 and m["runs"][0] == m["runs"][1]
-          and m["harm_ok"] and m["entra"], str(m["runs"]))
-    check("measure_instant: la capa del hueco cambia 10 s de cada hueco, y la mitad cae en los primeros 5 s",
-          m["gap_changed"] == 12 * 10 * fps and m["gap_changed_first"] == 12 * 5 * fps,
-          "{} {}".format(m["gap_changed"], m["gap_changed_first"]))
-    check("measure_instant: el D de la entrega empieza con cada hueco; dentro de la banda, y sin placebo que "
-          "transicione",
-          m["gap_d_offsets"] == [0] * 12 and m["band_ok"] and 0.15 <= m["dead_share"][1] <= 0.60
-          and m["placebo_windows"] > 0 and t["placebo"] == [] and t["placebo_ok"],
-          "{} {} {}".format(m["gap_d_offsets"][:3], m["dead_share"], m["placebo_windows"]))
+          and t["transitions"] == sharp_offsets and t["ball"] == [210] * 6 and t["states"][air.BACK] == 6
+          and t["states"][air.SEEN_AT_START] == 6 and t["pairs"] == [(o, 210) for o in sharp_offsets[0::2]])
+    check("measure_instant: el ancla a 8 s (200 frames), y el placebo de la transición no se concentra",
+          t["rule"] == (True, True, True, True, True) and t["placebo_ok"] and m["anchors"] == {"throw-in": 8 * fps},
+          str(m["anchors"]))
+    check("measure_instant: A se cumple: nítido, Ana de acuerdo a los dos lados en los dos grupos y el placebo no pasa",
+          a.get("sharp") and a.get("sharp_count") == 12 and a["sides"]["con hueco"]["n"] == 6
+          and a["sides"]["sin hueco"]["n"] == 6 and all(s["ok"] for s in a["sides"].values())
+          and a["placebo"]["n"] >= 5 and not a["placebo"]["passes"] and a["ok"] and 0.25 < m["g_match"] < 0.35
+          and m["g_dead"] == 1.0 and m["g_play"] == 0.0,
+          "{} {} {}".format(a.get("sides"), a.get("placebo"), (m["g_match"], m["g_dead"], m["g_play"])))
+    r = m["tested"].get("A", {})
+    check("measure_instant: entra A, el primero que se prueba; con él el pipeline sale del D en el instante (antes, "
+          "1,6 s tarde), y lo que cambia cae todo después del instante",
+          list(m["tested"]) == ["A"] and m["chosen"] == "A" and m["entra"] and m["modes"] == {"throw-in": "A"}
+          and r["pushes"] == 12 and r["with_gap"] == 6 and r["near"] == (0, 12) and r["changed_before"] == (0, 0, 0)
+          and r["changed_after"] == (0, 0, 12 * 40) and r["changed_outside"] == (0, 0, 0) and r["split"] == 0
+          and r["conflicts"] == (0, 0) and r["runs"][0] == r["runs"][1] and r["band_ok"] and r["ok"],
+          "{} {} {} {}".format(list(m["tested"]), r.get("near"), r.get("changed_after"), r.get("runs")))
+    check("measure_instant: la capa del hueco cambia 10 s de cada hueco (la mitad en sus primeros 5 s), y el D de la "
+          "entrega empieza con cada hueco",
+          m["gap_changed"] == 6 * 10 * fps and m["gap_changed_first"] == 6 * 5 * fps and m["gap_d_offsets"] == [0] * 6,
+          "{} {} {}".format(m["gap_changed"], m["gap_changed_first"], m["gap_d_offsets"]))
 
-    # Fuera de la banda (sin la parada larga, la entrega tiene menos del 15 % de D): la capa no entra.
-    narrow = measured({"candidates": team_piece, "dead_state": lambda trk: dead_piece(trk, band=0)})
-    check("measure_instant: con la entrega fuera de la banda, la capa no entra",
-          narrow["anchors"] == {"throw-in": 8 * fps} and narrow["split"] == 0 and not narrow["band_ok"]
-          and narrow["dead_share"][1] < 0.15 and not narrow["harm_ok"] and not narrow["entra"],
-          str(narrow["dead_share"]))
-    # Y justo en el borde: sin la capa, algo más del 15 % de D; con ella (480 frames menos de D), algo menos.
-    edge_band = measured({"candidates": team_piece, "dead_state": lambda trk: dead_piece(trk, band=18109)})
-    check("measure_instant: la banda se mira con la capa puesta (sin ella dentro, con ella fuera: no entra)",
-          edge_band["dead_share"][0] > 0.1505 and edge_band["dead_share"][1] < 0.1495
-          and not edge_band["band_ok"] and not edge_band["entra"], str(edge_band["dead_share"]))
+    # B: con el instante borroso (7, 8 o 9 s) A no es nítido. El pipeline sale del D en el inicio de las ventanas
+    # con hueco: B alarga ese D hasta el instante, sin tocar las demás.
+    blurred = ana(blurred_offsets)
+    m = measured({"candidates": team_piece, "dead_state": lambda trk: dead_piece(trk, who=starts[1::2])}, blurred)
+    r = m["tested"].get("B", {})
+    check("measure_instant: con el instante borroso A no se cumple y entra B, que alarga el D del hueco hasta el "
+          "instante y no toca las ventanas sin hueco",
+          m["anchors"] == {"throw-in": 8 * fps} and not m["by_type"]["throw-in"]["a"]["sharp"]
+          and not m["by_type"]["throw-in"]["a"]["ok"] and list(m["tested"]) == ["B"] and m["chosen"] == "B"
+          and m["modes"] == {"throw-in": "B"} and r["pushes"] == 6 and r["with_gap"] == 6 and r["near"] == (0, 6)
+          and r["changed_before"] == (0, 6 * 200, 0) and r["changed_after"] == (0, 0, 0)
+          and r["changed_outside"] == (0, 6 * 25, 0) and r["split"] == 0 and r["ok"],
+          "{} {} {} {}".format(list(m["tested"]), r.get("near"), r.get("changed_before"), r.get("changed_outside")))
 
-    # Las señales no se buscan más allá del siguiente reinicio: con un GOALS a los 7 s de cada ventana, ni la
-    # transición (7, 8 o 9 s) ni el balón (8,4 s) caen antes del corte, y no hay ancla.
-    cut_short = measured(pieces, tagged=events + [window(s + 7 * fps, code="goals") for s in starts])
-    t = cut_short["by_type"]["throw-in"]
-    check("measure_instant: las señales se buscan solo hasta el siguiente reinicio",
-          t["transitions"] == [] and t["ball"] == [] and t["states"][air.NOT_BACK] == 12
-          and cut_short["anchors"] == {}, str(t["states"]))
+    # A no se cumple si el modelo de Ana no ve parado justo antes del instante en las ventanas sin hueco (un hueco
+    # de 1,6 s de juego, demasiado corto para ser una transición).
+    unsure = instrument.copy()
+    for s in starts[1::2]:
+        unsure[s + 130:s + 170] = -1.0
+    m = measured(pieces, unsure)
+    a = m["by_type"]["throw-in"]["a"]
+    check("measure_instant: si Ana no ve parado antes del instante en las ventanas sin hueco, A no se cumple y entra B",
+          m["by_type"]["throw-in"]["transitions"] == sharp_offsets and a["sharp"] and a["sides"]["con hueco"]["ok"]
+          and not a["sides"]["sin hueco"]["ok"] and not a["ok"] and m["chosen"] == "B",
+          "{} {}".format(a["sides"], m["chosen"]))
 
-    # La parada partida (lo que vio el revisor): en 2 ventanas el modelo de Ana sigue parado hasta los 30 s y
-    # duda entre los 8 y los 13 s. Con la capa el D sale a los 8 s y vuelve a los 13 s, justo donde acaba la
-    # capa: una parada y una posesión más en cada una. La capa no entra.
+    # A no se cumple si el placebo pasa: en las ventanas desplazadas Ana ve parado justo antes del instante y juego
+    # justo después (con dos destellos de D), aunque su transición queda dispersa.
+    fooled = instrument.copy()
+    for k, p in enumerate(air.placebo_windows(events, blocks, fps)):
+        i = p["start"] + 8 * fps
+        fooled[i - 3 * fps:i] = 1.0
+        for b in range(25, (50, 150, 250, 350)[k % 4] + 1, 25):
+            fooled[i + b] = 1.0
+    m = measured(pieces, fooled)
+    a = m["by_type"]["throw-in"]["a"]
+    check("measure_instant: si el placebo pasa, A no se cumple y entra B, aunque el placebo de la transición no se "
+          "concentre",
+          m["by_type"]["throw-in"]["placebo_ok"] and len(m["by_type"]["throw-in"]["placebo"]) >= 10 and a["sharp"]
+          and all(s["ok"] for s in a["sides"].values()) and a["placebo"]["passes"] and not a["ok"]
+          and m["chosen"] == "B", "{} {}".format(a["placebo"], m["chosen"]))
+
+    # A cumple sus condiciones pero no el daño, y entra B. La parada partida: en 2 ventanas el pipeline sigue en D
+    # hasta los 30 s y duda entre los 8 y los 11 s; con A el D sale a los 8 s y vuelve a los 11 s.
     late = starts[10:]
-    late_odds = instrument.copy()
-    for s in late:
-        late_odds[s:s + 30 * fps] = 1.0
 
     def dead_late(trk):
         score, allowed = dead_piece(trk)
         for s in late:
             score[s:s + 30 * fps, D] = 1.0
-            score[s + 200:s + 325, D] = 0.6
+            score[s + 200:s + 275, D] = 0.5
         return score, allowed
 
-    split = measured({"candidates": team_piece, "dead_state": dead_late}, late_odds)
-    (poss0, stops0), (poss1, stops1) = split["runs"]
-    check("measure_instant: la parada partida se cuenta (2 ventanas con más tramos de D) y la capa no entra, "
-          "aunque las posesiones no suban más que las paradas",
-          split["anchors"] == {"throw-in": 8 * fps} and split["split"] == 2 and (poss1 - poss0, stops1 - stops0)
-          == (2, 2) and split["near"] == (0, 10) and not split["harm_ok"] and not split["entra"],
-          "{} {} {}".format(split["anchors"], split["split"], split["runs"]))
+    m = measured({"candidates": team_piece, "dead_state": dead_late})
+    r = m["tested"].get("A", {})
+    (poss0, stops0), (poss1, stops1) = r.get("runs", ((0, 0), (0, 0)))
+    check("measure_instant: la parada partida se cuenta en A (2 ventanas), A no entra aunque las posesiones no suban "
+          "más que las paradas, y entra B",
+          r.get("split") == 2 and (poss1 - poss0, stops1 - stops0) == (2, 2) and not r.get("ok")
+          and m["tested"]["B"]["split"] == 0 and m["tested"]["B"]["ok"] and m["chosen"] == "B",
+          "{} {} {}".format(r.get("split"), r.get("runs"), m["chosen"]))
 
-    # Una parada que ya tiene dos tramos de D sin la capa (vuelve a D a los 20 s) y que la capa no empeora: no
-    # cuenta como partida, y la capa entra.
-    def dead_twice(trk):
-        score, allowed = dead_piece(trk)
-        for s in late:
-            score[s + 500:s + 700, D] = 1.0
-        return score, allowed
-
-    twice = measured({"candidates": team_piece, "dead_state": dead_twice})
-    check("measure_instant: una ventana que ya tenía dos tramos de D sin la capa no cuenta como partida",
-          twice["anchors"] == {"throw-in": 8 * fps} and twice["split"] == 0 and twice["runs"][0] == twice["runs"][1]
-          and twice["runs"][0][1] == 15 and twice["harm_ok"] and twice["entra"],
-          "{} {}".format(twice["split"], twice["runs"]))
-
-    # Una posesión sin parada: tras el instante la evidencia de equipo dice H 1,6 s y después A. Sin la capa el
-    # D llega hasta los 9,6 s y se sale a A; con ella se sale a los 8 s a H y luego a A: una posesión más en
-    # cada ventana, sin ninguna parada más. La capa no entra.
+    # Una posesión sin parada: tras el instante la evidencia de equipo dice H 1,6 s y después A. Sin la capa el D
+    # llega hasta los 9,6 s y se sale a A; con A se sale a los 8 s a H y luego a A.
     def dead_strong(trk):
         score, allowed = dead_piece(trk)
         for s in starts:
@@ -796,14 +880,42 @@ def check_restart_instant(game, folder):
             score[s + 240:s + 60 * fps, A] = 1.0
         return score, allowed
 
-    flip = measured({"candidates": team_flip, "dead_state": dead_strong})
-    (poss0, stops0), (poss1, stops1) = flip["runs"]
-    check("measure_instant: una posesión nueva sin parada que la parta: la capa no entra",
-          flip["anchors"] == {"throw-in": 8 * fps} and flip["split"] == 0 and (poss1 - poss0, stops1 - stops0)
-          == (12, 0) and not flip["harm_ok"] and not flip["entra"], "{} {}".format(flip["split"], flip["runs"]))
+    m = measured({"candidates": team_flip, "dead_state": dead_strong})
+    r = m["tested"].get("A", {})
+    (poss0, stops0), (poss1, stops1) = r.get("runs", ((0, 0), (0, 0)))
+    check("measure_instant: con una posesión nueva sin parada en cada ventana A no entra, y entra B",
+          r.get("split") == 0 and (poss1 - poss0, stops1 - stops0) == (12, 0) and not r.get("ok")
+          and m["chosen"] == "B", "{} {}".format(r.get("runs"), m["chosen"]))
 
-    # Con anclas, pero con piezas que se contradicen en unos frames (conflictos): el daño no se cumple y la capa
-    # no entra.
+    # Una parada que ya tiene dos tramos de D sin la capa (vuelve a D a los 20 s) y que A no empeora: no cuenta
+    # como partida, y A entra.
+    def dead_twice(trk):
+        score, allowed = dead_piece(trk)
+        for s in late:
+            score[s + 500:s + 700, D] = 1.0
+        return score, allowed
+
+    m = measured({"candidates": team_piece, "dead_state": dead_twice})
+    r = m["tested"].get("A", {})
+    check("measure_instant: una ventana que ya tenía dos tramos de D sin la capa no cuenta como partida",
+          r.get("split") == 0 and r["runs"][0] == r["runs"][1] and r["runs"][0][1] == 15 and r["ok"]
+          and m["chosen"] == "A", "{} {}".format(r.get("split"), r.get("runs")))
+
+    # Fuera de la banda (sin la parada larga, la entrega tiene menos del 15 % de D): no entra ninguno. Y justo en el
+    # borde (sin la capa algo más del 15 %; con A, 480 frames menos de D, algo menos): A no entra y B, que no
+    # quita D, sí.
+    m = measured({"candidates": team_piece, "dead_state": lambda trk: dead_piece(trk, band=0)})
+    check("measure_instant: con la entrega fuera de la banda, no entra ninguno",
+          list(m["tested"]) == ["A", "B"] and not any(r["band_ok"] for r in m["tested"].values())
+          and m["tested"]["A"]["dead_share"][1] < 0.15 and m["chosen"] is None and not m["entra"],
+          str({k: r["dead_share"] for k, r in m["tested"].items()}))
+    m = measured({"candidates": team_piece, "dead_state": lambda trk: dead_piece(trk, band=19607)})
+    r = m["tested"]["A"]
+    check("measure_instant: la banda se mira con la capa puesta (A: sin ella dentro, con ella fuera)",
+          r["dead_share"][0] > 0.1505 and r["dead_share"][1] < 0.1495 and not r["band_ok"] and not r["ok"]
+          and m["tested"]["B"]["band_ok"] and m["chosen"] == "B", str(r["dead_share"]))
+
+    # Con piezas que se contradicen en unos frames (conflictos), no entra ninguno.
     def team_conflict(trk):
         score, allowed = team_piece(trk)
         allowed[50000:50010, :2] = False
@@ -814,36 +926,49 @@ def check_restart_instant(game, folder):
         allowed[50000:50010, D] = False
         return score, allowed
 
-    clash = measured({"candidates": team_conflict, "dead_state": dead_conflict})
-    check("measure_instant: con conflictos entre piezas, aunque haya ancla, la capa no entra",
-          clash["anchors"] == {"throw-in": 8 * fps} and clash["conflicts"] == (10, 10) and not clash["harm_ok"]
-          and not clash["entra"], str(clash["conflicts"]))
+    m = measured({"candidates": team_conflict, "dead_state": dead_conflict})
+    check("measure_instant: con conflictos entre piezas no entra ninguno",
+          m["conflicts_without"] == 10 and all(r["conflicts"] == (10, 10) and not r["ok"] for r in m["tested"].values())
+          and list(m["tested"]) == ["A", "B"] and m["chosen"] is None, str(m["conflicts_without"]))
 
-    # Tres tipos de 4 ventanas cada uno van juntos en «otros», que nunca tiene ancla, aunque las señales sean
-    # las de los saques de banda de arriba.
+    # Las señales no se buscan más allá del siguiente reinicio: con un GOALS a los 7 s de cada ventana, ni la
+    # transición (7,6 u 8,4 s) ni el balón (8,4 s) caen antes del corte, y no hay ancla.
+    m = measured(pieces, tagged=events + [window(s + 7 * fps, code="goals") for s in starts])
+    t = m["by_type"]["throw-in"]
+    check("measure_instant: las señales se buscan solo hasta el siguiente reinicio",
+          t["transitions"] == [] and t["ball"] == [] and t["states"][air.NOT_BACK] == 6 and m["anchors"] == {}
+          and m["tested"] == {} and not m["entra"], str(t["states"]))
+
+    # Tres tipos de 4 ventanas cada uno van juntos en «otros», que nunca tiene ancla.
     mixed = [window(s, ("throw-in", "corner kick", "goal kick")[i % 3]) for i, s in enumerate(starts)]
-    pooled = measured(pieces, tagged=mixed)
-    check("measure_instant: los tipos de menos de 5 ventanas van a «otros», sin ancla, y la capa no entra",
-          list(pooled["by_type"]) == ["otros"] and pooled["by_type"]["otros"]["n"] == 12
-          and pooled["by_type"]["otros"]["rule"] == (False,) * 5 and pooled["anchors"] == {}
-          and pooled["spans"] == 0 and not pooled["entra"], str(list(pooled["by_type"])))
+    m = measured(pieces, tagged=mixed)
+    check("measure_instant: los tipos de menos de 5 ventanas van a «otros», sin ancla, y no entra ninguno",
+          list(m["by_type"]) == ["otros"] and m["by_type"]["otros"]["n"] == 12
+          and m["by_type"]["otros"]["rule"] == (False,) * 5 and m["anchors"] == {} and m["tested"] == {}
+          and not m["entra"], str(list(m["by_type"])))
 
-    # El placebo. Las ventanas se desplazan ±4, 6 y 8 minutos; las que caen cerca de un reinicio real o fuera de
-    # lo evaluado no cuentan.
+    # Con el reinicio disperso (a los 0, 2, 4 y 6 s), no hay ancla y no se prueba ningún candidato.
+    scattered = ana([(i % 4) * 2 * fps for i in range(12)])
+    m = measured(pieces, scattered)
+    check("measure_instant: con el reinicio disperso, mucha dispersión, ninguna ancla y no entra ninguno",
+          m["by_type"]["throw-in"]["rule"][1] is False and m["anchors"] == {} and not m["entra"])
+
+    # El placebo de la transición. Las ventanas se desplazan ±4, 6 y 8 minutos; las que caen cerca de un reinicio
+    # real o fuera de lo evaluado no cuentan.
     alone_at = window(1000 * fps)
     shifted = air.placebo_windows([alone_at], blocks, fps)
     near_goal = air.placebo_windows([alone_at, window(1250 * fps, code="goals")], blocks, fps)
     edge = air.placebo_windows([window(500 * fps)], blocks, fps)
     check("placebo_windows: ±4, 6 y 8 min con su tipo y duración; no cerca de un reinicio real ni fuera de lo "
           "evaluado",
-          [w["start"] for w in shifted] == [(1000 + s) * fps for s in (-480, -360, -240, 240, 360, 480)]
-          and all(w["end"] - w["start"] == 35 * fps and w["type"] == "throw-in" for w in shifted)
-          and [w["start"] for w in near_goal] == [(1000 + s) * fps for s in (-480, -360, -240, 360, 480)]
-          and [w["start"] for w in edge] == [(500 + s) * fps for s in (240, 360, 480)])
+          [p["start"] for p in shifted] == [(1000 + s) * fps for s in (-480, -360, -240, 240, 360, 480)]
+          and all(p["end"] - p["start"] == 35 * fps and p["type"] == "throw-in" for p in shifted)
+          and [p["start"] for p in near_goal] == [(1000 + s) * fps for s in (-480, -360, -240, 360, 480)]
+          and [p["start"] for p in edge] == [(500 + s) * fps for s in (240, 360, 480)])
 
     # De punta a punta, con 10 saques de banda separados 10 minutos (5 en cada parte): sin transiciones en el
     # placebo hay ancla; si el modelo de Ana pasa a juego a los 8 s también en las ventanas desplazadas, el
-    # placebo tiene poca dispersión y no hay ancla.
+    # placebo se concentra y no hay ancla.
     spaced = [s * fps for s in (500, 1100, 1700, 2300, 2900, 4500, 5100, 5700, 6300, 6900)]
     spaced_events = [window(s) for s in spaced]
     bx_spaced = np.zeros(n)
@@ -852,8 +977,8 @@ def check_restart_instant(game, folder):
         bx_spaced[s - 10 * fps:s + 210] = np.nan
         real[s - 10 * fps:s + offset] = 1.0
     fake = real.copy()
-    for w in air.placebo_windows(spaced_events, blocks, fps):
-        fake[w["start"] - 10 * fps:w["start"] + 200] = 1.0
+    for p in air.placebo_windows(spaced_events, blocks, fps):
+        fake[p["start"] - 10 * fps:p["start"] + 200] = 1.0
     spaced_match = tracking.Tracking(bx_spaced, bx_spaced.copy(), np.empty((n, 0)), np.empty((n, 0)),
                                      np.empty(0, dtype=np.int8), (length, width), blocks, fps)
     results = []
@@ -862,21 +987,13 @@ def check_restart_instant(game, folder):
             results.append(air.measure_instant(spaced_match, spaced_events, no_gap, no_gap, game,
                                                pieces={"candidates": team_piece, "dead_state": no_gap},
                                                odds_fn=lambda trk, o=odds_now: o))
-    clean_placebo, fooled = (r["by_type"]["throw-in"] for r in results)
+    clean_placebo, concentrated = (r["by_type"]["throw-in"] for r in results)
     check("measure_instant: sin transiciones en el placebo hay ancla; con el placebo tan concentrado como las "
           "ventanas reales, no",
           clean_placebo["rule"][4] and clean_placebo["placebo_ok"] and results[0]["anchors"] == {"throw-in": 200}
-          and fooled["rule"][4] and not fooled["placebo_ok"] and len(fooled["placebo"]) >= 10
+          and concentrated["rule"][4] and not concentrated["placebo_ok"] and len(concentrated["placebo"]) >= 10
           and results[1]["anchors"] == {} and not results[1]["entra"],
-          "{} {} {}".format(results[0]["placebo_windows"], len(fooled["placebo"]), results[1]["anchors"]))
-
-    # Y con el reinicio disperso (a los 0, 2, 4 y 6 s), no hay ancla y la capa no se prueba.
-    scattered = np.full(n, -1.0)
-    for i, s in enumerate(starts):
-        scattered[s - 10 * fps:s + (i % 4) * 2 * fps] = 1.0
-    loose = measured(pieces, scattered)
-    check("measure_instant: con el reinicio disperso, mucha dispersión, ninguna ancla y la capa no entra",
-          loose["by_type"]["throw-in"]["rule"][1] is False and loose["anchors"] == {} and not loose["entra"])
+          "{} {} {}".format(results[0]["placebo_windows"], len(concentrated["placebo"]), results[1]["anchors"]))
 
 
 def main():
