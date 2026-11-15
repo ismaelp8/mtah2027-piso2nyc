@@ -276,7 +276,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       un 30 % (4,25 frente a 6,05).
     - **B9, que es B5 más la dirección en que se mueve el balón, empata.** Gana con el flag (+0,039 y
       +0,048), pero empata con el control, empeora los duelos sin cambio más de lo permitido y no mejora en
-      SkillCorner (−0,005 y +0,004). Queda en `aprendida.py`, fuera de `PIECES`.
+      SkillCorner (−0,005 y +0,004). Queda en `aprendida.py`, fuera de `PIECES`. **Ismael se queda con B5**
+      (`5fc02b8`). La entrega de prueba con B9 cambia poco: 216 posesiones frente a 215.
     - **Las fases 2 y 3 se cerraron sin candidato.** Quitar las posesiones inventadas no llega a +0,03 ni
       con un oráculo, y una red de una capa con los mismos rasgos no gana con el control ni en SkillCorner.
     - **La fase 4 tampoco abre nada** (`a950880`; `docs/decisiones.md`):
@@ -318,8 +319,28 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     **apagada**: `ball.clean` y `pipeline.PIECES` no cambian.
   - **La entrega no cambia:** el código de antes es idéntico y solo se añade la función. Se confirma al
     regenerar en el ensayo del lunes.
-- **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio): con el sí de Ismael del 15/11,
-  en marcha. La regla del plan no cambia.
+- **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio, PR 13, `4ceff85`): la tabla de
+  fases vale, y llegamos de 2 a 10 s tarde en 17 de los 24 contraataques. Con la cota de la DFL, ningún uso
+  llega a +0,03.
+  - **Capa apagada `transiciones.evidence`** (PR 14, `9f89d10`): suma 8 por frame al equipo de cada «Attacking
+    Transition» durante sus 5 primeros segundos, y lo mismo a `D`, así que solo empuja contra el otro equipo.
+  - Antonio escribió cuatro criterios antes de generar nada (`docs/decisiones.md`). Falta la entrega de prueba.
+  - Si se enciende, hay que añadir en `possession/tracking.py` y en el plan (§2) la excepción de que abre
+    ficheros del partido, como `dead_ball.py`.
+- **D7, el balón fuera del campo como señal de `D`** (`docs/decisiones.md`; capas apagadas en
+  `possession/dead_ball.py`):
+  - **El recuento del partido la deja abierta:** con `equipo_v3` llegamos tarde en 23 de 47 rachas en que el
+    ATD ve el balón fuera. En SkillCorner, un balón visto fuera es `D` el 93–94 % de las veces.
+  - **Primera versión, `ball_out`: se queda apagada.** Con ella llegamos tarde en 12 de 47 (25,5 %), y el
+    criterio pedía menos del 15 %. No hace daño: los 574 frames que cambia pasan todos de `H` o `A` a `D`.
+  - **Segunda versión, `ball_out_hold`** (`0043a3c`): mantiene la parada hasta que el balón vuelve a verse
+    dentro, con los mismos criterios. Falta la entrega de prueba. Es el último intento con estos criterios.
+- **Entregas de prueba sin tocar `PIECES`:**
+  - `python -m possession.pipeline --name <prueba> --pieza nombre=modulo.funcion --capa modulo.funcion`. Con
+    el nombre de la entrega da error, y la salida dice qué se ha cambiado.
+  - `python validation/partido/probar_entrega.py <prueba> --capa ...` hace la prueba entera en un solo comando:
+    genera la entrega, cuenta el balón fuera y la compara con `equipo_v3`.
+  - Lo ejecuta una persona (regla nº 1).
 - **`D` de estado: tareas 1 a 3 de Ana en `main`** (PR 12, `98c38ca`; `docs/decisiones.md`).
   - Las ventanas de `dead_state` ya no cruzan el principio ni el final de los tramos evaluados.
   - `evidence` admite una escala, con 1 por defecto, para la medida de David.
