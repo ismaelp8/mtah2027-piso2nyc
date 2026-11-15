@@ -351,3 +351,21 @@ Salidas: `salidas/2026-11-16_s7_cribado_dfl.md` y `salidas/2026-11-16_s7_cribado
 
 **Con la regla: no.** El ancla fecha peor que la pieza de estado. El que saca de banda vuelve a entrar en el campo
 antes de que la parada acabe en las etiquetas, y el de córner se queda junto al banderín después de sacar. Se cierra.
+
+## S9. El paquete «hacia el control»: coste 40 y las posesiones cortas antes de una parada a `D` (regla, antes de medir)
+
+**Por qué.** S1 y S5 dan, cada uno, algo con el control y en SkillCorner y casi nada con el flag. Medidos juntos se
+sabe si se suman. No pasa ni pasará §5.8 (no gana con las dos convenciones): es una apuesta de convención, y la
+decide Ismael. Esto solo le da el número.
+
+**Qué se mide** (`paquete_control.py`; `D` propio siempre, porque el segundo arreglo toca el `D`):
+
+- versiones: `main`; coste 40; `main` y después las posesiones de menos de 5 s que acaban en un `D` nuestro y vienen
+  de un cambio directo pasan a `D` (la variante «a D» de S5); y las dos cosas juntas (el coste 40 y después lo mismo);
+- DFL, 7 partidos, las dos condiciones que votan, el balón tapado y a la vista en los `D`, con el flag y con el
+  control;
+- SkillCorner, mitad de entrenamiento, las dos condiciones que votan allí.
+
+**Regla de lectura, antes de medir (descriptiva).** «Es una apuesta razonable hacia el control» si el paquete gana a
+`main` por +0,015 o más en todas las celdas del control y de SkillCorner, y con el flag no pierde más de 0,010 en
+ninguna. Si no, se dice qué falla.
