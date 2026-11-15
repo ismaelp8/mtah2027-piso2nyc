@@ -45,15 +45,22 @@ DECIMALES = 6
 # B3, B4 y B5 (14/11) usan los rasgos y los pesos de B2; solo cambia cómo se convierte el logit en puntuación.
 # B6, B7 y B8 (15/11, la ronda de reentrenamiento) puntúan como B5 con sus propios pesos: B6 sin las ventanas
 # de 151 frames, B7 con los rasgos de B2 entrenados con peso cerca de los cambios y B8 con el evento de toque.
-CONJUNTOS = ("b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8")
-COMO_B5 = ("b5", "b6", "b7", "b8")
-RASGOS_DE = {"b1": "b1", "b2": "b2", "b3": "b2", "b4": "b2", "b5": "b2", "b6": "b6", "b7": "b2", "b8": "b8"}
+# B9 (15/11, posesiones cortas; docs/decisiones.md) puntúa como B5 con sus pesos: los rasgos de B2 más la
+# dirección en que se mueve el balón.
+CONJUNTOS = ("b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9")
+COMO_B5 = ("b5", "b6", "b7", "b8", "b9")
+RASGOS_DE = {"b1": "b1", "b2": "b2", "b3": "b2", "b4": "b2", "b5": "b2", "b6": "b6", "b7": "b2", "b8": "b8",
+             "b9": "b9"}
 # El evento de toque de B8 (anexo A.4 de la revisión externa; docs/decisiones.md, 15/11, antes de medir).
 TOQUE_CERCA, TOQUE_LEJOS = 12, 25  # frames: velocidad del balón de t+12 a t+25 frente a la de t−25 a t−12
 TOQUE_UMBRAL = 3.0  # m/s: cambio de velocidad mínimo (el umbral de toque del experimento 0)
 TOQUE_MAXIMO = 12  # frames: el evento es el máximo del cambio en ±12
 TOQUE_RADIO = 3.0  # m: el jugador más cercano tiene que estar a esta distancia o menos (el radio de ELASTIC)
 VENTANAS_TOQUE = (13, 51)  # frames: ventanas centradas del rasgo
+# La dirección del balón de B9 (validation/posesiones_cortas/BITACORA.md §6; fijada antes de medir B9).
+DIRECCION_MITAD = 6  # frames: la velocidad del balón se mide de t−6 a t+6 (13 frames)
+DIRECCION_UMBRAL = 2.0  # m/s: por encima, el balón va hacia la portería del visitante (+1); por debajo de −2, al revés
+VENTANAS_DIRECCION = (1, 13, 51)  # frames: ventanas centradas del rasgo
 N1_PUNTOS = 1.0  # el +1 de N1 que suma B5 (candidates.NEAREST_SCORE el 14/11), escrito aquí para que no cambie con él
 BLOQUE_CERCANO = 20000  # frames por bloque al buscar el más cercano (candidates.CHUNK el 14/11)
 BASE_BALON = ["signo del más cercano"] + ["núcleo {} m".format(s) for s in SIGMAS] + ["distancia del más cercano"]
@@ -75,6 +82,7 @@ NOMBRES["b2"] = NOMBRES["b1"] + [
 NOMBRES["b3"] = NOMBRES["b4"] = NOMBRES["b5"] = NOMBRES["b7"] = NOMBRES["b2"]
 NOMBRES["b6"] = [nombre for nombre in NOMBRES["b2"] if not nombre.endswith("ventana 151")]
 NOMBRES["b8"] = NOMBRES["b2"] + ["evento de toque, ventana {}".format(v) for v in VENTANAS_TOQUE]
+NOMBRES["b9"] = NOMBRES["b2"] + ["dirección del balón, ventana {}".format(v) for v in VENTANAS_DIRECCION]
 
 
 def media_centrada(valores, ancho):
@@ -215,6 +223,30 @@ def eventos_de_toque(bx, by, equipos, fps):
     return signo
 
 
+def direccion_del_balon(bx, equipos, fps):
+    """Hacia qué portería va el balón en cada frame de un tramo: +1, −1 o 0 (B9, 15/11).
+
+    La velocidad del balón en x de t−`DIRECCION_MITAD` a t+`DIRECCION_MITAD`, con el signo de la dirección de
+    ataque del local (la de `_rasgos_forma`: el local ataca hacia donde está, en media, el visitante). +1 si
+    pasa de `DIRECCION_UMBRAL` (va hacia la portería del visitante), −1 si baja de −`DIRECCION_UMBRAL`, y 0 si
+    no, si falta el balón en alguno de los dos extremos, si alguno cae fuera del tramo o si no hay dirección.
+    Una velocidad medida en 13 frames aguanta el suavizado de unos 25 del balón del ATD.
+    """
+    (xh, _, hh), (xa, _, ha) = equipos
+    n = len(bx)
+    salida = np.zeros(n)
+    if not (hh.any() and ha.any()) or n <= 2 * DIRECCION_MITAD:
+        return salida
+    media_h = np.where(hh, xh, 0.0).sum() / int(hh.sum())
+    media_a = np.where(ha, xa, 0.0).sum() / int(ha.sum())
+    direccion = float(np.sign(media_a - media_h))
+    m = DIRECCION_MITAD
+    with np.errstate(invalid="ignore"):
+        v = (bx[2 * m:] - bx[:-2 * m]) * (fps / (2.0 * m)) * direccion
+        salida[m:n - m] = np.where(v > DIRECCION_UMBRAL, 1.0, np.where(v < -DIRECCION_UMBRAL, -1.0, 0.0))
+    return salida
+
+
 def rasgos(trk, conjunto):
     """Matriz (n, k) de rasgos del conjunto (`NOMBRES[conjunto]`), en float64, a cero fuera de los tramos."""
     if conjunto not in CONJUNTOS:
@@ -230,13 +262,16 @@ def rasgos(trk, conjunto):
         equipos = [_por_equipo(trk.px[inicio:fin], trk.py[inicio:fin], c) for c in columnas]
         base, visible = _rasgos_balon(bx, by, equipos)
         lista = [media_centrada(r, v) for r in base for v in VENTANAS_BALON]
-        if tipo in ("b2", "b6", "b8"):
+        if tipo in ("b2", "b6", "b8", "b9"):
             lista += _rasgos_forma(bx, by, visible, equipos, float(trk.pitch[0]), float(trk.fps))
         if tipo == "b6":
             lista = [r for r, nombre in zip(lista, NOMBRES["b2"]) if nombre in NOMBRES["b6"]]
         if tipo == "b8":
             signo = eventos_de_toque(bx, by, equipos, float(trk.fps))
             lista += [media_centrada(signo, v) for v in VENTANAS_TOQUE]
+        if tipo == "b9":
+            hacia = direccion_del_balon(bx, equipos, float(trk.fps))
+            lista += [media_centrada(hacia, v) for v in VENTANAS_DIRECCION]
         salida[inicio:fin] = np.column_stack(lista)
     return salida
 
@@ -379,6 +414,11 @@ def evidence_b7(trk, fuera=None):
 def evidence_b8(trk, fuera=None):
     """B8: B5 con el evento de toque a la escala del suavizado, con sus pesos (15/11)."""
     return _evidencia(trk, "b8", fuera)
+
+
+def evidence_b9(trk, fuera=None):
+    """B9: B5 con la dirección en que se mueve el balón, con sus pesos (15/11, posesiones cortas)."""
+    return _evidencia(trk, "b9", fuera)
 
 
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------

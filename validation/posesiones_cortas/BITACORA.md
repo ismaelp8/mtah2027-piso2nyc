@@ -90,3 +90,21 @@ Puerta antes de escribir un candidato, fijada antes de ejecutarla:
 `python validation/posesiones_cortas/puerta_direccion.py`. Se entrena con los 7 partidos de la DFL y se mira
 en los mismos 7, frente a B2 reentrenada igual (la referencia justa). Si la dirección no mueve las posesiones
 de 2 a 10 s, no se gasta un candidato.
+
+Resultado de la puerta [medido, en los mismos partidos: optimista]; salida en
+`salidas/2026-11-15_puerta_direccion.md`. spellF1 con α = 2 / 4 / 8:
+
+| balón | etiquetas | B2 reentrenada | B2 + dirección |
+|---|---|---|---|
+| como el ATD | flag | 0,498 / 0,499 / 0,499 | 0,537 / 0,547 / 0,550 |
+| como el ATD | control | 0,736 / 0,730 / 0,723 | 0,741 / 0,722 / 0,708 |
+| sin bloques | flag | 0,512 / 0,513 / 0,513 | 0,558 / 0,572 / 0,575 |
+| sin bloques | control | 0,756 / 0,749 / 0,743 | 0,760 / 0,742 / 0,727 |
+
+- **Mueve las posesiones de 2 a 10 s:** con el control, las de 2 a 5 s encontradas pasan del 53–55 % al
+  62–63 %; con el flag, del 27–28 % al 34–38 %.
+- **Con el control casi no gana:** predice más posesiones (1.609 → 1.749 con α = 2) y la mitad de lo que
+  sobra es «más corta que la real»: parte posesiones buenas con trozos falsos del rival [inferencia: pases
+  hacia atrás rápidos del equipo que tiene el balón].
+- **La puerta se pasa** (mueve las de 2 a 10 s). Es la primera idea que da más de +0,03 con el flag en estas
+  condiciones, aunque sea en los mismos partidos.
