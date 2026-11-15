@@ -3065,3 +3065,135 @@ Abierto:
   segundos medidos en la DFL. La versión medida el 15/11 (restar al otro equipo durante toda la ventana) no
   entró: está en la rama `feat/d-equipo-reanuda`, con su resultado. Allí se midió que el `Team` del Smart
   Tagging es fiable (20 de 20 con la física).
+
+**Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado).** Lo ejecutó Manuel en local el
+15/11. Apunta la lectura la sesión de Claude de Ana, que sigue la pieza desde ese día. La salida entera está en
+`validation/resultados/2026-11-15_instante_reinicio.md`.
+- **Con qué se midió** [medido]:
+  - el script y esta regla, tal como quedaron en `569d3b4`, con el `possession/` de `main` en `98c38ca`, que
+    trajo el merge `17f7648`. Ese `possession/` lleva, entre otras cosas, la PR 12 de Ana: las ventanas de
+    `dead_state` ya no cruzan los bordes de los tramos, así que cambian sus rasgos en los 52 primeros y los 52
+    últimos frames de cada tramo;
+  - la huella del código de `possession/` que imprimió el script, `b8a00a1a1aea`, es la de ese `possession/`. En
+    `569d3b4` era `6169ad54157a`. La del modelo de Ana, `def73c1ebf2b`, es la misma en los dos, porque solo mira
+    `dead_state.MODEL`;
+  - el modelo de Ana cambió, pues, entre escribir la regla y ejecutarla. La ejecución ya lo lleva, así que no
+    obliga a repetir nada;
+  - piezas `ball.clean`, `aprendida.evidence_b5`, `dead_state.evidence` y `temporal.decode`, con los costes 25 /
+    25 / 25;
+  - 53 ventanas, de 35,0 s de mediana; menos de 5 se apartan más de 1 s de ella.
+- **La regla, por tipo** [medido]. Los desfases van desde el inicio de la ventana.
+
+  | tipo | ventanas | con transición del modelo de Ana | su recorrido intercuartílico | el balón vuelve a verse | medianas a ≤ 1 s | ¿gana el ancla fija? | ancla |
+  |---|---|---|---|---|---|---|---|
+  | saque de banda | 26 | 25 (mediana +6,9 s) | **3,2 s** | 17 (mediana +6,1 s; recorrido 3,0 s) | sí (0,8 s) | no (2,0 s frente a 1,6 s) | **no** |
+  | córner | 12 | 11 (mediana +4,8 s) | **3,1 s** | 11 (mediana +6,6 s; recorrido 1,7 s) | no (1,8 s) | no (2,0 s frente a 1,8 s) | **no** |
+  | saque de puerta | 10 | 8, menos de 10 | no se calcula | < 5 (en 8 se veía al empezar) | no se calcula | no se calcula | **no** |
+  | falta | 5 | < 5 | no se calcula | < 5 | no se calcula | no se calcula | **no** |
+
+  - «¿Gana el ancla fija?» compara la distancia mediana del balón a la mediana del tipo con la del balón a la
+    transición de su propia ventana (16 pares en los saques de banda y 11 en los córners).
+  - El placebo (103 ventanas desplazadas) no se concentra en ningún tipo.
+- **→ Ningún tipo tiene ancla, no se prueba ningún candidato y no entra ninguna de las dos capas del instante**
+  [medido]. En los saques de banda y los córners, los dos tipos con 10 transiciones o más, falla primero la
+  dispersión: el recorrido pasa de 3 s, y el máximo era 2 s. En los saques de puerta y las faltas falla antes el
+  número de transiciones.
+- **El modelo de Ana como instrumento** [medido]: ve `D` en el 47,4 % de lo evaluado, en el 94,6 % del control de
+  `D` y en el 49,6 % del control de juego. Las tres proporciones se cuentan en los frames en que el modelo opina
+  (log-odds distinto de 0). El control de juego queda por encima del partido: el instrumento no separa por el lado
+  del juego.
+  - [inferencia, comprobada en el código: `ana_agrees` exige que el control de juego quede por debajo del
+    partido, y las tres proporciones no dependen de las anclas] **A no habría podido entrar en ningún tipo aunque
+    hubiera habido ancla** (condición 2 de A). El script no llegó a mirar A.
+- **Qué dice:**
+  - [medido] En los dos tipos que se pueden medir, la transición del modelo de Ana no cae en un sitio fijo de la
+    ventana.
+  - **Saques de banda.** [medido] Las dos señales se dispersan (3,2 s la transición y 3,0 s el balón), y la
+    transición de cada ventana queda más cerca del balón (1,6 s de mediana) que la mediana fija (2,0 s).
+    [inferencia] La diferencia entre ventanas parece real (saques rápidos y lentos), no solo ruido del
+    instrumento. La ventaja de la transición de cada ventana sobre la mediana es pequeña (0,4 s, con cifras
+    redondeadas a 0,1 s y 16 pares), así que no da para más.
+  - **Córners.** [medido] El balón se concentra (recorrido de 1,7 s) y la transición no (3,1 s); la mediana del
+    balón cae 1,8 s después que la de la transición. [inferencia] Aquí la dispersión parece más del instrumento
+    que del reinicio, y el 2,0 frente a 1,8 s sale sobre todo de ese desfase. Anclar los córners en el balón no
+    se puede con esta salida: sería una regla nueva, estimada con este mismo partido y escrita antes de medir
+    otra vez.
+  - [inferencia] Para fechar el fin del `D` de cada saque de banda haría falta una señal por ventana, por ejemplo
+    la reaparición del balón en las ventanas con hueco, no un desfase fijo. También sería una regla nueva.
+  - [inferencia] El control de juego puede tener tanto `D` por tres cosas: el tramo antes del saque de la 2ª parte
+    (punto siguiente), paradas que el Smart Tagging no marca (solo trae 5 faltas) o `D` del modelo en pleno
+    juego. [sin verificar] El final de cada parte tampoco lo marca ningún `SET PIECES`.
+- **Algo que se vio después de ejecutar, en el control de juego** [inferencia, comprobada en el código]:
+  - `far_from_restarts` aplica la regla al pie de la letra: parte de todos los frames evaluados y quita los que
+    están a menos de 60 s de un `GOALS` o un `SET PIECES`. La ventana `Kick Off (Start)` de la 2ª parte es un
+    `SET PIECES`, así que quita unos 1.500 frames del tramo antes del saque, pero no el resto. Ese tramo es `D`
+    según el FAQ y es el control de `D`.
+  - La cuenta: 2.934 − 1.500 − (lo que va del inicio de la ventana al saque, de 0 a unos 125 frames) deja en el
+    control de juego entre unos 1.310 y 1.434 frames. Supone que la ventana dura unos 5 s y contiene el saque
+    (entrada del 12/11), y que ningún otro `GOALS` o `SET PIECES` cae a menos de 60 s del tramo (el Smart Tagging
+    tiene falsos positivos).
+  - En el tramo entero el modelo de Ana ve `D` el 94,6 %. La parte que se queda en el control es la más lejana al
+    saque [sin verificar que ahí sea igual].
+  - Si fuera el 94,6 %, quitarla dejaría el control de juego por debajo del 47,4 % si tiene menos de unos
+    27.000–32.000 frames en los que el modelo opina [inferencia, cuenta con las cifras redondeadas]. El script no
+    imprimía ese recuento.
+  - No cambia el veredicto, que falla antes por la dispersión. Ana decidió después quitar el tramo para cualquier
+    repetición (abajo, «Cambios a la regla después de la ejecución»).
+- **La tarea 3 del plan** (sección 4 de la misma salida; son agregados descriptivos, sin un criterio escrito
+  antes de medir) [medido]:
+  - la capa del hueco cambia 1.083 frames evaluados, 561 de ellos (el 51,8 %) en los primeros 5 s de cada hueco;
+    sin ella no hay frames con piezas en conflicto;
+  - el `D` de la entrega empieza, respecto al inicio de cada uno de los 28 huecos: antes del hueco en 11; en su
+    primer segundo (de 0 a 1 s) en 8; de 1 a 3 s, de 3 a 5 s, a 5 s o más, o sin `D`, menos de 5 cada uno (9
+    entre los cuatro).
+  - [inferencia] En 19 de 28 huecos el `D` ya empieza antes del hueco o en su primer segundo, así que dar más
+    peso al principio del hueco tendría poco que ganar ahí. En los otros 9 (un tercio) empieza 1 s tarde o más, o
+    no hay `D`. En contra de subir el peso está lo que ya decía el plan: en esos 5 s el modelo de Ana solo ve `D`
+    el 60,9 %, y un peso alto puede forzar `D` en juego.
+  - La tarea pide hacerlo «solo si eso lo apoya». Cerrarla como «no se apoya» sería una lectura de estos
+    agregados, no el resultado de una regla. Queda por decidir.
+- **El orden real de los mensajes** [fuente: los mensajes del 15/11 entre Manuel, Ana e Ismael]:
+  - Manuel mandó las 9 interpretaciones de arriba para que se confirmaran antes de ejecutar.
+  - Contestó Ana, que lo había hablado con Ismael: confirmó las 9 sin cambios y pidió dos añadidos, para antes de
+    ejecutar.
+  - Su respuesta llegó cuando Manuel ya había ejecutado. **Se ejecutó antes de recibir la confirmación de las 9 y
+    sin los dos añadidos.** Las 9 se confirmaron sin cambios, así que la ejecución aplica la regla confirmada.
+- **Los dos añadidos de Ana**, tal como los pidió:
+  1. que el script imprima cuántos frames tiene el control de juego; si son menos del 5 % de los frames evaluados
+     (7.943 de 158.857), el instrumento no separa y A no entra;
+  2. que el ancla sea la mediana de la transición menos el retraso mediano medido en la DFL para ese tipo: 20
+     frames en los saques de banda y 16 en los córners. Los tipos sin una medida propia de 50 paradas o más en la
+     DFL no se corrigen. Es un número de la DFL, no del partido.
+     - En la DFL la transición llega esa mediana tarde, y solo el 45 % (saques de banda) y el 57 % (córners) caen
+       a menos de 1 s del fin real [fuente: medida de Ana en la DFL, 15/11; su script y su salida, abajo].
+     - Salvedad de Ana: en la DFL se busca desde el inicio de la parada, y aquí desde el inicio de la ventana
+       `SET PIECES`.
+- **Por qué los añadidos no cambian el veredicto** [inferencia, comprobada en el código: `anchor_rule` exige
+  `tight`, que solo usa el recorrido de las transiciones tal cual; `a_conditions` solo se llama en los tipos con
+  ancla]:
+  - en los saques de banda y los córners falla primero la dispersión; restar un retraso fijo por tipo mueve todos
+    sus instantes por igual y no cambia el recorrido;
+  - en los saques de puerta y las faltas falla antes el número de transiciones, que los añadidos tampoco tocan;
+  - el mínimo del control de juego solo actúa sobre A, que solo se mira en los tipos con ancla, y no hay ninguno.
+
+Abierto, después del resultado:
+- **La excepción a §2 del plan no hace falta mientras el veredicto siga siendo «no entra»:** no se copia en
+  `possession/dead_ball.py` ninguna constante sacada del partido.
+- **¿Se repite si cambia el modelo de Ana?** La regla dice que se repite todo si cambian la limpieza o el modelo de
+  Ana antes de que la capa entre. Eso incluye `dead_state.MODEL` y también el cálculo de los rasgos y de los
+  log-odds: la PR 12 los cambió sin tocar `MODEL` ni su huella. Como la capa no ha entrado, un cambio así obliga
+  a repetir la medida. Repetir con cada cambio sería buscar hasta que salga. Queda por decidir si el veredicto se
+  cierra como «no entra».
+  - Ojo con la huella del código: con el merge de `main` del 15/11 por la noche (`69f4647`) pasó a ser
+    `fafbd30245b5` [medido], porque `possession/pipeline.py` ahora imprime el commit. Una repetición enseñaría otra
+    huella sin que cambie nada que afecte a esta medida; cualquier cambio de `possession/` la cambia.
+- **La tarea 3:** cerrarla como «no se apoya» sería una lectura (arriba). Queda por decidir.
+- **Una señal por ventana** en vez de un desfase fijo: es solo una idea, sin regla.
+- **La rama `feat/d-equipo-reanuda`** sigue en GitHub, sin PR. Queda por decidir si se guarda como registro. Como
+  ya está subida, no se reescribe: se haría una rama nueva desde `main` con esos commits.
+- **La máscara «< 5» del script se puede deshacer restando** en algunas filas: en los saques de banda, «no vuelve»
+  es 26 − 17 − 9 = 0; también salen, restando, las ventanas sin transición. No son datos de ninguna jugada, pero
+  si se quiere que tape de verdad, hay que tapar también una celda complementaria.
+- **Para la pieza de estado (`dead_state`)** [inferencia]: el control de juego tiene más `D` que el partido. El
+  tramo antes del saque puede explicar una parte (arriba); lo demás serían paradas sin marcar o `D` del modelo en
+  pleno juego.
