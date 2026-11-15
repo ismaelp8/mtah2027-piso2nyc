@@ -3983,3 +3983,21 @@ Cómo se comprobó, antes de ejecutar nada:
   condición 0 se pudiera aplicar de verdad (el script se para y no enseña nada más, y cómo se pone al día la entrega
   vigente), pruebas de que `main` pasa las rutas y las capas, y escribir que la rama no se mergea hasta aplicar la
   regla.
+
+**Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado).** Lo ejecutó Ana en local el 15/11, con la
+rama en `03fe7e8` y sin cambios locales en el código de la entrega. La salida entera está en
+`validation/resultados/2026-11-15_saque_juego_vivo.md`.
+- **Con qué se midió** [medido]: Python 3.10.12 y numpy 2.2.4; huellas del modelo de Ana `def73c1ebf2b` y del código
+  de `possession/` `bb963526df2a`; las piezas de `pipeline.PIECES`, costes 25 / 25 / 25 y la capa de los contraataques.
+- **Condición 0:** sin el ancla sale `equipo_v5` byte a byte (`27dc8aa8…efb7`), así que la regla se aplica [medido].
+- **→ Entra:** se cumplen las seis condiciones [medido].
+  - Con el ancla la entrega sale con el mismo sha256: no cambia ningún frame. La entrega ya salía del `D` en el frame
+    de los dos saques.
+  - Sin conflictos, con un 45,09 % de `D` y 113 paradas; las posesiones (103 y 116), las paradas (53 y 60) y las
+    rachas cortas de cada tramo no se mueven.
+- **Qué dice** [inferencia]: el rebote que preocupaba no pasa, porque no hay nada que corregir en este partido. El
+  ancla no mejora la entrega de hoy; deja fijada la frontera para cualquier cambio futuro de las piezas de `D`, que ya
+  no podrá alargar una parada más allá del saque.
+- **Lo que sigue, según la regla:** regenerar la entrega con `python -m possession.pipeline --name equipo_v6` y
+  validarla. Su sha256 tiene que ser `27dc8aa8…efb7`, el mismo que `equipo_v5`: la entrega vigente no cambia de
+  contenido. Después la rama ya se puede mergear.
