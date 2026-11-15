@@ -67,8 +67,8 @@ def escribir(ruta, labels):
         f.writelines("{},{}\n".format(i, c) for i, c in enumerate(labels))
 
 
-def ejecutar(*args):
-    env = dict(os.environ, MTAH_DATA_DIR=os.path.join(TMP, "no_existe"))
+def ejecutar(*args, datos=None):
+    env = dict(os.environ, MTAH_DATA_DIR=datos or os.path.join(TMP, "no_existe"))
     r = subprocess.run([sys.executable, SCRIPT] + list(args), capture_output=True, text=True,
                        encoding="utf-8", env=env, cwd=ROOT)
     return r.returncode, r.stdout, r.stderr
@@ -79,6 +79,38 @@ def datos_de(ruta_html):
         html = f.read()
     m = re.search(r"const DATOS = (.*?);\nconst FPS", html, re.S)
     return json.loads(m.group(1).replace("<\\/", "</")), html
+
+
+def escribir_partido(carpeta):
+    """ATD, metadatos y homografía inventados de N frames, con los nombres de `games.asset_paths`. Sin vídeo.
+
+    - 4 slots: los dos primeros del equipo local, quietos en y = 0,5; el último falta en los frames 1000–1099.
+    - El balón avanza por x y está en y = 0,3; falta en 2000–2099 (NaN,NaN,NaN) y en 2100–2109 (un solo NaN).
+    - Homografía: la misma escala en todos los frames; el 1500 no es válido (NaN y valid = 0).
+    """
+    import games
+    paths = games.asset_paths(data_dir=carpeta)
+    os.makedirs(os.path.dirname(paths["atd_raw"]))
+    with open(paths["atd_meta"], "w", encoding="utf-8") as f:
+        f.write('<Metadata><Team id="t1"><Name>Casa</Name></Team><Team id="t2"><Name>Fuera</Name></Team>'
+                '<Player teamId="t1"/><Player teamId="t1"/><Player teamId="t2"/><Player teamId="t2"/></Metadata>\n')
+    with open(paths["atd_raw"], "w", encoding="utf-8", newline="\n") as f:
+        for frame in range(N):
+            jug = ["{},0.5,0".format(0.1 + 0.2 * k) for k in range(4)]
+            if 1000 <= frame < 1100:
+                jug[3] = "NaN,NaN,NaN"
+            balon = "{},0.3,1".format(frame / 3000)
+            if 2000 <= frame < 2100:
+                balon = "NaN,NaN,NaN"
+            elif 2100 <= frame < 2110:
+                balon = "NaN"
+            f.write("{}:{}:{}\n".format(frame + 1, ";".join(jug), balon))
+    with open(paths["homography"], "w", encoding="utf-8", newline="\n") as f:
+        f.write("frame,h00,h01,h02,h10,h11,h12,h20,h21,h22,reprojection_error,valid\n")
+        for frame in range(N):
+            matriz = "1600,0,160,0,900,90,0,0,1" if frame != 1500 else ",".join(["NaN"] * 9)
+            f.write("{},{},0.2,{}\n".format(frame, matriz, int(frame != 1500)))
+    return paths
 
 
 def desde_rle(rle):
@@ -132,6 +164,7 @@ try:
     comprobar(rc == 0 and not err, "se ejecuta sin errores")
     lineas = out.strip().splitlines()
     comprobar(lineas == ["tramos: 7 (2 solo de borde, 5 con posesiones o paradas distintas)",
+                         "ATD encima del vídeo: no (no encuentro atd_raw, atd_meta, homography en MTAH_DATA_DIR)",
                          "aviso: no encuentro el vídeo táctico (MTAH_DATA_DIR o --video); la página te dejará elegirlo",
                          "página escrita en {}".format(html1),
                          "ábrela con doble clic, o arrastrándola a la ventana del navegador"],
@@ -173,6 +206,46 @@ try:
 
     rc, out, _ = ejecutar(GT_PUBLICA, "--salida", os.path.join(TMP, "salida", "publica.html"))
     comprobar(rc == 0 and out.startswith("tramos: 0 "), "la GT pública contra sí misma no da tramos")
+
+    # -- el ATD encima del vídeo, con un partido inventado (ATD, metadatos y homografía) --
+    datos_dir = os.path.join(TMP, "datos")
+    paths = escribir_partido(datos_dir)
+    html4 = os.path.join(TMP, "salida", "con_atd.html")
+    rc, out, err = ejecutar(pred_csv, "--gt", gt_csv, "--salida", html4, datos=datos_dir)
+    comprobar(rc == 0 and not err and "ATD encima del vídeo: sí, 3000 frames alrededor de la ventana" in out,
+              "con los ficheros, la página lleva el ATD (y solo imprime cuántos frames)")
+    atd = datos_de(html4)[0]["atd"]
+    comprobar(atd["f0"] == 0 and atd["n"] == N and atd["equipo"] == [0, 0, 1, 1]
+              and atd["campo"] == [105.3, 68.0] and atd["escala"] == 10000,
+              "el ATD cubre la ventana y sus tramos con margen, con el equipo de cada slot")
+    comprobar(atd["balon"][600] == [2000, 3000] and atd["balon"][2050] is None and atd["balon"][2105] is None,
+              "el balón vuelve a 0–1 y falta donde el ATD no lo ve (NaN,NaN,NaN o un solo NaN)")
+    comprobar(atd["jug"][600] == [0, 1000, 5000, 1, 3000, 5000, 2, 5000, 5000, 3, 7000, 5000]
+              and atd["jug"][1050] == [0, 1000, 5000, 1, 3000, 5000, 2, 5000, 5000],
+              "jugadores: slot, x e y de los que se ven")
+    comprobar(atd["hom"][600] == [1600, 0, 160, 0, 900, 90, 0, 0, 1] and atd["hom"][1500] is None,
+              "la homografía de cada frame, y ninguna donde no es válida")
+    comprobar(atd["balon"][1] == [3, 3000], "el frame_id del ATD empieza en 1: la línea 2 es el frame 1")
+
+    rc, out, _ = ejecutar(pred_csv, "--gt", gt_csv, "--salida", html4, "--sin-atd", datos=datos_dir)
+    comprobar(rc == 0 and "ATD encima del vídeo: no (--sin-atd)" in out and datos_de(html4)[0]["atd"] is None,
+              "--sin-atd deja la página sin ATD")
+
+    tope, cv.ATD_MAX_FRAMES = cv.ATD_MAX_FRAMES, 100
+    original = cv.games.asset_paths
+    cv.games.asset_paths = lambda *a, **k: paths
+    try:
+        sin, aviso = cv.leer_atd(gt, lista)
+        comprobar(sin is None and aviso == "no (3000 frames: más de 100, la página pesaría demasiado)",
+                  "con demasiados frames, la página va sin ATD")
+        cv.ATD_MAX_FRAMES = tope
+        with open(paths["atd_raw"], "a", encoding="utf-8") as f:
+            f.write("2999:0.1,0.5,0;0.3,0.5,0;0.5,0.5,0;0.7,0.5,0:mal,0.3,0\n")
+        sin, aviso = cv.leer_atd(gt, lista)
+        comprobar(sin is None and re.fullmatch(r"no \(ValueError en io\.py:\d+\)", aviso) is not None
+                  and "mal" not in aviso, "si el ATD no se puede leer, la página va sin él y el aviso no enseña valores")
+    finally:
+        cv.ATD_MAX_FRAMES, cv.games.asset_paths = tope, original
 finally:
     shutil.rmtree(TMP, ignore_errors=True)
 

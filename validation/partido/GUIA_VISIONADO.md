@@ -20,7 +20,8 @@ Desde la raíz del repo, con el entorno de siempre y `MTAH_DATA_DIR` apuntando a
 python validation/partido/clips_ventana.py equipo_v3
 ```
 
-- Imprime cuántos tramos hay y la ruta de la página, en `~/mtah2027-salidas/`. Ábrela con doble clic.
+- Imprime cuántos tramos hay, si lleva el ATD y la ruta de la página, en `~/mtah2027-salidas/`. Ábrela con
+  doble clic.
 - Si la página no abre el vídeo sola, te deja elegir `BAR-ATH_tactical.mp4` a mano.
 - `--margen` cambia los segundos de contexto alrededor de cada tramo (por defecto, 3). Dos tramos que se
   pisan se funden: si salen tramos largos con varias cosas dentro, vuelve a generarla con `--margen 1.5`.
@@ -48,6 +49,39 @@ python validation/partido/clips_ventana.py equipo_v3
 - El tramo se para solo al final. Lo cómodo: a ½ la primera vez y, en el momento del cambio, frame a
   frame.
 - Con prisa, marca «esconder los de solo borde» y mira primero los demás.
+
+## 3b. El ATD encima del vídeo
+
+Si el script encuentra el ATD, sus metadatos y la homografía, la página dibuja lo que ve nuestro pipeline,
+proyectado sobre la imagen con la homografía de cada frame:
+
+- **Jugadores:** un punto en los pies de cada uno, azul `H` y naranja `A`. Con `S`, el número de slot, para
+  ver cuándo un slot salta de un jugador a otro.
+- **Balón:** amarillo, con la estela de los 12 frames anteriores. Si el ATD no lo ve, un círculo
+  discontinuo donde lo vio por última vez.
+- **Líneas del campo,** en amarillo (`C`). **Primera comprobación:** tienen que caer sobre las pintadas. Si
+  van desplazadas, para y díselo a Claude, por ejemplo «unos 20 píxeles a la derecha».
+- **Minimapa** a la derecha: el campo visto desde arriba, orientado como lo ve la cámara.
+- **Debajo del vídeo:** si el ATD ve el balón, si lo ve fuera del campo y cuántos jugadores ve de cada equipo.
+- `T` enciende y apaga la capa. Para pantalla completa, usa la del navegador (`F11`): la del reproductor no
+  enseña la capa.
+
+**Lo que ya sabemos, para no confundirlo con un fallo:**
+- el balón del ATD llega unos 4 frames tarde respecto a los jugadores (medido por Antonio, PR 11);
+- viene suavizado, como con una media de 1 s, así que redondea los cambios bruscos (experimento 2);
+- le falta en el 41 % de los frames evaluados, sobre todo con el balón muerto (perfil del ATD, 14/11).
+
+**Qué mirar:**
+- **Balón fuera del campo:** ¿el ATD lo ve fuera o lo pierde al salir? Es lo que mira la capa
+  `dead_ball.ball_out` (D7).
+- **Dónde pierde el ATD el balón con el juego vivo:** por el aire, en el área llena, en las manos del
+  portero.
+- **Saltos falsos del balón,** a un sitio donde no está. Es lo que quita la limpieza de Antonio
+  (`ball.clean_v1`).
+- **Jugadores:** ¿más de 11 de un equipo (duplicados), jugadores que faltan, slots que se cambian de
+  jugador?
+- **En los bordes de las paradas:** ¿qué hacen los jugadores cuando pita el árbitro y cuando se saca?
+- Cuéntalo igual que antes: en general, sin minutos ni frames.
 
 ## 4. Qué mirar en cada tipo
 
