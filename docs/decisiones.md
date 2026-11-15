@@ -2857,3 +2857,31 @@ Decisión: ninguna. B5 sigue en la entrega. Cambiar a B9 sería una decisión de
 **Decisión de Ismael (15/11): «Me quedo con B5».** B9 queda apagado en `possession/aprendida.py`, fuera de
 `pipeline.PIECES`, y no se genera ninguna entrega de prueba con él. Se le recomendó así porque B9 no gana ni en
 SkillCorner ni con el control, y la GT pública no apunta al flag.
+
+### 2026-11-15 · candidatos · se prueba un empujón al equipo de la fase en los contraataques, como opción apagada
+
+Quién: Ismael. A la pregunta de si Antonio preparaba la opción de las transiciones, apagada, contestó (15/11):
+«si a todo».
+
+Por qué, con los números de la PR 13 de Antonio (`validation/resultados/2026-11-15_fases_smart_tagging.md`,
+agregados del partido con `equipo_v3`):
+- en los frames de control claro, la etiqueta de «Attacking Transition» coincide con el equipo que tiene el
+  balón en el 93,1 %;
+- en 19 de los 24 inicios seguimos con el otro equipo, y en 17 tardamos de 2 a 10 s en cambiar;
+- dentro de esas fases vamos con el equipo equivocado en 3.365 frames (36,2 %).
+
+Antonio proponía cerrar: con la cota de la DFL (`validation/posesiones_cortas/BITACORA.md`, pista de
+transiciones), una pista así daría como mucho de +0,02 a +0,03, por debajo del +0,03 de §5.8. Se prueba de
+todos modos porque ese umbral es para medidas del harness, el mecanismo está comprobado en el partido y en
+esa cota ninguna combinación hacía daño. La ganancia esperada es pequeña (en torno a +0,01 o +0,02) y no se
+puede medir en otros partidos, que no tienen Smart Tagging.
+
+Qué se hace:
+- Antonio escribe una función nueva en `possession/` que suma un peso a la columna del equipo de la fase
+  durante los primeros segundos de cada «Attacking Transition». Un solo peso y un solo tope, escritos y
+  razonados antes de generar nada.
+- La sesión de integración la enchufa como capa de prueba (`--capa`), sin tocar `pipeline.PIECES`.
+- Ismael genera la entrega de prueba, la compara con `equipo_v3` (`validation/partido/comparar_entregas.py`)
+  y la valida.
+
+Cómo termina: como una opción apagada con su comparación. Encenderla es una decisión aparte.
