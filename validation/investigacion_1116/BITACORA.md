@@ -309,3 +309,45 @@ y en el 91,7 % de las de córner (agregados del 14/11).
 **Regla de lectura, antes de medir.** «Hay candidato para Manuel y Ana» si, en los tipos «banda» y «córner» juntos,
 el ancla queda a ±12 frames del final real en el 50 % o más de las paradas y en 15 puntos más que Ê, con al menos 60
 paradas. Si solo lo cumple un tipo, se dice cuál. Si no, se cierra.
+
+## S7. Cribado de señales [medido]
+
+Salidas: `salidas/2026-11-16_s7_cribado_dfl.md` y `salidas/2026-11-16_s7_cribado_skillcorner.md`.
+
+**Con la regla: ninguna señal de equipo añade, y ninguna de `D`.** La columna que decide es «+ B5: Δ en Z1 ∪ Z2»
+(puntos de acierto por frame, fuera de muestra):
+
+| señal | DFL flag | DFL control | DFL control, 4 tarde | SkillCorner | ¿añade? |
+|---|---|---|---|---|---|
+| R2 dirección del balón (B9, ya medida) | +6,27 | +2,75 | +2,22 | −0,01 | no: solo en la DFL, como B9 |
+| S14 dos contactos seguidos (circular) | +0,98 | +0,40 | +0,52 | +0,68 | no |
+| S18 línea defensiva más alta | +0,87 | −0,08 | −0,09 | +0,46 | no |
+| S11 el balón frena junto a un jugador | +0,65 | +0,50 | +0,57 | +0,39 | no |
+| S3 mayoría a 3 m | +0,16 | −0,10 | −0,10 | +0,55 | no |
+| S15 el más ancho | −0,50 | −0,23 | −0,38 | −0,28 | no |
+| S17 el de más área | −0,26 | +0,10 | −0,02 | −0,19 | no |
+| **B5 + todas las señales a la vez** | +8,20 | +3,74 | +3,68 | +2,08 | – (cota) |
+
+- **Lo que más enseña:** la anchura (S15) y el área (S17) aciertan el 87–91 % de los frames de juego, más que el más
+  cercano, pero dentro de las posesiones que perdemos aciertan solo el 12–27 %. Son señales lentas: dicen el equipo
+  que llevaba un rato con el balón, justo el fallo de B5. Lo mismo, en menor grado, la mayoría a 10 m y la línea
+  defensiva.
+- **Las señales del toque** (balón lento, que se mueve con un jugador, que frena) aciertan mucho cuando opinan (83–93
+  %), pero opinan poco y casi siempre donde B5 ya acierta.
+- **La dirección del balón** es la única que rescata mucho (+6 puntos con el flag), pero no hace nada en SkillCorner:
+  es lo que ya dijo B9.
+- **La cota** (todas a la vez, en una regresión): +2 puntos en SkillCorner y +3,7 con el control, por frame. Es del
+  orden de lo que ya dio la red de una capa de la fase 3, que no movió el `spellF1`.
+- **Balón muerto:** D1 rescata el 15 % y estropea el 13 %, y dice `D` en el 14 % del juego; el frenazo y el arranque
+  colectivos opinan en el 5–7 % de Z3 y aciertan el 56–62 %. Nada pasa la regla.
+- Con el balón 4 frames tarde no cambia nada de esto.
+
+## S8. El final de la parada por la geometría del saque [medido]
+
+| tipo | paradas | pieza de estado a ±12 / ±25 | ancla a ±12 / ±25 | mediana del error del ancla |
+|---|---|---|---|---|
+| banda | 251 | 37 % / 58 % | 27 % / 46 % | −13 frames |
+| córner | 32 | 28 % / 53 % | 3 % / 28 % | +33 |
+
+**Con la regla: no.** El ancla fecha peor que la pieza de estado. El que saca de banda vuelve a entrar en el campo
+antes de que la parada acabe en las etiquetas, y el de córner se queda junto al banderín después de sacar. Se cierra.
