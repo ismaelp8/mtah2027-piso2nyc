@@ -17,12 +17,26 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
   ancla y decide el decodificador.
 - **El hueco sin balón antes de cada reinicio** (idea de Ismael): puntuación blanda de `D` desde que se
   pierde el balón hasta el inicio de la ventana `SET PIECES`.
+- **El instante del reinicio** (15/11): ancla blanda del fin del `D` de cada ventana `SET PIECES`, en un
+  desfase fijo desde su inicio, por tipo, con dos candidatos (alargar el `D` del hueco hasta el instante,
+  o empujar a los dos lados del instante). Medida el 15/11 con su regla: no entra ninguno, porque ningún tipo
+  de reinicio tiene un instante fijo (docs/decisiones.md, 15/11, «el instante del reinicio»). Queda fuera de
+  `evidence`, programada y probada, para una repetición.
+- **El juego vivo en el saque de cada parte** (tarea 4 del plan, 15/11): en el frame del saque no se permite
+  `D`, porque desde ese frame el balón está en juego. Son los mismos frames de saque que el tramo antes del
+  saque, así que las dos anclas se tocan sin pisarse: el tramo acaba en el frame anterior.
+- **D7, el balón visto fuera del campo** (Ismael, 15/11; la tarea 2 del plan): `ball_out` y `ball_out_hold`,
+  dos capas apagadas que `evidence` no llama. Se probaron con sus reglas y se quedaron apagadas
+  (docs/decisiones.md, 15/11, «D7»).
 
-**En `evidence` van la primera** (un ancla dura: en esos frames solo se permite `D`) **y la tercera**
-(GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla apuntada en docs/decisiones.md antes de
-medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por Manuel el 15/11). De gol a saque está
-programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol (las ventanas
-`GOALS` parecen llegar hasta el saque [inferencia]).
+**En `evidence` van la primera y la del saque** (anclas duras: en el tramo antes del saque solo se permite `D`,
+y en el frame del saque, `D` no) **y la tercera** (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla
+apuntada en docs/decisiones.md antes de medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por
+Manuel el 15/11). La del saque entra solo si pasa su propia regla, escrita antes de regenerar la entrega y
+pendiente de ejecutar (docs/decisiones.md, 15/11, «juego vivo en el saque»;
+`validation/partido/agregados_saque_juego_vivo.py`): esta rama no se mergea hasta aplicarla. De
+gol a saque está programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol
+(las ventanas `GOALS` parecen llegar hasta el saque [inferencia]).
 
 Lo que se probó y lo que se midió está en docs/decisiones.md y en validation/resultados/
 (2026-11-12_balon_muerto_atd.md, 2026-11-13_revision_balon_muerto.md, 2026-11-14_agregados_balon_muerto.md
@@ -60,6 +74,19 @@ def pre_kickoff(game=games.GAME):
         kickoff = KICKOFF_VIDEO_FRAMES[HALF_NAMES[half]]
         if kickoff > first:
             mask[first:kickoff] = True
+    return mask
+
+
+def kickoff_mask(game=games.GAME):
+    """Máscara con el frame del saque de cada parte, donde el balón ya está en juego: los de FAQ.md
+    (KICKOFF_VIDEO_FRAMES), solo los que caen en un tramo evaluado."""
+    if game != KICKOFF_GAME:
+        raise ValueError("los frames de saque solo son de {}, no de {}".format(KICKOFF_GAME, game))
+    mask = np.zeros(games.GAMES[game]["n_video_frames"], dtype=bool)
+    for half, first, last in games.half_video_blocks(game):
+        kickoff = KICKOFF_VIDEO_FRAMES[HALF_NAMES[half]]
+        if first <= kickoff <= last:
+            mask[kickoff] = True
     return mask
 
 
@@ -227,7 +254,8 @@ def evidence(trk, paths=None, game=games.GAME):
     """Lo que este módulo aporta al pipeline, con la interfaz común: `(score, allowed)`, de forma (n, 3).
 
     Columnas en el orden `H`, `A`, `D` (possession/tracking.py). En los frames de `dead_mask` solo se
-    permite `D`. Con `paths`, además, suma GAP_SCORE en la columna `D` en el hueco sin balón antes de cada
+    permite `D`, y en el frame del saque de cada parte (`kickoff_mask`), `D` no. Con `paths`, además, suma
+    GAP_SCORE en la columna `D` en el hueco sin balón antes de cada
     reinicio cuya ventana empieza en un tramo evaluado (gaps_before_restarts; las mismas ventanas que midió
     validation/partido/agregados_dead_ball.py), con el balón de `trk`, que el pipeline ya ha limpiado. No
     prohíbe nada más.
@@ -247,6 +275,7 @@ def evidence(trk, paths=None, game=games.GAME):
         raise ValueError("la máscara de D tiene {} frames y el tracking {}".format(len(mask), n))
     allowed[mask, H] = False
     allowed[mask, A] = False  # ni H ni A: solo D
+    allowed[kickoff_mask(game), D] = False  # en el saque el balón ya está en juego (no choca: el tramo acaba antes)
     if paths is not None:
         fps = games.GAMES[game]["fps"]
         events = smart_tagging_events(paths["smart_tagging"], fps)
@@ -337,4 +366,84 @@ def ball_out_hold(trk):
             hold_end = first + end + int(back[0]) - BALL_OUT_TAIL
             if hold_end > first + start:
                 score[first + start:hold_end, D] = BALL_OUT_SCORE
+    return score, allowed
+
+
+# -- El instante del reinicio (15/11). Medido con su regla el 15/11: no entra ninguno. Fuera de `evidence`.
+
+# La capa lleva el fin del `D` de cada ventana `SET PIECES` a un instante fijo desde su inicio, uno por tipo de
+# reinicio, que sale de validation/partido/agregados_instante_reinicio.py con la regla de docs/decisiones.md
+# (15/11, «el instante del reinicio»). Hay dos candidatos, y la regla decide cuál entra, o ninguno:
+# - BRIDGE (el candidato 1, «B»): solo en las ventanas con hueco (las que puntúa la capa del hueco),
+#   +ANCHOR_SCORE en `D` desde el inicio de la ventana hasta el instante. Alarga el `D` del hueco.
+# - BOTH_SIDES (el candidato 2, «A»): en todas las ventanas del tipo. En las que tienen hueco, lo mismo que
+#   BRIDGE; en las demás, el empuje a `D` no empieza en el inicio de la ventana, sino PUSH_BEFORE_S antes del
+#   instante. Y en todas, −ANCHOR_SCORE en `D` durante los PUSH_AFTER_S siguientes.
+# Blandos y cortos, para que un instante mal puesto cueste poco: la escala que tenía GAP_SCORE el 15/11 (1 por
+# frame) y nada prohibido. Sin ajustar y fijos por la regla: la capa no corre en la DFL, así que nadie puede medir su
+# escala.
+ANCHOR_SCORE = 1.0  # la escala de GAP_SCORE el 15/11; fijada por la regla: si cambia GAP_SCORE, esta no cambia
+PUSH_BEFORE_S = 3
+PUSH_AFTER_S = 3
+BRIDGE, BOTH_SIDES = "B", "A"
+
+
+def next_restart(events, window):
+    """Inicio del siguiente `GOALS` o `SET PIECES` de cualquier tipo, contando los que empiezan en el mismo
+    frame que `window` (sin contarla a ella); np.inf si no hay ninguno."""
+    return min([e["start"] for e in events if e["code"] in (GOALS_CODE, SET_PIECES_CODE)
+                and e is not window and e["start"] >= window["start"]] + [np.inf])
+
+
+def restart_anchor_spans(events, anchors, blocks):
+    """[(ventana, inicio, instante, corte)] para las ventanas de restart_windows(events) (nunca los saques
+    iniciales) cuyo tipo tiene ancla y que empiezan en un tramo evaluado (`blocks`, con el fin sin incluir).
+    `anchors` es {tipo: frames desde el inicio de la ventana}.
+
+    El instante es inicio + anchors[tipo]. El corte es el inicio del siguiente `GOALS` o `SET PIECES`, de
+    cualquier tipo (next_restart); si el instante no cae antes de él, la ventana no entra."""
+    spans = []
+    for window in restart_windows(events):
+        start = window["start"]
+        if window["type"] not in anchors or not any(first <= start < stop for first, stop in blocks):
+            continue
+        cut = next_restart(events, window)
+        instant = start + int(anchors[window["type"]])
+        if not start <= instant < cut:
+            continue
+        spans.append((window, start, instant, cut))
+    return spans
+
+
+def restart_anchor_pushes(bx, by, events, anchors, modes, blocks, fps):
+    """[(ventana, con hueco, desde, instante, hasta)] de la capa: +ANCHOR_SCORE en `D` en [desde, instante) y
+    −ANCHOR_SCORE en [instante, hasta), que con BRIDGE está vacío.
+
+    `modes` es {tipo: BRIDGE o BOTH_SIDES}; un tipo con ancla y sin modo no entra. «Con hueco» es que la capa
+    del hueco puntúa esa ventana (gaps_before_restarts, con el balón `bx`, `by`). El empuje después del
+    instante se corta en el siguiente reinicio."""
+    unknown = set(modes.values()) - {BRIDGE, BOTH_SIDES}
+    if unknown:
+        raise ValueError("modos desconocidos: {}".format(sorted(unknown)))
+    gap_windows = [w for w, _, span in gaps_before_restarts(bx, by, events, fps) if span is not None]
+    pushes = []
+    for window, start, instant, cut in restart_anchor_spans(events, anchors, blocks):
+        mode = modes.get(window["type"])
+        has_gap = any(w is window for w in gap_windows)
+        if mode is None or (mode == BRIDGE and not has_gap):
+            continue
+        first = start if has_gap else max(start, instant - PUSH_BEFORE_S * fps)
+        stop = int(min(instant + PUSH_AFTER_S * fps, cut)) if mode == BOTH_SIDES else instant
+        pushes.append((window, has_gap, first, instant, stop))
+    return pushes
+
+
+def restart_anchor_evidence(trk, events, anchors, modes):
+    """`(score, allowed)` de la capa, con los tramos de restart_anchor_pushes. No prohíbe nada."""
+    n = len(trk.bx)
+    score, allowed = no_evidence(n)
+    for _, _, first, instant, stop in restart_anchor_pushes(trk.bx, trk.by, events, anchors, modes, trk.blocks,
+                                                             trk.fps):
+        score[max(first, 0):max(min(instant, n), 0), D] += ANCHOR_SCORE
+        score[max(instant, 0):max(min(stop, n), 0), D] -= ANCHOR_SCORE
     return score, allowed
