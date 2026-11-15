@@ -66,8 +66,13 @@ SHARP_S = 1.0
 SHARP_NUM, SHARP_DEN = 4, 5  # el 80 %, en enteros para que la frontera no dependa de la coma flotante
 # 2. el modelo de Ana está de acuerdo a los dos lados del instante (dead_ball.PUSH_BEFORE_S antes y
 #    dead_ball.PUSH_AFTER_S después), con el criterio del punto medio de la capa del hueco, por separado en
-#    las ventanas con hueco y en las demás, con 5 ventanas o más en cada grupo;
-# 3. el placebo (los mismos instantes en las ventanas desplazadas, 5 o más) no pasa el punto 2.
+#    las ventanas con hueco y en las demás, con 5 ventanas o más en cada grupo. El control de D es el tramo
+#    antes del saque de la 2ª parte (D según el FAQ); el de juego, los frames evaluados a más de PLAY_FAR_S de
+#    cualquier GOALS o SET PIECES, el mismo horizonte que dead_ball.MAX_GAP_BEFORE_RESTART_S. El balón
+#    deprisa no vale: no separa D de juego en este partido (docs/decisiones.md, 15/11, «fronteras»);
+# 3. el placebo (los mismos instantes en las ventanas desplazadas, todas juntas y 5 o más) no pasa el
+#    punto medio del punto 2.
+PLAY_FAR_S = 60
 GAP_GROUP, OTHER_GROUP = "con hueco", "sin hueco"
 BACK, SEEN_AT_START, NOT_BACK = "vuelve a verse", "visto al empezar", "no vuelve"
 
@@ -230,6 +235,41 @@ def ana_agrees(before, after, g_match, g_dead, g_play):
                 and after <= (g_match + g_play) / 2)
 
 
+def far_from_restarts(events, graded, fps):
+    """Frames de `graded` a más de PLAY_FAR_S de cualquier ventana `GOALS` o `SET PIECES` (antes de su inicio
+    o después de su fin): el control de juego del punto medio de A."""
+    far = graded.copy()
+    for e in events:
+        if e["code"] in (dead_ball.GOALS_CODE, dead_ball.SET_PIECES_CODE):
+            far[max(e["start"] - PLAY_FAR_S * fps, 0):max(e["end"] + PLAY_FAR_S * fps, 0)] = False
+    return far
+
+
+def a_conditions(t, kind, anchor, spans, gap_windows, shifted, odds, n, fps, controls):
+    """Las tres condiciones del candidato A en un tipo con ancla. `t` es su entrada de by_type; `spans`, los de
+    dead_ball.restart_anchor_spans; `gap_windows`, las ventanas que puntúa la capa del hueco; `shifted`, las de
+    placebo_windows; `controls`, las proporciones de D del modelo de Ana (partido, control de D, control de
+    juego)."""
+    instants = {GAP_GROUP: [], OTHER_GROUP: []}
+    for window, _, instant, _ in spans:
+        if window["type"] == kind:
+            instants[GAP_GROUP if any(w is window for w in gap_windows) else OTHER_GROUP].append(instant)
+    sides = {}
+    for group, group_instants in instants.items():
+        before, after = side_shares(odds, group_instants, n, fps)
+        sides[group] = {"n": len(group_instants), "before": before, "after": after,
+                        "ok": len(group_instants) >= MIN_CASES_PER_TYPE and ana_agrees(before, after, *controls)}
+    shifted_instants = [w["start"] + anchor for w in shifted if w["type"] == kind]
+    before, after = side_shares(odds, shifted_instants, n, fps)
+    placebo = {"n": len(shifted_instants), "before": before, "after": after,
+               "passes": ana_agrees(before, after, *controls)}
+    a = {"sharp": sharp(t["transitions"], t["n"], fps), "sharp_count": sharp_count(t["transitions"], fps),
+         "sides": sides, "placebo": placebo}
+    a["ok"] = (a["sharp"] and all(s["ok"] for s in sides.values())
+               and placebo["n"] >= MIN_CASES_PER_TYPE and not placebo["passes"])
+    return a
+
+
 def runs(codes, blocks):
     """(posesiones, paradas) en los tramos evaluados."""
     possessions = stops = 0
@@ -300,9 +340,11 @@ def try_layer(trk, clean, events, anchors, modes, without, conflicts_without, de
     before, after = np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
     near, split = [0, 0], 0
     for window, _, first, instant, stop in pushes:
+        cut = dead_ball.next_restart(events, window)
         before[first:instant] = True
-        after[instant:stop] = True
-        end = harm_stop(window, dead_ball.next_restart(events, window), stop, fps)
+        # el «después» que se describe es el mismo tramo en los dos modos, aunque B no empuje ahí
+        after[instant:int(min(instant + dead_ball.PUSH_AFTER_S * fps, cut))] = True
+        end = harm_stop(window, cut, stop, fps)
         split += worse(without, with_layer, window["start"], end)
         for i, codes in enumerate((without, with_layer)):
             frame = last_exit(codes, window["start"], end)
@@ -380,34 +422,16 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
     m.update(by_type=by_type, anchors=anchors)
 
     # 3a. Las condiciones del candidato A, por tipo con ancla
-    fast = seen & graded & (agg.ball_speed(clean.bx, clean.by) >= agg.FAST_BALL_MS)
     g_match, g_dead = agg.dead_share(odds, graded), agg.dead_share(odds, dead_ball.pre_kickoff(game) & graded)
-    g_play = agg.dead_share(odds, fast)
+    g_play = agg.dead_share(odds, far_from_restarts(events, graded, fps))
     m.update(g_match=g_match, g_dead=g_dead, g_play=g_play)
     gap_windows = [w for w, _, span in dead_ball.gaps_before_restarts(clean.bx, clean.by, events, fps)
                    if span is not None]
-    spans = dead_ball.restart_anchor_spans(events, anchors, trk.blocks, fps)
+    spans = dead_ball.restart_anchor_spans(events, anchors, trk.blocks)
     shifted = placebo_windows(events, trk.blocks, fps)
     for kind, anchor in anchors.items():
-        t = by_type[kind]
-        instants = {GAP_GROUP: [], OTHER_GROUP: []}
-        for window, _, instant, _ in spans:
-            if window["type"] == kind:
-                instants[GAP_GROUP if any(w is window for w in gap_windows) else OTHER_GROUP].append(instant)
-        sides = {}
-        for group, group_instants in instants.items():
-            before, after = side_shares(odds, group_instants, n, fps)
-            sides[group] = {"n": len(group_instants), "before": before, "after": after,
-                            "ok": len(group_instants) >= MIN_CASES_PER_TYPE
-                            and ana_agrees(before, after, g_match, g_dead, g_play)}
-        shifted_instants = [w["start"] + anchor for w in shifted if w["type"] == kind]
-        before, after = side_shares(odds, shifted_instants, n, fps)
-        placebo_a = {"n": len(shifted_instants), "before": before, "after": after,
-                     "passes": ana_agrees(before, after, g_match, g_dead, g_play)}
-        t["a"] = {"sharp": sharp(t["transitions"], t["n"], fps), "sharp_count": sharp_count(t["transitions"], fps),
-                  "sides": sides, "placebo": placebo_a}
-        t["a"]["ok"] = (t["a"]["sharp"] and all(s["ok"] for s in sides.values())
-                        and placebo_a["n"] >= MIN_CASES_PER_TYPE and not placebo_a["passes"])
+        by_type[kind]["a"] = a_conditions(by_type[kind], kind, anchor, spans, gap_windows, shifted, odds, n, fps,
+                                         (g_match, g_dead, g_play))
 
     # 3b. Los candidatos en el pipeline: A (con A en los tipos que lo cumplen y B en los demás) si algún tipo
     # cumple A; si no entra, B en todos los tipos con ancla; si no, ninguno.
@@ -438,6 +462,11 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
     changed = graded & (no_gap != without)
     m.update(gap_changed=int(changed.sum()), gap_changed_first=int((changed & first).sum()))
     return m
+
+
+def masked_share(value, k):
+    """Una proporción para imprimir, o «—» si sale de menos de 5 ventanas: serían paradas sueltas."""
+    return "—" if k < MIN_CASES_PER_TYPE else agg.share(value)
 
 
 def yes(flag):
@@ -512,8 +541,8 @@ def main():
 
     print("\n3. Los dos candidatos de la capa")
     print("   modelo de Ana, D en: partido {}   control de D (antes del saque de la 2ª parte) {}   control de juego"
-          " (balón a ≥ {:g} m/s) {}".format(agg.share(m["g_match"]), agg.share(m["g_dead"]), agg.FAST_BALL_MS,
-                                         agg.share(m["g_play"])))
+          " (a más de {} s de cualquier reinicio) {}".format(agg.share(m["g_match"]), agg.share(m["g_dead"]),
+                                                           PLAY_FAR_S, agg.share(m["g_play"])))
     print("   puntos medios: parado antes si ≥ {}   juego después si ≤ {}".format(
         agg.share((m["g_match"] + m["g_dead"]) / 2), agg.share((m["g_match"] + m["g_play"]) / 2)))
     for kind in m["anchors"]:
@@ -523,10 +552,11 @@ def main():
             100 * SHARP_NUM // SHARP_DEN))
         for group, s in a["sides"].items():
             print("      Ana, ventanas {} (n={}): antes {}   después {}   -> de acuerdo {}".format(
-                group, cases(s["n"]), agg.share(s["before"]), agg.share(s["after"]), yes(s["ok"])))
+                group, cases(s["n"]), masked_share(s["before"], s["n"]), masked_share(s["after"], s["n"]),
+                yes(s["ok"])))
         p = a["placebo"]
         print("      placebo (n={}): antes {}   después {}   -> pasa {}".format(
-            cases(p["n"]), agg.share(p["before"]), agg.share(p["after"]), yes(p["passes"])))
+            cases(p["n"]), masked_share(p["before"], p["n"]), masked_share(p["after"], p["n"]), yes(p["passes"])))
         print("      -> cumple A: {}".format(yes(a["ok"])))
     if not m["anchors"]:
         print("   ningún tipo tiene ancla: no se prueba ningún candidato")

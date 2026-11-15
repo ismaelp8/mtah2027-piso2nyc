@@ -2069,7 +2069,8 @@ Regla de lectura, fijada antes de ejecutarlo:
 - **El ancla** es la mediana de la transición, en frames desde el inicio de la ventana.
 - **Los dos candidatos de la capa** (mensaje de Ismael del 15/11: «ni A ni B a ciegas»):
   - **comunes a los dos:**
-    - empuje blando y corto, con la misma escala que `GAP_SCORE` (1 por frame), sin prohibir nada;
+    - empuje blando y corto, con la escala que tenía `GAP_SCORE` el 15/11 (1 por frame), sin prohibir nada.
+      Queda fijada por esta regla: si `GAP_SCORE` cambia, esta no cambia sola;
     - se cortan en el siguiente `GOALS` o `SET PIECES`;
     - una ventana no recibe nada si el instante cae en ese corte o después, o si otro reinicio empieza en
       el mismo frame;
@@ -2092,8 +2093,12 @@ Regla de lectura, fijada antes de ejecutarlo:
      - se compara con tres proporciones de `D` del modelo de Ana:
        - la del partido, en lo evaluado;
        - la del control de `D`: el tramo antes del saque de la 2ª parte, `D` según el FAQ;
-       - la del control de juego: los frames con el balón a 5 m/s o más, el umbral de «balón deprisa» de
-         la capa del hueco (fijado el 14/11);
+       - la del control de juego: los frames evaluados a más de 60 s de cualquier `GOALS` o `SET PIECES`
+         (antes de su inicio o después de su fin). Es el mismo horizonte que el hueco más largo de la capa
+         del hueco, y no usa etiquetas. Incluye paradas que el Smart Tagging no marca (solo trae 5 faltas),
+         así que es un control de juego imperfecto: si no queda por debajo del partido, el instrumento no
+         separa y A no entra. El balón deprisa no sirve: no separa `D` de juego en este partido (46,7 % frente
+         a 50,5 %, entrada «fronteras y anclas» del 15/11);
      - el instrumento tiene que separar: el control de `D` por encima del partido y el control de juego por
        debajo;
      - en los 3 s anteriores al instante, la proporción de `D` queda en el punto medio entre el partido y el
@@ -2103,8 +2108,8 @@ Regla de lectura, fijada antes de ejecutarlo:
        hasta el inicio. Cada grupo necesita 5 ventanas o más, y los dos tienen que cumplirlo: las segundas
        son las que A añade y las de más riesgo.
   3. **El placebo no pasa:** se toman los mismos instantes en las ventanas desplazadas del placebo de
-     arriba, 5 o más. Si ahí el modelo de Ana también cumple el punto 2, el acuerdo de las ventanas reales no
-     dice nada.
+     arriba, todas juntas (sin separar por grupos) y 5 o más. Si ahí la proporción de `D` también cumple el
+     punto medio a los dos lados, el acuerdo de las ventanas reales no dice nada.
 - **La condición de daño** de cada candidato que se prueba, con el pipeline de la entrega sin la capa y con
   ella:
   - ningún frame con piezas en conflicto;
@@ -2153,6 +2158,10 @@ Regla de lectura, fijada antes de ejecutarlo:
     (lo que pidió Ismael);
   - las proporciones de `D` del modelo de Ana a cada lado del instante, por grupo y en el placebo.
 - **Lo que espero [inferencia]:**
+  - **Con los recuentos ya medidos** (15/11, entrada «fronteras y anclas»: con hueco, banda 13 de 26, córner
+    11 de 12, saque de puerta 2 de 10), A solo puede entrar en los saques de banda. Los córners tienen
+    1 ventana sin hueco y los saques de puerta 2 con hueco, menos de 5 en un grupo: en ellos A no entra, y
+    como mucho reciben B. En los saques de banda es justo donde el modelo de Ana ve peor la parada.
   - Con 10 ventanas como mínimo, solo pueden tener ancla los saques de banda (26), los córners (12) y los
     saques de puerta (10, y tendrían que tener transición las 10). Las faltas (5) nunca.
   - Los saques de banda y de puerta pueden quedarse sin ancla. Antes de ellos la velocidad media de los
@@ -2173,7 +2182,8 @@ Regla de lectura, fijada antes de ejecutarlo:
     ese caso la capa apenas movería nada, así que perderla cuesta poco.
   - **Que el acuerdo del modelo de Ana en A sea independiente.** El instante sale de la transición del
     propio modelo, así que el punto 2 está en parte a favor por construcción. Lo que añade es mirarlo por
-    grupos (con hueco y sin él) y frente al placebo.
+    grupos (con hueco y sin él). El placebo aporta poco aquí: en instantes al azar las proporciones de antes
+    y de después se parecen a la del partido, así que casi nunca pasa.
   - **Que la transición sea la de esa parada.** Es la primera que aparece. Si el modelo no llega a decir
     «parado» en la ventana, puede coger un repunte suelto. Eso se ve en la dispersión: un tipo con
     transiciones así no pasa el recorrido de 2 s.
@@ -2192,12 +2202,18 @@ Regla de lectura, fijada antes de ejecutarlo:
   - la condición de daño;
   - los empujes de cada candidato en las ventanas con hueco y sin él, y sus cortes;
   - el 80 % justo, el segundo justo y el punto medio a cada lado;
+  - el control de juego (60 s antes y después de cada reinicio);
+  - las condiciones de A una a una: no se cumple con 4 ventanas en el placebo, con el placebo pasando, con 10
+    transiciones nítidas de 13 ventanas (77 %) ni con un grupo de 4; el placebo solo usa su tipo;
+  - que las proporciones de grupos de menos de 5 ventanas se impriman como «—»;
   - partidos de punta a punta (12 saques de banda, 6 con hueco y 6 con el balón a la vista):
     - con el instante nítido y el modelo de Ana de acuerdo: entra A, y lo que cambia cae después del
       instante;
     - con el instante borroso: entra B, que alarga el `D` del hueco y no toca las ventanas sin hueco;
     - con el modelo de Ana sin ver parado antes del instante en las ventanas sin hueco: entra B;
     - con el placebo de A pasando (aunque el de la transición no se concentre): entra B;
+    - con solo 2 ventanas sin hueco: ese grupo no puede avalar A, y entra B;
+    - sin ninguna ventana con hueco y con el instante borroso: B no recibe ninguna ventana y no entra nada;
     - con la parada partida en dos ventanas, y con una posesión nueva sin parada: A no entra y entra B;
     - con dos ventanas que ya tenían dos tramos de `D` sin la capa, que A no empeora: entra A;
     - con la entrega fuera de la banda: ninguno; justo en su borde (A la saca, B no): entra B;
@@ -2207,8 +2223,10 @@ Regla de lectura, fijada antes de ejecutarlo:
     - con 10 ventanas separadas 10 minutos: sin transiciones en el placebo hay ancla; con el placebo tan
       concentrado como las reales, no.
 
-  Romper la capa y el script a propósito (70 cambios, uno a uno, entre ellos los 8 que el revisor vio
-  pasar sin que fallara nada) hace fallar alguna prueba.
+  Romper la capa y el script a propósito (80 cambios, uno a uno, entre ellos los que las revisiones vieron
+  pasar sin que fallara nada) hace fallar alguna prueba. Uno más se dejó fuera porque no cambia nada:
+  medir la salida del `D` desde el primer empuje en vez de desde el inicio de la ventana. Esa salida quedaría
+  a más de 3 s del instante, y el umbral descriptivo es de 1 s.
 
 **Revisión antes de subirla (15/11).** El revisor encontró en la primera versión seis agujeros, y se
 arreglaron antes de ejecutar nada:
@@ -2229,11 +2247,41 @@ que el histograma de la tarea 3.
 **Mensaje de Ismael (15/11), antes de ejecutar: «ni A ni B a ciegas».** La primera versión tenía una sola
 forma de la capa (la que ahora es A, con 5 s después del instante). El plan del 15/11 describía otra (la que
 ahora es B). Ismael pidió escribir las dos como candidatos en la misma regla, con las condiciones de A y
-sus números antes de medir, y que decida la medida. Se añadió tal cual:
-- el «por ejemplo, el 80 %» queda fijado en el 80 %;
-- el máximo de cada lado, en 3 s;
-- el control de juego del punto medio, que la capa del hueco no tenía, es el «balón deprisa» de esa misma
-  capa.
+sus números antes de medir, y que decida la medida.
+
+**Para que Ismael las confirme antes de ejecutar,** estas son todas las interpretaciones de su mensaje:
+1. **El 80 %** («por ejemplo, el 80 %») queda fijado en el 80 %. Se cuenta sobre todas las ventanas del
+   tipo: las que no tienen transición cuentan como lejos. «A menos de 1 s» es estricto (24 frames sí, 25 no).
+2. **El máximo de cada lado** es de 3 s.
+3. **En las ventanas con hueco,** el empuje antes del instante no tiene ese máximo: empieza en el inicio de
+   la ventana y dura lo que el ancla, porque eso es «alargar el `D` del hueco hasta el instante». El máximo
+   de 3 s se aplica en las ventanas sin hueco y después del instante.
+4. **«Sin hueco»** es toda ventana que la capa del hueco no puntúa. Casi todas tienen el balón a la vista
+   hasta su inicio (23 de 25 el 15/11); las otras 2 tenían otro reinicio dentro del hueco.
+5. **Los dos grupos** (con hueco y sin él) necesitan 5 ventanas o más cada uno, y los dos tienen que
+   cumplir el punto medio. La alternativa sería dar A solo al grupo que lo cumple; no se hace. Con los
+   recuentos medidos, eso deja A solo para los saques de banda.
+6. **El control de juego** del punto medio, que la capa del hueco no tenía, son los frames a más de 60 s de
+   cualquier reinicio. La primera versión usaba el balón deprisa, que no separa `D` de juego en este
+   partido (lo vio la tercera revisión).
+7. **A y B se mezclan por tipo:** el candidato A lleva A en los tipos que lo cumplen y B en los demás. Si
+   ese candidato no pasa el daño, se prueba B en todos; no se prueba quitando A tipo a tipo.
+8. **El placebo de A** junta las ventanas desplazadas del tipo, sin separar por grupos, con 5 o más.
+9. **El recuento de antes y después del instante** usa en los dos candidatos el mismo tramo de después
+   (3 s), aunque B no empuje ahí.
+
+**Tercera revisión (15/11), antes de ejecutar:**
+- **El control de juego del punto medio era el balón deprisa,** que ya se había medido que no separa `D` de
+  juego en este partido. Además se atribuía mal: el umbral es de la prueba de gol a saque, no de la capa
+  del hueco. Ahora son los frames a más de 60 s de cualquier reinicio (punto 6 de arriba).
+- **Tres condiciones sin prueba que fallara si se rompían:** el mínimo de 5 ventanas del placebo de A, que el
+  80 % se cuente sobre todas las ventanas y que el placebo de A use solo su tipo. Ahora las tres tienen
+  prueba (las condiciones de A van en una función, `a_conditions`).
+- **Lo impreso enseñaba las proporciones de grupos de menos de 5 ventanas.** Ahora salen como «—».
+- **Con B, la fila de «después del instante» salía siempre vacía.** Ahora el tramo de después es el mismo en
+  los dos candidatos.
+- Detalles: `restart_anchor_spans` ya no recibe `fps`, que no usaba, y `ANCHOR_SCORE` es 1 fijo, no un alias
+  de `GAP_SCORE`.
 
 **Segunda revisión (15/11), también antes de subirla y de ejecutar nada:**
 - **La condición de daño contaba como parada partida el paso de 0 a 1 tramos de `D`.** Es justo lo que hace la

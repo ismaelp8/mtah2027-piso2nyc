@@ -271,10 +271,10 @@ def evidence(trk, paths=None, game=games.GAME):
 # - BOTH_SIDES (el candidato 2, «A»): en todas las ventanas del tipo. En las que tienen hueco, lo mismo que
 #   BRIDGE; en las demás, el empuje a `D` no empieza en el inicio de la ventana, sino PUSH_BEFORE_S antes del
 #   instante. Y en todas, −ANCHOR_SCORE en `D` durante los PUSH_AFTER_S siguientes.
-# Blandos y cortos, para que un instante mal puesto cueste poco: la misma escala que GAP_SCORE (1 por frame) y
-# nada prohibido. Sin ajustar y fijos por la regla: la capa no corre en la DFL, así que nadie puede medir su
+# Blandos y cortos, para que un instante mal puesto cueste poco: la escala que tenía GAP_SCORE el 15/11 (1 por
+# frame) y nada prohibido. Sin ajustar y fijos por la regla: la capa no corre en la DFL, así que nadie puede medir su
 # escala.
-ANCHOR_SCORE = GAP_SCORE
+ANCHOR_SCORE = 1.0  # la escala de GAP_SCORE el 15/11; fijada por la regla: si cambia GAP_SCORE, esta no cambia
 PUSH_BEFORE_S = 3
 PUSH_AFTER_S = 3
 BRIDGE, BOTH_SIDES = "B", "A"
@@ -287,14 +287,13 @@ def next_restart(events, window):
                 and e is not window and e["start"] >= window["start"]] + [np.inf])
 
 
-def restart_anchor_spans(events, anchors, blocks, fps):
+def restart_anchor_spans(events, anchors, blocks):
     """[(ventana, inicio, instante, corte)] para las ventanas de restart_windows(events) (nunca los saques
     iniciales) cuyo tipo tiene ancla y que empiezan en un tramo evaluado (`blocks`, con el fin sin incluir).
     `anchors` es {tipo: frames desde el inicio de la ventana}.
 
     El instante es inicio + anchors[tipo]. El corte es el inicio del siguiente `GOALS` o `SET PIECES`, de
-    cualquier tipo (next_restart); si el instante no cae antes de él, la ventana no entra. `fps` no se usa:
-    está por simetría con restart_anchor_pushes."""
+    cualquier tipo (next_restart); si el instante no cae antes de él, la ventana no entra."""
     spans = []
     for window in restart_windows(events):
         start = window["start"]
@@ -320,7 +319,7 @@ def restart_anchor_pushes(bx, by, events, anchors, modes, blocks, fps):
         raise ValueError("modos desconocidos: {}".format(sorted(unknown)))
     gap_windows = [w for w, _, span in gaps_before_restarts(bx, by, events, fps) if span is not None]
     pushes = []
-    for window, start, instant, cut in restart_anchor_spans(events, anchors, blocks, fps):
+    for window, start, instant, cut in restart_anchor_spans(events, anchors, blocks):
         mode = modes.get(window["type"])
         has_gap = any(w is window for w in gap_windows)
         if mode is None or (mode == BRIDGE and not has_gap):

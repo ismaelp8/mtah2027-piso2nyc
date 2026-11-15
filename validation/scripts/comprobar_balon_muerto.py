@@ -516,9 +516,9 @@ def check_restart_instant(game, folder):
           (air.SUSTAIN_S, air.SEARCH_AFTER_S, air.MIN_WINDOWS, air.MAX_IQR_S, air.MIN_BALL, air.MAX_AGREE_S,
            air.MIN_CASES_PER_TYPE, air.PLACEBO_SHIFTS_S, air.BAND_D, air.MAX_STOPS, air.NEAR_S,
            air.FIRST_SECONDS_S, air.OFF_DURATION_S, air.GAP_D_EDGES_S, air.SHARP_S, air.SHARP_NUM, air.SHARP_DEN,
-           air.agg.FAST_BALL_MS)
+           air.PLAY_FAR_S)
           == (2, 10, 10, 2.0, 5, 1.0, 5, (-480, -360, -240, 240, 360, 480), (0.15, 0.60), 250, 1.0, 5, 1.0,
-              (0, 1, 3, 5), 1.0, 4, 5, 5.0))
+              (0, 1, 3, 5), 1.0, 4, 5, 60))
     check("band_ok: del 15 al 60 % de D, ambos incluidos, y 250 paradas como mucho",
           air.band_ok(0.15, 250) and air.band_ok(0.60, 10) and not air.band_ok(0.1499, 10)
           and not air.band_ok(0.6001, 10) and not air.band_ok(0.3, 251))
@@ -583,13 +583,13 @@ def check_restart_instant(game, folder):
         return {"code": code, "type": kind, "team": "n/a", "start": start, "end": start + 35 * fps}
 
     anchors = {"throw-in": 10 * fps}
-    spans = dead_ball.restart_anchor_spans([window(w)], anchors, blocks, fps)
+    spans = dead_ball.restart_anchor_spans([window(w)], anchors, blocks)
     check("restart_anchor_spans: instante en el inicio más el ancla, y el corte en el siguiente reinicio",
           [(s, i, c) for _, s, i, c in spans] == [(w, w + 10 * fps, np.inf)])
-    cut = dead_ball.restart_anchor_spans([window(w), window(w + 12 * fps, "corner kick")], anchors, blocks, fps)
-    late = dead_ball.restart_anchor_spans([window(w), window(w + 8 * fps, code="goals")], anchors, blocks, fps)
-    equal = dead_ball.restart_anchor_spans([window(w), window(w + 10 * fps, "corner kick")], anchors, blocks, fps)
-    same = dead_ball.restart_anchor_spans([window(w), window(w, "corner kick")], anchors, blocks, fps)
+    cut = dead_ball.restart_anchor_spans([window(w), window(w + 12 * fps, "corner kick")], anchors, blocks)
+    late = dead_ball.restart_anchor_spans([window(w), window(w + 8 * fps, code="goals")], anchors, blocks)
+    equal = dead_ball.restart_anchor_spans([window(w), window(w + 10 * fps, "corner kick")], anchors, blocks)
+    same = dead_ball.restart_anchor_spans([window(w), window(w, "corner kick")], anchors, blocks)
     check("restart_anchor_spans: si el instante cae en el corte o después, o otro reinicio empieza en el mismo "
           "frame, la ventana no entra",
           [(s, i, c) for _, s, i, c in cut] == [(w, w + 10 * fps, w + 12 * fps)] and late == [] and equal == []
@@ -597,8 +597,8 @@ def check_restart_instant(game, folder):
     check("restart_anchor_spans: ni saques iniciales (aunque tengan ancla), ni tipos sin ancla, ni fuera de lo "
           "evaluado",
           dead_ball.restart_anchor_spans([window(w, "kick off (after goal)")], {"kick off (after goal)": 0},
-                                         blocks, fps) == []
-          and dead_ball.restart_anchor_spans([window(w, "corner kick"), window(100 * fps)], anchors, blocks, fps)
+                                         blocks) == []
+          and dead_ball.restart_anchor_spans([window(w, "corner kick"), window(100 * fps)], anchors, blocks)
           == [])
     alone, other = window(w), window(w + 50 * fps, code="goals")
     check("next_restart: el siguiente GOALS o SET PIECES (también en el mismo frame), o infinito",
@@ -612,10 +612,10 @@ def check_restart_instant(game, folder):
           and air.harm_stop(alone, np.inf, w + 15 * fps, fps) == w + 45 * fps
           and air.harm_stop(alone, np.inf, w + 40 * fps, fps) == w + 50 * fps
           and air.harm_stop(alone, w + 30 * fps, w + 15 * fps, fps) == w + 30 * fps)
-    check("la capa es la de la regla: 1 por frame (la escala de GAP_SCORE), 3 s antes del instante sin hueco y 3 s "
-          "después con A, sin ajustar",
-          (dead_ball.ANCHOR_SCORE, dead_ball.GAP_SCORE, dead_ball.PUSH_BEFORE_S, dead_ball.PUSH_AFTER_S)
-          == (1.0, 1.0, 3, 3) and (dead_ball.BRIDGE, dead_ball.BOTH_SIDES) == ("B", "A"))
+    check("la capa es la de la regla: 1 por frame (la escala que tenía GAP_SCORE), 3 s antes del instante sin "
+          "hueco y 3 s después con A, sin ajustar",
+          (dead_ball.ANCHOR_SCORE, dead_ball.PUSH_BEFORE_S, dead_ball.PUSH_AFTER_S) == (1.0, 3, 3)
+          and (dead_ball.BRIDGE, dead_ball.BOTH_SIDES) == ("B", "A"))
 
     # Los empujes de cada candidato. Una ventana con hueco (sin balón los 10 s de antes) y otra con el balón a
     # la vista hasta su inicio; el instante a los 10 s.
@@ -704,6 +704,44 @@ def check_restart_instant(game, folder):
           and air.candidates_for({"x": 1}, {"x": False}) == [("B", {"x": "B"})]
           and air.candidates_for({"x": 1}, {"x": False, "z": True}) == [("B", {"x": "B"})]
           and air.candidates_for({}, {}) == [])
+    far = air.far_from_restarts([{"code": "set pieces", "start": 300, "end": 400},
+                                 {"code": "goals", "start": 900, "end": 950}, {"code": "otro", "start": 600, "end": 610}],
+                                np.ones(1200, dtype=bool), 1)
+    check("far_from_restarts: el control de juego son los frames a más de 60 s de cualquier GOALS o SET PIECES",
+          far[239] and not far[240] and not far[459] and far[460] and far[600] and far[839] and not far[840]
+          and not far[1009] and far[1010] and int(far.sum()) == 1200 - 220 - 170)
+
+    def a_case(transitions=(100,) * 10, n_windows=10, gaps=5, shifted_types=("x",) * 5, fooled=False):
+        """Las condiciones de A con fps 1: 10 ventanas del tipo x cada 150 frames, el instante a 100, el modelo de
+        Ana parado 3 frames antes de cada instante y en juego después; en el placebo, en juego, salvo «fooled»."""
+        odds = np.full(3000, -1.0)
+        wins = [{"type": "x", "start": 10 + 150 * k} for k in range(10)]
+        spans = [(w_, w_["start"], w_["start"] + 100, np.inf) for w_ in wins]
+        for _, _, i, _ in spans:
+            odds[i - 3:i] = 1.0
+        shifted = [{"type": kind, "start": 1600 + 150 * k} for k, kind in enumerate(shifted_types)]
+        if fooled:
+            for p in shifted:
+                odds[p["start"] + 97:p["start"] + 100] = 1.0
+        entry = {"transitions": list(transitions), "n": n_windows}
+        return air.a_conditions(entry, "x", 100, spans, wins[:gaps], shifted, odds, 3000, 1, (0.3, 1.0, 0.0))
+
+    good = a_case()
+    check("a_conditions: nítido, Ana de acuerdo en los dos grupos y placebo que no pasa: A se cumple",
+          good["ok"] and good["sharp"] and [s["n"] for s in good["sides"].values()] == [5, 5]
+          and all(s["ok"] for s in good["sides"].values()) and good["placebo"]["n"] == 5
+          and not good["placebo"]["passes"], str(good))
+    blurry = a_case(transitions=(100,) * 10, n_windows=13)
+    check("a_conditions: no se cumple con 4 ventanas en el placebo, con el placebo pasando, con 10 transiciones "
+          "nítidas de 13 ventanas (77 %) ni con un grupo de 4; el placebo solo usa su tipo",
+          not a_case(shifted_types=("x",) * 4)["ok"] and not a_case(fooled=True)["ok"]
+          and a_case(fooled=True)["placebo"]["passes"]
+          and not blurry["sharp"] and not blurry["ok"] and all(s["ok"] for s in blurry["sides"].values())
+          and a_case(transitions=(100,) * 10, n_windows=12)["sharp"]
+          and not a_case(gaps=4)["ok"] and a_case(gaps=4)["sides"]["con hueco"]["n"] == 4
+          and a_case(shifted_types=("x",) * 5 + ("y",) * 3)["placebo"]["n"] == 5)
+    check("masked_share: una proporción de menos de 5 ventanas sale como «—»",
+          air.masked_share(0.5, 4) == "—" and air.masked_share(0.5, 0) == "—" and air.masked_share(0.5, 5) == "50.0 %")
     shares = air.side_shares(np.array([-1, 1, 1, -1, 0, 1, -1, 0], dtype=float), [3], 8, 1)
     check("side_shares: proporción de D del modelo de Ana en los 3 frames de antes y de después (sin contar los 0)",
           shares == (2 / 3, 1 / 2))
@@ -726,7 +764,6 @@ def check_restart_instant(game, folder):
     blurred_offsets = [175, 200, 225, 175, 200, 225, 175, 200, 200, 225, 175, 200]
     bx = np.zeros(n)
     by = np.zeros(n)
-    bx[60000:70000] = (np.arange(10000) * 0.4) % 50.0  # 10 m/s
     for s in starts:
         bx[s - (10 * fps if s in gaps else 0):s + 210] = np.nan
     match = tracking.Tracking(bx, by, np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
@@ -735,9 +772,9 @@ def check_restart_instant(game, folder):
     def ana(offsets):
         odds = np.full(n, -1.0)
         odds[dead_ball.pre_kickoff(game)] = 1.0
-        odds[120000:160000] = 1.0
         for s, offset in zip(starts, offsets):
             odds[s - 10 * fps:s + offset] = 1.0
+            odds[s + 15 * fps:s + 95 * fps] = 1.0  # sube el D del partido, cerca de los reinicios
         return odds
 
     instrument = ana(sharp_offsets)
@@ -786,8 +823,8 @@ def check_restart_instant(game, folder):
     check("measure_instant: A se cumple: nítido, Ana de acuerdo a los dos lados en los dos grupos y el placebo no pasa",
           a.get("sharp") and a.get("sharp_count") == 12 and a["sides"]["con hueco"]["n"] == 6
           and a["sides"]["sin hueco"]["n"] == 6 and all(s["ok"] for s in a["sides"].values())
-          and a["placebo"]["n"] >= 5 and not a["placebo"]["passes"] and a["ok"] and 0.25 < m["g_match"] < 0.35
-          and m["g_dead"] == 1.0 and m["g_play"] == 0.0,
+          and a["placebo"]["n"] >= 5 and not a["placebo"]["passes"] and a["ok"] and 0.15 < m["g_match"] < 0.25
+          and m["g_dead"] == 1.0 and 0.0 < m["g_play"] < 0.05,
           "{} {} {}".format(a.get("sides"), a.get("placebo"), (m["g_match"], m["g_dead"], m["g_play"])))
     r = m["tested"].get("A", {})
     check("measure_instant: entra A, el primero que se prueba; con él el pipeline sale del D en el instante (antes, "
@@ -803,16 +840,24 @@ def check_restart_instant(game, folder):
           "{} {} {}".format(m["gap_changed"], m["gap_changed_first"], m["gap_d_offsets"]))
 
     # B: con el instante borroso (7, 8 o 9 s) A no es nítido. El pipeline sale del D en el inicio de las ventanas
-    # con hueco: B alarga ese D hasta el instante, sin tocar las demás.
+    # con hueco: B alarga ese D hasta el instante, sin tocar las demás. Justo después del instante hay 0,8 s de D
+    # débil, que sin B no basta para entrar en D y con B lo prolonga: cuenta como «después del instante».
     blurred = ana(blurred_offsets)
-    m = measured({"candidates": team_piece, "dead_state": lambda trk: dead_piece(trk, who=starts[1::2])}, blurred)
+
+    def dead_b(trk):
+        score, allowed = dead_piece(trk, who=starts[1::2])
+        for s in gaps:
+            score[s + 200:s + 220, D] = 0.5
+        return score, allowed
+
+    m = measured({"candidates": team_piece, "dead_state": dead_b}, blurred)
     r = m["tested"].get("B", {})
     check("measure_instant: con el instante borroso A no se cumple y entra B, que alarga el D del hueco hasta el "
           "instante y no toca las ventanas sin hueco",
           m["anchors"] == {"throw-in": 8 * fps} and not m["by_type"]["throw-in"]["a"]["sharp"]
           and not m["by_type"]["throw-in"]["a"]["ok"] and list(m["tested"]) == ["B"] and m["chosen"] == "B"
           and m["modes"] == {"throw-in": "B"} and r["pushes"] == 6 and r["with_gap"] == 6 and r["near"] == (0, 6)
-          and r["changed_before"] == (0, 6 * 200, 0) and r["changed_after"] == (0, 0, 0)
+          and r["changed_before"] == (0, 6 * 200, 0) and r["changed_after"] == (0, 6 * 20, 0)
           and r["changed_outside"] == (0, 6 * 25, 0) and r["split"] == 0 and r["ok"],
           "{} {} {} {}".format(list(m["tested"]), r.get("near"), r.get("changed_before"), r.get("changed_outside")))
 
@@ -846,13 +891,12 @@ def check_restart_instant(game, folder):
 
     # Los grupos necesitan 5 ventanas: con solo 2 sin hueco (las demás con hueco), A no se cumple y entra B.
     two_seen = np.zeros(n)
-    two_seen[60000:70000] = bx[60000:70000]
     for k, s in enumerate(starts):
         two_seen[s - (0 if k in (1, 3) else 10 * fps):s + 210] = np.nan
     m = measured(pieces, trk=tracking.Tracking(two_seen, by, np.empty((n, 0)), np.empty((n, 0)),
                                                np.empty(0, dtype=np.int8), (length, width), blocks, fps))
     a = m["by_type"]["throw-in"]["a"]
-    check("measure_instant: con menos de 5 ventanas sin hueco, ese grupo no decide, A no se cumple y entra B",
+    check("measure_instant: un grupo de menos de 5 ventanas (2 sin hueco) no puede avalar A, y entra B",
           a["sharp"] and a["sides"]["sin hueco"]["n"] == 2 and not a["sides"]["sin hueco"]["ok"]
           and a["sides"]["con hueco"]["n"] == 10 and a["sides"]["con hueco"]["ok"] and not a["ok"]
           and m["chosen"] == "B", "{} {}".format(a["sides"], m["chosen"]))
@@ -860,7 +904,6 @@ def check_restart_instant(game, folder):
     # B no entra si ninguna ventana recibe la capa: el balón falta solo 2 s antes de cada ventana (vuelve a verse,
     # pero no hay hueco que alargar) y el instante es borroso, así que A no se cumple.
     short = np.zeros(n)
-    short[60000:70000] = bx[60000:70000]
     for s in starts:
         short[s - 2 * fps:s + 210] = np.nan
     m = measured(pieces, blurred, trk=tracking.Tracking(short, by, np.empty((n, 0)), np.empty((n, 0)),
