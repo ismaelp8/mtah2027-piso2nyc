@@ -110,7 +110,7 @@ Qué tiene que hacer cada uno hasta la entrega: [`docs/PLAN_ENTREGA.md`](docs/PL
 
 ---
 
-## Dónde estamos (actualizado el 14/11/2026)
+## Dónde estamos (actualizado el 15/11/2026)
 
 Lee esto para saber en qué punto está el equipo. El detalle está en los ficheros enlazados.
 
@@ -196,8 +196,12 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - con la pieza de Ana ve tantas paradas como N1;
     - aguanta con el balón a la vista en las paradas.
   - **En el harness** la fila por defecto («Viterbi, coste 25 (v0)») es ya B5: 0,498 / 0,512 con el flag.
-  - **La entrega cambia:** hay que regenerarla y reproducirla en otra máquina, porque B5 usa `np.exp` y
-    el último bit podría variar.
+  - **Entrega `equipo_v2`** (Ismael, 15/11, con `main` en `962bddd`): válida, con el 44,4 % de `D` en los
+    frames evaluados, 114 paradas, 219 posesiones de 16,1 s de media (la v1 tenía 321 de 11,2 s) y sha256
+    `864ef3d9…5007`.
+    - **Reproducible:** sale el mismo sha256 dos veces en Windows y una en Linux. En esas dos máquinas, el
+      `np.exp` de B5 no cambia el resultado.
+    - En la ventana pública no se rompe nada: el `D` acierta los mismos frames que la v1.
   - **Pierde recuperaciones** en los eventos humanos. Lo ajusta David con los costes, que ahora se miden
     en la escala de B5.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
