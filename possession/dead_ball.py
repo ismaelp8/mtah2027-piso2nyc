@@ -17,6 +17,9 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
   ancla y decide el decodificador.
 - **El hueco sin balón antes de cada reinicio** (idea de Ismael): puntuación blanda de `D` desde que se
   pierde el balón hasta el inicio de la ventana `SET PIECES`.
+- **El equipo que reanuda** (15/11): en cada ventana `SET PIECES` con el `Team` de uno de los dos equipos,
+  resta en la columna del otro. Medida con su regla (docs/decisiones.md, 15/11), todavía fuera de
+  `evidence`.
 
 **En `evidence` van la primera** (un ancla dura: en esos frames solo se permite `D`) **y la tercera**
 (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla apuntada en docs/decisiones.md antes de
@@ -97,7 +100,8 @@ def _norm(text):
 
 
 def smart_tagging_events(path, fps):
-    """Instancias del Smart Tagging: [{code, type, start, end}], con el código y el tipo en minúsculas.
+    """Instancias del Smart Tagging: [{code, type, team, start, end}], con el código, el tipo y el equipo en
+    minúsculas.
 
     Mismo criterio que starter/load_smart_tagging.load(): segundos × fps redondeado es el frame de vídeo, y
     `end` es el primer frame después del intervalo. Ordenadas por (start, end, code, type), para que el
@@ -109,6 +113,7 @@ def smart_tagging_events(path, fps):
         events.append({
             "code": _norm(instance.findtext("code")),
             "type": _norm(tags.get("type")),
+            "team": _norm(tags.get("team")),
             "start": int(round(float(instance.findtext("start")) * fps)),
             "end": int(round(float(instance.findtext("end")) * fps)),
         })
@@ -251,4 +256,35 @@ def evidence(trk, paths=None, game=games.GAME):
             # Solo las ventanas que empiezan en un tramo evaluado: las mismas que se midieron.
             if span is not None and any(first <= window["start"] < stop for first, stop in trk.blocks):
                 score[span[0]:span[1], D] += GAP_SCORE
+    return score, allowed
+
+
+# -- El equipo que reanuda (capa 5, 15/11). Medida con su regla, todavía fuera de `evidence`.
+
+# Lo que se resta por frame en la columna del equipo que no saca. Sin ajustar: la escala del +1 del jugador
+# más cercano (candidates.NEAREST_SCORE); la ajusta David con los costes del decodificador.
+TEAM_SCORE = 1.0
+
+
+def restart_teams(events, home, away):
+    """[(ventana, columna)] para las ventanas de restart_windows(events) cuyo `Team` es el local (columna H)
+    o el visitante (A). Se compara sin mayúsculas con los nombres de los metadatos del ATD; las demás
+    (`N/A`, sin equipo u otro nombre) no entran."""
+    home, away = _norm(home), _norm(away)
+    if not home or not away or home == away:
+        raise ValueError("hacen falta los nombres de los dos equipos, distintos")
+    columns = {home: H, away: A}
+    return [(window, columns[window["team"]]) for window in restart_windows(events) if window["team"] in columns]
+
+
+def team_restart_evidence(trk, events, home, away):
+    """`(score, allowed)` de la capa: resta TEAM_SCORE en la columna del equipo que no saca, en toda la
+    ventana, para las ventanas de restart_teams que empiezan en un tramo evaluado. No toca `D` ni prohíbe
+    nada: solo decide con qué equipo se sale de la parada."""
+    n = len(trk.bx)
+    score, allowed = no_evidence(n)
+    for window, team in restart_teams(events, home, away):
+        if any(first <= window["start"] < stop for first, stop in trk.blocks):
+            other = A if team == H else H
+            score[max(window["start"], 0):max(min(window["end"], n), 0), other] -= TEAM_SCORE
     return score, allowed

@@ -1671,3 +1671,77 @@ Abierto:
 - **Las paradas tras un gol se quedan sin capa de esta pieza:** de gol a saque no ancla, y la capa 4 no
   mira los saques iniciales (la regla se fijó así). Ahí solo opina el modelo de Ana. Meter los saques tras
   gol en la capa 4 sería un candidato nuevo, que se escribe y se mide antes de entrar.
+
+### 2026-11-15 · `D` · el equipo que reanuda: candidato y regla de lectura, escritos antes de medir
+
+Quién: Manuel
+
+Qué se va a probar: la capa 5 de `possession/dead_ball.py`, el equipo que reanuda (`docs/PLAN_ENTREGA.md`
+§3, Manuel, punto 5). Sale de la entrada «fronteras y anclas» (14/11), capa 2.
+- **Qué hace:** en cada ventana `SET PIECES` que no es un saque inicial y cuyo `Team` es uno de los dos
+  equipos, **resta** `TEAM_SCORE` (1 por frame, sin ajustar) en la columna del **otro** equipo, en toda la
+  ventana. En este partido son 27 ventanas: córners, saques de puerta y faltas. Los saques de banda y los
+  iniciales vienen con `N/A` [medido, 14/11].
+- **Por qué restar al otro y no sumar al que saca:** así no cambia la comparación entre `D` y el equipo
+  que saca, y la capa no puede adelantar el fin del `D`. Solo decide con qué equipo se sale de la parada.
+- **El `Team` se pasa a `H` o `A`** comparándolo, sin mayúsculas, con los nombres de los metadatos del
+  ATD. Los 27 coinciden [medido, 15/11]; uno que no coincidiera no puntuaría.
+- **Solo las ventanas que empiezan en un tramo evaluado,** como la capa 4.
+- **El riesgo [sin verificar]:** si dentro de la ventana, después del reinicio, el otro equipo consigue el
+  control, la capa retrasa ese cambio. La ventana sigue entre 5 y 35 s después del golpeo [medido: el
+  golpeo cae más de 5 s antes del fin en las 53 ventanas, y duran 35 s].
+- **Código:** `restart_teams` y `team_restart_evidence` en `possession/dead_ball.py`, fuera de `evidence`
+  hasta que pase la regla.
+
+Cómo se medirá: `validation/partido/agregados_equipo_reanuda.py`, que ejecuta Manuel. Solo agregados.
+Ejecuta el pipeline de esta rama sin la capa y con ella, sobre el mismo tracking. No hay etiquetas del
+partido y la DFL no tiene Smart Tagging, así que no se mide el `spellF1`.
+
+Regla de lectura, fijada antes de ejecutarlo:
+- **1. El `Team` es el equipo que saca (física, sin etiquetas).**
+  - **Dónde se reanuda:** el último punto visto del balón antes del golpeo (`find_strike` de
+    `validation/partido/diagnostico_balon_muerto.py`, buscado dentro de la ventana). Decide solo si el
+    golpeo aparece y el punto cae en el cuarto final de un lado del campo (a 26 m o más de la línea de
+    medio campo).
+  - **Qué lado defiende cada equipo en cada parte:** el de la media de la x de sus jugadores en los frames
+    evaluados de esa parte (la x = 0,5 separa a los equipos, medido el 12/11).
+  - **El que saca:** en un córner, el equipo que ataca ese lado; en un saque de puerta, el que lo defiende.
+  - **Condición:** en córners y saques de puerta juntos, coinciden con el `Team` el 90 % o más de las
+    ventanas que deciden, y deciden 10 o más. Si no, la capa no entra.
+  - **Las faltas no se pueden comprobar así.** Entran con las demás si pasa la condición [inferencia: el
+    mismo etiquetador].
+- **2. La capa aporta algo, medido contra el `Team` y no contra una GT que no hay.**
+  - **El equipo de salida:** en cada ventana con `Team`, el primer `H` o `A` del pipeline después del
+    último `D` de la ventana (buscado hasta el fin del tramo). Si la ventana no tiene ningún `D`, no hay
+    parada y no cuenta.
+  - **Condición:** sin la capa, el equipo de salida es el otro en al menos 1 ventana con parada; y con la
+    capa, en menos ventanas que sin ella. Si sin la capa ya coincide en todas, la capa no aporta nada y no
+    entra.
+- **Las dos condiciones tienen que cumplirse.** Si no, la capa se queda fuera, y con esta salida no se
+  reajusta nada: ni `TEAM_SCORE`, ni el 90 %, ni las 10 ventanas, ni el cuarto final.
+- **Descriptivo, no decide:**
+  - recuentos por tipo;
+  - cuántos frames evaluados cambian;
+  - posesiones y paradas sin la capa y con ella;
+  - cuántas ventanas tienen un cambio al otro equipo dentro de la ventana, después de la salida, sin la
+    capa y no con ella. Eso mide el tamaño del riesgo de arriba.
+- **El script imprime la regla aplicada.** Si lo impreso y este texto no cuadran, manda este texto.
+- **Que el código aplica este texto se comprueba en el repo:** sección 10 de
+  `validation/scripts/comprobar_balon_muerto.py`, con datos inventados y la apertura de ficheros
+  prohibida. Comprueba:
+  - las dos condiciones en sus límites;
+  - la física de córners y saques de puerta;
+  - con qué equipo se sale de cada parada;
+  - la capa (resta solo en el otro equipo, dentro de la ventana, y nunca en `D`);
+  - el script de punta a punta.
+
+  Romper la capa y el script a propósito (21 cambios, uno a uno) hace fallar alguna prueba, salvo uno
+  equivalente: quitar «al menos 1 ventana» de la condición 2 no cambia nada, porque «con la capa, en menos»
+  ya lo exige.
+- **De dónde sale cada número:** ninguno de la GT ni de la salida de este script. `TEAM_SCORE` es la escala
+  del +1 del jugador más cercano y se ajusta con los costes (David). El 90 %, las 10 ventanas y el cuarto
+  final se fijan aquí.
+
+Abierto:
+- **Los saques de banda** (26, con `Team = N/A`) quedan para otra capa: el jugador que saca está fuera
+  de la banda (agregado 6, entrada del 14/11).

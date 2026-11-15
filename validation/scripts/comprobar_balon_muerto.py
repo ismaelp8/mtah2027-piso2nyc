@@ -60,14 +60,15 @@ def mask_without_opening_files(game):
     return mask, opened
 
 
-def smart_tagging_xml(folder, name, instances, shuffle_seed=None):
-    """Un Smart Tagging inventado con `instances` = [(código, inicio_s, fin_s, Type o None)]. Devuelve la ruta."""
-    rows = list(instances)
+def smart_tagging_xml(folder, name, instances, shuffle_seed=None, teams=None):
+    """Un Smart Tagging inventado con `instances` = [(código, inicio_s, fin_s, Type o None)] y, si se da,
+    el `Team` de cada una (si no, `N/A`). Devuelve la ruta."""
+    rows = list(zip(instances, teams or ["N/A"] * len(instances)))
     if shuffle_seed is not None:
         random.Random(shuffle_seed).shuffle(rows)
     body = []
-    for i, (code, start_s, end_s, kind) in enumerate(rows):
-        labels = "<label><group>Team</group><text>N/A</text></label>"
+    for i, ((code, start_s, end_s, kind), team) in enumerate(rows):
+        labels = "<label><group>Team</group><text>{}</text></label>".format(team)
         if kind:
             labels += "<label><group>Type</group><text>{}</text></label>".format(kind)
         body.append("<instance><ID>{}</ID><start>{}</start><end>{}</end><code>{}</code>{}</instance>".format(
@@ -495,6 +496,127 @@ def check_rules(game):
           and np.isnan(agg.dead_share(odds, np.array([True, True, False, False]))))
 
 
+def check_team_restart(game, folder):
+    """La capa del equipo que reanuda (todavía fuera de evidence) y las cuentas de su script, con datos
+    inventados. Importa las funciones de validation/partido/agregados_equipo_reanuda.py, nunca su `main`, y
+    llama a `measure_teams` con la apertura de ficheros prohibida."""
+    sys.path.insert(0, os.path.join(ROOT, "validation", "partido"))
+    import agregados_equipo_reanuda as aer  # solo sus cuentas
+
+    fps = games.GAMES[game]["fps"]
+    n = games.GAMES[game]["n_video_frames"]
+    length, width = games.GAMES[game]["pitch"]
+    H, A, D = tracking.H, tracking.A, tracking.D
+
+    # La capa: equipos y evidencia.
+    path = smart_tagging_xml(folder, "equipos.xml", [
+        ("SET PIECES", 1000, 1035, "Corner Kick"), ("SET PIECES", 2000, 2035, "Goal Kick"),
+        ("SET PIECES", 3000, 3035, "Throw-in"), ("SET PIECES", 4549.6, 4554.6, "Kick Off (Start)"),
+        ("SET PIECES", 5000, 5035, "Free Kick"), ("SET PIECES", 100, 135, "Corner Kick")],
+        teams=["fc local", "VISITANTE CF", "N/A", "N/A", "Otro Nombre", "FC Local"])
+    events = dead_ball.smart_tagging_events(path, fps)
+    check("el Smart Tagging trae el equipo, en minúsculas",
+          [e["team"] for e in events] == ["fc local", "fc local", "visitante cf", "n/a", "n/a", "otro nombre"],
+          str([e["team"] for e in events]))
+    teams = [(w["start"], t) for w, t in dead_ball.restart_teams(events, "FC Local", "Visitante CF")]
+    check("restart_teams: local en H y visitante en A; N/A, saques iniciales y otros nombres no entran",
+          teams == [(100 * fps, H), (1000 * fps, H), (2000 * fps, A)], str(teams))
+    check("restart_teams: sin nombres o con los dos iguales da error",
+          all(pp.raises(ValueError, lambda h=h, a=a: dead_ball.restart_teams(events, h, a))
+              for h, a in (("", "x"), ("x", None), ("FC Local", "fc local"))))
+    bx = np.zeros(n)
+    trk = tracking.Tracking(bx, bx.copy(), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
+                            (length, width), tracking.evaluated_blocks(game), fps)
+    score, allowed = dead_ball.team_restart_evidence(trk, events, "FC Local", "Visitante CF")
+    expected = np.zeros((n, 3))
+    expected[1000 * fps:1035 * fps, A] = -dead_ball.TEAM_SCORE  # córner del local: se resta al visitante
+    expected[2000 * fps:2035 * fps, H] = -dead_ball.TEAM_SCORE  # saque de puerta del visitante
+    check("team_restart_evidence: resta en el otro equipo justo en la ventana; nada en D; fuera de lo "
+          "evaluado, nada", bool(np.array_equal(score, expected)) and bool(allowed.all()))
+    check("la puntuación del equipo es la de la regla: 1 por frame, sin ajustar", dead_ball.TEAM_SCORE == 1.0)
+    check("el equipo que reanuda no entra todavía en evidence",
+          not dead_ball.evidence(trk, {"smart_tagging": path}, game)[0][:, :2].any())
+
+    # El lado que defiende cada equipo.
+    blocks = tracking.evaluated_blocks(game)
+    px = np.full((n, 4), np.nan)
+    first_half, second_half = slice(*blocks[0]), slice(*blocks[1])
+    px[first_half, :2], px[first_half, 2:] = 20.0, 80.0  # el local (slots 0 y 1) a la izquierda
+    px[second_half, :2], px[second_half, 2:] = 80.0, 20.0
+    team_of_slot = np.array([0, 0, 1, 1], dtype=np.int8)
+    players = tracking.Tracking(bx, bx.copy(), px, px.copy(), team_of_slot, (length, width), blocks, fps)
+    check("lado izquierdo: lo defiende el local en la 1ª parte y el visitante en la 2ª",
+          aer.left_defender(players) == {1: H, 2: A})
+
+    # La física de cada ventana: el balón quieto en el punto del reinicio y, después, el golpeo.
+    def ball_at(x, y=1.0, start=1000 * fps):
+        bx, by = np.full(n, np.nan), np.full(n, np.nan)
+        bx[start - 50:start + 50], by[start - 50:start + 50] = x, y
+        bx[start + 50:start + 100] = x + np.arange(1, 51)  # golpeo: se mueve 1 m por frame
+        by[start + 50:start + 100] = y
+        return bx, by
+
+    corner, goal_kick = {"type": "corner kick", "start": 1000 * fps, "end": 1035 * fps}, \
+        {"type": "goal kick", "start": 1000 * fps, "end": 1035 * fps}
+    left = {1: H}
+    check("córner en el lado izquierdo, que defiende el local: lo saca el visitante",
+          aer.physics_check(*ball_at(1.0), corner, A, 1, left, length) == aer.AGREE
+          and aer.physics_check(*ball_at(1.0), corner, H, 1, left, length) == aer.DISAGREE)
+    check("saque de puerta en el lado izquierdo: lo saca el local, que lo defiende; en el derecho, el otro",
+          aer.physics_check(*ball_at(5.0), goal_kick, H, 1, left, length) == aer.AGREE
+          and aer.physics_check(*ball_at(length - 5.0), goal_kick, A, 1, left, length) == aer.AGREE)
+    check("el punto cerca del medio campo no decide; justo dentro del cuarto final, sí",
+          aer.physics_check(*ball_at(length / 2), corner, A, 1, left, length) == aer.NOT_IN_QUARTER
+          and aer.physics_check(*ball_at(length / 4 + 0.1), corner, A, 1, left, length) == aer.NOT_IN_QUARTER
+          and aer.physics_check(*ball_at(length / 4 - 0.1), corner, A, 1, left, length) == aer.AGREE)
+    early_x = ball_at(1.0)[0]
+    early_x[100:200] = length - 1.0  # mucho antes, el balón visto en el otro lado
+    check("el punto del reinicio es el último visto antes del golpeo, no el primero",
+          aer.physics_check(early_x, np.where(np.isnan(early_x), np.nan, 1.0), corner, A, 1, left, length)
+          == aer.AGREE)
+    check("sin balón no hay golpeo y no decide",
+          aer.physics_check(np.full(n, np.nan), np.full(n, np.nan), corner, A, 1, left, length) == aer.NO_STRIKE)
+
+    # Con qué equipo sale el pipeline de la parada.
+    codes = np.array([H, D, D, H, A, A, D, D, D, D], dtype=np.int8)
+    check("exit_team: el primer H o A después del último D de la ventana, buscado hasta el fin del tramo",
+          aer.exit_team(codes, 0, 4, 10) == (H, 3) and aer.exit_team(codes, 4, 8, 10) == (None, None)
+          and aer.exit_team(codes, 0, 1, 10) == (None, None) and aer.exit_team(codes, 1, 2, 10) == (H, 3)
+          and aer.exit_team(np.array([D, H, D, A], dtype=np.int8), 0, 4, 4) == (A, 3))
+    window = {"start": 0, "end": 6}
+    check("exit_state: el del Team, el otro, sin parada, sin salida, y si el otro aparece después",
+          aer.exit_state(codes, window, H, 10) == (aer.SAME, True)
+          and aer.exit_state(codes, window, A, 10) == (aer.OTHER, False)
+          and aer.exit_state(codes, {"start": 3, "end": 6}, H, 10) == (aer.NO_STOP, False)
+          and aer.exit_state(codes, {"start": 6, "end": 9}, H, 10) == (aer.NO_EXIT, False))
+    check("runs: posesiones y paradas dentro de los tramos",
+          aer.runs(codes, ((0, 6), (6, 10))) == (3, 2), str(aer.runs(codes, ((0, 6), (6, 10)))))
+
+    # Las dos condiciones de la regla, en sus límites.
+    check("condición 1: 9 de 10 entra; 8 de 10, 8 de 9 y 9 de 9 (menos de 10 que deciden), no",
+          aer.physics_rule(9, 10) and not aer.physics_rule(8, 10) and not aer.physics_rule(8, 9)
+          and not aer.physics_rule(9, 9)
+          and not aer.physics_rule(0, 0))
+    check("condición 2: 1 sin la capa y 0 con ella entra; 0 y 0, o 2 y 2, no",
+          aer.contributes_rule(1, 0) and not aer.contributes_rule(0, 0) and not aer.contributes_rule(2, 2))
+
+    # measure_teams de punta a punta con el partido inventado de la sección 9, sin abrir ficheros.
+    trk, events = synthetic_match(game)
+    for event in events:
+        event["team"] = {"corner kick": "local", "goal kick": "visitante"}.get(event["type"], "n/a")
+    anchors = lambda clean: dead_ball.evidence(clean, None, game)  # noqa: E731
+    try:
+        with pp.no_files():
+            m = aer.measure_teams(trk, events, "Local", "Visitante", anchors, game)
+    except AssertionError:
+        check("measure_teams no abre ningún fichero", False)
+        raise
+    check("measure_teams: corre sin abrir ficheros, sin conflictos y con la regla coherente",
+          m["windows"] == 4 and m["conflicts"] == (0, 0) and m["entra"] == (m["physics_ok"] and m["contributes"])
+          and sum(m["exits"][0].values()) == sum(m["exits"][1].values()) == 4,
+          "ventanas {} conflictos {}".format(m["windows"], m["conflicts"]))
+
+
 def main():
     game = games.GAME
     n_frames = games.GAMES[game]["n_video_frames"]
@@ -576,6 +698,13 @@ def main():
 
     print("\n9. La regla de validation/partido/agregados_dead_ball.py, con un partido inventado en memoria")
     check_rules(game)
+
+    print("\n10. El equipo que reanuda (medido, todavía fuera de evidence), con datos inventados")
+    folder = tempfile.mkdtemp(prefix="comprobar_balon_muerto_")
+    try:
+        check_team_restart(game, folder)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
 
     print("\n{}".format("TODO BIEN" if not failures else "FALLAN {}: {}".format(
         len(failures), "; ".join(failures))))
