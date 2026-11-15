@@ -2350,9 +2350,10 @@ Decisión y por qué: **no cumple ni la lectura 1 ni la 2. Es un empate: B5 sigu
 - Falla el paso 4 de las dos lecturas, y la lectura 2 también falla el criterio 2.
 - B9 es la primera idea que encuentra posesiones cortas de verdad en la DFL. Las de 2 a 5 s encontradas con
   el control pasan del 53 al 62 % en la puerta. Las recuperaciones suben 8 puntos.
-- Pero no lo traslada al tracking automático de SkillCorner, que es lo más parecido al ATD que hay abierto.
-  Ahí la dirección del balón ya acertaba menos (el 66 % en las de 2 a 5 s, frente al 81 % en la DFL)
-  [sin explicar].
+- Pero no mejora en SkillCorner, el tracking automático más parecido al ATD que hay abierto. Ahí la dirección
+  del balón ya acertaba menos (el 66 % en las de 2 a 5 s, frente al 81 % en la DFL) [sin explicar].
+- SkillCorner también exige control, y B9 también empata con el control de la DFL. No se puede separar si en
+  SkillCorner falla por el tracking automático o por la convención.
 
 Descartado: B9 tal cual. Se queda en la rama, con sus coeficientes, como referencia del documento técnico.
 

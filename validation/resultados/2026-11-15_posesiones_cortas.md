@@ -7,18 +7,21 @@
   la mitad de entrenamiento de SkillCorner (`lector.ENTRENAMIENTO`, 10 partidos de la A-League 2024/25,
   licencia MIT) con el balón «detectado». El examen de SkillCorner (`lector.EXAMEN`) no se ha tocado. Nada
   del partido.
-- **Código:** `main` en `3b227c4` más `validation/posesiones_cortas/` (bitácora en su `BITACORA.md`). B5 con
-  los coeficientes que no vieron cada partido en la DFL, y con los de la entrega en SkillCorner. El `D` de
-  las etiquetas (oráculo), como el harness.
-- **Es descriptivo:** no decide nada. Sirve para saber qué candidatos merece la pena escribir.
+- **Código:** `main` en `3b227c4` más `validation/posesiones_cortas/` (bitácora en su `BITACORA.md`); B9 y sus
+  medidas, en `4e662ad`. B5 con los coeficientes que no vieron cada partido en la DFL, y con los de la entrega
+  en SkillCorner. El `D` de las etiquetas (oráculo), como el harness, salvo en los criterios con el `D`
+  propio.
+- **Qué es:** un diagnóstico descriptivo (puntos 1 a 8, sin regla previa) y la medida de un candidato, B9,
+  leída con la regla que se subió antes de entrenarlo (punto 9 y `docs/decisiones.md`).
 
 ## Lectura corta
 
-1. **Con el flag, la mitad del hueco es convención** [medido].
-   - De las 3.061 posesiones del flag, 793 son toques del rival sin control y 699 son trozos del equipo que
-     retiene, partidos por esos toques. `main` encuentra el 5 y el 9 %.
-   - Las etiquetas del control, puntuadas como predicción contra el flag, sacan 0,648: es el techo de un
-     método perfecto que exige control si la GT fuera el flag.
+1. **Con el flag, la mayor parte de lo que perdemos es convención** [medido].
+   - De las 3.061 posesiones del flag, 1.492 no existen con el control: 793 son toques del rival sin control
+     y 699 son trozos del equipo que retiene, partidos por esos toques. `main` encuentra el 5 y el 9 %.
+   - Son unas 1.390 de las 1.863 que no encontramos: tres cuartos.
+   - Las etiquetas del control, puntuadas como predicción contra el flag, sacan 0,648. Es el techo de un
+     método perfecto que exija control, si la GT fuera el flag.
 2. **Pero `main` saca un ritmo casi fijo, sea cual sea la GT** [medido]. Posesiones por minuto vivo:
 
    | | reales | `main` |
@@ -28,20 +31,28 @@
    | DFL, flag | 8,30 | 4,50 |
    | partido (la GT pública son 17 posesiones) | 4,2 | 3,7 |
 
-   Si la GT del reto se parece a SkillCorner, nos faltan de verdad un 30 % [inferencia]. Si se parece al
-   control de la DFL, el número cuadra y el fallo es dónde cambiamos.
+   Las tres primeras filas van con el `D` de las etiquetas; la del partido, con el nuestro.
+   - Si la GT del reto se parece a SkillCorner, nos falta de verdad un 30 % [inferencia].
+   - Si se parece al control de la DFL, el número cuadra y el fallo es dónde cambiamos.
 3. **En las posesiones que no encontramos, la evidencia de B5 apunta al otro equipo durante casi toda la
    posesión** [medido]. En las que se pierden por «otro equipo», la suma de la evidencia a favor del equipo
-   bueno es de −6 a −11 veces lo que cuesta meterlas, y solo el 1–3 % la paga. **Bajar el coste de cambio
-   no las arregla:** hay que cambiar el signo de la evidencia.
+   bueno es de −6 a −11 veces lo que cuesta meterlas, y solo el 1–3 % la paga.
+   - **Bajar el coste de cambio, por sí solo, no las arregla** [inferencia, con eso y con que los costes 12 y
+     50 ya empataron]: hay que cambiar el signo de la evidencia.
+   - El decodificador no se limita a seguir el signo frame a frame: con el signo saldrían 2.531 posesiones
+     en la DFL, y el Viterbi da 1.661 [medido].
 4. **Lo que empuja en contra son las señales lentas** [medido]: el balón en ventanas de 151 frames, la
    velocidad de los equipos y la dispersión. Las señales rápidas (el más cercano y el balón en 1 y 13
    frames) van a favor, pero pesan diez veces menos.
 5. **Las que «se funden con la de al lado» son una consecuencia** [medido]: su evidencia está bien (la paga
    el 90–99 %). Se funden porque falta la posesión corta del rival que va en medio.
-6. **En las de menos de 2 s hay un límite de información** [medido]: dentro de ellas, el más cercano es del
-   equipo bueno en el 49–57 % de los frames con balón, **también con el balón limpio**. No se pueden
-   recuperar frame a frame. Lo que queda por ganar está en las de 2 a 10 s.
+6. **Con el flag, en las de menos de 2 s, el más cercano no dice nada frame a frame** [medido]: es del equipo
+   bueno en el 49–57 % de los frames con balón, **también con el balón limpio**. No es un efecto del
+   suavizado.
+   - Con el control es otra cosa: el 82 % en las de menos de 1 s y el 58–60 % en las de 1 a 2 s.
+   - La dirección del balón (punto 9) da el 66–68 % en las de 1 a 2 s.
+
+   Lo que más se puede ganar está en las de 2 a 10 s [inferencia].
 7. **Entrenar con tracking automático no lo arregla** [medido]: con los rasgos de B5 entrenados con todos los
    frames vivos de SkillCorner, y mirando en los mismos partidos (lo más optimista posible), las de 2 a 5 s
    siguen en el 29–30 % y el spellF1 pasa de 0,519 a 0,520–0,528. Limitan los rasgos, no las filas.
@@ -49,34 +60,56 @@
    gana de +0,008 a +0,013 con el control. Solo el 2–11 % de las propuestas son buenas.
 9. **La dirección en que se mueve el balón es la única señal nueva que encuentra posesiones cortas** [medido]:
    B9 (B5 con esa señal) gana a `main` con §5.8 usando el flag (+0,039 y +0,048, dejando un partido fuera),
-   y el placebo lo confirma. Pero empata con el control, empeora los duelos sin cambio más de lo permitido y
-   **no se traslada a SkillCorner** (−0,005 y +0,004). Con la regla escrita antes de medir, es un empate:
-   **B5 se queda.**
+   y el placebo lo confirma. Pero:
+   - empata con el control;
+   - empeora los duelos sin cambio más de lo permitido;
+   - **no mejora en SkillCorner** (−0,005 y +0,004).
+
+   Con la regla escrita antes de medir, es un empate: **B5 se queda.**
+   - SkillCorner también exige control, y B9 también empata con el control de la DFL. **No se puede separar**
+     si en SkillCorner falla por el tracking automático o por la convención.
+
+## Estado de cada idea
+
+| idea | estado |
+|---|---|
+| bajar o subir el coste de cambio | probado antes (12 y 50): empata |
+| un coste de cambio que dependa del contexto | sin medir; en contra, el punto 3 [inferencia] |
+| entrenar con más filas o con tracking automático (SkillCorner) | puerta: plano [medido] |
+| proponer trozos del rival y clasificarlos | techo bajo, ni con un oráculo llega a +0,03 con el control [medido] |
+| la dirección en que se mueve el balón (B9) | medido con regla: empate |
+| deshacer el suavizado del balón | no se puede validar en el harness (allí es una media exacta sin ruido) |
+| señales de los jugadores alrededor de un cambio (quién acelera, cambio de forma) | sin medir |
+| las 402 posesiones que sobran con el control | sin estudiar: se miraron las 477 que faltan |
 
 ## Qué se recomienda
 
-- **No cambiar la entrega por esto.** B9 no pasa la regla, y lo que falla es justo lo más parecido al
-  partido: el tracking automático de SkillCorner.
-- **La medida del retraso del balón del ATD (tarea 1 de Antonio) pesa más que cualquier candidato**
-  [inferencia, con una medida descriptiva]. Con el balón 12 frames tarde, `main` cae de 0,728 a 0,640 con el
-  control y de 0,498 a 0,472 con el flag en la DFL. Ningún candidato medido mueve tanto.
-- **Para el documento técnico:** la convención explica la mitad del hueco con el flag. Las posesiones de
-  menos de 2 s son un límite de información del balón suavizado. Con el control, el número de posesiones
-  cuadra en la DFL.
+- **No cambiar la entrega por esto** [medido, con la regla]. B9 no pasa, y no mejora en SkillCorner, el
+  tracking automático más parecido al partido que hay abierto.
+- **La medida del retraso del balón del ATD (tarea 1 de Antonio) puede pesar más que cualquier candidato**
+  [inferencia, con una medida descriptiva]. Con el balón 12 frames tarde, `main` cae en la DFL de 0,728 a
+  0,640 con el control y de 0,498 a 0,472 con el flag. Ningún candidato medido mueve tanto.
+- **Para el documento técnico:**
+  - con el flag, tres cuartos de lo que no encontramos son toques sin control [medido];
+  - con el flag, en las de menos de 2 s, el más cercano no dice nada frame a frame, ni con el balón limpio
+    [medido];
+  - con el control, el número de posesiones cuadra en la DFL [medido].
 
 ## Qué información haría falta
 
-- **El instante de los toques.** El suavizado de unos 25 frames del balón del ATD los borra. Con el balón
-  limpio, el equipo nuevo está a 1,5 m del balón en el 94 % de los cambios reales; suavizado, en el 56–63 %
-  (anexo A.4 de la revisión externa). Por frame, el más cercano no ayuda ni con el balón limpio (punto 6):
-  la información está en los toques.
-- **Para recuperarlos haría falta un balón sin suavizar:** el del vídeo táctico, o deshacer el suavizado del
-  ATD.
+- **El instante de los toques** [inferencia]. Por frame, el más cercano no ayuda en las posesiones cortas del
+  flag ni con el balón limpio (punto 6), así que la información tendría que estar en los toques.
+  - El anexo A.4 de la revisión externa (una medida de fuera, sin repetir por el equipo) dice que el
+    suavizado los borra: con el balón limpio, el equipo nuevo está a 1,5 m del balón en el 94 % de los
+    cambios reales; suavizado, en el 56–63 % [sin verificar].
+- **Para recuperarlos haría falta un balón sin suavizar** [inferencia]: el del vídeo táctico, o deshacer el
+  suavizado del ATD.
   - Deshacerlo no se puede validar en el harness: allí el suavizado es una media centrada exacta y sin ruido,
     y una inversa ganaría por construcción.
   - En el ATD el núcleo no está medido.
-- **Por qué la dirección del balón dice menos en SkillCorner que en la DFL** [sin explicar]. Si se entendiera
-  (otra liga, la retransmisión, el balón a 10 fps), se sabría si al ATD le pasa lo mismo.
+- **Por qué la dirección del balón dice menos en SkillCorner que en la DFL** [sin explicar]: el 66 % frente al
+  81 % en las de 2 a 5 s. Puede ser la otra liga, la retransmisión, el balón a 10 fps o la convención. Si se
+  entendiera, se sabría si al ATD le pasa lo mismo.
 
 ## Lo que dice y lo que no
 
