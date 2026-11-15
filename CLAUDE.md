@@ -234,7 +234,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v3`, hasta regenerarla con la capa de los contraataques** (más abajo). La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
+- **Entrega vigente: `equipo_v3`, hasta regenerarla con la capa de los contraataques** (más abajo).
+  La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
