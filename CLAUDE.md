@@ -225,7 +225,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v3`** (Ismael, 15/11, con `main` en `6e8fb27`): válida, con el 45,1 % de `D`
+- **Entrega vigente: `equipo_v3`**, hasta la PR 12 de Ana: después hay que regenerarla (ver más abajo).
+  La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
@@ -270,8 +271,13 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       SkillCorner (−0,005 y +0,004). Queda en `aprendida.py`, fuera de `PIECES`.
     - **Las fases 2 y 3 se cerraron sin candidato.** Quitar las posesiones inventadas no llega a +0,03 ni
       con un oráculo, y una red de una capa con los mismos rasgos no gana con el control ni en SkillCorner.
-    - **Tiene en marcha una fase 4,** por encargo de Ismael: si el déficit de posesiones del partido es real
-      contando igual por igual, y cuánto valdría una pista de equipo como las fases del Smart Tagging.
+    - **La fase 4 tampoco abre nada** (`a950880`; `docs/decisiones.md`):
+      - el déficit de posesiones no es propio del partido: con nuestro `D`, 4,29 y 4,26 por minuto en la DFL
+        y 4,11 en SkillCorner, y las 3,7 del partido caen dentro;
+      - una pista de equipo de fuera, como las fases del Smart Tagging, daría poco, y solo con un alcance
+        mayor que el del plan;
+      - H3 y H5 del visionado no concluyen: en el partido, nuestros cambios no se juntan con los huecos del
+        balón más que en la DFL. No se abre ninguna degradación nueva antes de la entrega.
   - **La entrega no cambia con B9** [medido sin datos del partido]: los rasgos de B2, los coeficientes de B1 a
     B8 y `evidence_b5` son idénticos, y la huella del partido inventado es la misma. Ismael la confirma al
     regenerar.
@@ -306,6 +312,16 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     regenerar en el ensayo del lunes.
 - **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio): con el sí de Ismael del 15/11,
   en marcha. La regla del plan no cambia.
+- **`D` de estado: tareas 1 a 3 de Ana en `main`** (PR 12, `98c38ca`; `docs/decisiones.md`).
+  - Las ventanas de `dead_state` ya no cruzan el principio ni el final de los tramos evaluados.
+  - `evidence` admite una escala, con 1 por defecto, para la medida de David.
+  - Queda apuntada la versión de scikit-learn del entrenamiento (1.7.2).
+  - En la DFL, el resultado es idéntico bit a bit, según Ana.
+  - **La mergeó Ana sin revisión de nadie,** contra `CONTRIBUTING.md`. La sesión planificadora la miró
+    después.
+  - **La entrega cambia en el partido:** solo en los rasgos de los 52 primeros y 52 últimos frames de cada
+    tramo. **`equipo_v3` deja de ser la entrega de `main`** hasta que Ismael la regenere y lo compare con
+    `validation/partido/comparar_entregas.py`.
 - **Sin entrar todavía en `main`:** la PR 10 de David. Ismael le ha pedido que antes termine su tarea 1.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
