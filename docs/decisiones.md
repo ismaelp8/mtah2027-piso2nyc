@@ -3263,3 +3263,11 @@ Qué cambia:
 - **La entrega cambia:** hay que regenerarla en el entorno limpio. Tiene que salir igual que `prueba_transiciones2`
   (sha256 `27dc8aa8…efb7`, generada con numpy 2.3.4), con 817 frames distintos frente a `equipo_v3`. Pasará a ser
   la entrega vigente, y la comprobación del lunes por la noche se hace con ella.
+
+Resultado (15/11) [medido por Ismael]: **`equipo_v5`, la entrega vigente.**
+- Se regeneró en el entorno limpio (Python 3.13.9, numpy 2.5.4) con `main` en `2f34a7f`, sin cambios locales.
+- Sale con el sha256 `27dc8aa8…efb7`, byte a byte igual que `prueba_transiciones2`.
+- Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro. Las paradas siguen en 113, y las
+  posesiones pasan de 215 a 219.
+- El validador oficial la da por válida.
+- Falta reproducirla en otra máquina.

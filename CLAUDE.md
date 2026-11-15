@@ -234,8 +234,13 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v3`, hasta regenerarla con la capa de los contraataques** (más abajo).
-  La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
+- **Entrega vigente: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
+  más la capa de los contraataques (más abajo). Es válida, con 219 posesiones de 15,9 s de media, 113
+  paradas, el mismo `D` que `equipo_v3` y sha256 `27dc8aa8…efb7`.
+  - Sale byte a byte igual que `prueba_transiciones2`, que se generó con numpy 2.3.4.
+  - Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro.
+  - Falta reproducirla en otra máquina.
+- **Entrega anterior: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
@@ -333,8 +338,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - las paradas no se mueven y hay 4 posesiones más.
   - **Encendida desde el 15/11** (Ismael: «Sí, enciéndela»): `pipeline.DELIVERY_LAYERS`. Es una excepción a la
     regla del harness, porque la DFL no tiene Smart Tagging.
-  - **La entrega cambia:** hay que regenerarla. Tiene que salir igual que `prueba_transiciones2` (`27dc8aa8…`),
-    con 817 frames distintos frente a `equipo_v3`.
+  - **La entrega cambia:** es `equipo_v5` (arriba), igual byte a byte que `prueba_transiciones2`.
   - Si se enciende, hay que añadir en `possession/tracking.py` y en el plan (§2) la excepción de que abre
     ficheros del partido, como `dead_ball.py`.
 - **D7, el balón fuera del campo como señal de `D`** (`docs/decisiones.md`; capas apagadas en
