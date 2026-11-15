@@ -4143,9 +4143,11 @@ media). Su sha256 es `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf3
 `--capa` repite una capa de la entrega. La entrega nueva será `equipo_v8`, y tiene que dar el sha256 de `prueba_d7_v5`.
 
 **Resultado (16/11) [medido]: `equipo_v8`, la entrega vigente.**
-- Ismael la regeneró en el entorno limpio con `python -m possession.pipeline --name equipo_v8` y `main` en `44678d1`, sin
-  cambios locales en el código de la entrega y sin capas añadidas. La línea de las versiones no se pegó, pero la huella
-  es la de `prueba_d7_v5`, generada con Python 3.13.9 y numpy 2.5.4 en ese mismo entorno.
+- Ismael la regeneró con el comando del entorno limpio (`python -m possession.pipeline --name equipo_v8`) y `main` en
+  `44678d1`, sin cambios locales en el código de la entrega y sin capas añadidas. La línea de las versiones no se pegó,
+  así que el entorno queda [sin verificar]. `prueba_d7_v5`, con la misma huella, sí salió con Python 3.13.9 y numpy
+  2.5.4; y esta huella ya ha aguantado otras veces un cambio de numpy, así que coincidir no lo prueba.
+- Falta reproducirla en otra máquina. En el ensayo de esta noche tiene que salir `d78c514d…e2b2`, no la de `equipo_v5`.
 - **Sale byte a byte igual que `prueba_d7_v5`:** sha256 `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`.
 - 0 frames en conflicto y ninguna racha corta; 219 posesiones (103 y 116) y 116 paradas (54 y 62).
 - El validador oficial la da por válida: 199.319 filas, 219 posesiones de 15,8 s de media.
