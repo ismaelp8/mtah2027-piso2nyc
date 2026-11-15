@@ -2745,3 +2745,33 @@ comprobaron antes (saque inicial, avance de un frame, parada al final de cada tr
 Decisión y por qué: **ninguna.** Nada se ajustó ni se eligió con la ventana. Las hipótesis se pasaron a la
 sesión de posesiones cortas y a la de la pieza de Ismael. Cuáles se miden lo decide Ismael, con su criterio
 escrito antes de medir.
+
+### 2026-11-15 · validación · dos hipótesis del visionado se prueban: el balón fuera del campo y los toques sin control
+
+Quién: Ismael. Sus palabras (15/11): «vale las tenemos como hipotesis pero no quieres aplicar alguna? Puede que
+probando algunas de las cosas que he comentado puede que tengamos mejores soluciones».
+
+Qué se abre, y en qué orden:
+- **D7, el balón fuera del campo como señal de `D`.** Es la tarea 2 de Manuel en `docs/PLAN_ENTREGA.md` §3,
+  sin hacer, con la definición del plan (el balón visto a más de 1 m fuera). No se puede medir en la DFL: allí
+  el balón se queda quieto mientras está muerto, así que «fuera es `D`» se cumple por construcción.
+  - Primero, un recuento del partido que ejecuta Ismael: de los frames con el balón visto a más de 1 m fuera,
+    cuántos etiqueta ya `equipo_v3` como `D`, como `H` y como `A`. Si casi todos son `D`, se cierra.
+  - Después, una capa nueva en `possession/dead_ball.py`, apagada, con un solo peso escrito y razonado antes
+    del recuento. Sin variantes, y sin mover el margen para encajar ningún caso del visionado.
+- **La convención de los toques sin control.** En el visionado salieron tres posesiones cortísimas por un
+  toque sin control que la GT cuenta. Se cuenta, en la GT pública, cuántas posesiones cortas quedan entre dos
+  del otro equipo sin un `D` en medio, con el mismo código medido antes en el flag y el control de la DFL y en
+  SkillCorner, y con la lectura escrita antes de mirar.
+  - Dice qué significan las etiquetas, que es para lo que está la GT pública. Cambiar a B9 por ese número
+    sería una decisión aparte de Ismael, porque la ventana no elige entre versiones.
+
+Qué no se abre, y por qué:
+- D2 (un cambio de equipo falso antes de la parada): es consecuencia de un `D` que llega tarde y su techo es
+  de +0,015 a +0,027. Se vuelve a mirar después de D7.
+- D5 (el final de la parada): es la rama abierta de Manuel.
+- D4 (el pitido): el sondeo del silbato salió sucio y añade una dependencia del audio.
+- D3 y D6: no tienen una palanca clara.
+
+Cómo termina cada una: como una opción apagada con su evidencia. Encenderla es una decisión aparte, y obliga a
+regenerar la entrega y validarla.
