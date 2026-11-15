@@ -2875,6 +2875,20 @@ Si no se cumple alguno, la capa se queda apagada y se apunta aquí. Si se cumple
 del equipo: se añade la capa a `pipeline.build`, se regenera la entrega en el entorno limpio, se valida y se
 apunta la huella.
 
+**Resultado de la entrega de prueba `prueba_d7`** (15/11; la generó Ismael con el código de `cb95d90`, sin
+cambios locales) [medido, solo agregados]: **falla el criterio 1, así que la capa se queda apagada.**
+1. **Llegamos tarde en 12 de 47 rachas (25,5 %), frente a 23 (48,9 %) sin la capa.** Al empezar la racha ya
+   decimos `D` en 34 (antes, 22), y en 7 nuestro `D` no llega en 10 s (antes, 10). Se pedía menos del 15 %:
+   **no se cumple.**
+2. **Se cumple.** El `D` ocupa el 45,4 % de los frames evaluados (`equipo_v3`: 45,1 %), y hay 116 paradas, 3 más.
+3. **Se cumple.** Cambian 574 frames evaluados (0,361 %): 331 de `H` a `D` y 243 de `A` a `D`, ningún otro par,
+   todos a más de 250 frames de un borde. Las posesiones siguen siendo 215.
+
+Lectura: no hace daño y arregla la mitad de las rachas en que llegábamos tarde, pero no llega al criterio
+fijado antes. **No se enciende.** El sha256 de `prueba_d7` es `eb244885…4f7f`. La sesión principal le propone a
+Ismael una segunda versión que mantenga la parada desde que el balón se ve fuera hasta que vuelve a verse
+dentro. Sería una decisión nueva, escrita antes de generar nada.
+
 ### 2026-11-15 · validación · la GT pública no dice si cuenta los toques sin control; B9, listo para decidir
 
 Quién: Claude, por el encargo de «dos hipótesis del visionado se prueban» (más arriba). Regla en `validation/posesiones_cortas/BITACORA.md` §15,
