@@ -1,7 +1,8 @@
 """Comprueba possession/dead_ball.py sin datos del partido: solo el código, la GT pública y un Smart Tagging
 inventado, que se escribe en una carpeta temporal y se borra al terminar.
 
-Las secciones 9 y 11 prueban las reglas de validation/partido/agregados_dead_ball.py y
+Las secciones 9 y 11 (la 10, el equipo que reanuda, está en la rama `feat/d-equipo-reanuda`, que no
+entró) prueban las reglas de validation/partido/agregados_dead_ball.py y
 agregados_instante_reinicio.py con partidos inventados en memoria: importan sus cuentas, que no abren
 ficheros (se comprueba con la apertura de ficheros prohibida), y nunca ejecutan su `main`, que es lo que
 lee el partido.
@@ -507,7 +508,12 @@ def check_restart_instant(game, folder):
     n = games.GAMES[game]["n_video_frames"]
     length, width = games.GAMES[game]["pitch"]
     blocks = tracking.evaluated_blocks(game)
-    H, D = tracking.H, tracking.D
+    H, A, D = tracking.H, tracking.A, tracking.D
+
+    check("la regla está congelada: sostén 2 s, búsqueda 10 s, 10 ventanas, recorrido 2 s, 5 balones, 1 s, y "
+          "los descriptivos (1 s, 5 s, 1 s)",
+          (air.SUSTAIN_S, air.SEARCH_AFTER_S, air.MIN_WINDOWS, air.MAX_IQR_S, air.MIN_BALL, air.MAX_AGREE_S,
+           air.NEAR_S, air.FIRST_SECONDS_S, air.OFF_DURATION_S) == (2, 10, 10, 2.0, 5, 1.0, 1.0, 5, 1.0))
 
     # Las dos señales.
     odds = np.array([1, 1, 1, -1, -1, -1, 1, 0, -1, -1, -1], dtype=float)
@@ -515,22 +521,36 @@ def check_restart_instant(game, folder):
           air.play_transition(odds, 0, 11, 3) == 3 and air.play_transition(odds, 4, 11, 3) is None
           and air.play_transition(odds, 0, 11, 4) is None and air.play_transition(odds, 0, 5, 2) == 3)
     seen = np.array([1, 1, 0, 0, 0, 1, 1, 0, 0], dtype=bool)
-    check("ball_back: visto al empezar, vuelve a verse (y cuándo) o no vuelve",
-          air.ball_back(seen, 1, 9) == (air.SEEN_AT_START, None) and air.ball_back(seen, 3, 9) == (air.BACK, 5)
-          and air.ball_back(seen, 8, 9) == (air.NOT_BACK, None))
+    check("ball_back: mira el frame anterior al inicio (visto, vuelve a verse y cuándo, o no vuelve)",
+          air.ball_back(seen, 1, 9) == (air.SEEN_AT_START, None) and air.ball_back(seen, 2, 9)[0] == air.SEEN_AT_START
+          and air.ball_back(seen, 3, 9) == (air.BACK, 5) and air.ball_back(seen, 5, 9) == (air.BACK, 5)
+          and air.ball_back(seen, 8, 9) == (air.NOT_BACK, None) and air.ball_back(seen, 3, 3) == (air.NOT_BACK, None))
 
-    # La regla de un tipo, en sus límites.
-    # 11 valores: recorrido intercuartílico de 2 s justos (de p10 a p90, 8 s) y mediana de 2 s
-    base = [-5, -2, 1, 1, 2, 2, 2, 3, 3, 6, 9]
-    wide = [-5, -2, 0.9, 0.9, 2, 2, 2, 3, 3, 6, 9]  # recorrido intercuartílico de 2,1 s
-    check("anchor_rule: 11 transiciones con recorrido de 2 s y 5 balones a 1 s de la mediana: entra",
-          air.anchor_rule(base, [3.0] * 5) == (True, True, True, True))
-    check("anchor_rule: recorrido de más de 2 s, balones a más de 1 s o menos de 5, o menos de 10 "
-          "transiciones: no entra",
-          air.anchor_rule(wide, [3.0] * 5)[3] is False and air.anchor_rule(base, [3.02] * 5)[3] is False
-          and air.anchor_rule(base, [3.0] * 4)[3] is False and air.anchor_rule(base[:9], [3.0] * 5)[3] is False)
+    # La regla de un tipo, en frames y en sus límites. 11 transiciones con mediana 195, recorrido intercuartílico
+    # de 50 frames justos (2 s, de 170 a 220) y colas (p10 y p90) más anchas. En segundos, 220/25 − 170/25 y
+    # 220/25 − 195/25 se pasan de 2 y de 1 por la coma flotante: en frames, no.
+    base = [20, 95, 170, 170, 195, 195, 195, 220, 220, 295, 370]
+    wide = [20, 95, 169, 169, 195, 195, 195, 220, 220, 295, 370]  # recorrido de 51 frames
+    ten = [170, 170, 170, 195, 195, 195, 195, 220, 220, 220]  # exactamente 10, mediana 195
+    ball = [220] * 5  # a 25 frames justos (1 s) de la mediana
+    beats = [(t, 220) for t in base[:5]]  # al ancla fija (195) hay 25; a su transición, mediana 50
+    check("anchor_rule: con recorrido de 2 s justos y el balón a 1 s justo (en frames, sin coma flotante), y el "
+          "ancla fija más cerca del balón que cada transición: entra; también con 10 transiciones justas",
+          air.anchor_rule(base, ball, beats, fps) == (True, True, True, True, True)
+          and air.anchor_rule(ten, ball, [(t, 220) for t in ten[:5]], fps) == (True, True, True, True, True)
+          and 220 / fps - 170 / fps > air.MAX_IQR_S and 220 / fps - 195 / fps > air.MAX_AGREE_S)
+    check("anchor_rule: no entra con recorrido de más de 2 s, el balón a más de 1 s, menos de 5 balones o pares, "
+          "9 transiciones, o el ancla fija igual o peor que la transición de cada ventana",
+          air.anchor_rule(wide, ball, beats, fps)[1:] == (False, True, True, False)
+          and air.anchor_rule(base, [221] * 5, beats, fps)[2:] == (False, True, False)
+          and air.anchor_rule(base, ball[:4], beats, fps)[2:] == (False, True, False)
+          and air.anchor_rule(base, ball, beats[:4], fps)[3:] == (False, False)
+          and air.anchor_rule(ten[:9], ball, beats, fps) == (False, False, False, False, False)
+          and air.anchor_rule(base, ball, [(195, 220)] * 5, fps)[3:] == (False, False)
+          and air.anchor_rule(base, ball, [(220, 220)] * 5, fps)[3:] == (False, False))
+    check("anchor_of: la mediana de la transición, en frames", air.anchor_of(base) == 195 and air.anchor_of(ten) == 195)
 
-    # La capa del ancla.
+    # La capa del ancla y sus cortes.
     w = 1000 * fps
 
     def window(start, kind="throw-in", code="set pieces"):
@@ -542,14 +562,30 @@ def check_restart_instant(game, folder):
           [(s, i, e) for _, s, i, e in spans] == [(w, w + 10 * fps, w + 15 * fps)])
     cut = dead_ball.restart_anchor_spans([window(w), window(w + 12 * fps, "corner kick")], anchors, blocks, fps)
     late = dead_ball.restart_anchor_spans([window(w), window(w + 8 * fps, code="goals")], anchors, blocks, fps)
-    check("restart_anchor_spans: se corta en el siguiente reinicio; si el instante queda después, no entra",
-          [(s, i, e) for _, s, i, e in cut] == [(w, w + 10 * fps, w + 12 * fps)] and late == [])
+    equal = dead_ball.restart_anchor_spans([window(w), window(w + 10 * fps, "corner kick")], anchors, blocks, fps)
+    same = dead_ball.restart_anchor_spans([window(w), window(w, "corner kick")], anchors, blocks, fps)
+    check("restart_anchor_spans: se corta en el siguiente reinicio; si el instante cae en el corte o después, o "
+          "otro reinicio empieza en el mismo frame, la ventana no entra",
+          [(s, i, e) for _, s, i, e in cut] == [(w, w + 10 * fps, w + 12 * fps)] and late == [] and equal == []
+          and same == [])
     check("restart_anchor_spans: ni saques iniciales (aunque tengan ancla), ni tipos sin ancla, ni fuera de lo "
           "evaluado",
           dead_ball.restart_anchor_spans([window(w, "kick off (after goal)")], {"kick off (after goal)": 0},
                                          blocks, fps) == []
           and dead_ball.restart_anchor_spans([window(w, "corner kick"), window(100 * fps)], anchors, blocks, fps)
           == [])
+    alone, other = window(w), window(w + 50 * fps, code="goals")
+    check("next_restart: el siguiente GOALS o SET PIECES (también en el mismo frame), o infinito",
+          dead_ball.next_restart([alone], alone) == np.inf
+          and dead_ball.next_restart([alone, other, window(w + 60 * fps)], alone) == w + 50 * fps
+          and dead_ball.next_restart([alone, window(w, "corner kick")], alone) == w
+          and dead_ball.next_restart([window(w - fps), alone], alone) == np.inf)
+    check("search_stop y harm_stop: 10 s tras el fin de la ventana (o de la capa, si acaba después), sin pasar "
+          "del siguiente reinicio",
+          air.search_stop(alone, np.inf, fps) == w + 45 * fps and air.search_stop(alone, w + 20 * fps, fps) == w + 20 * fps
+          and air.harm_stop(alone, np.inf, w + 15 * fps, fps) == w + 45 * fps
+          and air.harm_stop(alone, np.inf, w + 40 * fps, fps) == w + 50 * fps
+          and air.harm_stop(alone, w + 30 * fps, w + 15 * fps, fps) == w + 30 * fps)
     bx = np.zeros(n)
     trk = tracking.Tracking(bx, bx.copy(), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
                             (length, width), blocks, fps)
@@ -571,23 +607,28 @@ def check_restart_instant(game, folder):
           air.dead_runs(codes, 0, 9) == 3 and air.dead_runs(codes, 0, 3) == 1 and air.last_exit(codes, 0, 6) == 5
           and air.last_exit(codes, 0, 9) is None and air.last_exit(codes, 5, 7) is None)
     check("runs: posesiones y paradas", air.runs(codes, ((0, 9),)) == (3, 3))
-    check("harm_rule: ninguna ventana partida y las posesiones no suben más que las paradas",
+    check("harm_rule: ninguna ventana con más tramos de D y las posesiones no suben más que las paradas",
           air.harm_rule((10, 5), (11, 6), 0) and air.harm_rule((10, 5), (9, 5), 0)
           and not air.harm_rule((10, 5), (11, 5), 0) and not air.harm_rule((10, 5), (10, 5), 1))
     check("cases: los recuentos por debajo de 5 se tapan", air.cases(4) == "< 5" and air.cases(0) == "< 5"
           and air.cases(5) == "5")
+    check("model_fingerprint: corta, estable y distinta si cambia el modelo",
+          air.model_fingerprint({"a": 1, "b": [2]}) == air.model_fingerprint({"b": [2], "a": 1})
+          and air.model_fingerprint({"a": 1}) != air.model_fingerprint({"a": 2})
+          and len(air.model_fingerprint({"a": 1})) == 12)
 
-    # measure_instant de punta a punta, sin abrir ficheros y con piezas controladas: 12 saques de banda; el
-    # modelo de Ana pasa a juego a los 8 s de cada ventana y el balón vuelve a verse a los 8,4 s; el pipeline
-    # sale del D a los 9,6 s (1,6 s tarde). La regla da un ancla a 8 s, y con la capa el pipeline sale a los
-    # 8 s.
+    # measure_instant de punta a punta, sin abrir ficheros y con piezas controladas: 12 saques de banda. El
+    # modelo de Ana pasa a juego a los 7, 8 o 9 s (175, 200 o 225 frames) y el balón vuelve a verse siempre a
+    # los 8,4 s (210): el ancla fija (8 s) queda más cerca del balón (10 frames) que cada transición (mediana
+    # 15). El pipeline sale del D a los 9,6 s (1,6 s tarde); con la capa, a los 8 s.
     starts = [(1000 + 100 * i) * fps for i in range(12)]
     events = [window(s) for s in starts]
+    offsets = [175, 200, 225, 175, 200, 225, 175, 200, 200, 225, 175, 200]
     bx = np.zeros(n)
     instrument = np.full(n, -1.0)
-    for s in starts:
+    for s, offset in zip(starts, offsets):
         bx[s - 10 * fps:s + 210] = np.nan
-        instrument[s - 10 * fps:s + 8 * fps] = 1.0
+        instrument[s - 10 * fps:s + offset] = 1.0
     match = tracking.Tracking(bx, bx.copy(), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
                               (length, width), blocks, fps)
 
@@ -609,30 +650,102 @@ def check_restart_instant(game, folder):
             score[s - 3 * fps:s - 1 * fps, D] = 5.0
         return score, allowed
 
+    def measured(pieces, odds=instrument, tagged=events):
+        try:
+            with pp.no_files():
+                return air.measure_instant(match, tagged, with_gap, no_gap, game, pieces=pieces,
+                                           odds_fn=lambda trk: odds)
+        except AssertionError:
+            check("measure_instant no abre ningún fichero", False)
+            raise
+
     pieces = {"candidates": team_piece, "dead_state": dead_piece}
     no_gap = lambda trk: tracking.no_evidence(n)  # noqa: E731
-    try:
-        with pp.no_files():
-            m = air.measure_instant(match, events, with_gap, no_gap, game, pieces=pieces,
-                                    odds_fn=lambda trk: instrument)
-    except AssertionError:
-        check("measure_instant no abre ningún fichero", False)
-        raise
+    m = measured(pieces)
     t = m["by_type"]["throw-in"]
-    check("measure_instant: 12 ventanas de 35 s; transición a los 8 s y balón a los 8,4 s en todas",
-          m["windows"] == 12 and m["durations"] == [35.0] and t["transitions"] == [8.0] * 12
-          and t["ball"] == [8.4] * 12 and t["states"][air.BACK] == 12, str(m["durations"]))
+    check("measure_instant: 12 ventanas de 35 s; transición a los 7, 8 o 9 s y balón a los 8,4 s, en frames",
+          m["windows"] == 12 and m["duration_median_s"] == 35.0 and m["off_duration"] == 0
+          and t["transitions"] == offsets and t["ball"] == [210] * 12 and t["states"][air.BACK] == 12
+          and t["pairs"] == [(o, 210) for o in offsets])
     check("measure_instant: la regla da un ancla a 8 s (200 frames) para los saques de banda",
-          t["rule"] == (True, True, True, True) and m["anchors"] == {"throw-in": 8 * fps}, str(m["anchors"]))
+          t["rule"] == (True, True, True, True, True) and m["anchors"] == {"throw-in": 8 * fps}, str(m["anchors"]))
     check("measure_instant: con la capa el pipeline sale del D en el instante; sin ella, 1,6 s tarde (más de 1 s)",
           m["near"] == (0, 12) and m["changed_inside"] == (0, 0, 12 * 40) and m["changed_outside"] == (0, 0, 0),
           "{} {} {}".format(m["near"], m["changed_inside"], m["changed_outside"]))
-    check("measure_instant: sin conflictos, sin ventanas partidas, el daño se cumple y la capa entra",
-          m["conflicts"] == (0, 0) and m["split"] == 0 and m["runs"][0] == m["runs"][1] and m["harm_ok"]
-          and m["entra"], str(m["runs"]))
+    check("measure_instant: sin conflictos, sin ventanas con más tramos de D, el daño se cumple y la capa entra",
+          m["spans"] == 12 and m["conflicts"] == (0, 0) and m["split"] == 0 and m["runs"][0] == m["runs"][1]
+          and m["harm_ok"] and m["entra"], str(m["runs"]))
     check("measure_instant: la capa del hueco cambia 10 s de cada hueco, y la mitad cae en los primeros 5 s",
           m["gap_changed"] == 12 * 10 * fps and m["gap_changed_first"] == 12 * 5 * fps,
           "{} {}".format(m["gap_changed"], m["gap_changed_first"]))
+
+    # Las señales no se buscan más allá del siguiente reinicio: con un GOALS a los 7 s de cada ventana, ni la
+    # transición (7, 8 o 9 s) ni el balón (8,4 s) caen antes del corte, y no hay ancla.
+    cut_short = measured(pieces, tagged=events + [window(s + 7 * fps, code="goals") for s in starts])
+    t = cut_short["by_type"]["throw-in"]
+    check("measure_instant: las señales se buscan solo hasta el siguiente reinicio",
+          t["transitions"] == [] and t["ball"] == [] and t["states"][air.NOT_BACK] == 12
+          and cut_short["anchors"] == {}, str(t["states"]))
+
+    # La parada partida (lo que vio el revisor): en 2 ventanas el modelo de Ana sigue parado hasta los 30 s y
+    # duda entre los 8 y los 13 s. Con la capa el D sale a los 8 s y vuelve a los 13 s, justo donde acaba la
+    # capa: una parada y una posesión más en cada una. La capa no entra.
+    late = starts[10:]
+    late_odds = instrument.copy()
+    for s in late:
+        late_odds[s:s + 30 * fps] = 1.0
+
+    def dead_late(trk):
+        score, allowed = dead_piece(trk)
+        for s in late:
+            score[s:s + 30 * fps, D] = 1.0
+            score[s + 200:s + 325, D] = 0.6
+        return score, allowed
+
+    split = measured({"candidates": team_piece, "dead_state": dead_late}, late_odds)
+    (poss0, stops0), (poss1, stops1) = split["runs"]
+    check("measure_instant: la parada partida se cuenta (2 ventanas con más tramos de D) y la capa no entra, "
+          "aunque las posesiones no suban más que las paradas",
+          split["anchors"] == {"throw-in": 8 * fps} and split["split"] == 2 and (poss1 - poss0, stops1 - stops0)
+          == (2, 2) and split["near"] == (0, 10) and not split["harm_ok"] and not split["entra"],
+          "{} {} {}".format(split["anchors"], split["split"], split["runs"]))
+
+    # Una parada que ya tiene dos tramos de D sin la capa (vuelve a D a los 20 s) y que la capa no empeora: no
+    # cuenta como partida, y la capa entra.
+    def dead_twice(trk):
+        score, allowed = dead_piece(trk)
+        for s in late:
+            score[s + 500:s + 700, D] = 1.0
+        return score, allowed
+
+    twice = measured({"candidates": team_piece, "dead_state": dead_twice})
+    check("measure_instant: una ventana que ya tenía dos tramos de D sin la capa no cuenta como partida",
+          twice["anchors"] == {"throw-in": 8 * fps} and twice["split"] == 0 and twice["runs"][0] == twice["runs"][1]
+          and twice["runs"][0][1] == 14 and twice["harm_ok"] and twice["entra"],
+          "{} {}".format(twice["split"], twice["runs"]))
+
+    # Una posesión sin parada: tras el instante la evidencia de equipo dice H 1,6 s y después A. Sin la capa el
+    # D llega hasta los 9,6 s y se sale a A; con ella se sale a los 8 s a H y luego a A: una posesión más en
+    # cada ventana, sin ninguna parada más. La capa no entra.
+    def dead_strong(trk):
+        score, allowed = tracking.no_evidence(n)
+        for s in starts:
+            score[s:s + 240, D] = 3.2
+        return score, allowed
+
+    def team_flip(trk):
+        score, allowed = team_piece(trk)
+        for s in starts:
+            score[s + 200:s + 240, H] = 3.0
+            score[s + 240:s + 60 * fps, H] = 0.0
+            score[s + 240:s + 60 * fps, A] = 1.0
+        return score, allowed
+
+    flip = measured({"candidates": team_flip, "dead_state": dead_strong})
+    (poss0, stops0), (poss1, stops1) = flip["runs"]
+    check("measure_instant: una posesión nueva sin parada que la parta: la capa no entra",
+          flip["anchors"] == {"throw-in": 8 * fps} and flip["split"] == 0 and (poss1 - poss0, stops1 - stops0)
+          == (12, 0) and not flip["harm_ok"] and not flip["entra"], "{} {}".format(flip["split"], flip["runs"]))
 
     # Con anclas, pero con piezas que se contradicen en unos frames (conflictos): el daño no se cumple y la capa
     # no entra.
@@ -646,10 +759,7 @@ def check_restart_instant(game, folder):
         allowed[50000:50010, D] = False
         return score, allowed
 
-    with pp.no_files():
-        clash = air.measure_instant(match, events, with_gap, no_gap, game,
-                                    pieces={"candidates": team_conflict, "dead_state": dead_conflict},
-                                    odds_fn=lambda trk: instrument)
+    clash = measured({"candidates": team_conflict, "dead_state": dead_conflict})
     check("measure_instant: con conflictos entre piezas, aunque haya ancla, la capa no entra",
           clash["anchors"] == {"throw-in": 8 * fps} and clash["conflicts"] == (10, 10) and not clash["harm_ok"]
           and not clash["entra"], str(clash["conflicts"]))
@@ -658,9 +768,7 @@ def check_restart_instant(game, folder):
     scattered = np.full(n, -1.0)
     for i, s in enumerate(starts):
         scattered[s - 10 * fps:s + (i % 4) * 2 * fps] = 1.0
-    with pp.no_files():
-        loose = air.measure_instant(match, events, with_gap, no_gap, game, pieces=pieces,
-                                    odds_fn=lambda trk: scattered)
+    loose = measured(pieces, scattered)
     check("measure_instant: con el reinicio disperso, mucha dispersión, ninguna ancla y la capa no entra",
           loose["by_type"]["throw-in"]["rule"][1] is False and loose["anchors"] == {} and not loose["entra"])
 

@@ -260,7 +260,7 @@ def evidence(trk, paths=None, game=games.GAME):
     return score, allowed
 
 
-# -- El instante del reinicio (15/11). Medido con su regla, fuera de `evidence` hasta que pase.
+# -- El instante del reinicio (15/11). Se mide con su regla; fuera de `evidence` hasta que pase.
 
 # La capa ancla el fin del `D` de cada ventana `SET PIECES` en un desfase fijo desde su inicio, uno por tipo
 # de reinicio, que sale de validation/partido/agregados_instante_reinicio.py con la regla de
@@ -271,6 +271,13 @@ ANCHOR_SCORE = 1.0
 ANCHOR_AFTER_S = 5
 
 
+def next_restart(events, window):
+    """Inicio del siguiente `GOALS` o `SET PIECES` de cualquier tipo, contando los que empiezan en el mismo
+    frame que `window` (sin contarla a ella); np.inf si no hay ninguno."""
+    return min([e["start"] for e in events if e["code"] in (GOALS_CODE, SET_PIECES_CODE)
+                and e is not window and e["start"] >= window["start"]] + [np.inf])
+
+
 def restart_anchor_spans(events, anchors, blocks, fps):
     """[(ventana, inicio, instante, fin)] de la capa, para las ventanas de restart_windows(events) (nunca los
     saques iniciales) cuyo tipo tiene ancla y que empiezan en un tramo evaluado (`blocks`, con el fin sin
@@ -279,13 +286,12 @@ def restart_anchor_spans(events, anchors, blocks, fps):
     El instante es inicio + anchors[tipo], y `fin` es el instante + ANCHOR_AFTER_S. Todo se corta en el
     inicio del siguiente `GOALS` o `SET PIECES`, de cualquier tipo; si el instante no cae antes de ese
     corte, la ventana no entra."""
-    restarts = [e for e in events if e["code"] in (GOALS_CODE, SET_PIECES_CODE)]
     spans = []
     for window in restart_windows(events):
         start = window["start"]
         if window["type"] not in anchors or not any(first <= start < stop for first, stop in blocks):
             continue
-        cut = min([e["start"] for e in restarts if e is not window and e["start"] >= start] + [np.inf])
+        cut = next_restart(events, window)
         instant = start + int(anchors[window["type"]])
         if not start <= instant < cut:
             continue
