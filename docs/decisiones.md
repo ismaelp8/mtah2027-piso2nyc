@@ -2211,3 +2211,26 @@ combinaciones.
 Descartado: B6, B7 y B8. Y arreglar el slot duplicado de los núcleos: sería un cuarto candidato.
 `validation/partido/slots_duplicados.py` dice cuánto pasa en el partido, si Ismael lo ejecuta.
 
+### 2026-11-15 · candidatos · se reabre la evidencia de equipo: predecimos muchas menos posesiones de las que hay
+
+Quién: Ismael. Lo apunta Claude en la sesión de posesiones cortas (rama `claude/posesiones-cortas-5e84f8`).
+
+Qué se decide: se reabre la evidencia de equipo, que la regla de parada de la ronda de reentrenamiento de
+B5 (entrada anterior) había cerrado. Palabras de Ismael (15/11), literales: «si, claramente vamos a
+reabrirla dejate de decisiones tomadas de tiempo. Es claro que tenemos un problema en que predecimos muchas
+menos posesiones de las que hay, sobretodo cuando son posesiones cortas.»
+
+Por qué: el diagnóstico de errores del 15/11 (`validation/resultados/2026-11-15_diagnostico_errores.md`).
+Con el flag predecimos 1.661 posesiones frente a 3.061, y en SkillCorner 2.270 frente a 3.228. De las de
+menos de 2 s encontramos entre el 2 y el 25 %.
+
+Qué no cambia:
+- B5 sigue en la entrega y `pipeline.PIECES` no cambia hasta que un candidato gane y Ismael diga que sí.
+- Las reglas de medida de siempre:
+  - candidatos y regla de lectura escritos y subidos a la rama antes de medir;
+  - §5.8 frente al control y frente a `main` en el harness, con las dos convenciones;
+  - los criterios con el `D` propio (`validation/apuesta_b/d_propio.py`);
+  - el examen de SkillCorner (`lector.EXAMEN`) se usa una sola vez, con el candidato ya cerrado.
+- Lo que ya se probó y no ganó no se repite tal cual: N2, Ret, B1, B6, B7, B8, los costes 12 y 50,
+  `decode_min`, `decode_prune` y los prototipos A.3 y A.5 de la revisión externa.
+
