@@ -1,9 +1,10 @@
 """Comprueba possession/dead_ball.py sin datos del partido: solo el código, la GT pública y un Smart Tagging
 inventado, que se escribe en una carpeta temporal y se borra al terminar.
 
-La sección 9 prueba la regla de validation/partido/agregados_dead_ball.py con un partido inventado en
-memoria: importa su `measure`, que no abre ficheros, y nunca ejecuta su `main`, que es lo que lee el
-partido.
+Las secciones 9 y 10 prueban las reglas de validation/partido/agregados_dead_ball.py y
+agregados_equipo_reanuda.py con partidos inventados en memoria: importan sus cuentas, que no abren
+ficheros (se comprueba con la apertura de ficheros prohibida), y nunca ejecutan su `main`, que es lo que
+lee el partido.
 
     python validation/scripts/comprobar_balon_muerto.py
 
@@ -509,7 +510,7 @@ def check_team_restart(game, folder):
     blocks = tracking.evaluated_blocks(game)
     H, A, D = tracking.H, tracking.A, tracking.D
 
-    # La capa: equipos y evidencia.
+    # La capa: equipos, tramos y evidencia.
     path = smart_tagging_xml(folder, "equipos.xml", [
         ("SET PIECES", 1000, 1035, "Corner Kick"), ("SET PIECES", 2000, 2035, "Goal Kick"),
         ("SET PIECES", 3000, 3035, "Throw-in"), ("SET PIECES", 4549.6, 4554.6, "Kick Off (Start)"),
@@ -525,6 +526,10 @@ def check_team_restart(game, folder):
     check("restart_teams: sin nombres o con los dos iguales da error",
           all(pp.raises(ValueError, lambda h=h, a=a: dead_ball.restart_teams(events, h, a))
               for h, a in (("", "x"), ("x", None), ("FC Local", "fc local"))))
+    spans = [(start, stop, team) for _, team, start, stop in
+             dead_ball.restart_team_spans(events, "FC Local", "Visitante CF", blocks)]
+    check("restart_team_spans: solo las que empiezan en lo evaluado, cortadas en el siguiente reinicio",
+          spans == [(1000 * fps, 1035 * fps, H), (2000 * fps, 2035 * fps, A)], str(spans))
     bx = np.zeros(n)
     trk = tracking.Tracking(bx, bx.copy(), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
                             (length, width), blocks, fps)
@@ -532,18 +537,23 @@ def check_team_restart(game, folder):
     expected = np.zeros((n, 3))
     expected[1000 * fps:1035 * fps, A] = -dead_ball.TEAM_SCORE  # córner del local: se resta al visitante
     expected[2000 * fps:2035 * fps, H] = -dead_ball.TEAM_SCORE  # saque de puerta del visitante
-    check("team_restart_evidence: resta en el otro equipo justo en la ventana; nada en D; fuera de lo "
+    check("team_restart_evidence: resta en el otro equipo justo en el tramo; nada en D; fuera de lo "
           "evaluado, nada", bool(np.array_equal(score, expected)) and bool(allowed.all()))
     overlap = dead_ball.smart_tagging_events(smart_tagging_xml(folder, "solape.xml", [
         ("SET PIECES", 1000, 1035, "Corner Kick"), ("SET PIECES", 1020, 1055, "Goal Kick"),
-        ("SET PIECES", 2000, 2035, "Corner Kick"), ("SET PIECES", 2000, 2035, "Free Kick")],
-        teams=["FC Local", "Visitante CF", "FC Local", "Visitante CF"]), fps)
+        ("GOALS", 1040, 1060, None), ("SET PIECES", 2000, 2035, "Corner Kick"),
+        ("SET PIECES", 2000, 2035, "Free Kick")],
+        teams=["FC Local", "Visitante CF", "FC Local", "FC Local", "Visitante CF"]), fps)
     score, _ = dead_ball.team_restart_evidence(trk, overlap, "FC Local", "Visitante CF")
     expected = np.zeros((n, 3))
     expected[1000 * fps:1020 * fps, A] = -dead_ball.TEAM_SCORE  # el córner se corta donde empieza el otro
-    expected[1020 * fps:1055 * fps, H] = -dead_ball.TEAM_SCORE
-    check("ventanas que se pisan: cada una se corta en el inicio de la siguiente, y dos en el mismo frame no "
-          "puntúan", bool(np.array_equal(score, expected)))
+    expected[1020 * fps:1040 * fps, H] = -dead_ball.TEAM_SCORE  # y este, donde empieza el GOALS
+    check("ventanas que se pisan: cada una se corta en el siguiente GOALS o SET PIECES, y dos en el mismo "
+          "frame no puntúan", bool(np.array_equal(score, expected)))
+    cut = [(start, stop) for _, _, start, stop in
+           dead_ball.restart_team_spans(overlap, "FC Local", "Visitante CF", blocks)]
+    check("restart_team_spans: los tramos cortados, y los vacíos (dos en el mismo frame) no están",
+          cut == [(1000 * fps, 1020 * fps), (1020 * fps, 1040 * fps)], str(cut))
     check("la puntuación del equipo es la de la regla: 1 por frame, sin ajustar", dead_ball.TEAM_SCORE == 1.0)
     check("el equipo que reanuda no entra todavía en evidence",
           not dead_ball.evidence(trk, {"smart_tagging": path}, game)[0][:, :2].any())
@@ -561,21 +571,24 @@ def check_team_restart(game, folder):
     check("lado izquierdo: si falta un equipo, da error",
           pp.raises(ValueError, lambda: aer.left_defender(one_team)))
 
-    # La física de cada ventana: el último balón visto antes del inicio de la ventana.
+    # El punto del reinicio: el último balón visto antes del inicio de la ventana, de esta parada.
     w = 1000 * fps
 
-    def spot(x, age_s=2, start=w):
+    def spot(x, age_s=2, others=()):
         bx = np.full(n, np.nan)
         bx[100:200] = length - 1.0  # mucho antes, el balón visto en el otro lado
-        bx[start - age_s * fps - 49:start - age_s * fps + 1] = x  # el último, a age_s justos del inicio
+        bx[w - age_s * fps - 49:w - age_s * fps + 1] = x  # el último, a age_s justos del inicio
+        bx[w] = length / 2  # en el primer frame de la ventana: no cuenta
         last = dead_ball.last_seen_before(bx, bx)
-        return aer.restart_spot(last, bx, bx, {"start": start}, fps)
+        return aer.restart_spot(last, bx, bx, w, fps, list(others) + [w])
 
-    left = {1: H}
-    check("el punto del reinicio es el último balón visto antes de la ventana, no uno anterior",
-          spot(2.0) == (2.0, 2.0))
+    check("el punto es el último balón visto antes de la ventana (no uno anterior ni el del primer frame)",
+          spot(2.0) == ((2.0, 2.0), 2 * fps), str(spot(2.0)))
     check("un balón visto hace 60 s justos vale; uno más antiguo, no",
-          spot(2.0, age_s=60) is not None and spot(2.0, age_s=61) is None and aer.MAX_AGE_S == 60)
+          spot(2.0, age_s=60)[0] is not None and spot(2.0, age_s=61) == (None, None) and aer.MAX_AGE_S == 60)
+    check("si otro reinicio empieza entre ese balón y la ventana, no vale (sería de otra parada)",
+          spot(2.0, others=[w - fps]) == (None, None) and spot(2.0, others=[w - 2 * fps])[0] is not None)
+    left = {1: H}
     check("córner en el lado izquierdo, que defiende el local: lo saca el visitante",
           aer.physics_check((1.0, 1.0), "corner kick", A, 1, left, length) == aer.AGREE
           and aer.physics_check((1.0, 1.0), "corner kick", H, 1, left, length) == aer.DISAGREE)
@@ -586,54 +599,62 @@ def check_team_restart(game, folder):
           aer.physics_check((length / 2, 1.0), "corner kick", A, 1, left, length) == aer.NOT_IN_QUARTER
           and aer.physics_check((length / 4 + 0.1, 1.0), "corner kick", A, 1, left, length) == aer.NOT_IN_QUARTER
           and aer.physics_check((length / 4 - 0.1, 1.0), "corner kick", A, 1, left, length) == aer.AGREE)
-    check("sin balón visto no decide", aer.physics_check(None, "corner kick", A, 1, left, length) == aer.NO_BALL)
+    check("sin balón de esta parada no decide",
+          aer.physics_check(None, "corner kick", A, 1, left, length) == aer.NO_BALL)
 
     # Con qué equipo sale el pipeline de la parada.
     codes = np.array([H, D, D, H, A, A, D, D, D, D], dtype=np.int8)
-    check("exit_team: el primer H o A después del último D de la ventana, buscado hasta el fin del tramo",
+    check("exit_team: el primer H o A después del último D del tramo, buscado hasta el fin del tramo evaluado",
           aer.exit_team(codes, 0, 4, 10) == (H, 3) and aer.exit_team(codes, 4, 8, 10) == (None, None)
           and aer.exit_team(codes, 0, 1, 10) == (None, None) and aer.exit_team(codes, 1, 2, 10) == (H, 3)
           and aer.exit_team(np.array([D, H, D, A], dtype=np.int8), 0, 4, 4) == (A, 3))
-    window = {"start": 0, "end": 6}
     check("exit_state: el del Team, el otro, sin parada, sin salida, y si el otro aparece después",
-          aer.exit_state(codes, window, H, 10) == (aer.SAME, True)
-          and aer.exit_state(codes, window, A, 10) == (aer.OTHER, False)
-          and aer.exit_state(codes, {"start": 3, "end": 6}, H, 10) == (aer.NO_STOP, False)
-          and aer.exit_state(codes, {"start": 6, "end": 9}, H, 10) == (aer.NO_EXIT, False))
+          aer.exit_state(codes, 0, 6, H, 10) == (aer.SAME, True)
+          and aer.exit_state(codes, 0, 6, A, 10) == (aer.OTHER, False)
+          and aer.exit_state(codes, 3, 6, H, 10) == (aer.NO_STOP, False)
+          and aer.exit_state(codes, 6, 9, H, 10) == (aer.NO_EXIT, False))
+    before = [(aer.OTHER, False), (aer.SAME, True), (aer.SAME, False), (aer.OTHER, False), (aer.SAME, False)]
+    after = [(aer.SAME, False), (aer.SAME, False), (aer.OTHER, False), (aer.NO_STOP, False), (aer.SAME, False)]
+    check("paired: arregladas, rotas, paradas borradas y cambios retrasados, ventana a ventana",
+          aer.paired(before, after) == (1, 1, 1, 1), str(aer.paired(before, after)))
     check("runs: posesiones y paradas dentro de los tramos",
           aer.runs(codes, ((0, 6), (6, 10))) == (3, 2), str(aer.runs(codes, ((0, 6), (6, 10)))))
-    before = np.array([H, H, D, D, A, A], dtype=np.int8)
-    after = np.array([A, H, H, D, D, A], dtype=np.int8)
+    old, new = np.array([H, H, D, D, A, A], dtype=np.int8), np.array([A, H, H, D, D, A], dtype=np.int8)
     check("changes: de un equipo al otro, de juego a D y de D a juego, solo en lo evaluado",
-          aer.changes(before, after, np.ones(6, dtype=bool)) == (1, 1, 1)
-          and aer.changes(before, after, np.array([False] * 6)) == (0, 0, 0))
+          aer.changes(old, new, np.ones(6, dtype=bool)) == (1, 1, 1)
+          and aer.changes(old, new, np.array([False] * 6)) == (0, 0, 0))
 
     # Las tres condiciones de la regla, en sus límites.
     check("condición 1: 9 de 10 entra; 8 de 10, 8 de 9 y 9 de 9 (menos de 10 que deciden), no",
           aer.physics_rule(9, 10) and not aer.physics_rule(8, 10) and not aer.physics_rule(8, 9)
           and not aer.physics_rule(9, 9) and not aer.physics_rule(0, 0))
-    check("condición 2: 1 sin la capa y 0 con ella entra; 0 y 0, o 2 y 2, no",
-          aer.contributes_rule(1, 0) and not aer.contributes_rule(0, 0) and not aer.contributes_rule(2, 2))
-    check("condición 3: con la capa, igual o menos posesiones y paradas entra; una más de cualquiera, no",
-          aer.harm_rule((10, 5), (10, 5)) and aer.harm_rule((10, 5), (9, 4))
-          and not aer.harm_rule((10, 5), (11, 5)) and not aer.harm_rule((10, 5), (10, 6)))
+    check("condición 2: arregla 1 y rompe 0 entra; 0 y 0, o 2 y 2, no",
+          aer.contributes_rule(1, 0) and not aer.contributes_rule(0, 0) and not aer.contributes_rule(2, 2)
+          and aer.contributes_rule(3, 2))
+    check("condición 3: sin borrar ni retrasar nada, con igual o menos posesiones y paradas, entra; si no, no",
+          aer.harm_rule((10, 5), (10, 5), 0, 0) and aer.harm_rule((10, 5), (9, 4), 0, 0)
+          and not aer.harm_rule((10, 5), (11, 5), 0, 0) and not aer.harm_rule((10, 5), (10, 6), 0, 0)
+          and not aer.harm_rule((10, 5), (9, 4), 1, 0) and not aer.harm_rule((10, 5), (9, 4), 0, 1))
 
     # measure_teams de punta a punta, sin abrir ficheros y con piezas controladas, para que todo decida:
-    # - un córner del local (lado izquierdo, que defiende el visitante) y un saque de puerta del visitante
-    #   (lado izquierdo): los dos coinciden con el Team;
-    # - D 10 s al principio de cada ventana; el local va por delante (+0,3) en todo el partido;
-    # - en el córner, el visitante +0,6 de 10 a 20 s: sin la capa sale con el visitante (el otro), con ella
-    #   con el local;
-    # - en el saque de puerta, el visitante +0,6 de 10 a 20 s: sale con el visitante (el del Team); sin la
-    #   capa el local vuelve dentro de la ventana, con ella no.
-    w1, w2 = 1000 * fps, 2000 * fps
-    events = [{"code": "set pieces", "type": "corner kick", "team": "local", "start": w1, "end": w1 + 35 * fps},
-              {"code": "set pieces", "type": "goal kick", "team": "visitante", "start": w2,
-               "end": w2 + 35 * fps}]
+    # - fuera de lo evaluado, un córner que no cuenta;
+    # - 1ª parte: córner del local en el lado izquierdo, que defiende el visitante; sin la capa sale con el
+    #   visitante (el otro) y con ella con el local (arreglada);
+    # - 2ª parte (los equipos cambian de lado): saque de puerta del visitante en el lado derecho, que defiende
+    #   el visitante; sale con el visitante, y sin la capa el local vuelve dentro (la capa lo retrasa);
+    # - falta del local con la parada más larga que el tramo: la salida cae después del tramo.
+    # D 10 s al principio de cada ventana (40 s en la falta); el local va por delante (+0,3) en todo el partido.
+    w0, w1, w2, w3 = 100 * fps, 1000 * fps, 5000 * fps, 1500 * fps
+    events = [
+        {"code": "set pieces", "type": "corner kick", "team": "local", "start": w0, "end": w0 + 35 * fps},
+        {"code": "set pieces", "type": "corner kick", "team": "local", "start": w1, "end": w1 + 35 * fps},
+        {"code": "set pieces", "type": "free kick", "team": "local", "start": w3, "end": w3 + 35 * fps},
+        {"code": "set pieces", "type": "goal kick", "team": "visitante", "start": w2, "end": w2 + 35 * fps}]
     bx = np.full(n, np.nan)
-    bx[w1 - 100:w1 - 50], bx[w2 - 100:w2 - 50] = 2.0, 5.0
+    bx[w1 - 100:w1 - 50], bx[w2 - 100:w2 - 50] = 2.0, length - 5.0
     px = np.full((n, 4), np.nan)
-    px[:, :2], px[:, 2:] = 80.0, 20.0  # el visitante defiende el lado izquierdo
+    px[first_half, :2], px[first_half, 2:] = 80.0, 20.0  # 1ª parte: el visitante defiende la izquierda
+    px[second_half, :2], px[second_half, 2:] = 20.0, 80.0  # 2ª parte: el local
     match = tracking.Tracking(bx, bx.copy(), px, px.copy(), team_of_slot, (length, width), blocks, fps)
 
     def team_piece(trk):
@@ -645,8 +666,8 @@ def check_team_restart(game, folder):
 
     def dead_piece(trk):
         score, allowed = tracking.no_evidence(n)
-        for start in (w1, w2):
-            score[start:start + 10 * fps, D] = 2.0
+        for start, seconds in ((w1, 10), (w2, 10), (w3, 40)):
+            score[start:start + seconds * fps, D] = 2.0
         return score, allowed
 
     pieces = {"candidates": team_piece, "dead_state": dead_piece}
@@ -658,16 +679,66 @@ def check_team_restart(game, folder):
         check("measure_teams no abre ningún fichero", False)
         raise
     corner, goal_kick = m["checks"]["corner kick"], m["checks"]["goal kick"]
-    check("measure_teams: la física decide las dos ventanas y coinciden",
-          corner[aer.AGREE] == 1 and goal_kick[aer.AGREE] == 1 and (m["agree"], m["deciding"]) == (2, 2)
-          and not m["physics_ok"], str(m["checks"]))
-    check("measure_teams: sin la capa sale con el otro en el córner; con ella, con el del Team en las dos",
-          m["exits"][0][aer.OTHER] == 1 and m["exits"][0][aer.SAME] == 1 and m["exits"][1][aer.SAME] == 2
-          and m["contributes"], str(m["exits"]))
-    check("measure_teams: el riesgo, la capa quita el cambio al local dentro del saque de puerta",
-          m["later"] == (1, 0) and m["later_removed"] == 1, "{} {}".format(m["later"], m["later_removed"]))
+    check("measure_teams: 3 ventanas en lo evaluado; la física decide el córner (1ª parte) y el saque de "
+          "puerta (2ª parte), y coinciden",
+          m["windows"] == 3 and corner[aer.AGREE] == 1 and goal_kick[aer.AGREE] == 1
+          and (m["agree"], m["deciding"]) == (2, 2) and not m["physics_ok"], str(m["checks"]))
+    check("measure_teams: sin la capa sale con el otro en el córner; con ella, con el del Team en las tres "
+          "(la falta, después de su tramo)",
+          m["exits"][0][aer.OTHER] == 1 and m["exits"][0][aer.SAME] == 2 and m["exits"][1][aer.SAME] == 3
+          and (m["fixed"], m["broken"]) == (1, 0) and m["contributes"], str(m["exits"]))
+    check("measure_teams: la capa retrasa el cambio al local en el saque de puerta, y la condición 3 no se "
+          "cumple", (m["lost"], m["delayed"]) == (0, 1) and not m["harm_ok"] and not m["entra"])
     check("measure_teams: cambian 10 s de un equipo al otro en el córner y 15 s en el saque de puerta, y "
           "ningún frame de D", m["changed"] == (25 * fps, 0, 0), str(m["changed"]))
+    check("measure_teams: la capa quita una posesión y no añade paradas; sin conflictos",
+          m["runs"][1][0] == m["runs"][0][0] - 1 and m["runs"][1][1] == m["runs"][0][1]
+          and m["conflicts"] == (0, 0), str(m["runs"]))
+
+    # La capa que borra una parada: el local ya tenía el balón, la parada es floja (D 0,45) y después el
+    # visitante va por delante. Sin la capa: el local, D y el visitante. Con ella: el local seguido.
+    def weak_dead(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[w1:w1 + 10 * fps, D] = 0.45
+        return score, allowed
+
+    def after_stop(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[:, H] = 0.3
+        score[w1 + 10 * fps:w1 + 35 * fps, A] = 0.6
+        return score, allowed
+
+    with pp.no_files():
+        erased = aer.measure_teams(match, events[1:2], "Local", "Visitante", anchors, game,
+                                   pieces={"candidates": after_stop, "dead_state": weak_dead})
+    check("una capa que borra una parada no entra (no cuenta como arreglada)",
+          erased["exits"][0][aer.OTHER] == 1 and erased["exits"][1][aer.NO_STOP] == 1
+          and (erased["fixed"], erased["lost"]) == (0, 1) and not erased["contributes"]
+          and not erased["harm_ok"], "{} {}".format(erased["exits"], erased["lost"]))
+
+    # La salida se mide en el tramo cortado, no en la ventana entera: un saque de banda sin equipo corta el
+    # córner a los 15 s; la parada del córner sale con el visitante y la del saque de banda, con el local.
+    def two_stops(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[w1:w1 + 10 * fps, D] = 2.0
+        score[w1 + 20 * fps:w1 + 25 * fps, D] = 2.0
+        return score, allowed
+
+    def visitor_first(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[:, H] = 0.3
+        score[w1 + 10 * fps:w1 + 20 * fps, A] = 0.6
+        return score, allowed
+
+    cut_events = [{"code": "set pieces", "type": "corner kick", "team": "local", "start": w1, "end": w1 + 35 * fps},
+                  {"code": "set pieces", "type": "throw-in", "team": "n/a", "start": w1 + 15 * fps,
+                   "end": w1 + 50 * fps}]
+    with pp.no_files():
+        cut_m = aer.measure_teams(match, cut_events, "Local", "Visitante", anchors, game,
+                                  pieces={"candidates": visitor_first, "dead_state": two_stops})
+    check("la salida se mide en el tramo cortado: sin la capa, la del córner es el visitante (el otro)",
+          cut_m["windows"] == 1 and cut_m["exits"][0][aer.OTHER] == 1, str(cut_m["exits"]))
+
     # Y la condición 1 justo en su límite: 13 córners, 9 con el Team bien, 1 mal, 2 sin balón visto y 1 en el
     # medio campo. Deciden 10 y coinciden 9 (el 90 %): se cumple.
     starts = [(1000 + 100 * i) * fps for i in range(13)]
@@ -684,10 +755,8 @@ def check_team_restart(game, folder):
         m13 = aer.measure_teams(corners, events, "Local", "Visitante", anchors, game, pieces=pieces)
     check("condición 1 en su límite con el script entero: deciden 10, coinciden 9, y se cumple",
           m13["checks"]["corner kick"] == {aer.AGREE: 9, aer.DISAGREE: 1, aer.NO_BALL: 2, aer.NOT_IN_QUARTER: 1}
-          and (m13["agree"], m13["deciding"]) == (9, 10) and m13["physics_ok"], str(m13["checks"]))
-    check("measure_teams: la capa quita una posesión y no añade paradas; sin conflictos",
-          m["runs"][1][0] == m["runs"][0][0] - 1 and m["runs"][1][1] == m["runs"][0][1] and m["harm_ok"]
-          and m["conflicts"] == (0, 0), str(m["runs"]))
+          and (m13["agree"], m13["deciding"]) == (9, 10) and m13["physics_ok"]
+          and m13["ages"]["corner kick"] == [0, 10], "{} {}".format(m13["checks"], m13["ages"]))
 
 
 def main():

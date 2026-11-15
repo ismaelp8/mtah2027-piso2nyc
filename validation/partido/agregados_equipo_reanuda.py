@@ -10,13 +10,14 @@ Responde, con la regla apuntada en docs/decisiones.md (15/11, «el equipo que re
 1. Si el `Team` del Smart Tagging es el equipo que saca: en córners y saques de puerta, con la física
    (en qué fondo estaba el balón antes de la ventana y qué lado defiende cada equipo), sin etiquetas.
 2. Si la capa aporta algo: con qué equipo sale el pipeline de cada parada, sin la capa y con ella, frente
-   al `Team`.
-3. Si la capa hace daño: paradas y posesiones, sin la capa y con ella, y qué frames cambian.
+   al `Team`, ventana a ventana.
+3. Si la capa hace daño: paradas borradas, cambios de posesión retrasados, y posesiones y paradas.
 
 `measure_teams` y las funciones de la regla no abren ningún fichero; los importa
 validation/scripts/comprobar_balon_muerto.py (sección 10), que ejecuta Claude con un partido inventado y
-con la apertura de ficheros prohibida. `measure_teams` llama al pipeline con la evidencia `anchors` que le
-pasa quien llama: en `main`, la de dead_ball con las rutas del partido. Solo `main` lee el partido.
+con la apertura de ficheros prohibida. Por eso **nada fuera de `main` puede abrir un fichero.**
+`measure_teams` llama al pipeline con la evidencia `anchors` que le pasa quien llama: en `main`, la de
+dead_ball con las rutas del partido.
 """
 
 import os
@@ -37,6 +38,7 @@ H, A, D = tracking.H, tracking.A, tracking.D
 # El punto del reinicio es el último balón visto antes del inicio de la ventana, con esta antigüedad como
 # mucho (el tope de la capa del hueco, dead_ball.MAX_GAP_BEFORE_RESTART_S).
 MAX_AGE_S = dead_ball.MAX_GAP_BEFORE_RESTART_S
+RECENT_S = 1  # descriptivo: puntos de menos de 1 s, que pueden ser ya del balón sacado
 # Decide si cae a un cuarto del largo o más de la línea de medio campo (el cuarto final de un lado).
 QUARTER = 0.25
 MIN_AGREEMENT = 0.9  # condición 1: coinciden el 90 % o más de las que deciden
@@ -44,7 +46,8 @@ MIN_DECIDING = 10  # y deciden 10 o más
 # Qué equipo saca, según el fondo del reinicio: en un córner, el que ataca ese lado; en un saque de
 # puerta, el que lo defiende (reglas 17 y 16).
 CHECKED = {"corner kick": "ataca", "goal kick": "defiende"}
-AGREE, DISAGREE, NO_BALL, NOT_IN_QUARTER = "coincide", "no coincide", "sin balón visto", "fuera del cuarto final"
+AGREE, DISAGREE, NO_BALL, NOT_IN_QUARTER = ("coincide", "no coincide", "sin balón de esta parada",
+                                            "fuera del cuarto final")
 CHECK_STATES = (AGREE, DISAGREE, NO_BALL, NOT_IN_QUARTER)
 SAME, OTHER, NO_STOP, NO_EXIT = "el del Team", "el otro", "sin parada", "sin salida"
 EXIT_STATES = (SAME, OTHER, NO_STOP, NO_EXIT)
@@ -77,16 +80,17 @@ def left_defender(trk):
     return out, gaps
 
 
-def restart_spot(last_seen, bx, by, window, fps):
-    """(x, y) del último balón visto antes del inicio de la ventana; None si no hay o si es más antiguo que
-    MAX_AGE_S. `last_seen` es dead_ball.last_seen_before(bx, by)."""
-    start = window["start"]
+def restart_spot(last_seen, bx, by, start, fps, restart_starts):
+    """((x, y), antigüedad en frames) del último balón visto antes del frame `start`, o (None, None) si no
+    hay, si es más antiguo que MAX_AGE_S o si entre ese balón y `start` empieza otro reinicio
+    (`restart_starts`): entonces sería de otra parada. `last_seen` es dead_ball.last_seen_before(bx, by)."""
     if start <= 0:
-        return None
+        return None, None
     seen = int(last_seen[start - 1])
-    if seen < 0 or start - seen > MAX_AGE_S * fps:
-        return None
-    return float(bx[seen]), float(by[seen])
+    age = start - seen
+    if seen < 0 or age > MAX_AGE_S * fps or any(seen < s < start for s in restart_starts):
+        return None, None
+    return (float(bx[seen]), float(by[seen])), age
 
 
 def physics_check(spot, kind, team, half, left, length):
@@ -101,9 +105,9 @@ def physics_check(spot, kind, team, half, left, length):
 
 
 def exit_team(codes, start, end, block_stop):
-    """(equipo, frame) con los que el pipeline sale de la última parada de la ventana [start, end): el primer
-    H o A después del último D de la ventana, buscado hasta el fin del tramo. (None, None) si la ventana no
-    tiene ningún D o si no sale antes del fin del tramo."""
+    """(equipo, frame) con los que el pipeline sale de la última parada del tramo [start, end): el primer H o
+    A después del último D del tramo, buscado hasta el fin del tramo evaluado. (None, None) si el tramo no
+    tiene ningún D o si no sale antes del fin del tramo evaluado."""
     dead = np.flatnonzero(codes[start:end] == D)
     if dead.size == 0:
         return None, None
@@ -115,17 +119,26 @@ def exit_team(codes, start, end, block_stop):
     return int(codes[frame]), frame
 
 
-def exit_state(codes, window, team, block_stop):
-    """(estado frente al `Team`, ¿se sale con el equipo del `Team` y después, dentro de la ventana, aparece
-    el otro?). Lo segundo es el riesgo de la capa: un cambio al otro equipo que la capa podría retrasar."""
-    dead = np.flatnonzero(codes[window["start"]:window["end"]] == D)
+def exit_state(codes, start, end, team, block_stop):
+    """(estado frente al `Team`, ¿se sale con el del `Team` y después, dentro del tramo, aparece el otro?)."""
+    dead = np.flatnonzero(codes[start:end] == D)
     if dead.size == 0:
         return NO_STOP, False
-    exit_code, frame = exit_team(codes, window["start"], window["end"], block_stop)
+    exit_code, frame = exit_team(codes, start, end, block_stop)
     if exit_code is None:
         return NO_EXIT, False
-    later = exit_code == team and bool(np.any(codes[frame:window["end"]] == other(team)))
+    later = exit_code == team and bool(np.any(codes[frame:end] == other(team)))
     return (SAME if exit_code == team else OTHER), later
+
+
+def paired(before, after):
+    """Ventana a ventana, de [(estado, ¿cambio dentro?)] sin la capa a con ella: (arregladas, rotas,
+    paradas borradas, cambios retrasados)."""
+    fixed = sum(a == OTHER and b == SAME for (a, _), (b, _) in zip(before, after))
+    broken = sum(a == SAME and b == OTHER for (a, _), (b, _) in zip(before, after))
+    lost = sum(a != NO_STOP and b == NO_STOP for (a, _), (b, _) in zip(before, after))
+    delayed = sum(a == SAME and la and b == SAME and not lb for (a, la), (b, lb) in zip(before, after))
+    return fixed, broken, lost, delayed
 
 
 def runs(codes, blocks):
@@ -153,14 +166,16 @@ def physics_rule(agree, deciding):
     return deciding >= MIN_DECIDING and agree >= MIN_AGREEMENT * deciding
 
 
-def contributes_rule(other_without, other_with):
-    """Condición 2: sin la capa se sale con el otro equipo en al menos una ventana, y con ella en menos."""
-    return other_without >= 1 and other_with < other_without
+def contributes_rule(fixed, broken):
+    """Condición 2: la capa arregla al menos una salida (del otro al del `Team`) y más de las que rompe."""
+    return fixed >= 1 and fixed > broken
 
 
-def harm_rule(runs_without, runs_with):
-    """Condición 3: con la capa, ni más posesiones ni más paradas en los tramos evaluados."""
-    return runs_with[0] <= runs_without[0] and runs_with[1] <= runs_without[1]
+def harm_rule(runs_without, runs_with, lost, delayed):
+    """Condición 3: con la capa no se borra ninguna parada, no se retrasa ningún cambio al otro equipo y no
+    hay más posesiones ni más paradas en los tramos evaluados."""
+    return (lost == 0 and delayed == 0 and runs_with[0] <= runs_without[0]
+            and runs_with[1] <= runs_without[1])
 
 
 def measure_teams(trk, events, home, away, anchors, game=games.GAME, pieces=None):
@@ -175,48 +190,49 @@ def measure_teams(trk, events, home, away, anchors, game=games.GAME, pieces=None
     length = trk.pitch[0]
     fps = trk.fps
     graded = graded_mask(game, n)
-    clean = pipeline.default_piece("ball")(trk) if not pieces or "ball" not in pieces else pieces["ball"](trk)
-    teams = [(w, t) for w, t in dead_ball.restart_teams(events, home, away) if half_of(w["start"], trk.blocks)]
-    m = {"windows": len(teams), "by_type": {}}
-    for window, _ in teams:
+    pieces = pieces or {}
+    clean = (pieces["ball"] if "ball" in pieces else pipeline.default_piece("ball"))(trk)  # como pipeline.run
+    spans = dead_ball.restart_team_spans(events, home, away, trk.blocks)
+    m = {"windows": len(spans), "by_type": {}}
+    for window, _, _, _ in spans:
         m["by_type"][window["type"]] = m["by_type"].get(window["type"], 0) + 1
     left, separation = left_defender(clean)
     m.update(left_defender=left, separation=separation)
 
     # 1. El Team es el equipo que saca
     last_seen = dead_ball.last_seen_before(clean.bx, clean.by)
+    restart_starts = [e["start"] for e in events if e["code"] in (dead_ball.GOALS_CODE, dead_ball.SET_PIECES_CODE)]
     checks = {kind: {state: 0 for state in CHECK_STATES} for kind in CHECKED}
-    for window, team in teams:
+    ages = {kind: [0, 0] for kind in CHECKED}  # de las que deciden: [menos de RECENT_S, RECENT_S o más]
+    for window, team, start, _ in spans:
         if window["type"] in CHECKED:
-            spot = restart_spot(last_seen, clean.bx, clean.by, window, fps)
-            state = physics_check(spot, window["type"], team, half_of(window["start"], trk.blocks), left, length)
+            spot, age = restart_spot(last_seen, clean.bx, clean.by, start, fps, restart_starts)
+            state = physics_check(spot, window["type"], team, half_of(start, trk.blocks), left, length)
             checks[window["type"]][state] += 1
+            if state in (AGREE, DISAGREE):
+                ages[window["type"]][age >= RECENT_S * fps] += 1
     agree = sum(c[AGREE] for c in checks.values())
     deciding = agree + sum(c[DISAGREE] for c in checks.values())
-    m.update(checks=checks, agree=agree, deciding=deciding, physics_ok=physics_rule(agree, deciding))
+    m.update(checks=checks, ages=ages, agree=agree, deciding=deciding, physics_ok=physics_rule(agree, deciding))
 
     # 2 y 3. Con qué equipo se sale de cada parada, y el daño
     layer = lambda c: dead_ball.team_restart_evidence(c, events, home, away)  # noqa: E731
     reports = ({}, {})
     without = pipeline.run(trk, extra=[anchors], report=reports[0], pieces=pieces)
     with_layer = pipeline.run(trk, extra=[anchors, layer], report=reports[1], pieces=pieces)
-    exits = []
+    per_window = []
     for codes in (without, with_layer):
-        states, later = {state: 0 for state in EXIT_STATES}, []
-        for window, team in teams:
-            stop = trk.blocks[half_of(window["start"], trk.blocks) - 1][1]
-            state, appears = exit_state(codes, window, team, stop)
-            states[state] += 1
-            later.append(appears)
-        exits.append((states, later))
+        per_window.append([exit_state(codes, start, stop, team, trk.blocks[half_of(start, trk.blocks) - 1][1])
+                           for _, team, start, stop in spans])
+    fixed, broken, lost, delayed = paired(*per_window)
     m.update(conflicts=(reports[0]["conflictos"], reports[1]["conflictos"]),
-             exits=(exits[0][0], exits[1][0]),
+             exits=tuple({state: sum(s == state for s, _ in states) for state in EXIT_STATES}
+                         for states in per_window),
+             fixed=fixed, broken=broken, lost=lost, delayed=delayed,
              changed=changes(without, with_layer, graded),
-             runs=(runs(without, trk.blocks), runs(with_layer, trk.blocks)),
-             later=(sum(exits[0][1]), sum(exits[1][1])),
-             later_removed=sum(a and not b for a, b in zip(exits[0][1], exits[1][1])))
-    m["contributes"] = contributes_rule(m["exits"][0][OTHER], m["exits"][1][OTHER])
-    m["harm_ok"] = harm_rule(*m["runs"])
+             runs=(runs(without, trk.blocks), runs(with_layer, trk.blocks)))
+    m["contributes"] = contributes_rule(fixed, broken)
+    m["harm_ok"] = harm_rule(m["runs"][0], m["runs"][1], lost, delayed)
     m["entra"] = m["physics_ok"] and m["contributes"] and m["harm_ok"]
     return m
 
@@ -249,9 +265,12 @@ def main():
             half, "el local" if team == H else "el visitante", m["separation"][half])
         for half, team in sorted(m["left_defender"].items())))
     for kind, states in m["checks"].items():
-        n_kind = sum(states.values())
-        if n_kind >= MIN_CASES_PER_TYPE:
+        if sum(states.values()) >= MIN_CASES_PER_TYPE:
             print("   {:<14} ".format(kind) + "   ".join("{} {}".format(s, k) for s, k in states.items()))
+            recent, old = m["ages"][kind]
+            if recent + old >= MIN_CASES_PER_TYPE:
+                print("   {:<14} de las que deciden, punto con menos de {} s: {}   con {} s o más: {}".format(
+                    "", RECENT_S, recent, RECENT_S, old))
     print("   córner y saque de puerta juntos: coinciden {} de {} que deciden ({})".format(
         m["agree"], m["deciding"], pct(m["agree"], m["deciding"])))
     print("   regla: deciden ≥ {} y coinciden ≥ {:.0f} % -> se cumple: {}".format(
@@ -261,16 +280,17 @@ def main():
     print("   frames con piezas en conflicto: sin la capa {}   con ella {}".format(*m["conflicts"]))
     for label, states in zip(("sin la capa", "con la capa"), m["exits"]):
         print("   {:<12} ".format(label) + "   ".join("{} {}".format(s, k) for s, k in states.items()))
-    print("   regla: sin la capa sale con el otro en ≥ 1 y con ella en menos -> se cumple: {}".format(
-        yes(m["contributes"])))
+    print("   ventana a ventana: arregladas (del otro al del Team) {}   rotas (al revés) {}".format(
+        m["fixed"], m["broken"]))
+    print("   regla: arregla ≥ 1 y más de las que rompe -> se cumple: {}".format(yes(m["contributes"])))
 
     print("\n3. ¿Hace daño?")
+    print("   paradas borradas {}   cambios al otro equipo retrasados {}".format(m["lost"], m["delayed"]))
     print("   posesiones y paradas: sin la capa {} y {}   con ella {} y {}".format(*m["runs"][0], *m["runs"][1]))
     print("   frames evaluados que cambian: de un equipo al otro {}   de juego a D {}   de D a juego {}".format(
         *m["changed"]))
-    print("   ventanas que salen con el del Team y cambian al otro dentro: sin la capa {}   con ella {}"
-          "   las que quita la capa {}".format(*m["later"], m["later_removed"]))
-    print("   regla: con la capa, ni más posesiones ni más paradas -> se cumple: {}".format(yes(m["harm_ok"])))
+    print("   regla: ni borra paradas, ni retrasa cambios, ni añade posesiones o paradas -> se cumple: {}".format(
+        yes(m["harm_ok"])))
 
     print("\n-> la capa entra: {}".format(yes(m["entra"])))
     print("\n   tiempo {:.0f} s".format(time.time() - started))

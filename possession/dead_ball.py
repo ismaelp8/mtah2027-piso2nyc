@@ -263,7 +263,8 @@ def evidence(trk, paths=None, game=games.GAME):
 
 # Lo que se resta por frame en la columna del equipo que no saca. Sin ajustar: la escala del +1 del jugador
 # más cercano (candidates.NEAREST_SCORE). No se puede ajustar en el harness, porque la DFL no tiene Smart
-# Tagging; la protege la condición de daño de su regla (docs/decisiones.md, 15/11).
+# Tagging: puede pesar mucho (hasta 875 por ventana frente a un coste de cambio de 25), y su regla solo la
+# deja entrar si en el partido no borra paradas, no retrasa cambios ni añade posesiones o paradas.
 TEAM_SCORE = 1.0
 
 
@@ -278,24 +279,33 @@ def restart_teams(events, home, away):
     return [(window, columns[window["team"]]) for window in restart_windows(events) if window["team"] in columns]
 
 
-def team_restart_evidence(trk, events, home, away):
-    """`(score, allowed)` de la capa: resta TEAM_SCORE en la columna del equipo que no saca, para las
-    ventanas de restart_teams que empiezan en un tramo evaluado. Cada ventana se corta en el inicio del
-    siguiente `GOALS` o `SET PIECES` (de cualquier tipo), así que las restas nunca se acumulan; si otro
-    empieza en el mismo frame, esa ventana no puntúa. No prohíbe nada.
-
-    Frame a frame no cambia la comparación entre `D` y el equipo que saca, pero sí entre `D` y el otro. El
-    decodificador decide sobre tramos enteros, así que la capa puede mover las fronteras del `D` (adelantar
-    o retrasar su fin) y retrasar un cambio al otro equipo dentro de la ventana. Por eso su regla tiene una
-    condición de daño."""
-    n = len(trk.bx)
-    score, allowed = no_evidence(n)
+def restart_team_spans(events, home, away, blocks):
+    """[(ventana, columna, inicio, fin)] de la capa: las ventanas de restart_teams que empiezan en un tramo
+    evaluado (`blocks`, con el fin sin incluir), cortadas en el inicio del siguiente `GOALS` o `SET PIECES`
+    de cualquier tipo. Si otro empieza en el mismo frame, el tramo queda vacío y no entra. Es la misma lista
+    para la capa y para su medida (validation/partido/agregados_equipo_reanuda.py)."""
     restarts = [e for e in events if e["code"] in (GOALS_CODE, SET_PIECES_CODE)]
+    spans = []
     for window, team in restart_teams(events, home, away):
         start = window["start"]
-        if not any(first <= start < stop for first, stop in trk.blocks):
+        if not any(first <= start < stop for first, stop in blocks):
             continue
         stop = min([window["end"]] + [e["start"] for e in restarts if e is not window and e["start"] >= start])
-        other = A if team == H else H
-        score[max(start, 0):max(min(stop, n), 0), other] -= TEAM_SCORE
+        if stop > start:
+            spans.append((window, team, start, stop))
+    return spans
+
+
+def team_restart_evidence(trk, events, home, away):
+    """`(score, allowed)` de la capa: resta TEAM_SCORE en la columna del equipo que no saca, en cada tramo de
+    restart_team_spans. Las restas nunca se acumulan, porque los tramos no se pisan. No prohíbe nada.
+
+    Frame a frame no cambia la comparación entre `D` y el equipo que saca, pero sí entre `D` y el otro. El
+    decodificador decide sobre tramos enteros, así que la capa puede mover las fronteras del `D`, borrar una
+    parada (si el que saca ya tenía el balón) y retrasar un cambio al otro equipo dentro del tramo. Por eso
+    su regla no la deja entrar si hace cualquiera de esas cosas en el partido (docs/decisiones.md, 15/11)."""
+    n = len(trk.bx)
+    score, allowed = no_evidence(n)
+    for _, team, start, stop in restart_team_spans(events, home, away, trk.blocks):
+        score[max(start, 0):max(min(stop, n), 0), A if team == H else H] -= TEAM_SCORE
     return score, allowed
