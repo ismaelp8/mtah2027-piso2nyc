@@ -257,8 +257,24 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
 - **La evidencia de equipo está reabierta** (Ismael, 15/11): «Es claro que tenemos un problema en que
   predecimos muchas menos posesiones de las que hay, sobretodo cuando son posesiones cortas.»
   - **B5 sigue en la entrega** y `equipo_v3` sigue vigente hasta que algo gane.
-  - **El estudio está en la sesión «Posesiones cortas»,** en la rama `claude/posesiones-cortas-5e84f8`,
-    todavía sin nada en `main`.
+  - **El estudio de las posesiones cortas está en `main`** (`4305576`;
+    `validation/resultados/2026-11-15_posesiones_cortas.md` y `validation/posesiones_cortas/BITACORA.md`).
+    La rama `claude/posesiones-cortas-5e84f8` se conserva en GitHub, porque sus commits prueban que las reglas
+    iban antes de medir. Lo que dice [medido en datos abiertos]:
+    - **Con el flag, tres cuartos de lo que no encontramos son toques del rival sin control.**
+    - **`main` saca un ritmo casi fijo de posesiones,** sea cual sea la GT. Con el control de la DFL, el
+      número cuadra (4,50 por minuto vivo frente a 4,71). En SkillCorner, que también exige control, falta
+      un 30 % (4,25 frente a 6,05).
+    - **B9, que es B5 más la dirección en que se mueve el balón, empata.** Gana con el flag (+0,039 y
+      +0,048), pero empata con el control, empeora los duelos sin cambio más de lo permitido y no mejora en
+      SkillCorner (−0,005 y +0,004). Queda en `aprendida.py`, fuera de `PIECES`.
+    - **Las fases 2 y 3 se cerraron sin candidato.** Quitar las posesiones inventadas no llega a +0,03 ni
+      con un oráculo, y una red de una capa con los mismos rasgos no gana con el control ni en SkillCorner.
+    - **Tiene en marcha una fase 4,** por encargo de Ismael: si el déficit de posesiones del partido es real
+      contando igual por igual, y cuánto valdría una pista de equipo como las fases del Smart Tagging.
+  - **La entrega no cambia con B9** [medido sin datos del partido]: los rasgos de B2, los coeficientes de B1 a
+    B8 y `evidence_b5` son idénticos, y la huella del partido inventado es la misma. Ismael la confirma al
+    regenerar.
 - **Tres exámenes de B5 en datos abiertos** (15/11, `main` en `bb4f2ef`). El pipeline de la entrega, tal
   cual, con el `D` de las etiquetas:
   - **SkillCorner** (`validation/skillcorner/`; `validation/resultados/2026-11-15_skillcorner.md`): 20
@@ -290,8 +306,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     regenerar en el ensayo del lunes.
 - **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio): con el sí de Ismael del 15/11,
   en marcha. La regla del plan no cambia.
-- **Sin entrar todavía en `main`:** el estudio de las posesiones cortas y la PR 10 de David. Ismael le ha
-  pedido a David que antes termine su tarea 1.
+- **Sin entrar todavía en `main`:** la PR 10 de David. Ismael le ha pedido que antes termine su tarea 1.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
