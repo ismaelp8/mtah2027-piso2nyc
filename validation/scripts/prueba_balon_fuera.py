@@ -91,11 +91,66 @@ def main():
     pocas = dict(res, rachas=20, sin_d=9, tarde=sin_tarde)
     comprobar(bf.lectura(pocas) == "se cierra", "9 tarde, aunque sean el 45 %: se cierra (menos de 10)")
     comprobar_capa()
+    comprobar_capa_v2()
+    comprobar_un_comando()
     print()
     if fallos:
         print("FALLAN {} comprobaciones".format(len(fallos)))
         sys.exit(1)
     print("TODO BIEN")
+
+
+def comprobar_un_comando():
+    """`validation/partido/probar_entrega.py` arma los tres comandos sin ejecutar ninguno."""
+    print("Una entrega de prueba con un solo comando (solo los comandos, sin ejecutarlos)")
+    import probar_entrega as pe
+    pasos = pe.comandos("prueba_x", ["candidates=aprendida.evidence_b9"], ["dead_ball.ball_out_hold"],
+                        python="python")
+    generar, contar, comparar = (c for _, c in pasos)
+    comprobar(generar == ["python", "-m", "possession.pipeline", "--name", "prueba_x", "--pieza",
+                          "candidates=aprendida.evidence_b9", "--capa", "dead_ball.ball_out_hold"],
+              "1: genera la entrega de prueba con su nombre, su pieza y su capa")
+    comprobar(contar[-2:] == ["--entrega", "prueba_x"] and contar[1].endswith("balon_fuera.py"),
+              "2: el recuento del balón fuera sobre esa entrega")
+    comprobar(comparar[-2:] == ["equipo_v3", "prueba_x"] and comparar[1].endswith("comparar_entregas.py"),
+              "3: la compara con la vigente, equipo_v3")
+
+
+def comprobar_capa_v2():
+    """La segunda versión (`dead_ball.ball_out_hold`): mantiene la parada hasta que el balón vuelve a verse dentro."""
+    print("D7, segunda versión: mantener la parada hasta que el balón vuelva a verse dentro")
+    from possession import dead_ball, tracking
+    n = 6000
+    bx, by = np.full(n, 50.0), np.full(n, 30.0)
+    by[100:140] = 70.0                       # A: 40 frames fuera, 100 sin balón y vuelve dentro en 240
+    bx[140:240] = np.nan
+    by[600:640] = 70.0                       # B: 40 fuera y 2000 sin balón (más de 60 s): no se mantiene
+    bx[640:2640] = np.nan
+    by[3000:3010] = 70.0                     # C: 10 fuera (menos de 1 s), 50 sin balón y dentro: nada
+    bx[3010:3060] = np.nan
+    by[3400:3440] = 70.0                     # D: 40 fuera y enseguida dentro: como la primera versión
+    by[3800:3830] = 70.0                     # E: 30 fuera, 50 sin balón, 20 fuera otra vez y dentro en 3900
+    bx[3830:3880] = np.nan
+    by[3880:3900] = 70.0
+    by[5950:5990] = 70.0                     # F: 40 fuera y se acaba el tramo sin verse dentro
+    bx[5990:6000] = np.nan
+    vacio = np.full((n, 2), np.nan, dtype=np.float32)
+    trk = tracking.Tracking(bx, by, vacio, vacio, np.array([0, 1], dtype=np.int8), PITCH, ((0, n),), 25)
+    cola = dead_ball.BALL_OUT_TAIL
+    esperado = np.zeros(n, dtype=bool)
+    esperado[100:240 - cola] = True              # A: desde que sale hasta 16 antes de verse dentro
+    esperado[600:640 - cola] = True              # B: solo lo de la primera versión
+    esperado[3400:3440 - cola] = True            # D: igual que la primera versión
+    esperado[3800:3900 - cola] = True            # E: se mantiene a través del hueco y de la segunda racha
+    esperado[5950:5990 - cola] = True            # F: solo lo de la primera versión
+    score, allowed = dead_ball.ball_out_hold(trk)
+    puntuado = score[:, tracking.D] > 0
+    comprobar(np.array_equal(puntuado, esperado), "mantiene la parada solo donde toca (seis casos)",
+              "{} frames, esperados {}".format(int(puntuado.sum()), int(esperado.sum())))
+    v1, _ = dead_ball.ball_out(trk)
+    comprobar(bool(np.all(score[v1[:, tracking.D] > 0, tracking.D] > 0)), "contiene todo lo de la primera versión")
+    comprobar(bool(np.all(score[puntuado, tracking.D] == dead_ball.BALL_OUT_SCORE))
+              and not score[:, :2].any() and bool(allowed.all()), "solo la columna D, con el mismo peso")
 
 
 def comprobar_capa():

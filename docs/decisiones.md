@@ -3118,3 +3118,49 @@ Descartado:
 - **usar las `DEFENSIVE TRANSITION`:** son el espejo exacto de las de ataque (§6 de la bitácora de las fases) y
   no añaden nada;
 - **prohibir el otro equipo en `allowed`:** una fase mal marcada no se podría corregir.
+
+
+### 2026-11-15 · `D` · D7, segunda versión: mantener la parada hasta que el balón vuelva a verse dentro (antes de generar)
+
+Quién: Ismael la pidió por la sesión principal («Sí, pídela»). Claude la escribe. **Es la segunda versión, y se
+diseñó después de ver el resultado de la primera** (entrada «D7» de más arriba: con `prueba_d7` llegamos tarde
+en 12 de 47 rachas, frente a 23 sin la capa, y en 7 nuestro `D` no llega en 10 s). Es el segundo intento, y no
+habrá un tercero con estos criterios.
+
+Por qué: la primera versión solo puntúa mientras el balón se ve fuera. Si se ve fuera un momento y después el
+ATD lo pierde, como en el saque de puerta que vio Ismael, el `D` no llega. Por el reglamento, un balón que ha
+salido no vuelve al juego sin un saque.
+
+**La capa, `dead_ball.ball_out_hold`,** una función nueva al final de `possession/dead_ball.py`, apagada. No
+toca las líneas que ya había, ni `pipeline.build`, ni `PIECES`.
+- **Lo mismo que la primera versión**, con el mismo peso (5) y la misma cola (16 frames).
+- **Además, en cada racha visible de 25 frames (1 s) o más con el balón fuera,** mantiene el peso en `D`
+  mientras el balón no se ve o se ve fuera, hasta 16 frames antes de que vuelva a verse dentro (a 1 m o menos
+  de las líneas).
+- **Tope:** si el balón no vuelve a verse dentro en 60 s, o se acaba el tramo, no se mantiene. Es el tope de
+  la capa del hueco de Manuel.
+- **Por qué 1 s de racha visible:** es el riesgo de una parada falsa, un balón visto fuera por error y perdido
+  justo después.
+  - En SkillCorner (mitad de entrenamiento), las rachas enteras en juego de 1 s o más son 7 en 10 partidos
+    (0,7 por partido): menos de una por partido aunque todas acabaran con el balón perdido. Con 5 frames
+    serían 26–45, de 2,6 a 4,5 por partido.
+  - En el partido, el ATD casi no pierde el balón en pleno juego: 37 huecos
+    (`validation/resultados/2026-11-15_huecos_y_cambios.md`).
+  - No se ha fijado con el resultado de la primera versión.
+- **En el hueco el empujón es más fuerte que con el balón a la vista:** sin balón, B5 no da el +1 de N1, así
+  que cada frame suma `5 + ds` hacia `D`. Por eso la racha mínima: sin ella, un balón perdido tras un error de
+  un instante crearía una parada.
+
+**Cómo se mide: los mismos tres criterios que la primera, sin tocar los umbrales,** con la entrega de prueba
+`prueba_d7b`. Ahora se genera y se mide con un solo comando, que ejecuta Ismael:
+`python validation/partido/probar_entrega.py prueba_d7b --capa dead_ball.ball_out_hold`.
+1. llegamos tarde en menos del 15 % de las rachas;
+2. el `D` no pasa del 60 % de los frames evaluados, hay como mucho 250 paradas y como mucho 15 más que en
+   `equipo_v3` (113);
+3. el 80 % o más de los frames que cambian frente a `equipo_v3` pasan de `H` o `A` a `D`.
+
+Si se cumplen los tres, se propone encenderla: se añade a `pipeline.build`, se regenera la entrega en el
+entorno limpio, se valida y se apunta la huella. Si no, se queda apagada y D7 se cierra aquí.
+
+En la DFL [medido, con el `D` propio en las dos condiciones que votan]: cambian 23 frames de 2.012.288, los mismos que con la primera versión. Con el balón tapado en
+los `D`, como se esperaba. No es una ganancia.

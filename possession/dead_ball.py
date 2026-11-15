@@ -294,3 +294,47 @@ def ball_out(trk):
             if end - start >= BALL_OUT_MIN_RUN and end - start > BALL_OUT_TAIL:
                 score[first + start:first + end - BALL_OUT_TAIL, D] = BALL_OUT_SCORE
     return score, allowed
+
+
+# -- D7, segunda versión (15/11): mantener la parada hasta que el balón vuelva a verse dentro. APAGADA. -----
+# Diseñada después de ver la primera (prueba_d7: tarde en 12 de 47 rachas, y en 7 nuestro `D` no llega).
+# Se prueba con `--capa dead_ball.ball_out_hold`. Reglas fijadas antes de generar la entrega: docs/decisiones.md,
+# 15/11, «D7, segunda versión».
+
+# Racha visible mínima para mantener la parada en el hueco que la sigue: con 1 s, en SkillCorner (mitad de
+# entrenamiento) hay 0,7 rachas por partido enteras en juego, menos de una aunque todas acabaran con el balón
+# perdido (validation/scripts/balon_fuera_abiertos.py).
+BALL_OUT_HOLD_MIN_RUN = 25
+# Tope del hueco: si el balón no vuelve a verse dentro en 60 s, no se mantiene (el de la capa del hueco).
+BALL_OUT_HOLD_MAX_S = 60
+
+
+def ball_out_hold(trk):
+    """`(score, allowed)` de la segunda versión de D7: `ball_out` y, además, mantiene la parada en el hueco.
+
+    Lo de `ball_out`, y en cada racha visible de BALL_OUT_HOLD_MIN_RUN frames o más con el balón fuera, sigue
+    puntuando BALL_OUT_SCORE en `D` mientras el balón no se ve o se ve fuera, hasta BALL_OUT_TAIL frames antes
+    de que vuelva a verse dentro (a BALL_OUT_MARGIN m o menos de las líneas). Si no vuelve a verse dentro en
+    BALL_OUT_HOLD_MAX_S segundos, o se acaba el tramo, no se mantiene. No prohíbe nada.
+    """
+    score, allowed = ball_out(trk)
+    length, width = trk.pitch
+    bx, by = np.asarray(trk.bx, dtype=np.float64), np.asarray(trk.by, dtype=np.float64)
+    seen = np.isfinite(bx) & np.isfinite(by)
+    with np.errstate(invalid="ignore"):
+        out = seen & ((bx < -BALL_OUT_MARGIN) | (bx > length + BALL_OUT_MARGIN)
+                      | (by < -BALL_OUT_MARGIN) | (by > width + BALL_OUT_MARGIN))
+    inside = seen & ~out
+    limit = int(round(BALL_OUT_HOLD_MAX_S * trk.fps))
+    for first, stop in trk.blocks:
+        edges = np.diff(np.concatenate(([0], out[first:stop].astype(np.int8), [0])))
+        for start, end in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
+            if end - start < BALL_OUT_HOLD_MIN_RUN:
+                continue
+            back = np.flatnonzero(inside[first + end:min(first + end + limit + 1, stop)])
+            if not len(back):
+                continue
+            hold_end = first + end + int(back[0]) - BALL_OUT_TAIL
+            if hold_end > first + start:
+                score[first + start:hold_end, D] = BALL_OUT_SCORE
+    return score, allowed
