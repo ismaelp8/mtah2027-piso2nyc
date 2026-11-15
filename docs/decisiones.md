@@ -2721,7 +2721,10 @@ comprobaron antes (saque inicial, avance de un frame, parada al final de cada tr
     así el cambio: no hay nada que medir (H1, H4);
   - en el partido llegamos tarde, de 0,7 a 3 s, y en los datos abiertos no (mediana de +0 a +3 frames).
     Hipótesis: el ATD pierde el balón en el vuelo de los balones aéreos y la degradación del harness no lo
-    copia (H5). Se mide con `validation/partido/huecos_y_cambios.py`, junto con la del portero (H3);
+    copia (H5). Se midió con `validation/partido/huecos_y_cambios.py`, junto con la del portero (H3), y
+    **no concluye** (`validation/resultados/2026-11-15_huecos_y_cambios.md`). R vale 1,19 en el partido,
+    frente a 1,20 en la DFL, y solo 6 de nuestros 103 cambios caen junto a un hueco. H3 y H5 se cierran sin
+    candidato;
   - mover cada cambio al primer acercamiento del equipo nuevo (H2): con un oráculo, techo de +0,05 con el
     control. Sin candidato;
   - tres posesiones cortísimas por un toque sin control (despejes) que la GT cuenta. **Es contexto:** no
@@ -2735,7 +2738,8 @@ comprobaron antes (saque inicial, avance de un frame, parada al final de cada tr
   - D3: `D` falso de menos de 2 s en pleno juego;
   - **D7, la más cara: el balón fuera del campo no dispara el `D`.** Ninguna pieza lo usa (comprobado en el
     código). En un saque de puerta damos la posesión al portero que va a por el balón durante unos 10 s. La
-    revisión del 13/11 ya propuso ese disparo y no se midió.
+    revisión del 13/11 ya propuso ese disparo y no se midió. Coincide con la tarea 2 de Manuel en
+    `docs/PLAN_ENTREGA.md` §3 («el balón visto fuera de las líneas»), que está sin hacer.
   - Cada una lleva su forma de medirla en la DFL o con agregados del partido.
 
 Decisión y por qué: **ninguna.** Nada se ajustó ni se eligió con la ventana. Las hipótesis se pasaron a la
