@@ -278,10 +278,20 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - los dos bordes de las paradas detectadas valen como mucho 0,05–0,07 en la DFL.
   - **`validation/partido/ver_ventana.py`** dibuja la GT pública y una entrega para verlas junto al vídeo. Lo
     ejecuta Ismael.
-- **Sin entrar todavía en `main`:**
-  - la medida del retraso del balón de Antonio (rama `exp/retraso-balon-atd`). Su calibración en la DFL
-    pasa; no se ha ejecutado en el partido;
-  - la PR 10 de David, en revisión.
+- **Retraso del balón del ATD** (Antonio, PR 11, 15/11; `validation/resultados/2026-11-15_retraso_balon.md`
+  y `docs/decisiones.md`). Es su tarea 1, cerrada.
+  - **El balón llega unos 4 frames tarde respecto a los jugadores** [medido por Antonio en el partido, solo
+    agregados]: de +2 a +5, con +3 y +4 en las dos partes. El riesgo de la revisión, unos 12 frames, queda
+    descartado.
+  - **No ve un retraso que compartan el balón y los jugadores** respecto al vídeo: la medida es relativa.
+  - **En el harness, ese retraso cuesta entre −0,007 y +0,002:** es un empate. `ball.advance_ball` entra
+    **apagada**: `ball.clean` y `pipeline.PIECES` no cambian.
+  - **La entrega no cambia:** el código de antes es idéntico y solo se añade la función. Se confirma al
+    regenerar en el ensayo del lunes.
+- **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio): con el sí de Ismael del 15/11,
+  en marcha. La regla del plan no cambia.
+- **Sin entrar todavía en `main`:** el estudio de las posesiones cortas y la PR 10 de David. Ismael le ha
+  pedido a David que antes termine su tarea 1.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
