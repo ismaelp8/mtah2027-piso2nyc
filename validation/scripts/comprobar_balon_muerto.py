@@ -16,6 +16,7 @@ import builtins
 import contextlib
 import csv
 import hashlib
+import inspect
 import io
 import os
 import random
@@ -1551,12 +1552,22 @@ def check_kickoff_anchor(game, folder):
                                 sjv.csv_sha256(runs_of(0.5, True, [far_layer])))
           and layered["sha256"][0] != weak["sha256"][0] and layered["sha256"][1] != weak["sha256"][1]
           and layered["changed"] == 3 * fps and layered["entra"])
-    with pp.no_files():  # las capas son de pipeline.DELIVERY_LAYERS, que cambia en main: que no lean nada sin rutas
+    # Las capas son las de pipeline.DELIVERY_LAYERS, que cambia en main. Las que leen ficheros del partido (piden
+    # `paths`, como transiciones.evidence_equipo) no leen nada ni opinan sin rutas. Las que solo miran el tracking
+    # (desde el 16/11, dead_ball.ball_out) van tal cual, como en pipeline.build (with_paths).
+    reads_files = [layer for layer in pipeline.DELIVERY_LAYERS if "paths" in inspect.signature(layer).parameters]
+    with pp.no_files():
         none_layers = sjv.delivery_layers(None, game)
-        quiet = all(not layer(trk)[0].any() and layer(trk)[1].all() for layer in none_layers)
-    check("delivery_layers: las capas de pipeline.DELIVERY_LAYERS, con las rutas, como en pipeline.build; sin rutas no "
-          "opinan ni abren nada",
-          len(none_layers) == len(pipeline.DELIVERY_LAYERS) >= 1 and quiet
+        quiet = all(not wrapped(trk)[0].any() and wrapped(trk)[1].all()
+                    for wrapped, layer in zip(none_layers, pipeline.DELIVERY_LAYERS) if layer in reads_files)
+        # Las que solo miran el tracking también corren sin abrir nada.
+        tracking_only = [wrapped(trk) for wrapped, layer in zip(none_layers, pipeline.DELIVERY_LAYERS)
+                         if layer not in reads_files]
+    as_is = all(wrapped is layer for wrapped, layer in zip(none_layers, pipeline.DELIVERY_LAYERS)
+                if layer not in reads_files) and all(np.shape(s) == (len(trk.bx), 3) for s, _ in tracking_only)
+    check("delivery_layers: las capas de pipeline.DELIVERY_LAYERS, con las rutas, como en pipeline.build; sin rutas, "
+          "las que leen ficheros no opinan ni abren nada, y las que solo miran el tracking van tal cual",
+          len(none_layers) == len(pipeline.DELIVERY_LAYERS) >= 1 and reads_files and quiet and as_is
           and sjv.layer_names() == [f.__module__.split(".")[-1] + "." + f.__name__ for f in pipeline.DELIVERY_LAYERS])
     received = []
 

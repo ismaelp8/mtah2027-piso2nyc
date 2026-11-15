@@ -154,8 +154,8 @@ def comprobar_capa_v2():
 
 
 def comprobar_capa():
-    """La capa apagada `dead_ball.ball_out` con el mismo partido inventado."""
-    print("D7: la capa apagada (dead_ball.ball_out) con un tracking inventado")
+    """La capa `dead_ball.ball_out` (encendida en la entrega desde el 16/11) con el mismo partido inventado."""
+    print("D7: la capa de la entrega dead_ball.ball_out con un tracking inventado")
     from possession import dead_ball, pipeline, tracking
     bx, by, _, blocks, _ = partido_inventado()
     vacio = np.full((len(bx), 2), np.nan, dtype=np.float32)
@@ -172,11 +172,15 @@ def comprobar_capa():
               and not score[:, :2].any() and bool(allowed.all()),
               "solo la columna D, con su peso, y no prohíbe nada")
     comprobar(not score[3000:, tracking.D].any(), "fuera de los tramos evaluados no puntúa (la racha de 3200)")
-    comprobar(pipeline.PIECES["candidates"] == "aprendida.evidence_b5" and "ball_out" not in str(pipeline.PIECES),
-              "está apagada: no es una pieza de la entrega")
     import inspect
+    comprobar(pipeline.PIECES["candidates"] == "aprendida.evidence_b5" and "ball_out" not in str(pipeline.PIECES)
+              and "DELIVERY_LAYERS" not in inspect.getsource(pipeline.run),
+              "el harness no la ve: no es una pieza de PIECES, y pipeline.run no suma DELIVERY_LAYERS")
+    comprobar(pipeline.DELIVERY_LAYERS[-1] is dead_ball.ball_out
+              and dead_ball.ball_out_hold not in pipeline.DELIVERY_LAYERS,
+              "encendida desde el 16/11: es la última capa de la entrega (DELIVERY_LAYERS); la segunda versión, no")
     comprobar("ball_out" not in inspect.getsource(dead_ball.evidence),
-              "dead_ball.evidence (la de la entrega) no la llama")
+              "dead_ball.evidence no la llama: la suma solo la entrega")
 
 
 if __name__ == "__main__":
