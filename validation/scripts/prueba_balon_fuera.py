@@ -112,8 +112,8 @@ def comprobar_un_comando():
               "1: genera la entrega de prueba con su nombre, su pieza y su capa")
     comprobar(contar[-2:] == ["--entrega", "prueba_x"] and contar[1].endswith("balon_fuera.py"),
               "2: el recuento del balón fuera sobre esa entrega")
-    comprobar(comparar[-2:] == ["equipo_v3", "prueba_x"] and comparar[1].endswith("comparar_entregas.py"),
-              "3: la compara con la vigente, equipo_v3")
+    comprobar(comparar[-2:] == [pe.VIGENTE, "prueba_x"] and comparar[1].endswith("comparar_entregas.py"),
+              "3: la compara con la vigente, {}".format(pe.VIGENTE))
 
 
 def comprobar_capa_v2():

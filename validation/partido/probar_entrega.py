@@ -10,7 +10,7 @@ agregados: los de los tres scripts que llama, uno detrás de otro, para pegar un
    evaluation/results/ (con el nombre de la entrega da error) e imprime su resumen y su sha256;
 2. `validation/partido/balon_fuera.py --entrega <nombre>`: el recuento del balón fuera (D7);
 3. `validation/partido/comparar_entregas.py <vigente> <nombre>`: cuánto cambia y dónde, frente a la vigente
-   (`--contra`, por defecto `equipo_v3`).
+   (`--contra`, por defecto `equipo_v8`, la vigente desde el 16/11).
 
 Si el paso 1 falla, no sigue.
 """
@@ -21,7 +21,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-VIGENTE = "equipo_v3"
+VIGENTE = "equipo_v8"  # la entrega vigente (CLAUDE.md, «Dónde estamos»)
 
 
 def comandos(nombre, piezas=(), capas=(), contra=VIGENTE, python=sys.executable):
@@ -45,7 +45,7 @@ def main(argv=None):
     ap.add_argument("nombre", help="nombre de la entrega de prueba, sin .csv")
     ap.add_argument("--pieza", action="append", default=[], help="como en possession.pipeline")
     ap.add_argument("--capa", action="append", default=[], help="como en possession.pipeline")
-    ap.add_argument("--contra", default=VIGENTE, help="la entrega con la que se compara (por defecto equipo_v3)")
+    ap.add_argument("--contra", default=VIGENTE, help="la entrega con la que se compara (por defecto la vigente)")
     args = ap.parse_args(argv)
     for paso, (titulo, comando) in enumerate(comandos(args.nombre, args.pieza, args.capa, args.contra)):
         print("\n## {}\n".format(titulo), flush=True)

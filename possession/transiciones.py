@@ -1,6 +1,8 @@
-"""Empujón al equipo de la fase al empezar cada «Attacking Transition» del Smart Tagging. Capa APAGADA.
+"""Empujón al equipo de la fase al empezar cada «Attacking Transition» del Smart Tagging.
 
-No está en `pipeline.PIECES` ni la llama la entrega. Se prueba como capa añadida:
+**`evidence_equipo` está encendida desde el 15/11** (`pipeline.DELIVERY_LAYERS`; docs/decisiones.md, «se enciende
+la capa de los contraataques»). `evidence`, la primera versión, sigue apagada. No están en `pipeline.PIECES`, así
+que el harness no las usa. Una versión se prueba como capa añadida:
 
     python -m possession.pipeline --name prueba_transiciones --capa transiciones.evidence
 
@@ -33,7 +35,7 @@ Segunda versión, `evidence_equipo` (15/11, docs/decisiones.md, «la primera ver
 pero el peso va solo a la columna del equipo de la fase. La primera, con el mismo peso en `D`, convirtió en
 paradas los frames que tenía que pasar al equipo de la fase: B5 no premia al equipo que prefiere, resta al otro,
 así que la columna del equipo de la fase quedaba por debajo de la de `D` y el empujón le daba la ventaja a `D`.
-También apagada: `--capa transiciones.evidence_equipo`.
+Encendida desde el 15/11, después de pasar sus cuatro criterios (docs/decisiones.md).
 
 Interfaz: la de possession/dead_ball.py, `evidence(trk, paths=None, game=games.GAME)` → `(score, allowed)`, de
 forma (n, 3) y con las columnas `H`, `A`, `D`. Como dead_ball, es una pieza del partido: abre el Smart Tagging de
