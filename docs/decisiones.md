@@ -1496,9 +1496,10 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
     1 s dentro ninguna mira frames de fuera del tramo, salvo por el suavizado propio del balón del ATD
     (unos 25 frames, que meten en el borde alrededor de 0,5 s de lo de fuera). El tramo falla si falla
     alguna, y no decide si no decide ninguna.
-  - **(a) y (b) solo se comprueban donde el ATD ve el balón en el borde.** Un tramo puede pasar por el
-    tramo entero sin que decida ningún borde (lo probable si el ATD no ve el balón tras el gol). El script
-    imprime cuántos lo hacen; esos tramos tienen sus fronteras **[sin verificar]**, y la PR lo dice.
+  - **(a) y (b) solo se comprueban donde el ATD ve el balón en el borde.** (a) queda sin comprobar en los
+    tramos cuyo borde inicial no decide, y (b) en los que no decide el final (lo probable si el ATD no ve
+    el balón tras el gol). Un tramo puede pasar así por el tramo entero. El script imprime cuántos bordes
+    de cada lado no deciden; esas fronteras son **[sin verificar]**, y la PR lo dice.
   - **El script solo imprime cuántos tramos pasan y cuántos fallan,** nunca cuál: con 4 goles, cualquier
     desglose identifica cada parada.
 - **De gol a saque entra si se cumplen las tres cosas.** Si no, queda fuera entera:
@@ -1528,8 +1529,8 @@ Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de
     partido entero y el control. Es decir, los huecos se parecen más al `D` seguro que al partido medio.
     Se cuenta solo en los frames en que el modelo opina. Si en el control no ve más `D` que en el partido
     entero, el instrumento no separa y la capa no entra.
-    - **El control** es el tramo antes del saque de la 2ª parte y, si gol a saque entra (es decir, si sus
-      tramos pasan la prueba del balón de arriba), también esos tramos. El tramo antes del saque solo
+    - **El control** es el tramo antes del saque de la 2ª parte y, si gol a saque entra (es decir, si
+      cumple las tres condiciones de arriba: control, placebo y tramos), también esos tramos. El tramo antes del saque solo
       puede no bastar: en sus primeros 30 s los jugadores van a 1,30 m/s de mediana, con el 33,9 % por
       debajo de 1,2, casi como el partido entero (1,50 y 35,4 %) [medido, agregado 4]. Si el modelo no
       ve ahí más `D` que en el partido, la capa no entraría sin haber aprendido nada de los huecos. Si

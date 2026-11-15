@@ -10,8 +10,9 @@ se puede pegar en el chat: recuentos, porcentajes y cuantiles, sin números de f
 
     python validation/partido/agregados_dead_ball.py
 
-Usa el tracking como lo ve el pipeline: tracking.from_atd y después ball.clean, que hoy lo deja igual. Si
-cambia ball.clean, cambian estas medidas. Como instrumento independiente del balón usa el modelo de
+Usa el tracking como lo ve el pipeline: tracking.from_atd y después la limpieza del balón de la entrega
+(pipeline.PIECES["ball"], hoy ball.clean, que lo deja igual). Si cambia, cambian estas medidas; por eso la
+salida dice con cuál se midió. Como instrumento independiente del balón usa el modelo de
 jugadores de Ana (possession/dead_state.py), que se entrenó en la DFL, no en este partido.
 
 Responde, con la regla apuntada en docs/decisiones.md (14/11, «fronteras y anclas») antes de ejecutarlo:
@@ -41,7 +42,7 @@ sys.path.insert(0, ROOT)
 import games  # noqa: E402
 from comun import (FPS, MIN_CASES_PER_TYPE, SET_PIECES_CODE, graded_mask, mean_speed,  # noqa: E402
                    moving_average, norm, pct, print_bins, quantiles, utf8_stdout)
-from possession import ball, dead_ball, dead_state, tracking  # noqa: E402
+from possession import dead_ball, dead_state, pipeline, tracking  # noqa: E402
 from starter import load_smart_tagging  # noqa: E402
 from starter.baseline import team_names  # noqa: E402
 
@@ -222,8 +223,9 @@ def measure(trk, events, game=games.GAME):
     control_ok, power, spans_ok, gol_entra = goal_rule([v for v, _ in verdicts], control, placebo)
     m.update(f_match=f_match, limit=limit, n_pass=sum(v == PASS for v, _ in verdicts),
              n_fail=sum(v == FAIL for v, _ in verdicts),
-             # (a) y (b) solo se comprueban donde el ATD ve el balón en el borde (descriptivo)
-             pass_without_edges=sum(v == PASS and tests[1] == tests[2] == UNDECIDED for v, tests in verdicts),
+             # (a) y (b) solo se comprueban donde el ATD ve el balón en el borde (descriptivo): cuántos
+             # tramos dejan sin decidir el borde inicial y cuántos el final.
+             undecided_edges=tuple(sum(tests[i] == UNDECIDED for _, tests in verdicts) for i in (1, 2)),
              fails_by_test=tuple(sum(tests[i] == FAIL for _, tests in verdicts) for i in range(3)),
              control=control, placebo=len(placebo), placebo_deciding=len(deciding),
              placebo_fail=sum(v == FAIL for v in deciding),
@@ -284,12 +286,14 @@ def main():
     games.require(["atd_raw", "atd_meta", "smart_tagging"], game)
     paths = games.asset_paths(game)
     started = time.time()
-    trk = ball.clean(tracking.from_atd(paths, game))  # el balón como lo ve el pipeline
+    clean = pipeline.default_piece("ball")  # el balón como lo ve el pipeline, con su limpieza de la entrega
+    trk = clean(tracking.from_atd(paths, game))
     events = dead_ball.smart_tagging_events(paths["smart_tagging"], games.GAMES[game]["fps"])
     m = measure(trk, events, game)
     n_graded = m["n_graded"]
 
-    print("1. De cada gol a su saque")
+    print("limpieza del balón: ball.{} (pipeline.PIECES)".format(pipeline.PIECES["ball"]))
+    print("\n1. De cada gol a su saque")
     print("   goles {}   saques tras gol {}   goles que anclan {} de {}".format(
         m["goals"], m["kickoffs"], m["spans"], m["goals"]))
     print("   frames anclados (evaluados), sumados: {} ({} de los evaluados)".format(
@@ -311,8 +315,8 @@ def main():
     print("   tramos anclados {}   pasan {}   fallan {}   no deciden {}".format(
         m["spans"], m["n_pass"], m["n_fail"], m["spans"] - m["n_pass"] - m["n_fail"]))
     print("   fallos por prueba: tramo entero {}   borde inicial {}   borde final {}".format(*m["fails_by_test"]))
-    print("   tramos que pasan sin que decida ningún borde (ahí (a) y (b) quedan sin comprobar): {}".format(
-        m["pass_without_edges"]))
+    print("   bordes que no deciden (ahí la frontera queda sin comprobar): inicial {} ((a))   final {} ((b))"
+          .format(*m["undecided_edges"]))
     print("   control (tramo antes del saque de la 2ª parte): {}".format(", ".join(m["control"]) or "no hay"))
     print("   placebo (desplazados {} s): {} tramos, deciden {}, fallan {} ({} de los que deciden)".format(
         "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), m["placebo"], m["placebo_deciding"],

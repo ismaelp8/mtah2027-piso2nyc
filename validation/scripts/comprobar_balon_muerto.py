@@ -331,7 +331,8 @@ def check_rules(game):
     m = measure()
     check("partido inventado: entran las dos capas", m["gol_entra"] and m["hueco_entra"],
           "control {} placebo {} tramos {}".format(m["control_ok"], m["power"], m["spans_ok"]))
-    check("partido inventado: 2 goles anclan, 3.938 frames", m["spans"] == 2 and m["anchored_frames"] == 3938,
+    check("partido inventado: 2 goles anclan, 3.938 frames, y todos sus bordes deciden",
+          m["spans"] == 2 and m["anchored_frames"] == 3938 and m["undecided_edges"] == (0, 0),
           "{} y {}".format(m["spans"], m["anchored_frames"]))
     expected_states = {dead_ball.GAP: 5, dead_ball.BALL_SEEN: 2, dead_ball.GAP_TOO_LONG: 1,
                        dead_ball.RESTART_INSIDE: 0}
@@ -361,8 +362,9 @@ def check_rules(game):
               not m["gol_entra"] and m["fails_by_test"][test] == 2 and m["fails_by_test"][0] == 0,
               "fallos por prueba {}".format(m["fails_by_test"]))
     m = measure("sin_balon_en_goles")
-    check("sin balón en los tramos: ninguno decide y gol a saque no entra",
-          m["n_pass"] == m["n_fail"] == 0 and not m["spans_ok"] and not m["gol_entra"])
+    check("sin balón en los tramos: ninguno decide, sus 2 bordes de cada lado tampoco, y gol a saque no entra",
+          m["n_pass"] == m["n_fail"] == 0 and m["undecided_edges"] == (2, 2) and not m["spans_ok"]
+          and not m["gol_entra"])
     m = measure("sin_balon_en_control")
     check("sin balón en el control: el control no decide y gol a saque no entra",
           m["control"] == [UNDECIDED] and not m["control_ok"] and not m["gol_entra"], str(m["control"]))
@@ -432,6 +434,17 @@ def check_rules(game):
           verdict_with_fast(1000 + fps, 1000 + 2 * fps) == (PASS, FAIL, PASS))
     check("deprisa justo después de los 5 s del borde: no cuenta",
           verdict_with_fast(1000 + 6 * fps, 1000 + 7 * fps) == (PASS, PASS, PASS))
+    def frames(lo, hi):
+        mask = np.zeros(4000, dtype=bool)
+        mask[lo:hi] = True
+        return mask
+
+    check("en el límite: de 200 frames vistos, 50 deprisa con límite 0,25 pasa y 51 falla",
+          agg.fast_test(1000, 1200, seen, frames(1000, 1050), 0.25) == PASS
+          and agg.fast_test(1000, 1200, seen, frames(1000, 1051), 0.25) == FAIL)
+    check("en el límite: con 24 frames vistos no decide y con 25 sí",
+          agg.fast_test(1000, 1200, frames(1000, 1024), frames(0, 0), 0.25) == UNDECIDED
+          and agg.fast_test(1000, 1200, frames(1000, 1025), frames(0, 0), 0.25) == PASS)
     check("lo mismo en el borde final: el último segundo no cuenta y el anterior sí",
           verdict_with_fast(3000 - fps, 3000) == (PASS, PASS, PASS)
           and verdict_with_fast(3000 - 2 * fps, 3000 - fps) == (PASS, PASS, FAIL))
