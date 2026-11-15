@@ -3164,10 +3164,12 @@ Abierto:
   2. que el ancla sea la mediana de la transición menos el retraso mediano medido en la DFL para ese tipo: 20
      frames en los saques de banda y 16 en los córners. Los tipos sin una medida propia de 50 paradas o más en la
      DFL no se corrigen. Es un número de la DFL, no del partido.
-     - En la DFL la transición llega esa mediana tarde, y solo el 45 % (saques de banda) y el 57 % (córners) caen
-       a menos de 1 s del fin real [fuente: medida de Ana en la DFL, 15/11; su script y su salida, abajo].
+     - En la DFL la transición llega esa mediana tarde, y de las paradas con transición solo el 45 % (saques de
+       banda) y el 57 % (córners) caen a menos de 1 s del fin real [fuente: medida de Ana en la DFL, 15/11; su
+       script y su salida, abajo].
      - Salvedad de Ana: en la DFL se busca desde el inicio de la parada, y aquí desde el inicio de la ventana
-       `SET PIECES`.
+       `SET PIECES`. [inferencia] Al buscar desde antes, en la DFL se pueden coger transiciones falsas tempranas
+       (en los saques de banda, p10 −26 y p25 −2 frames), así que, si acaso, los 20 y 16 frames corrigen de menos.
 - **Por qué los añadidos no cambian el veredicto** [inferencia, comprobada en el código: `anchor_rule` exige
   `tight`, que solo usa el recorrido de las transiciones tal cual; `a_conditions` solo se llama en los tipos con
   ancla]:
@@ -3192,8 +3194,9 @@ Abierto, después del resultado:
 - **La rama `feat/d-equipo-reanuda`** sigue en GitHub, sin PR. Queda por decidir si se guarda como registro. Como
   ya está subida, no se reescribe: se haría una rama nueva desde `main` con esos commits.
 - **La máscara «< 5» del script se puede deshacer restando** en algunas filas: en los saques de banda, «no vuelve»
-  es 26 − 17 − 9 = 0; también salen, restando, las ventanas sin transición. No son datos de ninguna jugada, pero
-  si se quiere que tape de verdad, hay que tapar también una celda complementaria.
+  sale de restar al total «vuelve a verse» y «visto al empezar»; también salen, restando, las ventanas sin
+  transición. No son datos de ninguna jugada, pero si se quiere que tape de verdad, hay que tapar también una celda
+  complementaria.
 - **Para la pieza de estado (`dead_state`)** [inferencia]: el control de juego tiene más `D` que el partido. El
   tramo antes del saque puede explicar una parte (arriba); lo demás serían paradas sin marcar o `D` del modelo en
   pleno juego.
@@ -3201,8 +3204,16 @@ Abierto, después del resultado:
 **Cambios a la regla después de la ejecución del 15/11 (decisión de Ana, 15/11).** Valen para cualquier
 repetición. La ejecución del 15/11 no los lleva, y su veredicto no cambia (arriba). Los dos primeros son los
 añadidos que Ana pidió para antes de ejecutar; el tercero lo decidió después de ver la salida.
+- Las precisiones del punto 2 (dónde se usa el ancla corregida, qué sigue sin corregir y la mediana positiva) no
+  estaban en el mensaje de Ana: se fijaron después de la ejecución, la última al repetir su medida de la DFL, y
+  ninguna mira el partido.
+- Estos cambios no son, por sí solos, motivo para repetir la medida.
+- Si se repite por otra causa: la condición 2 de A, con el control de juego nuevo, se cambió viendo que fallaba
+  (49,6 % frente a 47,4 %). Un «sí» de esa condición no será una prueba a ciegas, y así se dirá al leer su resultado.
+
 1. **El control de juego tiene que tener frames suficientes** (añadido de Ana). El script imprime cuántos frames
-   tiene y qué parte son de lo evaluado. Si son menos del 5 % (7.943 de 158.857; en el código, en enteros,
+   tiene (todos, opine o no el modelo en ellos), qué parte son de lo evaluado y el mínimo. Si son menos del 5 % de
+   los 158.857 frames evaluados, contando el tramo antes del saque (7.943; en el código, en enteros,
    `PLAY_MIN_NUM, PLAY_MIN_DEN = 1, 20`), A no se cumple en ningún tipo.
 2. **El ancla es la mediana de la transición menos su retraso en la DFL** (añadido de Ana):
    `DFL_DELAY = {"throw-in": 20, "corner kick": 16}`, en frames.
@@ -3211,6 +3222,21 @@ añadidos que Ana pidió para antes de ejecutar; el tercero lo decidió después
    - **Qué sigue con la mediana sin corregir:** si un tipo tiene ancla no cambia. El recorrido, «nítido» y la
      coincidencia con el balón no se tocan. «El ancla fija gana» se calcula con la mediana sin corregir,
      comparada con las transiciones sin corregir; en lo impreso se llama ahora «la mediana gana».
+   - **Dos efectos de aplicarlo así** [inferencia]. Es como lo describía el traspaso de Manuel (el ancla corregida
+     para la capa, los lados de A y el placebo de A). Queda por decidir si se cambia antes de cualquier repetición:
+     - la coincidencia con el balón se mira con la mediana sin corregir, así que ya no avala del todo el instante
+       que se usa. Con el balón 0,9 s después de la mediana la condición se cumple, y el ancla de los saques de
+       banda quedaría a 1,7 s del balón. El 15/11, en los córners, el balón caía 1,8 s después de la transición:
+       restar 16 frames lo alejaría hasta unos 2,4 s;
+     - los lados de A se miran en el ancla corregida con el mismo instrumento que llega tarde. Si el retraso de la
+       DFL se traslada al partido, de los 75 frames de «después» unos 20 (16 en los córners) son `D` del
+       instrumento por construcción: el 27 % y el 21 %, con un umbral que el 15/11 fue del 48,5 %. Juega en contra
+       de A;
+     - la alternativa sería comparar el balón con la mediana corregida y mirar los lados de A en la mediana, donde
+       ve el instrumento. Entonces contaría que la reaparición del balón también puede llegar tarde (el balón del
+       ATD viene suavizado unos 25 frames y unos 4 frames tarde respecto a los jugadores), y eso no está medido.
+   - **Si el ancla corregida cae antes del inicio de la ventana** (una mediana menor que el retraso), ese tipo no
+     recibe la capa ni puede cumplir A. Con las medianas del 15/11 (de 120 a 172 frames) no puede pasar.
    - **Qué tipos se corrigen.** Ana escribió «los tipos sin una medida propia de 50 paradas o más en la DFL no
      se corrigen». Al repetir su medida salió que las faltas y los saques de puerta también pasan de 50 paradas,
      con la mediana negativa. Ana decidió que solo se corrigen los saques de banda y los córners: una mediana
@@ -3219,7 +3245,7 @@ añadidos que Ana pidió para antes de ejecutar; el tercero lo decidió después
    - **La medida** [medido en la DFL; el 15/11, en la máquina de Ana, con
      `validation/scripts/d_estado/retraso_transicion.py`, que es el script de Ana y entra hoy en el repo]:
 
-     | tipo | paradas | con transición | mediana de la transición − el fin real | a menos de 1 s |
+     | tipo | paradas | con transición | mediana de la transición − el fin real | a menos de 1 s, de las que tienen transición |
      |---|---|---|---|---|
      | saque de banda | 301 | 266 | +20 frames | 45 % |
      | córner | 57 | 54 | +16,5 frames | 57 % |
@@ -3240,29 +3266,42 @@ añadidos que Ana pidió para antes de ejecutar; el tercero lo decidió después
 
 Lo que no cambia: el resto de la regla y todos sus números.
 
-Cómo se comprobó (sección 11 de `validation/scripts/comprobar_balon_muerto.py`, con partidos inventados y la
-apertura de ficheros prohibida):
-- **las constantes nuevas, congeladas**, y el 5 % justo en enteros (7.943 de 158.857 vale; 7.942, no);
-- **el ancla de la capa:** la mediana menos 20 frames en los saques de banda, menos 16 en los córners y sin
-  corregir en los saques de puerta y las faltas;
-- **de punta a punta, con un modelo de Ana que deja de ver parado 20 frames antes de su transición:**
-  - con el retraso, A entra en el 180 y el `D` sale ahí; sin él, en el 200;
-  - las condiciones de A se miran en el ancla corregida: si el modelo vuelve a ver parado de los 10,4 a los 11 s,
-    A se cumple en el 180 y no en el 200;
-  - el placebo de A usa el ancla corregida, no la mediana;
-  - en los córners se restan 16 frames y en los saques de puerta, ninguno;
-- **el control de juego:** no incluye los 2.934 frames del tramo antes del saque, dice cuántos frames tiene y, con
-  menos del 5 % de lo evaluado, A no se cumple aunque se cumpla todo lo demás (entra B);
-- **las pruebas de antes de los cambios** siguen, con el ancla igual a la mediana (`delays={}`), salvo la de los
-  10 saques de banda separados 10 minutos, que va con los retrasos por defecto. Dos cambian por el tercer cambio:
-  - en el partido base, el control de juego pasa a tener un 0 % de `D`. Antes tenía algo porque llevaba el tramo
-    antes del saque;
-  - en la del placebo que pasa, los 3 s de después del instante se ponen en juego también en las ventanas
-    desplazadas que caen en una parada real. Antes la prueba pasaba porque ese tramo subía el punto medio.
-- **Sabotajes:** 27 roturas de lo nuevo, una a una y en memoria. Fallan las pruebas con 26. La que no, no cambia
-  nada: medir el control de `D` en todo el tramo antes del saque en vez de en su parte evaluada, que es el tramo
-  entero.
-- **Lo impreso:** el `main` del script, con un partido inventado en memoria y la apertura de ficheros prohibida,
-  en un caso en que entra A y en otro en que no hay ancla. Imprime la regla con los cambios, la mediana y el ancla
-  corregida, el recuento del control de juego, y tapa con «< 5» y «—» lo que debe. Cambian tres textos: «el ancla
-  gana» pasa a ser «la mediana gana», y «del balón al ancla fija», «del balón a la mediana fija».
+Cómo se comprobó:
+- **Pruebas** (sección 11 de `validation/scripts/comprobar_balon_muerto.py`, con partidos inventados y la apertura de
+  ficheros prohibida):
+  - las constantes nuevas, congeladas, y el 5 % justo en enteros (7.943 de 158.857 vale; 7.942, no);
+  - el ancla de la capa: la mediana menos 20 frames en los saques de banda, menos 16 en los córners y sin corregir
+    en los saques de puerta y las faltas;
+  - de punta a punta, con un modelo de Ana inventado que deja de ver parado en el frame 180, 20 frames antes de la
+    mediana de su transición (10 o 30 antes de cada una; un destello retrasa la transición formal). Es un caso
+    inventado que prueba que el retraso se aplica donde toca:
+    - con el retraso, A entra en el 180 y el `D` sale ahí; sin él, en el 200;
+    - las condiciones de A se miran en el ancla corregida: si el modelo vuelve a ver parado de los 10,4 a los 11 s,
+      A se cumple en el 180 y no en el 200;
+    - el placebo de A usa el ancla corregida, no la mediana;
+    - en los córners se restan 16 frames y en los saques de puerta, ninguno;
+    - con un retraso mayor que la mediana, ninguna ventana recibe la capa y no entra nada;
+  - el control de juego: no incluye los 2.934 frames del tramo antes del saque; cuenta todos sus frames, también
+    donde el modelo no opina; el 5 % se cuenta sobre los 158.857 evaluados (316 s de control no llegan, aunque
+    llegarían sobre lo evaluado sin el tramo antes del saque); y con menos del 5 %, A no se cumple aunque se cumpla
+    todo lo demás (entra B);
+  - lo impreso: el `main` del script, con las funciones que leen el partido sustituidas y la apertura de ficheros
+    prohibida, imprime los cambios a la regla, la mediana y el ancla corregida, «la mediana gana», el control de
+    juego con su mínimo en frames y, en la línea para copiar, el ancla corregida;
+  - las pruebas de antes de los cambios siguen, con el ancla igual a la mediana (`no_delay`), salvo la de los 10
+    saques de banda separados 10 minutos, que va con los retrasos por defecto. Dos cambian por el tercer cambio:
+    - en el partido base, el control de juego pasa a tener un 0 % de `D`. Antes tenía algo porque llevaba el tramo
+      antes del saque;
+    - en la del placebo que pasa, los 3 s de después del instante se ponen en juego también en las ventanas
+      desplazadas que caen en una parada real. Antes la prueba pasaba porque ese tramo subía el punto medio.
+- **Sabotajes** (una vez, en memoria, fuera del repo): 33 roturas de lo nuevo, una a una. Las pruebas detectan 32,
+  entre ellas las dos que encontró la segunda revisión (el 5 % contado sobre lo evaluado sin el tramo antes del
+  saque, y contar solo los frames en que el modelo opina) y las de lo impreso (la línea para copiar con la mediana,
+  la mediana y el ancla cruzadas, «el ancla gana» y el mínimo redondeado hacia abajo). La que no, no cambia nada:
+  medir el control de `D` en todo el tramo antes del saque en vez de en su parte evaluada, que es el tramo entero.
+- **Lo impreso, a mano** (una vez, fuera del repo): el `main` con un partido inventado en un caso en que entra A y
+  en otro en que no hay ancla. Tapa con «< 5» y «—» lo que debe. Cambian tres textos: en la cabecera de la sección
+  2, «el ancla fija más cerca» pasa a ser «la mediana fija más cerca»; en cada tipo, «el ancla gana» pasa a ser «la
+  mediana gana»; y «del balón al ancla fija», «del balón a la mediana fija». Hay líneas nuevas: la de los cambios a
+  la regla, el recuento del control de juego con su mínimo, «sin el tramo antes del saque» y «control de juego
+  suficiente».

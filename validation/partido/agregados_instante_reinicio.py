@@ -8,7 +8,7 @@ del ATD.
     python validation/partido/agregados_instante_reinicio.py
 
 Responde, con la regla apuntada en docs/decisiones.md (15/11, «el instante del reinicio») antes de
-ejecutarlo:
+ejecutarlo y sus cambios posteriores:
 1. Dónde cae el reinicio dentro de cada ventana `SET PIECES` (no los saques iniciales), con dos señales
    que no son etiquetas: cuándo vuelve a verse el balón, si no se veía al empezar la ventana, y cuándo el
    modelo de jugadores de Ana pasa de parado a juego. Contado desde el inicio de la ventana; las ventanas
@@ -21,12 +21,15 @@ ejecutarlo:
    etiqueta con ella, cuántos caen en los primeros 5 s de cada hueco, y un histograma grueso de la
    distancia entre el inicio de cada hueco y el inicio del D que sale del decodificador.
 
-**Añadidos para cualquier repetición** (decisión de Ana, 15/11; docs/decisiones.md, misma entrada, «Añadidos
-a la regla después de la ejecución del 15/11»). La ejecución del 15/11 no los llevaba:
-- el ancla es la mediana de la transición menos el retraso de esa transición medido en la DFL (DFL_DELAY), y la
-  condición «la mediana gana» sigue con la mediana sin corregir;
-- el control de juego no incluye el tramo antes del saque de la 2ª parte (es el control de D), el script dice
-  cuántos frames tiene y, si son menos del 5 % de lo evaluado, A no se cumple.
+**Cambios a la regla para cualquier repetición** (decisión de Ana, 15/11; docs/decisiones.md, misma entrada,
+«Cambios a la regla después de la ejecución del 15/11»). La ejecución del 15/11 no los llevaba:
+1. (añadido de Ana) el script dice cuántos frames tiene el control de juego y, si son menos del 5 % de lo
+   evaluado, A no se cumple;
+2. (añadido de Ana) el ancla de la capa es la mediana de la transición menos el retraso de esa transición medido
+   en la DFL (DFL_DELAY). El recorrido, «nítido», la coincidencia con el balón y «la mediana gana» siguen con la
+   mediana sin corregir;
+3. (decidido después de ver la salida del 15/11) el control de juego no incluye el tramo antes del saque de la 2ª
+   parte, que es el control de D.
 
 `measure_instant` y las funciones de la regla no abren ningún fichero; los importa
 validation/scripts/comprobar_balon_muerto.py (sección 11), que ejecuta Claude con un partido inventado y
@@ -76,13 +79,13 @@ SHARP_NUM, SHARP_DEN = 4, 5  # el 80 %, en enteros para que la frontera no depen
 #    las ventanas con hueco y en las demás, con 5 ventanas o más en cada grupo. El control de D es el tramo
 #    antes del saque de la 2ª parte (D según el FAQ); el de juego, los frames evaluados a más de PLAY_FAR_S de
 #    cualquier GOALS o SET PIECES, el mismo horizonte que dead_ball.MAX_GAP_BEFORE_RESTART_S, sin el control de D
-#    (esto último, desde los añadidos de abajo; la ejecución del 15/11 lo incluía). El balón
+#    (esto último es el cambio 3, decidido después de ver la salida del 15/11, que lo incluía). El balón
 #    deprisa no vale: no separa D de juego en este partido (docs/decisiones.md, 15/11, «fronteras»);
 # 3. el placebo (los mismos instantes en las ventanas desplazadas, todas juntas y 5 o más) no pasa el
 #    punto medio del punto 2.
 PLAY_FAR_S = 60
-# Los añadidos de Ana (pedidos antes de ejecutar, llegaron después de la ejecución del 15/11; valen para cualquier
-# repetición):
+# Los añadidos de Ana (cambios 1 y 2; pedidos para antes de ejecutar, llegaron después de la ejecución del 15/11;
+# valen para cualquier repetición):
 # - el control de juego tiene que tener por lo menos el 5 % de los frames evaluados; si no, el instrumento no
 #   separa y A no se cumple. En enteros, para que la frontera no dependa de la coma flotante;
 PLAY_MIN_NUM, PLAY_MIN_DEN = 1, 20
@@ -458,7 +461,7 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
     m.update(by_type=by_type, anchors=anchors, medians=medians, delays=dict(delays))
 
     # 3a. Las condiciones del candidato A, por tipo con ancla. El control de juego no incluye el tramo antes del
-    # saque de la 2ª parte, que es el control de D (añadido después de la ejecución del 15/11).
+    # saque de la 2ª parte, que es el control de D (cambio 3, decidido después de ver la salida del 15/11).
     pre = dead_ball.pre_kickoff(game)
     g_match, g_dead = agg.dead_share(odds, graded), agg.dead_share(odds, pre & graded)
     play = far_from_restarts(events, graded & ~pre, fps)
@@ -540,8 +543,9 @@ def main():
     print("regla: sostén {} s   búsqueda hasta {} s tras el fin de la ventana   capa ±{:g} en D: {} s antes del"
           " instante (sin hueco) y {} s después (A)".format(SUSTAIN_S, SEARCH_AFTER_S, dead_ball.ANCHOR_SCORE,
                                                        dead_ball.PUSH_BEFORE_S, dead_ball.PUSH_AFTER_S))
-    print("añadidos de Ana: ancla = mediana − retraso de la DFL en frames {} (los demás tipos, 0)   control de juego"
-          " sin el tramo antes del saque de la 2ª parte y con ≥ {} % de lo evaluado".format(
+    print("cambios a la regla después del 15/11: ancla = mediana − retraso de la DFL en frames {} (los demás tipos, 0)"
+          " y control de juego con ≥ {} % de lo evaluado (añadidos de Ana); control de juego sin el tramo antes del"
+          " saque de la 2ª parte (decidido después de ver la salida)".format(
               json.dumps(m["delays"], sort_keys=True), 100 * PLAY_MIN_NUM // PLAY_MIN_DEN))
     print("\n1. Dónde cae el reinicio dentro de cada ventana SET PIECES (no los saques iniciales)")
     print("   ventanas en lo evaluado: {}   duración mediana {:.1f} s   a más de {:g} s de esa mediana: {}".format(
@@ -588,9 +592,11 @@ def main():
     print("   modelo de Ana, D en: partido {}   control de D (antes del saque de la 2ª parte) {}   control de juego"
           " (a más de {} s de cualquier reinicio, sin el tramo antes del saque) {}".format(
               agg.share(m["g_match"]), agg.share(m["g_dead"]), PLAY_FAR_S, agg.share(m["g_play"])))
-    print("   control de juego: {} frames, el {:.1f} % de los {} evaluados (hace falta el {} %) -> suficiente {}".format(
-        m["play_frames"], 100.0 * m["play_frames"] / max(m["graded_frames"], 1), m["graded_frames"],
-        100 * PLAY_MIN_NUM // PLAY_MIN_DEN, yes(m["play_enough"])))
+    print("   control de juego: {} frames (todos, opine o no el modelo), el {:.1f} % de los {} evaluados; hacen falta"
+          " {} (el {} %) -> suficiente {}".format(
+              m["play_frames"], 100.0 * m["play_frames"] / max(m["graded_frames"], 1), m["graded_frames"],
+              -(-m["graded_frames"] * PLAY_MIN_NUM // PLAY_MIN_DEN), 100 * PLAY_MIN_NUM // PLAY_MIN_DEN,
+              yes(m["play_enough"])))
     print("   puntos medios: parado antes si ≥ {}   juego después si ≤ {}".format(
         agg.share((m["g_match"] + m["g_dead"]) / 2), agg.share((m["g_match"] + m["g_play"]) / 2)))
     for kind in m["anchors"]:

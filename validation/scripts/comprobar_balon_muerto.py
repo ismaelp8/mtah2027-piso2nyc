@@ -13,6 +13,7 @@ Sale con código 1 si falla alguna comprobación. Claude puede ejecutarlo (valid
 """
 
 import builtins
+import contextlib
 import csv
 import hashlib
 import io
@@ -775,8 +776,8 @@ def check_restart_instant(game, folder):
     # del balón (10) que cada transición en las ventanas con hueco (mediana 20). Ve D antes del saque de la 2ª
     # parte (el control de D) y de los 15 a los 95 s de cada ventana (sube el D del partido, cerca de los
     # reinicios); en el resto, juego: el control de juego sale con un 0 % de D.
-    # Estas pruebas son las de la regla de antes de los añadidos de Ana: pasan `delays={}` (ancla = mediana). Las
-    # del retraso de la DFL van después.
+    # Estas pruebas son las de la regla de antes de los cambios de después de la ejecución: pasan `no_delay` (ancla =
+    # mediana). Las del retraso de la DFL van después.
     starts = [(1000 + 100 * i) * fps for i in range(12)]
     events = [window(s) for s in starts]
     gaps = starts[0::2]
@@ -820,11 +821,13 @@ def check_restart_instant(game, folder):
 
     no_gap = lambda trk: tracking.no_evidence(n)  # noqa: E731
 
-    def measured(pieces, odds=instrument, tagged=events, trk=match, delays=None):
+    no_delay = {}  # ancla = mediana; en measure_instant, delays=None quiere decir DFL_DELAY
+
+    def measured(pieces, odds=instrument, tagged=events, trk=match, delays=no_delay):
         try:
             with pp.no_files():
                 return air.measure_instant(trk, tagged, with_gap, no_gap, game, pieces=pieces,
-                                           odds_fn=lambda c: odds, delays={} if delays is None else delays)
+                                           odds_fn=lambda c: odds, delays=delays)
         except AssertionError:
             check("measure_instant no abre ningún fichero", False)
             raise
@@ -904,7 +907,8 @@ def check_restart_instant(game, folder):
     # A no se cumple si el placebo pasa: en las ventanas desplazadas Ana ve parado justo antes del instante y juego
     # justo después (con dos destellos de D), aunque su transición queda dispersa. Los 3 s de después se ponen en
     # juego también en las ventanas desplazadas que caen en una parada de las reales: antes de quitar del control de
-    # juego el tramo antes del saque (añadido de Ana), ese tramo subía el punto medio y la prueba pasaba sin esto.
+    # juego el tramo antes del saque (cambio 3, posterior a la ejecución), ese tramo subía el punto medio y la prueba
+    # pasaba sin esto.
     fooled = instrument.copy()
     for k, p in enumerate(air.placebo_windows(events, blocks, fps)):
         i = p["start"] + 8 * fps
@@ -1097,9 +1101,10 @@ def check_restart_instant(game, folder):
           and results[1]["anchors"] == {} and not results[1]["entra"],
           "{} {} {}".format(results[0]["placebo_windows"], len(concentrated["placebo"]), results[1]["anchors"]))
 
-    # Los añadidos de Ana, de punta a punta, en el partido de los 12 saques de banda. Un modelo de Ana que deja de
-    # ver parado a los 7,2 s (180 frames), 20 antes de su transición: un destello de D justo antes la retrasa a los
-    # 7,6 u 8,4 s, como en el partido base. Es el caso del retraso medido en la DFL.
+    # Los cambios a la regla, de punta a punta, en el partido de los 12 saques de banda. Un modelo de Ana inventado
+    # que deja de ver parado en el frame 180, 20 frames antes de la mediana de su transición (10 o 30 antes de cada
+    # una): un destello de D justo antes la retrasa a los 7,6 u 8,4 s, como en el partido base. Es un caso inventado
+    # que prueba que el retraso se aplica donde toca.
     def late_ana():
         odds = np.full(n, -1.0)
         odds[dead_ball.pre_kickoff(game)] = 1.0
@@ -1180,6 +1185,63 @@ def check_restart_instant(game, folder):
           and a["sharp"] and all(s["ok"] for s in a["sides"].values()) and a["placebo"]["n"] >= 5
           and not a["placebo"]["passes"] and not a["ok"] and list(m["tested"]) == ["B"] and m["chosen"] == "B",
           "{} {} {}".format(m["play_frames"], a, m["chosen"]))
+    # El 5 % se cuenta sobre todo lo evaluado: 316 s (7.900 frames) no llegan al 5 % de 158.857 (7.943), aunque sí al
+    # 5 % de lo evaluado sin el tramo antes del saque (155.923).
+    edge = [f for f in fillers if f["start"] != 6360 * fps] + [window(6381 * fps, code="goals")]
+    m = measured(pieces, tagged=events + edge)
+    check("measure_instant: el 5 % se cuenta sobre los 158.857 evaluados, con el tramo antes del saque",
+          m["play_frames"] == 316 * fps and not m["play_enough"] and m["chosen"] == "B",
+          "{} {}".format(m["play_frames"], m["chosen"]))
+    blind = instrument.copy()
+    blind[6100 * fps:6200 * fps] = 0.0  # el modelo no opina en 100 s del control de juego
+    m = measured(pieces, blind, tagged=events + fillers)
+    check("measure_instant: el control de juego cuenta todos sus frames, también donde el modelo de Ana no opina",
+          m["play_frames"] == 295 * fps, str(m["play_frames"]))
+
+    # Un retraso mayor que la mediana deja el ancla antes del inicio de la ventana: ninguna ventana recibe la capa,
+    # A no se puede cumplir y no entra nada.
+    m = measured(pieces, delays={"throw-in": 300})
+    a = m["by_type"]["throw-in"]["a"]
+    check("measure_instant: con el ancla corregida antes del inicio de la ventana, ninguna ventana recibe la capa, A "
+          "no se cumple y no entra nada",
+          m["anchors"] == {"throw-in": -100} and m["medians"] == {"throw-in": 200}
+          and all(s["n"] == 0 for s in a["sides"].values()) and not a["ok"] and list(m["tested"]) == ["B"]
+          and m["tested"]["B"]["pushes"] == 0 and m["chosen"] is None,
+          "{} {}".format(m["anchors"], {k: r["pushes"] for k, r in m["tested"].items()}))
+
+    # Lo impreso: el `main` del script con el partido de los 12 saques de banda y el modelo de Ana que llega tarde,
+    # sin datos (las funciones que leen el partido, sustituidas) y con la apertura de ficheros prohibida.
+    shown_m = measured(pieces, late_odds, delays=air.DFL_DELAY)
+    text = run_main(air, [(games, "require", lambda *a, **k: None),
+                          (games, "asset_paths", lambda *a, **k: {"atd_raw": "-", "atd_meta": "-", "smart_tagging": "-"}),
+                          (tracking, "from_atd", lambda *a, **k: match),
+                          (dead_ball, "smart_tagging_events", lambda *a, **k: events),
+                          (air, "code_fingerprint", lambda folder: "(prueba)"),
+                          (air, "measure_instant", lambda *a, **k: shown_m)])
+    copy_line = [line for line in text.splitlines() if "para copiar" in line]
+    ok = ("cambios a la regla después del 15/11" in text and "decidido después de ver la salida" in text
+          and "la mediana (200 frames) menos el retraso de la DFL (20 frames)" in text
+          and "la mediana gana" in text and "el ancla gana" not in text and "del balón a la mediana fija" in text
+          and "hacen falta 7943 (el 5 %)" in text and "-> entra: el candidato A" in text
+          and len(copy_line) == 1 and '{"throw-in": 180}' in copy_line[0])
+    check("main imprime los cambios a la regla, la mediana y el ancla corregida, «la mediana gana», el control de "
+          "juego con su mínimo en frames y, para copiar, el ancla corregida", ok, "" if ok else text)
+
+
+def run_main(module, replacements):
+    """El `main` de un script del partido con unas funciones sustituidas por otras que no leen datos, con la apertura
+    de ficheros prohibida. Devuelve lo que imprime; las funciones de verdad vuelven a su sitio al acabar."""
+    saved = [(owner, name, getattr(owner, name)) for owner, name, _ in replacements]
+    out = io.StringIO()
+    try:
+        for owner, name, value in replacements:
+            setattr(owner, name, value)
+        with pp.no_files(), contextlib.redirect_stdout(out):
+            module.main()
+    finally:
+        for owner, name, value in saved:
+            setattr(owner, name, value)
+    return out.getvalue()
 
 
 def check_kickoff_anchor(game, folder):
@@ -1386,6 +1448,20 @@ def check_kickoff_anchor(game, folder):
     conflict = measured(0.5, team_conflict)
     check("measure_kickoff: si otra pieza solo permite D en el frame del saque, hay conflicto con el ancla y no entra",
           conflict["conflicts"] == (0, 1) and not conflict["entra"] and not conflict["checks"][sjv.RULE[0]])
+
+    # Lo impreso: el `main` del script con el caso de poca evidencia de D tras el saque, sin datos y con la apertura
+    # de ficheros prohibida.
+    text = run_main(sjv, [(games, "require", lambda *a, **k: None),
+                          (games, "asset_paths", lambda *a, **k: {"atd_raw": "-", "atd_meta": "-", "smart_tagging": "-"}),
+                          (tracking, "from_atd", lambda *a, **k: trk),
+                          (sjv, "code_fingerprint", lambda folder: "(prueba)"),
+                          (sjv, "measure_kickoff", lambda *a, **k: weak)])
+    ok = ("sha256 sin el ancla " + weak["sha256"][0] in text and "sha256 con el ancla " + weak["sha256"][1] in text
+          and "0 a 1 s        25" in text and "1 a 5 s        50" in text and "≥ 60 s         0" in text
+          and "D → H 75" in text and "-> entra el ancla del saque: sí" in text
+          and all(condition in text for condition in sjv.RULE) and "sube algo (también las rachas cortas): no" in text)
+    check("main imprime los dos sha256 en su orden, la regla, los frames que cambian por distancia al saque, de qué "
+          "etiqueta a cuál, y si entra", ok, "" if ok else text)
 
 
 def main():
