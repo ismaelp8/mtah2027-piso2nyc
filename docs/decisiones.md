@@ -2318,3 +2318,41 @@ Regla de lectura, fijada antes de medir:
 - **Si no cumple ni la 1 ni la 2, es un empate.** Se apunta y se cierra con el informe.
 - **Nada de lo medido cambia el candidato:** ni el umbral, ni las ventanas, ni las filas, ni la rejilla de α.
 
+Resultado (15/11; `validation/resultados/2026-11-15_posesiones_cortas.md`, código `4e662ad`; salidas en
+`validation/posesiones_cortas/salidas/`) [medido]:
+- **Instrumento:**
+  - B1 a B8 sin cambios (el diff solo añade B9);
+  - los rasgos de B9 son los de B5 más los de la puerta;
+  - la elección de α repite la de B5 en los 8 pliegues;
+  - `main` repite 0,498 / 0,512 / 0,728 / 0,748 y 629 / 628 / 545;
+  - las dos pruebas, en verde.
+- **1. Harness, frente a `main`:** con el flag gana con §5.8 (+0,039 en 7 de 7 y +0,048 en 6 de 7, los dos
+  intervalos por encima de cero). Con el control empata (−0,006 y −0,005, los dos intervalos cruzan el cero).
+  Frente al control del harness gana en todo.
+- **2. Eventos: no cumple.** Las recuperaciones suben +8,2 y +7,7 puntos, y los duelos con cambio, +4,8 y
+  +5,2. Pero los duelos sin cambio bajan −4,7 («como el ATD») y −5,7 («sin bloques»), y el límite era −5.
+- **3. `D` propio: cumple.**
+  - Con el balón tapado: 630 y 629 paradas vistas, frente a 629 y 628. La precisión del `D` queda a 0,1
+    puntos. El spellF1 con el `D` propio no baja en ninguna celda: 0,456 / 0,618 y 0,480 / 0,643, frente a
+    0,416 / 0,616 y 0,433 / 0,642.
+  - Con el balón a la vista: 543 paradas vistas frente a 545, a 0,3 puntos.
+- **4. SkillCorner, mitad de entrenamiento: no es positivo en las dos condiciones.** «Detectado» da −0,005
+  [−0,009 a +0,000], ganando en 1 de 10. «Detectado, suavizado» da +0,004 [−0,002 a +0,009], en 7 de 10.
+  **El examen no se ejecuta:** `lector.EXAMEN` sigue intacto.
+- **Placebo** (descriptivo): con la dirección desplazada 60 s, la ganancia con el flag desaparece (−0,019 y
+  −0,012). La señal es real en la DFL.
+- **Sensibilidad** (descriptivo): con el balón 12 frames tarde, B9 mantiene la ganancia con el flag (+0,040 y
+  +0,044), pero con el control pierde (−0,022 y −0,026). **De paso:** el propio `main` cae de 0,728 a 0,640
+  con el control y de 0,498 a 0,472 con el flag.
+
+Decisión y por qué: **no cumple ni la lectura 1 ni la 2. Es un empate: B5 sigue en la entrega y
+`pipeline.PIECES` no cambia.**
+- Falla el paso 4 de las dos lecturas, y la lectura 2 también falla el criterio 2.
+- B9 es la primera idea que encuentra posesiones cortas de verdad en la DFL. Las de 2 a 5 s encontradas con
+  el control pasan del 53 al 62 % en la puerta. Las recuperaciones suben 8 puntos.
+- Pero no lo traslada al tracking automático de SkillCorner, que es lo más parecido al ATD que hay abierto.
+  Ahí la dirección del balón ya acertaba menos (el 66 % en las de 2 a 5 s, frente al 81 % en la DFL)
+  [sin explicar].
+
+Descartado: B9 tal cual. Se queda en la rama, con sus coeficientes, como referencia del documento técnico.
+

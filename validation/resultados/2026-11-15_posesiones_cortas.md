@@ -45,3 +45,60 @@
 7. **Entrenar con tracking automático no lo arregla** [medido]: con los rasgos de B5 entrenados con todos los
    frames vivos de SkillCorner, y mirando en los mismos partidos (lo más optimista posible), las de 2 a 5 s
    siguen en el 29–30 % y el spellF1 pasa de 0,519 a 0,520–0,528. Limitan los rasgos, no las filas.
+8. **«Proponer y clasificar» trozos del rival tiene un techo bajo** [medido]: con un clasificador perfecto
+   gana de +0,008 a +0,013 con el control. Solo el 2–11 % de las propuestas son buenas.
+9. **La dirección en que se mueve el balón es la única señal nueva que encuentra posesiones cortas** [medido]:
+   B9 (B5 con esa señal) gana a `main` con §5.8 usando el flag (+0,039 y +0,048, dejando un partido fuera),
+   y el placebo lo confirma. Pero empata con el control, empeora los duelos sin cambio más de lo permitido y
+   **no se traslada a SkillCorner** (−0,005 y +0,004). Con la regla escrita antes de medir, es un empate:
+   **B5 se queda.**
+
+## Qué se recomienda
+
+- **No cambiar la entrega por esto.** B9 no pasa la regla, y lo que falla es justo lo más parecido al
+  partido: el tracking automático de SkillCorner.
+- **La medida del retraso del balón del ATD (tarea 1 de Antonio) pesa más que cualquier candidato**
+  [inferencia, con una medida descriptiva]. Con el balón 12 frames tarde, `main` cae de 0,728 a 0,640 con el
+  control y de 0,498 a 0,472 con el flag en la DFL. Ningún candidato medido mueve tanto.
+- **Para el documento técnico:** la convención explica la mitad del hueco con el flag. Las posesiones de
+  menos de 2 s son un límite de información del balón suavizado. Con el control, el número de posesiones
+  cuadra en la DFL.
+
+## Qué información haría falta
+
+- **El instante de los toques.** El suavizado de unos 25 frames del balón del ATD los borra. Con el balón
+  limpio, el equipo nuevo está a 1,5 m del balón en el 94 % de los cambios reales; suavizado, en el 56–63 %
+  (anexo A.4 de la revisión externa). Por frame, el más cercano no ayuda ni con el balón limpio (punto 6):
+  la información está en los toques.
+- **Para recuperarlos haría falta un balón sin suavizar:** el del vídeo táctico, o deshacer el suavizado del
+  ATD.
+  - Deshacerlo no se puede validar en el harness: allí el suavizado es una media centrada exacta y sin ruido,
+    y una inversa ganaría por construcción.
+  - En el ATD el núcleo no está medido.
+- **Por qué la dirección del balón dice menos en SkillCorner que en la DFL** [sin explicar]. Si se entendiera
+  (otra liga, la retransmisión, el balón a 10 fps), se sabría si al ATD le pasa lo mismo.
+
+## Lo que dice y lo que no
+
+- Todo es de datos abiertos de otros partidos: nada del partido del reto.
+- El `D` es el de las etiquetas, salvo en los criterios con el `D` propio.
+- El examen de SkillCorner (`lector.EXAMEN`) no se ha tocado: la regla de B9 no dejaba ejecutarlo.
+- El diseño de B9 (la señal, el umbral y la ventana) salió de un sondeo y de una puerta en los mismos 7
+  partidos de la DFL. Dejar un partido fuera protege sus coeficientes, no su diseño.
+
+## Detalle
+
+- Diagnóstico y sondeos: `validation/posesiones_cortas/BITACORA.md` (§2 a §6), con las salidas tal cual en
+  `validation/posesiones_cortas/salidas/`.
+- B9, su regla y su resultado: `docs/decisiones.md` (15/11, «posesiones cortas: B9»).
+- Comandos (todos con datos abiertos; los puede ejecutar Claude):
+  - `python validation/posesiones_cortas/diagnostico.py`
+  - `python validation/posesiones_cortas/informacion.py`
+  - `python validation/posesiones_cortas/informacion_direccion.py`
+  - `python validation/posesiones_cortas/puerta_skillcorner.py`
+  - `python validation/posesiones_cortas/techo_propuestas.py`
+  - `python validation/posesiones_cortas/puerta_direccion.py`
+  - `python validation/posesiones_cortas/entrenar_b9.py`
+  - `python validation/harness/puntuar.py --versiones validation/harness/versiones/posesiones_cortas_b9.json --eventos`
+  - `python validation/apuesta_b/d_propio.py --versiones validation/harness/versiones/posesiones_cortas_b9.json`
+  - `python validation/posesiones_cortas/medir_b9.py entrenamiento` (y `placebo` y `retraso`)

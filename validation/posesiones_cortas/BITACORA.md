@@ -108,3 +108,17 @@ Resultado de la puerta [medido, en los mismos partidos: optimista]; salida en
   hacia atrás rápidos del equipo que tiene el balón].
 - **La puerta se pasa** (mueve las de 2 a 10 s). Es la primera idea que da más de +0,03 con el flag en estas
   condiciones, aunque sea en los mismos partidos.
+
+## 7. B9: candidato, regla y resultado
+
+La regla y el candidato están en `docs/decisiones.md` (15/11, «posesiones cortas: B9»), con commit `cd75d3d`
+antes de entrenar. Coeficientes en `4e662ad`. Salidas en `salidas/2026-11-15_{entrenar,harness,dpropio,
+sk_entr,placebo,retraso}_b9.md`.
+
+Resultado [medido]: **empate.**
+- Gana con el flag: +0,039 y +0,048.
+- Empata con el control: −0,006 y −0,005.
+- Los duelos sin cambio bajan −5,7 en «sin bloques», y el límite era −5.
+- En la mitad de entrenamiento de SkillCorner da −0,005 y +0,004.
+
+El examen no se ejecutó. B5 se queda.
