@@ -325,7 +325,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - `evidence` admite una escala, con 1 por defecto, para la medida de David.
   - Queda apuntada la versión de scikit-learn del entrenamiento (1.7.2).
   - En la DFL, el resultado es idéntico bit a bit, según Ana.
-  - La mergeó Ana sin una revisión previa. La sesión planificadora la revisó después y no encontró nada.
+  - La mergeó Ana (cada uno puede mergear su propia PR); la sesión planificadora la revisó después.
   - **La entrega no cambia** [medido por Ismael]. Cambian los rasgos de los 52 primeros y 52 últimos frames de
     cada tramo, pero ninguna etiqueta:
     - `equipo_v4` se regeneró en el entorno limpio con `main` en `8f90dea` y sale byte a byte igual que
