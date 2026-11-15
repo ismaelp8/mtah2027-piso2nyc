@@ -234,7 +234,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
+- **Entrega vigente: `equipo_v3`, hasta regenerarla con la capa de los contraataques** (más abajo). La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
@@ -330,8 +330,10 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     cuatro:**
     - cambian 817 frames, todos de un equipo al otro;
     - las paradas no se mueven y hay 4 posesiones más.
-  - **Sigue apagada hasta que el equipo decida encenderla.** Sería una excepción a la regla del harness, porque
-    la DFL no tiene Smart Tagging.
+  - **Encendida desde el 15/11** (Ismael: «Sí, enciéndela»): `pipeline.DELIVERY_LAYERS`. Es una excepción a la
+    regla del harness, porque la DFL no tiene Smart Tagging.
+  - **La entrega cambia:** hay que regenerarla. Tiene que salir igual que `prueba_transiciones2` (`27dc8aa8…`),
+    con 817 frames distintos frente a `equipo_v3`.
   - Si se enciende, hay que añadir en `possession/tracking.py` y en el plan (§2) la excepción de que abre
     ficheros del partido, como `dead_ball.py`.
 - **D7, el balón fuera del campo como señal de `D`** (`docs/decisiones.md`; capas apagadas en
@@ -637,8 +639,8 @@ validation/                  validación externa con datos abiertos: pasos, scri
   `games.half_video_blocks()`), y los datos se localizan con `MTAH_DATA_DIR`.
 - **Interfaz común** (`possession/tracking.py` y `docs/PLAN_ENTREGA.md` §2):
   - cada pieza recibe un `Tracking`: arrays indexados por **frame de vídeo**, **199.319** en el partido.
-    No recibe rutas ni abre ficheros; solo `possession/dead_ball.py` usa además los del partido, con las
-    rutas de `games.asset_paths()`;
+    No recibe rutas ni abre ficheros; solo `possession/dead_ball.py` y `possession/transiciones.py` (desde
+    el 15/11) usan además los del partido, con las rutas de `games.asset_paths()`;
   - las piezas de evidencia devuelven `(score, allowed)`: dos arrays de forma (n, 3), con las columnas
     `H`, `A` y `D`;
   - el decodificador devuelve una etiqueta por frame de vídeo.

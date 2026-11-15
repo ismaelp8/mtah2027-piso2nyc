@@ -3231,3 +3231,35 @@ borde.
 
 Con la regla, **sigue apagada hasta que el equipo decida encenderla.** Sería una excepción a «lo que no ha
 ganado en el harness no entra», porque esta capa no se puede medir en la DFL.
+
+
+### 2026-11-15 · candidatos · se enciende la capa de los contraataques (`transiciones.evidence_equipo`)
+
+Quién: Ismael («Sí, enciéndela»), con la recomendación de Claude, después de que la segunda versión pasara sus
+cuatro criterios (entrada «el empujón en los contraataques: la primera versión crea paradas»).
+
+Qué se decidió: **la entrega suma `transiciones.evidence_equipo`.** Es una excepción a «lo que no ha ganado en el
+harness no entra» (plan §4), que la regla de la capa dejaba en manos del equipo. La DFL no tiene Smart Tagging,
+así que el harness no puede medirla.
+
+Por qué se recomendó:
+- **Hace lo que se buscaba.** En 17 de 24 contraataques llegábamos de 2 a 10 s tarde, y la capa adelanta el
+  cambio al equipo de la fase.
+- **Pasó los cuatro criterios escritos antes:**
+  - los 817 frames que cambian son todos de un equipo al otro;
+  - las paradas no se mueven y hay 4 posesiones más;
+  - no hay rachas cortas.
+- **En la cota de la DFL nunca hizo daño,** ni con un 30 % de marcas falsas, y aquí la etiqueta de equipo de
+  las fases acierta el 93,1 % en control claro.
+- **La ganancia esperada es pequeña:** de +0,013 a +0,027 como cota superior con marcas perfectas. No se ha
+  medido con el `spellF1` del partido, ni se puede.
+
+Qué cambia:
+- **`possession/pipeline.py`:** `DELIVERY_LAYERS = (transiciones.evidence_equipo,)`. `build` la suma a las anclas
+  de `dead_ball.evidence`, con las rutas del partido. `PIECES` y `run` no cambian, así que el harness y la DFL
+  siguen igual.
+- **La excepción de que la capa abre el Smart Tagging,** escrita en `possession/tracking.py`, en el plan (§2) y
+  en `CLAUDE.md`.
+- **La entrega cambia:** hay que regenerarla en el entorno limpio. Tiene que salir igual que `prueba_transiciones2`
+  (sha256 `27dc8aa8…efb7`, generada con numpy 2.3.4), con 817 frames distintos frente a `equipo_v3`. Pasará a ser
+  la entrega vigente, y la comprobación del lunes por la noche se hace con ella.

@@ -27,11 +27,17 @@ import sys
 import numpy as np
 
 import games
-from possession import aprendida, ball, candidates, dead_ball, dead_state, temporal, tracking
+from possession import aprendida, ball, candidates, dead_ball, dead_state, temporal, tracking, transiciones
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_DIR = os.path.join(ROOT, "evaluation", "results")
 DEFAULT_NAME = "equipo_v0"
+
+# Las capas del partido que la entrega suma a las piezas, además de las anclas de `dead_ball.evidence`. Reciben
+# las rutas del partido (`with_paths`), así que no corren en el harness. Desde el 15/11, el empujón al equipo de
+# cada «Attacking Transition» del Smart Tagging (`transiciones.evidence_equipo`): pasó sus cuatro criterios
+# escritos antes y el equipo decidió encenderlo (docs/decisiones.md, «se enciende la capa de los contraataques»).
+DELIVERY_LAYERS = (transiciones.evidence_equipo,)
 
 # Las piezas que `run` deja cambiar por otra función (argumento `pieces`) y la función de cada una que va
 # en la entrega: «funcion» de su módulo o «modulo.funcion». El harness de la DFL las usa para comparar
@@ -286,6 +292,7 @@ def build(game=games.GAME, data_dir=None, params=None, pieces=None, layers=()):
     él no hay entrega: el error dice qué falta y dónde se esperaba. Si el ATD tiene alguna línea saltada o
     repetida, o algún frame sin línea, también da error (`check_atd`).
 
+    Suma las anclas de `dead_ball.evidence` y las capas de DELIVERY_LAYERS, con las rutas del partido.
     `pieces` y `layers` son para entregas de prueba (`overrides`): sin ellos, la entrega.
     """
     games.require(["atd_meta", "atd_raw", "smart_tagging"], game, data_dir)
@@ -294,7 +301,7 @@ def build(game=games.GAME, data_dir=None, params=None, pieces=None, layers=()):
     trk = tracking.from_atd(paths, game, report=report)
     check_atd(report["atd"])
     anchors = lambda clean: dead_ball.evidence(clean, paths, game)  # noqa: E731
-    layers = [with_paths(layer, paths, game) for layer in layers]
+    layers = [with_paths(layer, paths, game) for layer in tuple(DELIVERY_LAYERS) + tuple(layers)]
     codes = run(trk, extra=[anchors] + layers, params=params, report=report, pieces=pieces)
     return codes, trk.blocks, report
 
@@ -328,7 +335,7 @@ def main():
     print(code_version())
     print("piezas: {}".format("; ".join(["{} cambiada por {}".format(*spec.split("=", 1)) for spec in args.pieza]
                                         + ["capa añadida {}".format(spec) for spec in args.capa])
-                              or "las de la entrega (PIECES), sin capas añadidas"))
+                              or "las de la entrega (PIECES y DELIVERY_LAYERS), sin capas añadidas"))
     print(atd_lines(report["atd"]))
     for line in summary(codes, blocks):
         print(line)

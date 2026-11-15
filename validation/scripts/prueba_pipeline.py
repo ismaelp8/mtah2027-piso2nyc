@@ -34,6 +34,7 @@ sys.path.insert(0, os.path.join(ROOT, "evaluation"))
 import games  # noqa: E402
 import possession_metrics as pm  # noqa: E402
 from possession import aprendida, ball, candidates, dead_ball, dead_state, pipeline, temporal, tracking  # noqa: E402
+from possession import transiciones  # noqa: E402
 from possession import io as io_atd  # noqa: E402
 from possession.io import COUNT_KEYS  # noqa: E402
 from starter import baseline  # noqa: E402
@@ -377,12 +378,15 @@ def check_build_requires(folder):
         with no_files():
             pipeline.build(data_dir=folder, pieces={"candidates": candidates.evidence},
                            layers=[layer, layer_with_paths])
-            seen["extra"][2]("tracking limpio")
+            seen["extra"][3]("tracking limpio")
     finally:
         games.require, games.asset_paths, tracking.from_atd, pipeline.run = real
     check("build pasa a run la pieza cambiada y las capas, además de las anclas de dead_ball",
-          seen.get("pieces") == {"candidates": candidates.evidence} and len(seen.get("extra", [])) == 3
-          and seen["extra"][1] is layer)
+          seen.get("pieces") == {"candidates": candidates.evidence} and len(seen.get("extra", [])) == 4
+          and seen["extra"][2] is layer)
+    check("la entrega suma la capa de los contraataques (transiciones.evidence_equipo), sin abrir nada aquí",
+          pipeline.DELIVERY_LAYERS == (transiciones.evidence_equipo,) and callable(seen["extra"][1])
+          and seen["extra"][1] is not transiciones.evidence_equipo)
     check("a una capa con `paths` (como dead_ball.evidence) le pasa las rutas del partido y el juego",
           received == [({"smart_tagging": "inventado"}, GAME)], "{}".format(received))
     check("--capa admite cualquier módulo de possession/, y nada de fuera",
@@ -565,7 +569,7 @@ def check_main(codes, folder):
           and "líneas del ATD: " in shown and "tramo 2, rachas cortas" in shown
           and "sha256: " + pipeline.sha256(path) in shown)
     check("sin --pieza ni --capa, build recibe las piezas de la entrega y lo dice",
-          not asked.get("pieces") and not asked.get("layers") and "piezas: las de la entrega (PIECES)" in shown)
+          not asked.get("pieces") and not asked.get("layers") and "piezas: las de la entrega (PIECES y DELIVERY_LAYERS)" in shown)
 
     # Entregas de prueba: otra pieza o una capa más, sin tocar PIECES.
     trial = ["--pieza", "candidates=aprendida.evidence_b9", "--capa", "dead_state.evidence"]
