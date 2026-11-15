@@ -1,9 +1,10 @@
 """Comprueba possession/dead_ball.py sin datos del partido: solo el código, la GT pública y un Smart Tagging
 inventado, que se escribe en una carpeta temporal y se borra al terminar.
 
-La sección 9 prueba la regla de validation/partido/agregados_dead_ball.py con un partido inventado en
-memoria: importa su `measure`, que no abre ficheros, y nunca ejecuta su `main`, que es lo que lee el
-partido.
+Las secciones 9 y 11 prueban las reglas de validation/partido/agregados_dead_ball.py y
+agregados_instante_reinicio.py con partidos inventados en memoria: importan sus cuentas, que no abren
+ficheros (se comprueba con la apertura de ficheros prohibida), y nunca ejecutan su `main`, que es lo que
+lee el partido.
 
     python validation/scripts/comprobar_balon_muerto.py
 
@@ -495,6 +496,175 @@ def check_rules(game):
           and np.isnan(agg.dead_share(odds, np.array([True, True, False, False]))))
 
 
+def check_restart_instant(game, folder):
+    """El instante del reinicio: la capa del ancla (fuera de evidence hasta que pase su regla) y las cuentas
+    de validation/partido/agregados_instante_reinicio.py, con datos inventados. Importa sus funciones, nunca
+    su `main`, y llama a `measure_instant` con la apertura de ficheros prohibida."""
+    sys.path.insert(0, os.path.join(ROOT, "validation", "partido"))
+    import agregados_instante_reinicio as air  # solo sus cuentas
+
+    fps = games.GAMES[game]["fps"]
+    n = games.GAMES[game]["n_video_frames"]
+    length, width = games.GAMES[game]["pitch"]
+    blocks = tracking.evaluated_blocks(game)
+    H, D = tracking.H, tracking.D
+
+    # Las dos señales.
+    odds = np.array([1, 1, 1, -1, -1, -1, 1, 0, -1, -1, -1], dtype=float)
+    check("play_transition: de log-odds > 0 a < 0 sostenido; un 0 antes no cuenta, y sin sostén no hay",
+          air.play_transition(odds, 0, 11, 3) == 3 and air.play_transition(odds, 4, 11, 3) is None
+          and air.play_transition(odds, 0, 11, 4) is None and air.play_transition(odds, 0, 5, 2) == 3)
+    seen = np.array([1, 1, 0, 0, 0, 1, 1, 0, 0], dtype=bool)
+    check("ball_back: visto al empezar, vuelve a verse (y cuándo) o no vuelve",
+          air.ball_back(seen, 1, 9) == (air.SEEN_AT_START, None) and air.ball_back(seen, 3, 9) == (air.BACK, 5)
+          and air.ball_back(seen, 8, 9) == (air.NOT_BACK, None))
+
+    # La regla de un tipo, en sus límites.
+    # 11 valores: recorrido intercuartílico de 2 s justos (de p10 a p90, 8 s) y mediana de 2 s
+    base = [-5, -2, 1, 1, 2, 2, 2, 3, 3, 6, 9]
+    wide = [-5, -2, 0.9, 0.9, 2, 2, 2, 3, 3, 6, 9]  # recorrido intercuartílico de 2,1 s
+    check("anchor_rule: 11 transiciones con recorrido de 2 s y 5 balones a 1 s de la mediana: entra",
+          air.anchor_rule(base, [3.0] * 5) == (True, True, True, True))
+    check("anchor_rule: recorrido de más de 2 s, balones a más de 1 s o menos de 5, o menos de 10 "
+          "transiciones: no entra",
+          air.anchor_rule(wide, [3.0] * 5)[3] is False and air.anchor_rule(base, [3.02] * 5)[3] is False
+          and air.anchor_rule(base, [3.0] * 4)[3] is False and air.anchor_rule(base[:9], [3.0] * 5)[3] is False)
+
+    # La capa del ancla.
+    w = 1000 * fps
+
+    def window(start, kind="throw-in", code="set pieces"):
+        return {"code": code, "type": kind, "team": "n/a", "start": start, "end": start + 35 * fps}
+
+    anchors = {"throw-in": 10 * fps}
+    spans = dead_ball.restart_anchor_spans([window(w)], anchors, blocks, fps)
+    check("restart_anchor_spans: instante en el inicio más el ancla, y 5 s después",
+          [(s, i, e) for _, s, i, e in spans] == [(w, w + 10 * fps, w + 15 * fps)])
+    cut = dead_ball.restart_anchor_spans([window(w), window(w + 12 * fps, "corner kick")], anchors, blocks, fps)
+    late = dead_ball.restart_anchor_spans([window(w), window(w + 8 * fps, code="goals")], anchors, blocks, fps)
+    check("restart_anchor_spans: se corta en el siguiente reinicio; si el instante queda después, no entra",
+          [(s, i, e) for _, s, i, e in cut] == [(w, w + 10 * fps, w + 12 * fps)] and late == [])
+    check("restart_anchor_spans: ni saques iniciales (aunque tengan ancla), ni tipos sin ancla, ni fuera de lo "
+          "evaluado",
+          dead_ball.restart_anchor_spans([window(w, "kick off (after goal)")], {"kick off (after goal)": 0},
+                                         blocks, fps) == []
+          and dead_ball.restart_anchor_spans([window(w, "corner kick"), window(100 * fps)], anchors, blocks, fps)
+          == [])
+    bx = np.zeros(n)
+    trk = tracking.Tracking(bx, bx.copy(), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
+                            (length, width), blocks, fps)
+    score, allowed = dead_ball.restart_anchor_evidence(trk, [window(w)], anchors)
+    expected = np.zeros((n, 3))
+    expected[w:w + 10 * fps, D] = dead_ball.ANCHOR_SCORE
+    expected[w + 10 * fps:w + 15 * fps, D] = -dead_ball.ANCHOR_SCORE
+    check("restart_anchor_evidence: + en D hasta el instante y − durante los 5 s siguientes; no prohíbe nada",
+          bool(np.array_equal(score, expected)) and bool(allowed.all()))
+    check("la puntuación del ancla es la de la regla: 1 por frame y 5 s después, sin ajustar",
+          dead_ball.ANCHOR_SCORE == 1.0 and dead_ball.ANCHOR_AFTER_S == 5)
+    anchored = smart_tagging_xml(folder, "ancla.xml", [("SET PIECES", w / fps, w / fps + 35, "Throw-in")])
+    check("el ancla no entra todavía en evidence (con un saque de banda y sin huecos, no puntúa nada)",
+          not dead_ball.evidence(trk, {"smart_tagging": anchored}, game)[0].any())
+
+    # Las cuentas del daño.
+    codes = np.array([H, D, D, H, D, H, H, D, D], dtype=np.int8)
+    check("dead_runs y last_exit: tramos de D y salida del último; sin salida si el D llega al final",
+          air.dead_runs(codes, 0, 9) == 3 and air.dead_runs(codes, 0, 3) == 1 and air.last_exit(codes, 0, 6) == 5
+          and air.last_exit(codes, 0, 9) is None and air.last_exit(codes, 5, 7) is None)
+    check("runs: posesiones y paradas", air.runs(codes, ((0, 9),)) == (3, 3))
+    check("harm_rule: ninguna ventana partida y las posesiones no suben más que las paradas",
+          air.harm_rule((10, 5), (11, 6), 0) and air.harm_rule((10, 5), (9, 5), 0)
+          and not air.harm_rule((10, 5), (11, 5), 0) and not air.harm_rule((10, 5), (10, 5), 1))
+    check("cases: los recuentos por debajo de 5 se tapan", air.cases(4) == "< 5" and air.cases(0) == "< 5"
+          and air.cases(5) == "5")
+
+    # measure_instant de punta a punta, sin abrir ficheros y con piezas controladas: 12 saques de banda; el
+    # modelo de Ana pasa a juego a los 8 s de cada ventana y el balón vuelve a verse a los 8,4 s; el pipeline
+    # sale del D a los 9,6 s (1,6 s tarde). La regla da un ancla a 8 s, y con la capa el pipeline sale a los
+    # 8 s.
+    starts = [(1000 + 100 * i) * fps for i in range(12)]
+    events = [window(s) for s in starts]
+    bx = np.zeros(n)
+    instrument = np.full(n, -1.0)
+    for s in starts:
+        bx[s - 10 * fps:s + 210] = np.nan
+        instrument[s - 10 * fps:s + 8 * fps] = 1.0
+    match = tracking.Tracking(bx, bx.copy(), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
+                              (length, width), blocks, fps)
+
+    def dead_piece(trk):
+        score, allowed = tracking.no_evidence(n)
+        for s in starts:
+            score[s:s + 240, D] = 1.0  # hasta los 9,6 s
+        return score, allowed
+
+    def team_piece(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[:, H] = 0.3
+        return score, allowed
+
+    def with_gap(trk):  # como la capa del hueco: empuja a D dos trozos del hueco, y el D lo cubre entero
+        score, allowed = tracking.no_evidence(n)
+        for s in starts:
+            score[s - 10 * fps:s - 8 * fps, D] = 5.0
+            score[s - 3 * fps:s - 1 * fps, D] = 5.0
+        return score, allowed
+
+    pieces = {"candidates": team_piece, "dead_state": dead_piece}
+    no_gap = lambda trk: tracking.no_evidence(n)  # noqa: E731
+    try:
+        with pp.no_files():
+            m = air.measure_instant(match, events, with_gap, no_gap, game, pieces=pieces,
+                                    odds_fn=lambda trk: instrument)
+    except AssertionError:
+        check("measure_instant no abre ningún fichero", False)
+        raise
+    t = m["by_type"]["throw-in"]
+    check("measure_instant: 12 ventanas de 35 s; transición a los 8 s y balón a los 8,4 s en todas",
+          m["windows"] == 12 and m["durations"] == [35.0] and t["transitions"] == [8.0] * 12
+          and t["ball"] == [8.4] * 12 and t["states"][air.BACK] == 12, str(m["durations"]))
+    check("measure_instant: la regla da un ancla a 8 s (200 frames) para los saques de banda",
+          t["rule"] == (True, True, True, True) and m["anchors"] == {"throw-in": 8 * fps}, str(m["anchors"]))
+    check("measure_instant: con la capa el pipeline sale del D en el instante; sin ella, 1,6 s tarde (más de 1 s)",
+          m["near"] == (0, 12) and m["changed_inside"] == (0, 0, 12 * 40) and m["changed_outside"] == (0, 0, 0),
+          "{} {} {}".format(m["near"], m["changed_inside"], m["changed_outside"]))
+    check("measure_instant: sin conflictos, sin ventanas partidas, el daño se cumple y la capa entra",
+          m["conflicts"] == (0, 0) and m["split"] == 0 and m["runs"][0] == m["runs"][1] and m["harm_ok"]
+          and m["entra"], str(m["runs"]))
+    check("measure_instant: la capa del hueco cambia 10 s de cada hueco, y la mitad cae en los primeros 5 s",
+          m["gap_changed"] == 12 * 10 * fps and m["gap_changed_first"] == 12 * 5 * fps,
+          "{} {}".format(m["gap_changed"], m["gap_changed_first"]))
+
+    # Con anclas, pero con piezas que se contradicen en unos frames (conflictos): el daño no se cumple y la capa
+    # no entra.
+    def team_conflict(trk):
+        score, allowed = team_piece(trk)
+        allowed[50000:50010, :2] = False
+        return score, allowed
+
+    def dead_conflict(trk):
+        score, allowed = dead_piece(trk)
+        allowed[50000:50010, D] = False
+        return score, allowed
+
+    with pp.no_files():
+        clash = air.measure_instant(match, events, with_gap, no_gap, game,
+                                    pieces={"candidates": team_conflict, "dead_state": dead_conflict},
+                                    odds_fn=lambda trk: instrument)
+    check("measure_instant: con conflictos entre piezas, aunque haya ancla, la capa no entra",
+          clash["anchors"] == {"throw-in": 8 * fps} and clash["conflicts"] == (10, 10) and not clash["harm_ok"]
+          and not clash["entra"], str(clash["conflicts"]))
+
+    # Y con el reinicio disperso (a los 0, 2, 4 y 6 s), no hay ancla y la capa no se prueba.
+    scattered = np.full(n, -1.0)
+    for i, s in enumerate(starts):
+        scattered[s - 10 * fps:s + (i % 4) * 2 * fps] = 1.0
+    with pp.no_files():
+        loose = air.measure_instant(match, events, with_gap, no_gap, game, pieces=pieces,
+                                    odds_fn=lambda trk: scattered)
+    check("measure_instant: con el reinicio disperso, mucha dispersión, ninguna ancla y la capa no entra",
+          loose["by_type"]["throw-in"]["rule"][1] is False and loose["anchors"] == {} and not loose["entra"])
+
+
 def main():
     game = games.GAME
     n_frames = games.GAMES[game]["n_video_frames"]
@@ -576,6 +746,13 @@ def main():
 
     print("\n9. La regla de validation/partido/agregados_dead_ball.py, con un partido inventado en memoria")
     check_rules(game)
+
+    print("\n11. El instante del reinicio (sin medir, todavía fuera de evidence), con datos inventados")
+    folder = tempfile.mkdtemp(prefix="comprobar_balon_muerto_")
+    try:
+        check_restart_instant(game, folder)
+    finally:
+        shutil.rmtree(folder, ignore_errors=True)
 
     print("\n{}".format("TODO BIEN" if not failures else "FALLAN {}: {}".format(
         len(failures), "; ".join(failures))))

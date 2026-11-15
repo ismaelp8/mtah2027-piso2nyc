@@ -142,6 +142,12 @@ def yes(flag):
     return "sí" if flag else "no"
 
 
+def cell(k, whole):
+    """Un recuento de ventanas con su porcentaje, o «< 5» si es menor que 5 (también el 0), como en el perfil
+    del ATD."""
+    return "< 5" if k < MIN_CASES_PER_TYPE else "{} ({})".format(k, pct(k, whole))
+
+
 def by_type(windows):
     """{tipo: [ventanas]}, con los tipos de menos de MIN_CASES_PER_TYPE ventanas juntos en «otros»."""
     groups = {}
@@ -340,10 +346,9 @@ def main():
 
     print("\n4. El hueco sin balón antes de cada reinicio (no se cuentan los saques iniciales)")
     print("   ventanas que empiezan en frames evaluados: {}".format(m["windows"]))
-    print("   " + "   ".join("{} {} ({})".format(state, k, pct(k, m["windows"]))
-                             for state, k in m["states"].items()))
+    print("   " + "   ".join("{} {}".format(state, cell(k, m["windows"])) for state, k in m["states"].items()))
     for kind, n, k in m["by_type"]:
-        print("      {:<22} n={:>3}   con hueco {} ({})".format(kind, n, k, pct(k, n)))
+        print("      {:<22} n={:>3}   con hueco {}".format(kind, n, cell(k, n)))
     print("   placebo (inicios desplazados {} s): {} inicios, con hueco {} ({})".format(
         "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), m["shifted"], m["placebo_gaps"],
         pct(m["placebo_gaps"], m["shifted"])))

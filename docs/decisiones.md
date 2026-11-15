@@ -1995,3 +1995,100 @@ Descartado:
 - **Retocar los umbrales o la definición de (a) después de ver el recuento:** la regla estaba fijada antes.
 - **Cambiar `clean` en esta PR:** rompería `prueba_aprendida.py` y dejaría a B5 con coeficientes
   entrenados sobre otro balón.
+
+### 2026-11-15 · `D` · el instante del reinicio: regla escrita antes de medir
+
+Quién: Manuel, en el orden de prioridades que fijó Ismael el 15/11 (primero el instante del reinicio,
+después el equipo que reanuda; ni las paradas tras gol ni el final de cada parte).
+
+Por qué: cada final de parada es el principio de una posesión, y llegar 1 s tarde cuesta mucho `spellF1`.
+El modelo de Ana solo acierta el final a menos de 1 s en el 40 % de las paradas [fuente: mensaje de Ismael
+del 15/11, sobre la medida de su pieza en la DFL].
+
+**Cambia una decisión del 14/11, por decisión de Ismael.** El 14/11 se escribió: «No se va a medir dónde
+cae el golpeo dentro de la ventana para fijarlo: sería circular (el golpeo no se ha validado) y daría una
+constante sacada del partido». Ahora se mide, con dos diferencias:
+- **no se usa el golpeo,** sino dos señales que no son etiquetas ni dependen de él: cuándo vuelve a verse el
+  balón y cuándo el modelo de Ana (entrenado en la DFL) pasa de parado a juego;
+- **lo que sale no es un frame del partido,** sino un desfase en segundos desde el inicio de la ventana, uno
+  por tipo de reinicio.
+
+Sigue siendo un parámetro estimado con este partido, sin etiquetas: se declara así, y no se ajusta nada
+con la ventana pública.
+
+Qué se va a medir: `validation/partido/agregados_instante_reinicio.py`, que ejecuta Manuel. Una sola
+ejecución mide las señales, aplica la regla y prueba la capa.
+- **Las ventanas:** las `SET PIECES` que no son saques iniciales y empiezan en un tramo evaluado (53 en este
+  partido). Los saques iniciales quedan fuera: el de cada parte ya tiene su ancla, y los de después de un
+  gol son 4.
+- **Las señales,** buscadas desde el inicio de la ventana hasta 10 s después de su fin:
+  - **el modelo de Ana pasa a juego:** el primer frame con log-odds > 0 en el anterior y < 0 durante los 2 s
+    siguientes;
+  - **el balón vuelve a verse:** si no se veía en el frame anterior al inicio de la ventana, el primero en
+    que se ve. Si se veía, no cuenta.
+- **Desde el inicio o desde el fin:** las ventanas duran 35 s fijos [medido, 14/11], así que la dispersión
+  es la misma. Se mide desde el inicio; el script imprime las duraciones para comprobarlo.
+
+Regla de lectura, fijada antes de ejecutarlo:
+- **Un tipo de reinicio tiene ancla si se cumplen las tres cosas:**
+  - hay 10 ventanas o más con la transición del modelo de Ana;
+  - su recorrido intercuartílico es de 2 s o menos, así que la mitad de las ventanas cae en 2 s;
+  - hay 5 ventanas o más en las que vuelve a verse el balón, y la mediana de esa reaparición queda a 1 s o
+    menos de la mediana de la transición. Son dos señales independientes que señalan el mismo sitio.
+
+  Los tipos con menos de 5 ventanas van juntos en «otros», sin ancla.
+- **El ancla** es la mediana de la transición, en frames desde el inicio de la ventana.
+- **La capa (blanda):** en cada ventana de un tipo con ancla, +1 en `D` desde el inicio de la ventana hasta
+  el instante anclado, y −1 en `D` durante los 5 s siguientes. Se corta en el siguiente `GOALS` o
+  `SET PIECES`; si el instante queda después del corte, la ventana no entra. Las dos puntuaciones están sin
+  ajustar y quedan fijas por esta regla: la capa no corre en la DFL, así que nadie puede medir su escala.
+- **La condición de daño,** con el pipeline de la entrega sin la capa y con ella:
+  - ningún frame con piezas en conflicto;
+  - ninguna ventana con ancla acaba con más de un tramo de `D` dentro;
+  - las posesiones no suben más que las paradas (cada posesión nueva tiene que venir de una parada nueva
+    que la parte).
+- **La capa entra** si algún tipo tiene ancla y se cumple la condición de daño. Si no, se queda fuera, y con
+  esta salida no se reajusta nada: ni los 2 s, ni las 10 y 5 ventanas, ni el 1 s, ni los 2 s de sostén, ni
+  las puntuaciones.
+- **Si entra,** los desfases que imprime el script se copian tal cual a `possession/dead_ball.py` y la capa
+  se conecta en `evidence`. Después se regenera la entrega y se comprueba que no hay conflictos.
+- **Descriptivo, no decide:**
+  - los cuantiles de las dos señales por tipo;
+  - cuántas ventanas tienen el balón visto al empezar;
+  - la distancia entre las dos señales;
+  - cuántas salidas del `D` del pipeline caen a 1 s o menos del instante, sin la capa y con ella;
+  - los frames que cambian, dentro y fuera de las ventanas con ancla.
+- **Lo que no comprueba [sin verificar]:** que las señales caigan en el reinicio de verdad. Las dos son
+  aproximaciones: el modelo de Ana llega tarde al instante (entrada de Ismael del 14/11), y el balón puede
+  volver a verse antes del saque (colocado) o después. Que coincidan las dos es lo único que lo apoya.
+- **Los recuentos de ventanas por debajo de 5 se imprimen como «< 5»,** como en el perfil del ATD.
+- **El script imprime la regla aplicada.** Si lo impreso y este texto no cuadran, manda este texto.
+- **Que el código aplica este texto se comprueba en el repo:** sección 11 de
+  `validation/scripts/comprobar_balon_muerto.py`, con datos inventados y la apertura de ficheros
+  prohibida. Comprueba:
+  - las señales y la regla en sus límites;
+  - la capa y sus cortes;
+  - la condición de daño;
+  - dos partidos de punta a punta: con ancla y la capa moviendo la salida del `D` al instante, y con el
+    reinicio disperso, sin ancla;
+  - un caso con conflictos, en el que la capa no entra.
+
+  Romper la capa y el script a propósito (28 cambios, uno a uno) hace fallar alguna prueba.
+
+Lo que pidió el revisor de la PR #8, en esta misma rama:
+- **El comentario de `GAP_SCORE`** ya no dice que la escala la ajusta David: queda fija por su regla, porque
+  nadie puede medirla.
+- **`LONG_GAP_S` y `MAX_GAP_BEFORE_RESTART_S`** quedan marcados «sin ajustar», y se dice que los 5 s salen del
+  perfil del ATD, sin etiquetas.
+- **Los recuentos de menos de 5 casos** se tapan con «< 5» en `validation/partido/agregados_dead_ball.py`.
+- **El agregado que faltaba** (de los frames que cambian de etiqueta con la capa del hueco, cuántos caen en
+  los primeros 5 s de cada hueco) va como sección 4 de este script. Es descriptivo.
+- **Si se enciende la limpieza de Antonio** (`clean_v1`), se repiten `agregados_dead_ball.py` y este script con
+  la misma regla. Los dos imprimen con qué limpieza se midió.
+
+Abierto:
+- **El equipo que reanuda (prioridad 2 de Ismael):** una puntuación a favor del equipo que saca durante los
+  primeros segundos tras el reinicio, con los segundos medidos en la DFL, que tiene los reinicios con su
+  equipo en los eventos. La versión medida el 15/11 (restar al otro equipo durante toda la ventana) no
+  entró: está en la rama `feat/d-equipo-reanuda`, con su resultado. Allí se midió que el `Team` del Smart
+  Tagging es fiable (20 de 20 con la física).
