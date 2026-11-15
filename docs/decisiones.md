@@ -1995,3 +1995,26 @@ Descartado:
 - **Retocar los umbrales o la definición de (a) después de ver el recuento:** la regla estaba fijada antes.
 - **Cambiar `clean` en esta PR:** rompería `prueba_aprendida.py` y dejaría a B5 con coeficientes
   entrenados sobre otro balón.
+
+### 2026-11-15 · infraestructura · el corte pasa del lunes 16 a las 14:00 al martes 17
+
+Quién: Ismael
+
+Qué se probó: nada. Es una decisión de calendario, tomada tras repartir las tareas de la revisión externa
+del 15/11 (`docs/PLAN_ENTREGA.md` §3 y `docs/revision_externa_2026-11-15.md`).
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): no aplica.
+
+Resultado: no aplica.
+
+Decisión y por qué:
+- **El corte pasa al martes 17.** Ismael decide que hay margen hasta el martes para esas tareas.
+- **La hora es provisional, las 12:00,** hasta que Ismael la confirme. La entrega se cierra a las 23:59 CET
+  y después del corte hay que congelar, reproducir, hacer público el repo, validar el fichero y enviarlo.
+- **Lo que cuesta:** el congelado y la reproducción en una máquina limpia ya no caben el lunes por la noche.
+  Para no hacerlo por primera vez el martes, el lunes por la noche se ensaya con lo que haya en `main`.
+- **Lo que no cambia:** lo que no haya ganado en el harness antes del corte no entra, y el documento técnico
+  se escribe desde el lunes.
+
+Descartado:
+- **Mantener el lunes a las 14:00.**

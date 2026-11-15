@@ -279,7 +279,8 @@ Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal par
 - **La medida del balón del ATD está hecha (14/11),** y la degradación del harness se calibró con ella
   (punto anterior).
 - **La convención sigue siendo "exigir control".** El harness puntúa con las dos: el flag y la corregida.
-- **Corte: lunes 16 a las 14:00.** Lo que no haya ganado en el harness no entra.
+- **Corte: martes 17** (decisión de Ismael del 15/11; antes, el lunes 16 a las 14:00). Hora provisional,
+  las 12:00, hasta que Ismael la confirme. Lo que no haya ganado en el harness no entra.
 
 **Si quien abre la sesión no sabe cuál es su pieza,** enséñale su parte de la sección 3 del plan antes de
 proponer nada.
@@ -668,9 +669,9 @@ de las piezas y cómo se decide qué entra.
 |---|---|
 | **sáb 14** | esqueleto y harness en `main`; todos con la DFL en local; agregados del partido ejecutados; primera entrega de prueba. Revisar las instrucciones de entrega, el formulario y las cuentas de Google |
 | **dom 15** | cada pieza itera contra el harness; las PR entran según ganan |
-| **lun 16, 14:00** | **corte:** lo que no haya ganado en el harness no entra |
-| **lun 16, tarde y noche** | **congelar** y comprobar la reproducción exacta en una máquina limpia. Documento técnico |
-| **mar 17** | hacer público el repo, validar el fichero exacto y **enviar con margen**. El formulario se puede editar hasta las 23:59 CET |
+| **lun 16** | cada pieza sigue iterando; las PR entran según ganan. Documento técnico en marcha. Por la noche, **ensayo de congelado** con lo que haya en `main`: regenerar y reproducir en una máquina limpia |
+| **mar 17, 12:00** (hora provisional) | **corte:** lo que no haya ganado en el harness no entra |
+| **mar 17, tarde** | **congelar** y comprobar la reproducción exacta; hacer público el repo, validar el fichero exacto y **enviar con margen**. El formulario se puede editar hasta las 23:59 CET |
 
 ## Checklist de entrega
 

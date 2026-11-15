@@ -17,8 +17,9 @@
 - **Las piezas se enchufan con una interfaz común** (sección 2). No se cambia sin avisar a Ismael.
 - **Qué versión entra lo decide el harness de la DFL** (sección 4): los 7 partidos abiertos de la
   Bundesliga. Nunca la ventana pública de 5 minutos.
-- **Corte: lunes 16 a las 14:00.** Lo que no haya ganado en el harness para entonces no entra. Se congela
-  el lunes por la noche.
+- **Corte: martes 17** (decisión de Ismael del 15/11; antes era el lunes 16 a las 14:00). La hora es
+  provisional, las 12:00, hasta que Ismael la confirme. Lo que no haya ganado en el harness para entonces
+  no entra. El lunes por la noche se ensaya el congelado; el definitivo es el martes, tras el corte.
 
 ## 1. Quién hace qué
 
@@ -113,7 +114,8 @@ python validation/scripts/prueba_pipeline.py
   repetido. Sirven para ordenar el trabajo, no para decidir qué entra.
 - **Lo que compara con las notas oficiales del baseline o con la tabla de retrasos** sale de la GT privada.
   Es descriptivo y no elige nada mientras la organización no conteste (D21).
-- **El corte sigue siendo el lunes 16 a las 14:00.** Si se mueve para alguna tarea, lo decide Ismael.
+- **El corte pasa al martes 17** (decisión de Ismael del 15/11). Hora provisional, las 12:00: ver la
+  sección 5.
 - **Lo demás no cambia:** regla escrita y subida antes de medir, rama nueva desde `main`, PR, y nada elegido
   con la ventana pública.
 
@@ -147,7 +149,7 @@ python validation/scripts/prueba_pipeline.py
 6. **Si se va a citar el anexo A de la revisión,** sus scripts tienen que entrar en `validation/scripts/` y
    repetirse aquí.
 7. **Decisiones que son de Ismael y condicionan tareas de otros:**
-   - si el corte se mueve;
+   - la hora del corte del martes (provisional, las 12:00);
    - si se reabre la decisión del 13/11 («la falta de balón no es `D`») para puntuar todos los huecos largos
      (tarea 5 de Manuel);
    - si una medida con el `D` propio puede cambiar un valor por defecto (tarea 2 de David);
@@ -172,7 +174,7 @@ congelar, y reproducir el CSV byte a byte en una máquina limpia.
 
 **Apuesta B** (evidencia aprendida, `docs/investigacion_metodos.md` §4.2; de `H` frente a `A` y no de tres
 clases, por decisión del 14/11 en `docs/decisiones.md`): en una sesión aparte, cuando el harness y la
-degradación estén comprobados. Se abandona el lunes a las 14:00 si no ha ganado. Medida el 14/11:
+degradación estén comprobados. Se abandona en el corte si no ha ganado. Medida el 14/11:
 `validation/resultados/2026-11-14_apuesta_b.md`.
 
 ### David: decodificador (`possession/temporal.py`)
@@ -488,9 +490,9 @@ por bueno.
 |---|---|
 | **sábado 14** | esqueleto y harness en `main`; todos con la DFL en local; agregados del partido ejecutados; primera entrega de prueba |
 | **domingo 15** | cada pieza itera contra el harness; las PR entran según ganan |
-| **lunes 16, 14:00** | **corte:** lo que no haya ganado no entra |
-| **lunes 16, tarde y noche** | congelar; reproducir byte a byte en una máquina limpia; documento técnico |
-| **martes 17** | repo público, validar el fichero exacto y enviar con margen. Límite: 23:59 CET |
+| **lunes 16** | cada pieza sigue iterando; las PR entran según ganan. Documento técnico en marcha. **Por la noche, ensayo de congelado:** regenerar la entrega con lo que haya en `main` y reproducirla byte a byte en una máquina limpia |
+| **martes 17, 12:00** (hora provisional) | **corte:** lo que no haya ganado no entra |
+| **martes 17, tarde** | congelar; reproducir byte a byte; repo público, validar el fichero exacto y enviar con margen. Límite: 23:59 CET |
 
 ## 6. Lo que solo puede hacer una persona
 
