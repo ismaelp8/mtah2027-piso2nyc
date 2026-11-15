@@ -242,6 +242,17 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **En el partido** (Ismael lo ejecutó): 199.319 líneas, todas válidas; 0 saltadas o repetidas y 0
     frames sin línea. Desde entonces, cualquier línea rara es un error y no se genera la entrega.
   - **No hay rachas cortas:** ninguna de menos de 12 ni de 25 frames en los dos tramos.
+- **Ronda única de reentrenamiento de B5: empate** (15/11; `docs/decisiones.md` y
+  `validation/resultados/2026-11-14_apuesta_b.md` §11). **Se cierra la evidencia de equipo:** B5 sigue en la
+  entrega y `pipeline.PIECES` no cambia.
+  - **Los candidatos:** B6 (sin las ventanas de 151 frames), B7 (más peso cerca de los cambios) y B8 (con
+    el evento de toque).
+  - **Ninguno cumple los tres criterios** fijados antes de medir. El que más se acerca es B7: mejora las
+    recuperaciones y los duelos con cambio, y gana +0,012 y +0,015 con el flag, pero no llega al +0,03 de
+    §5.8 y con el control no se mueve.
+  - **Sus coeficientes quedan en `possession/aprendida.py`.** Los de B1 a B5 no cambian.
+  - **`validation/partido/slots_duplicados.py`** dice si el ATD duplica a algún jugador. Lo ejecuta Ismael,
+    si quiere; arreglarlo sería un cuarto candidato.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
