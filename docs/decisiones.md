@@ -2018,3 +2018,46 @@ Decisión y por qué:
 
 Descartado:
 - **Mantener el lunes a las 14:00.**
+
+
+### 2026-11-15 · infraestructura · versiones de la entrega fijadas: numpy 2.5.4 y Python 3.13, en un fichero aparte
+
+Quién: Ismael, con la propuesta de Claude. Le planteó las dos opciones y respondió «adelante con todo». Es
+la tarea 1 de su bloque (`docs/PLAN_ENTREGA.md` §3).
+
+Qué se decidió:
+- **`requirements-entrega.txt`** fija numpy 2.5.4, pandas 3.1.1 y las dos dependencias de pandas, con
+  **Python 3.13** (probado con 3.13.9). Lleva dentro el comando para crear el entorno y regenerar.
+- **`requirements.txt` no se toca:** es el oficial de Metrica.
+
+Por qué:
+- **Con estas versiones salió `equipo_v3`** en la máquina de Ismael, así que no hay que regenerar para
+  cambiar de versión.
+- **numpy 2.5.4 pide Python 3.12 o más** (PyPI). Para Python 3.11 habría que bajar a numpy 2.4.6 y volver a
+  comprobar la huella. Las normas piden dependencias fijadas y el mismo fichero (`SUBMISSION.md` §2,
+  `RULES.md`), no una versión de Python concreta.
+- **`requirements.txt` promete Python 3.8 y 3.11** para el scorer oficial. Fijar ahí numpy 2.5.4 lo
+  rompería para quien lo instale con esas versiones.
+- **El pipeline solo importa numpy.** pandas es del validador y del scorer oficiales.
+
+Comprobado [medido, sin datos del partido]:
+- **Entorno limpio** en `C:\Users\34656\.venvs\mtah2027-entrega`, con `py -3.13 -m venv` y
+  `pip install -r requirements-entrega.txt`:
+  - `pip freeze` coincide con el fichero;
+  - `validation/scripts/prueba_pipeline.py` sale en verde;
+  - el validador oficial da por válido `baseline_smooth50.csv`.
+- **El CSV del pipeline sobre el partido inventado** de `prueba_pipeline.py` sale con el mismo sha256 en el
+  entorno de trabajo y en el limpio (`2621a1e2…d9fd`).
+
+Falta:
+- **Que Ismael regenere la entrega en el entorno limpio:** tiene que salir `9539ce42…cc17a`. Es el ensayo de
+  congelado del lunes por la noche, o antes.
+- **La versión de numpy de la máquina Linux** que reprodujo `equipo_v2` [sin verificar]. Si era otra, la
+  huella ya aguanta un cambio de versión.
+- **El nombre del CSV:** `<NOMBRE_EQUIPO>` sigue sin confirmar. Hasta entonces, el comando lo recibe con
+  `--name` y el nombre por defecto sigue siendo `equipo_v0`.
+
+Descartado:
+- **numpy 2.4.6 para poder usar Python 3.11:** habría que regenerar y comprobar otra vez, y las normas no lo
+  piden.
+- **Fijar las versiones en `requirements.txt`:** es oficial y su comentario promete 3.8 y 3.11.

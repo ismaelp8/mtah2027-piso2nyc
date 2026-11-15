@@ -229,6 +229,24 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
+- **Lector y comando de la entrega** (Ismael, 15/11, `d6bd128`; tareas 2 y 3 de su bloque del plan). No
+  cambian ninguna etiqueta.
+  - **El lector del ATD** (`possession/io.py`) cuenta las líneas leídas y las saltadas, y los frames sin
+    línea. Si una línea no se puede leer, el error no enseña el valor.
+  - **`python -m possession.pipeline`** imprime:
+    - las versiones de Python y numpy;
+    - ese recuento;
+    - las rachas de menos de 12 y de 25 frames por tramo.
+
+    Con piezas en conflicto, no escribe el CSV.
+  - **Falta que Ismael lo ejecute:** tiene que salir el sha256 de `equipo_v3`. Si salen 0 líneas saltadas,
+    el lector pasa a dar error.
+- **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
+  numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
+  - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
+  - Hay un entorno limpio en `C:\Users\34656\.venvs\mtah2027-entrega`.
+  - Falta regenerar la entrega en él, en el ensayo del lunes por la noche: tiene que salir el sha256 de
+    `equipo_v3`.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.
@@ -454,14 +472,15 @@ LICENSE, CITATION.cff, requirements.txt, requirements-starter.txt
 ```
 
 Documentación oficial, en este orden: README → CHALLENGE → DATA → EVALUATION → SUBMISSION → RULES → FAQ.
-La única excepción prevista es fijar las versiones de `requirements.txt` antes de congelar, y la
-decide el responsable de infraestructura.
+Las versiones de la entrega no se fijan aquí: van en nuestro `requirements-entrega.txt` (decisión de Ismael,
+15/11), porque `requirements.txt` promete Python 3.8 y 3.11 y numpy 2.5.4 pide 3.12 o más.
 
 **Lo nuestro:**
 
 ```
 CLAUDE.md                    este brief
 CONTRIBUTING.md              normas del repo
+requirements-entrega.txt     versiones fijadas con las que se regenera la entrega (Python 3.13)
 .github/pull_request_template.md
 .claude/
   settings.json              deny de los datos, allow de comandos seguros, commits sin atribución a Claude
@@ -505,7 +524,8 @@ validation/                  validación externa con datos abiertos: pasos, scri
 - **Nada se ajusta contra la ventana pública.**
 - **Los scripts imprimen solo agregados:** recuentos, porcentajes, métricas y tiempos. Nada de
   `print(df.head())`, `display()` ni logs con valores por frame. Así su salida se puede pegar a Claude.
-- **Dependencias:** cada una se declara en `requirements.txt` y se fija su versión antes de congelar.
+- **Dependencias:** las de la entrega van en `requirements-entrega.txt`, con la versión fijada (`==`). Una
+  dependencia nueva del pipeline obliga a repetir el entorno limpio y la huella.
 - **Cada decisión de método** se apunta en `docs/decisiones.md` (`/decision`): qué se probó, qué se
   descartó y por qué. Es la materia prima del documento técnico.
 
