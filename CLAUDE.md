@@ -239,14 +239,15 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - las rachas de menos de 12 y de 25 frames por tramo.
 
     Con piezas en conflicto, no escribe el CSV.
-  - **Falta que Ismael lo ejecute:** tiene que salir el sha256 de `equipo_v3`. Si salen 0 líneas saltadas,
-    el lector pasa a dar error.
+  - **En el partido** (Ismael lo ejecutó): 199.319 líneas, todas válidas; 0 saltadas o repetidas y 0
+    frames sin línea. Desde entonces, cualquier línea rara es un error y no se genera la entrega.
+  - **No hay rachas cortas:** ninguna de menos de 12 ni de 25 frames en los dos tramos.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
-  - Hay un entorno limpio en `C:\Users\34656\.venvs\mtah2027-entrega`.
-  - Falta regenerar la entrega en él, en el ensayo del lunes por la noche: tiene que salir el sha256 de
-    `equipo_v3`.
+  - **El entorno limpio** (`C:\Users\34656\.venvs\mtah2027-entrega`) **reproduce `equipo_v3` byte a byte:**
+    mismo sha256 `9539ce42…cc17a`, con `main` en `988ce88` y validado.
+  - En el ensayo del lunes por la noche se repite con lo que haya en `main`.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.

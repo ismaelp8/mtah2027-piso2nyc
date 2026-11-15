@@ -178,6 +178,19 @@ def atd_lines(counts):
     return text
 
 
+# Lo que el ATD del partido no puede tener: el 15/11, con d6bd128, Ismael midió todo a 0 (docs/decisiones.md).
+# Si cambia (un fichero cortado, otro ATD), la entrega no se genera en silencio.
+ATD_MUST_BE_ZERO = ("vacias", "mal_formadas", "fuera_de_rango", "repetidas", "frames_sin_linea")
+
+
+def check_atd(counts):
+    """Error si el ATD tiene alguna línea saltada o repetida, o algún frame sin línea. El error lleva solo
+    recuentos (`atd_lines`), así que se puede pegar a Claude."""
+    if any(counts[key] for key in ATD_MUST_BE_ZERO):
+        raise ValueError("el ATD no es como el del 15/11 (ninguna línea saltada ni frame sin línea), así que "
+                         "no se genera la entrega.\n" + atd_lines(counts))
+
+
 def versions():
     """Python y numpy con los que se ha generado. La huella solo se repite con los mismos (requirements.txt)."""
     return "python {}, numpy {}".format(platform.python_version(), np.__version__)
@@ -195,12 +208,14 @@ def build(game=games.GAME, data_dir=None, params=None):
     """Las etiquetas del partido. Lee el ATD y el Smart Tagging: solo lo ejecuta una persona.
 
     Pide los ficheros antes de leer nada. El Smart Tagging lo usa dead_ball.evidence desde el 15/11, y sin
-    él no hay entrega: el error dice qué falta y dónde se esperaba.
+    él no hay entrega: el error dice qué falta y dónde se esperaba. Si el ATD tiene alguna línea saltada o
+    repetida, o algún frame sin línea, también da error (`check_atd`).
     """
     games.require(["atd_meta", "atd_raw", "smart_tagging"], game, data_dir)
     paths = games.asset_paths(game, data_dir)
     report = {}
     trk = tracking.from_atd(paths, game, report=report)
+    check_atd(report["atd"])
     anchors = lambda clean: dead_ball.evidence(clean, paths, game)  # noqa: E731
     codes = run(trk, extra=[anchors], params=params, report=report)
     return codes, trk.blocks, report

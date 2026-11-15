@@ -314,6 +314,40 @@ def check_build_requires(folder):
     check("pipeline.build pide el ATD y el Smart Tagging (dead_ball) antes de leer nada",
           stopped and wanted <= set(asked), "pide {}".format(sorted(asked)))
 
+    # Un ATD con algo raro: build da error antes de seguir. tracking.from_atd cambiado por uno que solo rellena
+    # el recuento, y games.require por uno que no hace nada: no se lee ningún fichero.
+    reached = []
+
+    def fake_from_atd(paths, game, report=None):
+        report["atd"] = dict(counts, frames_sin_linea=3, frames_evaluados_sin_linea=1)
+        return None
+
+    def must_not_run(*args, **kwargs):
+        reached.append(True)
+        raise AssertionError("build ha seguido con un ATD raro")
+
+    counts = dict.fromkeys(COUNT_KEYS, 0)
+    counts.update(lineas=10, validas=10, frames_evaluados_sin_linea=0)
+    real = games.require, games.asset_paths, tracking.from_atd, pipeline.run
+    games.require = lambda *args, **kwargs: None
+    games.asset_paths = lambda *args, **kwargs: {}
+    tracking.from_atd, pipeline.run = fake_from_atd, must_not_run
+    message = ""
+    try:
+        with no_files():
+            pipeline.build(data_dir=folder)
+    except ValueError as error:
+        message = str(error)
+    finally:
+        games.require, games.asset_paths, tracking.from_atd, pipeline.run = real
+    check("con frames sin línea en el ATD, build da error con el recuento y no sigue",
+          "no se genera la entrega" in message and "frames sin línea: 3" in message and not reached)
+    bad = [key for key in pipeline.ATD_MUST_BE_ZERO
+           if not raises(ValueError, lambda key=key: pipeline.check_atd(dict(counts, **{key: 1})))]
+    check("cualquier línea vacía, mal formada, fuera de rango o repetida, o frame sin línea, da error",
+          not bad and not raises(ValueError, lambda: pipeline.check_atd(counts)),
+          "no da error: {}".format(bad) if bad else "")
+
 
 def check_csv(codes, folder):
     print("CSV de la entrega")

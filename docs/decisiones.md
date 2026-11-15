@@ -2049,9 +2049,21 @@ Comprobado [medido, sin datos del partido]:
 - **El CSV del pipeline sobre el partido inventado** de `prueba_pipeline.py` sale con el mismo sha256 en el
   entorno de trabajo y en el limpio (`2621a1e2…d9fd`).
 
+Resultado (15/11, ejecutado por Ismael con `main` en `988ce88`) [medido]: **el entorno limpio reproduce la
+entrega.**
+- Con Python 3.13.9 y numpy 2.5.4, `equipo_v3_limpio` sale con el sha256 `9539ce42…cc17a`, el de
+  `equipo_v3`, y el validador oficial lo da por válido.
+- El lector del ATD (`d6bd128`) no se salta nada: 199.319 líneas leídas y válidas; 0 vacías, mal formadas,
+  fuera de rango o repetidas; 0 frames sin línea.
+  - Como estaba previsto (tarea 2 del plan), desde ahora cualquiera de esos recuentos distinto de 0 es un
+    error y no se genera la entrega (`pipeline.check_atd`).
+- **No hay rachas cortas:** ninguna posesión, racha de juego ni parada de menos de 12 o de 25 frames en
+  ninguno de los dos tramos. En la entrega se cumple la condición del criterio del 13/11 de que no haya
+  rachas de `D` ni de juego de menos de 25 frames.
+
 Falta:
-- **Que Ismael regenere la entrega en el entorno limpio:** tiene que salir `9539ce42…cc17a`. Es el ensayo de
-  congelado del lunes por la noche, o antes.
+- **Repetir la huella en el ensayo del lunes por la noche,** con lo que haya entrado en `main` hasta
+  entonces.
 - **La versión de numpy de la máquina Linux** que reprodujo `equipo_v2` [sin verificar]. Si era otra, la
   huella ya aguanta un cambio de versión.
 - **El nombre del CSV:** `<NOMBRE_EQUIPO>` sigue sin confirmar. Hasta entonces, el comando lo recibe con
