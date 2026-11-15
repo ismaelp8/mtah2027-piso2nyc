@@ -225,3 +225,68 @@ Lectura [inferencia]:
 - **El retraso del balón:** con 6 frames casi no cuesta; con 12 cuesta más que cualquier mejora medida; con 25
   se hunde el control.
 - **No se escribe ningún candidato en la fase 2.**
+
+## 10. Fase 3: ¿limitan los rasgos o limita la forma lineal? (puerta, regla fijada antes de ejecutar)
+
+Lo pide la sesión principal (orquestadora, por encargo de Ismael). Las puertas de §4 y §6 usaron una regresión
+lineal. Con ella no se separa «los rasgos no dan más» de «una regresión lineal no sabe usarlos». En las
+posesiones de 2 a 10 s las señales rápidas van a favor y las lentas en contra; decir «si las rápidas coinciden
+un rato, ignora las lentas» no es lineal. Script: `python validation/posesiones_cortas/puerta_no_lineal.py`.
+
+**Modelo no lineal** (todo fijado aquí, sin ajustar después): una red de una capa oculta, en numpy.
+- 32 unidades `tanh`, **sin sesgos en ninguna capa:** cambiar los equipos de lado cambia el signo de la
+  salida, como en B5. La salida es el logit `z`.
+- Entradas divididas por su raíz cuadrática media, como `entrenar.ajustar`.
+- Pérdida logística media más una L2 de 1e-4 sobre los pesos.
+- Adam con paso 0,01, 1.500 iteraciones con todas las filas a la vez, y pesos iniciales normales con la
+  semilla 20261115.
+
+**Dos brazos:**
+1. **la red con los 33 rasgos de B9:** los de B5 más los tres de la dirección del balón;
+2. **la red con esos 33 más 6 de los jugadores alrededor de un cambio.** Se calculan sobre las dos series
+   de B2: la velocidad del juego en la dirección de ataque del local y la diferencia de dispersión (local
+   menos visitante). De cada una salen su media **hacia delante** (de t a t+w−1) y **hacia atrás** (de t−w+1
+   a t), con w = 25 y 75 frames para la velocidad y w = 50 para la dispersión. Una media hacia delante
+   distinta de la de hacia atrás es un cambio de comportamiento de los equipos: lo que hace un equipo al
+   ganar o perder el balón.
+
+**Referencias:**
+- `main` (B5);
+- la misma forma lineal con los mismos rasgos: B9, ya entrenada, para el brazo 1, y la regresión de
+  `entrenar.ajustar` con los 39 rasgos para el brazo 2.
+
+**Lo demás, como B9:**
+- las mismas filas (flag = control, uno de cada 5, «como el ATD»);
+- los mismos pliegues;
+- la misma puntuación que B5;
+- α elegida igual, con la rejilla de B5 y la pieza de `D` de `main` dentro, en los partidos de entrenamiento
+  de cada pliegue.
+
+**Medida, solo fuera de muestra y con el `D` de las etiquetas:**
+- **DFL:** cada partido con el modelo que no lo vio, en las dos condiciones que votan.
+- **SkillCorner, `lector.ENTRENAMIENTO`:** con el modelo de los 7 partidos de la DFL, que nunca ha visto
+  SkillCorner, en «detectado» y «detectado, suavizado». El examen no se abre.
+- **Qué se mide:** el spellF1 frente a `main` (diferencia, intervalo del 5 al 95 % por bootstrap pareado y en
+  cuántos partidos gana) y el % de posesiones reales de 2 a 10 s encontradas (IoU ≥ 0,5).
+
+**Regla de lectura:**
+- **Abre un candidato** un brazo de la red que cumpla las tres cosas:
+  - a) DFL con las etiquetas de control, en las dos condiciones que votan: +0,010 o más frente a `main`, con
+    el intervalo por encima de cero;
+  - b) DFL con las etiquetas de control, en las dos condiciones: las posesiones de 2 a 10 s encontradas suben
+    3 puntos o más frente a `main`;
+  - c) SkillCorner, en las dos condiciones que votan: diferencia frente a `main` mayor que cero, con el
+    intervalo por encima de cero.
+
+  Si cumplen los dos brazos, el más simple (el 1). Antes de entrenar el candidato se le dice a la sesión
+  principal cuánto cuesta congelarlo.
+- **Cierra la pregunta** si ningún brazo cumple a), b) y c). La respuesta final a «qué información falta»
+  queda así: «con estos rasgos no hay más, ni con un modelo flexible (una red de una capa de 32)».
+- **Descriptivo, no cambia lo anterior:**
+  - «la forma lineal limita» si la red gana a su referencia lineal con los mismos rasgos por +0,010 o más,
+    con el intervalo por encima de cero, en la DFL con el control y en las dos condiciones;
+  - las etiquetas del flag se enseñan, pero no deciden en esta puerta.
+- **Comprobaciones del instrumento, antes de leer nada:**
+  - `main` repite 0,498 / 0,512 / 0,728 / 0,748 por este camino, y B9, 0,537 / 0,560 / 0,722 / 0,743;
+  - la red es impar: con los rasgos cambiados de signo da el logit cambiado de signo.
+- **Nada de lo medido cambia la red,** ni los rasgos de los jugadores, ni los umbrales.
