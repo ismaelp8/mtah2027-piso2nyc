@@ -3216,3 +3216,18 @@ Cómo se prueba (lo ejecuta Ismael):
 `python validation/partido/comparar_entregas.py equipo_v3 prueba_transiciones2`.
 
 Si pasa los cuatro, sigue apagada: encenderla es una decisión aparte, y obliga a regenerar y validar la entrega.
+
+**Resultado de la segunda versión** (`prueba_transiciones2`; la generó Ismael con
+`validation/partido/probar_entrega.py` y el código de `5920c7f`, sin cambios locales; sha256 `27dc8aa8…efb7`)
+[medido, solo agregados]: **pasa los cuatro criterios.**
+1. Cambian 817 frames evaluados, todos de un equipo al otro: 274 de `H` a `A` y 543 de `A` a `H`. Es el 100 %, y
+   se pedía el 90 %.
+2. Las paradas no se mueven: 113 y 113. Se permitían 2 de diferencia.
+3. Las posesiones pasan de 215 a 219: 4 más, y se permitían 24.
+4. Cambian 817 frames, el 0,514 %, y se permitían 5.000.
+
+No hay rachas de menos de 25 frames ni piezas en conflicto, y todos los cambios caen a más de 250 frames de un
+borde.
+
+Con la regla, **sigue apagada hasta que el equipo decida encenderla.** Sería una excepción a «lo que no ha
+ganado en el harness no entra», porque esta capa no se puede medir en la DFL.

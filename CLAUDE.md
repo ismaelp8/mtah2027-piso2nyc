@@ -324,7 +324,14 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   llega a +0,03.
   - **Capa apagada `transiciones.evidence`** (PR 14, `9f89d10`): suma 8 por frame al equipo de cada «Attacking
     Transition» durante sus 5 primeros segundos, y lo mismo a `D`, así que solo empuja contra el otro equipo.
-  - Antonio escribió cuatro criterios antes de generar nada (`docs/decisiones.md`). Falta la entrega de prueba.
+  - Antonio escribió cuatro criterios antes de generar nada (`docs/decisiones.md`). **La primera versión los falla:**
+    crea 18 paradas, así que se queda apagada.
+  - **La segunda, `transiciones.evidence_equipo`** (`5920c7f`), pone el peso solo al equipo de la fase y **pasa los
+    cuatro:**
+    - cambian 817 frames, todos de un equipo al otro;
+    - las paradas no se mueven y hay 4 posesiones más.
+  - **Sigue apagada hasta que el equipo decida encenderla.** Sería una excepción a la regla del harness, porque
+    la DFL no tiene Smart Tagging.
   - Si se enciende, hay que añadir en `possession/tracking.py` y en el plan (§2) la excepción de que abre
     ficheros del partido, como `dead_ball.py`.
 - **D7, el balón fuera del campo como señal de `D`** (`docs/decisiones.md`; capas apagadas en
