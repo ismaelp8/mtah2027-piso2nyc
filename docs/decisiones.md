@@ -2325,3 +2325,38 @@ Nota de la revisión (Ismael, 15/11), al mergear la PR 11 (`acec765`):
   entró después de ejecutar en el partido. No cambia el resultado, que es positivo.
 - `ball.advance_ball` entra apagada, como propone la PR. La entrega no cambia. Encenderla sigue siendo
   decisión de Ismael.
+
+### 2026-11-15 · candidatos · Antonio empieza su tarea 2: las fases del Smart Tagging como pista de equipo
+
+Quién: Ismael. La tarea 2 de Antonio (`docs/PLAN_ENTREGA.md` §3) estaba reservada a su decisión. Sus palabras
+(15/11): «si, quiero que haga su tarea 2 le doy mi si».
+
+Qué se probó: nada todavía. Es el permiso para empezar.
+
+Por qué ahora:
+- Antonio ha cerrado su tarea 1: el balón llega 4 frames tarde respecto a los jugadores y la corrección queda
+  apagada (entrada anterior).
+- El estudio de las posesiones cortas (rama `claude/posesiones-cortas-5e84f8`, todavía fuera de `main`) mide,
+  en datos abiertos, que lo que más vale es acertar el equipo en las posesiones de 2 a 10 s, y que ninguna
+  señal del tracking lo arregla: B9 y una red de una capa empatan con las etiquetas de control.
+- Las fases son la única información de equipo que la entrega no usa. Cubren el 68,1 % de los frames
+  evaluados [medido, `validation/resultados/2026-11-14_agregados_balon_muerto.md`].
+
+Cómo se medirá: no se puede medir en la DFL, que no tiene Smart Tagging. Vale la regla del plan, sin
+cambios: un recuento del partido, que ejecuta Antonio, con el acuerdo entre el equipo de la fase y el del
+más cercano en los frames de control claro, frente a las fases desplazadas. Si no llega al 80 % o no dobla
+al placebo, no entra.
+
+Lo que se añade al recuento, escrito antes de ejecutarlo y solo descriptivo:
+- la tabla de cada código a «tiene el balón el equipo de la fase» o «lo tiene el otro», sacada de
+  `OVERVIEW.md` (`Team` es el equipo que hace la fase). Quedan fuera `N/A`, `SET PIECES` y `GOALS`;
+- cuántos frames tienen fases solapadas que dan equipos distintos. Esos frames se excluyen, y una tasa alta
+  dice que la tabla está mal;
+- cuántos inicios de «Attacking Transition» tienen un cambio nuestro a ese equipo a menos de 2 s, frente al
+  placebo.
+
+Decisión y por qué: Antonio empieza. El alcance de lo que puede entrar es el del plan: un empujón pequeño,
+en los frames sin balón. Un uso más amplio pide otra decisión de Ismael, porque no se puede medir.
+
+Descartado: copiar las fases como etiquetas, o darles un peso comparable al coste de cambio
+(`docs/revision_externa_2026-11-15.md`).
