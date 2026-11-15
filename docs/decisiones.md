@@ -4113,3 +4113,31 @@ la salida y se apunta aquí.
 - se pasan las pruebas y se sube a `main`;
 - Ismael regenera la entrega sin opciones, en el entorno limpio. Tiene que dar, byte a byte, el sha256 de
   `prueba_d7_v5`. Después se valida.
+
+**Resultado de `prueba_d7_v5`** (16/11; la generó Ismael en el entorno limpio con `main` en `4b666f4`) [medido, solo
+agregados]: **pasa todos los criterios.** La salida entera se pegó en la sesión que la implementa.
+0. Se cumple. Python 3.13.9 y numpy 2.5.4; commit `4b666f4`, sin cambios locales en el código de la entrega y sin la capa
+   en `DELIVERY_LAYERS` (sigue siendo solo la de los contraataques); «capa añadida dead_ball.ball_out». Las bases
+   cuadran: 219 posesiones y 113 paradas en `equipo_v5`, y 215 y 113 en `equipo_v3`.
+1. Se cumple: 0 frames en conflicto y ninguna racha de menos de 12 ni de 25 frames en los dos tramos.
+2. Se cumple: el `D` ocupa el 45,4 % de los frames evaluados (72.199 de 158.857), y hay 116 paradas (54 y 62).
+3. Frente a `equipo_v5`, se cumplen las seis:
+   - a. cambian 574 frames evaluados (0,361 %), todos a más de 250 frames de un borde;
+   - b. todos pasan de un equipo a `D`: 331 de `H` y 243 de `A`;
+   - c. ninguno pasa de `D` a juego;
+   - d. ninguno pasa de un equipo al otro;
+   - e. las paradas pasan de 113 a 116, 3 más;
+   - f. las posesiones no se mueven (219 y 219).
+4. Se cumple: 817 − 0 = 817. Frente a `equipo_v3` cambian 1.391 frames: 274 de `H` a `A` y 543 de `A` a `H`, los mismos
+   de `equipo_v5`, y 331 y 243 a `D`, los mismos de `prueba_d7`.
+
+Descriptivo: llegamos tarde en 12 de 47 rachas de balón fuera (25,5 %), y en 7 nuestro `D` no llega en 10 s. Es lo mismo
+que con `prueba_d7`.
+
+Lectura: las dos capas no se tocan [inferencia, por los recuentos]. Lo que cambia esta capa sobre `equipo_v5` tiene los
+mismos recuentos que lo que cambiaba sobre `equipo_v3` (331 y 243 a `D`, 3 paradas más), y los 817 cambios de equipo
+siguen enteros [medido]. El validador oficial la da por válida (199.319 filas, 219 posesiones de 15,8 s de
+media). Su sha256 es `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`.
+
+**Se enciende:** `pipeline.DELIVERY_LAYERS = (transiciones.evidence_equipo, dead_ball.ball_out)`. `build` da error si
+`--capa` repite una capa de la entrega. La entrega nueva será `equipo_v8`, y tiene que dar el sha256 de `prueba_d7_v5`.
