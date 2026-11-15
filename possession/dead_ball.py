@@ -18,8 +18,8 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
 - **El hueco sin balón antes de cada reinicio** (idea de Ismael): puntuación blanda de `D` desde que se
   pierde el balón hasta el inicio de la ventana `SET PIECES`.
 - **El equipo que reanuda** (15/11): en cada ventana `SET PIECES` con el `Team` de uno de los dos equipos,
-  resta en la columna del otro. Todavía sin medir y fuera de `evidence`: entra solo si pasa su regla
-  (docs/decisiones.md, 15/11, «el equipo que reanuda»).
+  resta en la columna del otro. Medida el 15/11 con su regla y fuera de `evidence`: no entra, porque no
+  arregla ninguna salida y retrasa cambios (docs/decisiones.md, 15/11, «el equipo que reanuda»).
 
 **En `evidence` van el tramo antes del saque** (un ancla dura: en esos frames solo se permite `D`) **y el
 hueco antes de cada reinicio** (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla apuntada en
@@ -259,7 +259,7 @@ def evidence(trk, paths=None, game=games.GAME):
     return score, allowed
 
 
-# -- El equipo que reanuda (15/11; la capa 2 de la entrada del 14/11). Sin medir, fuera de `evidence`.
+# -- El equipo que reanuda (15/11; la capa 2 de la entrada del 14/11). Medida: no entra en `evidence`.
 
 # Lo que se resta por frame en la columna del equipo que no saca. Sin ajustar: la escala del +1 del jugador
 # más cercano (candidates.NEAREST_SCORE). No se puede ajustar en el harness, porque la DFL no tiene Smart

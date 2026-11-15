@@ -1300,8 +1300,10 @@ Quién: Manuel
 
 **Estado (15/11), para quien llegue aquí:**
 - **entra en `evidence`:** la capa 4, el hueco sin balón antes de cada reinicio;
-- **no entran:** de gol a saque (no ancla ningún gol), R1 y la capa 3 (la salida del balón);
-- **pendientes:** el final de cada parte y el equipo que reanuda.
+- **no entran:** de gol a saque (no ancla ningún gol), R1, la capa 3 (la salida del balón) y el equipo que
+  reanuda (entrada propia del 15/11: el `Team` es fiable, pero la capa no arregla ninguna salida y hace
+  daño);
+- **pendiente:** el final de cada parte.
 
 Todo lo que sigue se escribió en este orden: las reglas, antes de cada medida. El resultado del 15/11 está
 al final, antes de «Abierto».
@@ -1808,6 +1810,40 @@ Cambios antes de medir, tras tres revisiones del agente `revisor` (el texto de a
     los frames que cambian, y no decide;
   - **la prueba del emparejamiento solo cubría 5 de las 16 combinaciones de estado:** ahora las cubre
     todas.
+
+Resultado de `validation/partido/agregados_equipo_reanuda.py` (ejecutado por Manuel el 15/11, con la regla ya
+en GitHub en `28565ce`; la salida, tal cual, en `validation/resultados/2026-11-15_agregados_equipo_reanuda.md`):
+- **[medido] 27 ventanas con el `Team` de un equipo:** 12 córners, 10 saques de puerta y 5 faltas.
+- **[medido] El lado izquierdo lo defiende el local en la 1ª parte y el visitante en la 2ª,** con las medias
+  de la x de los dos equipos separadas 12,4 y 12,1 m.
+- **[medido] La física:** coinciden con el `Team` 11 de 11 córners que deciden (1 sin balón de esa parada) y
+  9 de 9 saques de puerta (1 fuera del cuarto final). En total, 20 de 20.
+  - En los saques de puerta que deciden, 8 de 9 tienen el punto con menos de 1 s de antigüedad; en los
+    córners, 0 de 11. Como estaba escrito, ese dato no separa el balón ya colocado del ya golpeado.
+- **[medido] Con qué equipo se sale de la parada,** de las 27 ventanas: con el del `Team` 13, con el otro 12 y
+  sin parada 2, igual sin la capa que con ella. Ninguna arreglada y ninguna rota.
+- **[medido] El daño:** 0 paradas borradas y 3 cambios al otro equipo retrasados. Con la capa hay 217
+  posesiones y 114 paradas, frente a 215 y 113 sin ella. Cambian 84 frames de un equipo al otro, 220 de
+  juego a `D` y ninguno de `D` a juego. Sin conflictos entre piezas.
+
+Decisión según la regla, sin cambiarla:
+- **Condición 1, se cumple:** deciden 20 (≥ 10) y coinciden el 100 % (≥ 90 %).
+- **Condición 2, no se cumple:** no arregla ninguna salida.
+- **Condición 3, no se cumple:** retrasa 3 cambios y añade 2 posesiones y 1 parada.
+- **La capa del equipo que reanuda no entra.** Se queda programada y probada, fuera de `evidence`.
+
+Lo que la regla no preveía (no cambia la decisión):
+- **[medido] El `Team` del Smart Tagging de córners y saques de puerta es fiable:** 20 de 20 con la física.
+  Sirve para cualquier capa futura que lo use [inferencia para las faltas, que no se pueden comprobar así].
+- **[medido] Sin la capa, el pipeline sale de 12 de las 25 paradas con el equipo contrario al del `Team`.**
+  [inferencia] O el pipeline da muchos reinicios al equipo equivocado, o lo que se mide como salida (el
+  primer `H` o `A` tras el último `D` del tramo) no es el reinicio: por ejemplo, si el `D` acaba tarde y el
+  balón ya es del otro. Sin etiquetas no se puede separar. Es un aviso para Ismael (B5) y David (los costes
+  de salir del `D`), no un ajuste: cualquier cambio tendría que escribirse y medirse antes, y nunca con la
+  ventana pública.
+- **[medido] La capa no cambia ninguna salida y sí el resto:** con −1 por frame al otro equipo, la evidencia
+  que decide la salida es más fuerte que la resta, pero la resta basta para alargar paradas (220 frames de
+  juego a `D`) y retrasar cambios. Es el riesgo que la regla vigilaba.
 
 Abierto:
 - **Los saques de banda** (26, con `Team = N/A`) quedan para otra capa: el jugador que saca está fuera de

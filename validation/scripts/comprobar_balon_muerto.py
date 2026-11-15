@@ -498,7 +498,7 @@ def check_rules(game):
 
 
 def check_team_restart(game, folder):
-    """La capa del equipo que reanuda (todavía fuera de evidence) y las cuentas de su script, con datos
+    """La capa del equipo que reanuda (fuera de evidence: no pasó su regla) y las cuentas de su script, con datos
     inventados. Importa las funciones de validation/partido/agregados_equipo_reanuda.py, nunca su `main`, y
     llama a `measure_teams` con la apertura de ficheros prohibida."""
     sys.path.insert(0, os.path.join(ROOT, "validation", "partido"))
@@ -555,7 +555,7 @@ def check_team_restart(game, folder):
     check("restart_team_spans: los tramos cortados, y los vacíos (dos en el mismo frame) no están",
           cut == [(1000 * fps, 1020 * fps), (1020 * fps, 1040 * fps)], str(cut))
     check("la puntuación del equipo es la de la regla: 1 por frame, sin ajustar", dead_ball.TEAM_SCORE == 1.0)
-    check("el equipo que reanuda no entra todavía en evidence",
+    check("el equipo que reanuda no entra en evidence (no pasó su regla el 15/11)",
           not dead_ball.evidence(trk, {"smart_tagging": path}, game)[0][:, :2].any())
 
     # El lado que defiende cada equipo.
@@ -923,7 +923,7 @@ def main():
     print("\n9. La regla de validation/partido/agregados_dead_ball.py, con un partido inventado en memoria")
     check_rules(game)
 
-    print("\n10. El equipo que reanuda (sin medir, todavía fuera de evidence), con datos inventados")
+    print("\n10. El equipo que reanuda (medido el 15/11: no entra en evidence), con datos inventados")
     folder = tempfile.mkdtemp(prefix="comprobar_balon_muerto_")
     try:
         check_team_restart(game, folder)
