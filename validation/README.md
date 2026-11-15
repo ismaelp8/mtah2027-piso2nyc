@@ -44,6 +44,8 @@ que faltan, los scripts y los resultados. El porqué está en
 | `metrica/prueba_lector.py` | prueba el lector de Metrica con etiquetas y un partido inventados | ninguno |
 | `metrica/medir.py` | ¿aguanta B5 con etiquetas derivadas de los eventos de Metrica? Puntúa el control, N1 y `main` en sus 3 partidos, con la regla de `metrica/BITACORA.md` | Metrica sample-data, datos abiertos de otros partidos |
 | `metrica/sensibilidad_paradas.py` | comprobaciones de la revisión: cuánto dura cada evento que para el juego, cuántos saques llegan sin parada antes y la misma medida con la parada en el frame final del evento. Descriptivo, escrito después de medir | Metrica sample-data, datos abiertos de otros partidos |
+| `scripts/prueba_decodificador.py` | prueba el decodificador (`possession/temporal.py`) con evidencias inventadas: `viterbi` y `viterbi_min` frente a la búsqueda exhaustiva, la poda, los tramos en lista, tupla o generador, la `X` fuera de los tramos, el determinismo y que las erratas dan error | ninguno |
+| `scripts/diagnostico_spell.py` | ¿dónde se pierde el spellF1? Cambia una pieza cada vez por la respuesta de las etiquetas (equipo perfecto con el balón a la vista, equipo perfecto siempre, `D` propio) y puntúa con el scorer oficial; además, las posesiones encontradas por duración. Descriptivo | la DFL, datos abiertos de otros partidos |
 | `scripts/diagnostico_errores.py` | ¿por qué fallamos? Causa de cada posesión que no encontramos, retraso de los cambios y qué borde del `D` cuesta más. Descriptivo. Solo usa la mitad de SkillCorner; la otra queda como examen | la DFL y SkillCorner, datos abiertos de otros partidos |
 | `partido/ver_ventana.py` | **lee una entrega nuestra:** dibuja la GT pública y la entrega en una imagen, con el tiempo del vídeo, para ver los 5 minutos junto al vídeo. No imprime etiquetas y escribe fuera del repo | **una entrega nuestra** y la GT pública: solo lo ejecuta una persona |
 | `partido/comparar_entregas.py` | **lee dos entregas nuestras:** cuántos frames evaluados cambian de etiqueta entre una y otra, a qué distancia de los bordes de los tramos evaluados y de qué etiqueta a cuál. Para cuando una pieza cambia y la entrega se regenera. No imprime etiquetas ni frames | **dos entregas nuestras:** solo lo ejecuta una persona |
@@ -114,6 +116,7 @@ python validation/scripts/revision_balon_muerto/coste_errores_D.py
 python validation/scripts/prueba_perfil_atd.py
 python validation/perfil_atd/perfil_dfl.py --seco
 python validation/scripts/prueba_harness.py
+python validation/scripts/prueba_decodificador.py
 ```
 
 ## Reglas
