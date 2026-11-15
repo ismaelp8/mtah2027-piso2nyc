@@ -2657,3 +2657,41 @@ Decisión y por qué:
 Descartado, de momento:
 - elegir solo los códigos que más aciertan: sería decidirlo después de ver los números;
 - copiar las fases como etiquetas (decisión del 15/11).
+
+### 2026-11-15 · candidatos · fases del Smart Tagging, revisión: la tabla vale y en los contraataques llegamos 2–10 s tarde
+
+Quién: Antonio Azuero. Lo que se le propone, lo decide Ismael.
+
+Qué se probó: el recuento de revisión de `validation/fases_smart_tagging/BITACORA.md` §7. La regla se subió
+antes de ejecutar (`95e766a`). Tiene dos partes:
+- cerrar la revisión de la tabla que pedía la entrada anterior;
+- medir cuánto tardamos en los contraataques.
+
+Cómo se midió: `validation/partido/fases_smart_tagging_revision.py`, ejecutado por Antonio en local con
+`equipo_v3`. Solo agregados, frente a los mismos inicios desplazados.
+
+Resultado [medido; salida en `validation/resultados/2026-11-15_fases_smart_tagging.md`]:
+- **La tabla vale:** en el 95,3 % de los 14.610 frames solapados interviene una fase de zona (`PLAYERS IN THE
+  BOX`, `BALL IN FINAL THIRD` o `BALL IN THE BOX`), y la regla pedía el 70 %. La fase de zona del equipo que
+  atacaba sigue abierta cuando el otro arranca [inferencia].
+- **Contraataques:** de los 24 inicios de `ATTACKING TRANSITION`, nuestra etiqueta pasa a ese equipo entre 2 y
+  5 s después en 11, y entre 5 y 10 s en 6. Menos de 5 ya lo eran o llegan antes de 2 s. En el placebo, lo
+  normal es no llegar en 15 s (51,9 %).
+- **Dentro de esas fases** vamos con el otro equipo en el 36,2 % de los frames (3.365); en el placebo, en el
+  23,6 %. Donde el balón está claramente en los pies del equipo que contraataca, coincidimos en el 95,7 %.
+
+Decisión y por qué:
+- **La revisión de la tabla se cierra:** vale tal cual, excluyendo los solapados. Con la regla del plan ya
+  cumplida, el empujón pequeño (solo sin balón, como mucho 1.455 frames) se puede escribir como módulo aparte
+  para que lo enchufe Ismael. Vale poco.
+- **Se le propone a Ismael medir un empujón al inicio de las `ATTACKING TRANSITION`,** como pide la lectura
+  de §7.2: el 83 % de los inicios espera más de 2 s (el placebo, el 70 %, casi todo sin llegar) y el 36 % de los
+  frames va con el otro equipo.
+  - Es más que el empujón del plan: 3.365 frames, justo al empezar posesiones.
+  - Se sale del alcance del plan.
+  - No se puede medir en la DFL. Una cota sería simular el empujón en el harness con las recuperaciones de los
+    eventos humanos de la DFL.
+- La entrega no cambia.
+
+Límite: el inicio que marca el Smart Tagging no es la GT. Si fuera antes de la recuperación real, parte de la
+espera no sería un retraso.

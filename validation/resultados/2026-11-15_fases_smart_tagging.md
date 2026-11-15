@@ -16,14 +16,16 @@
 **Lectura en tres líneas:**
 
 1. **La regla del plan se cumple, por poco:** 81,8 % de acuerdo en control claro, con un desacuerdo del 18,2 %
-   frente al 44,2 % del placebo. Pero hay un 13,5 % de frames solapados con equipos distintos, más del 10 %:
-   hay que revisar la tabla antes de usar nada. El sentido de ataque y defensa está bien, porque las fases
-   salen a pares idénticos.
+   frente al 44,2 % del placebo. Hay un 13,5 % de frames solapados con equipos distintos, más del 10 %, así
+   que había que revisar la tabla. **El recuento de revisión (abajo) dice que vale:** el 95,3 % de los
+   solapados son de fases de zona. El sentido de ataque y defensa está bien, porque las fases salen a pares
+   idénticos.
 2. **Con el alcance del plan, la pista vale poco:** como mucho cambiaría 1.455 frames sin balón, menos del 1 %
    de los evaluados.
 3. **Lo que más promete son las transiciones:** en 19 de los 24 inicios de «Attacking Transition» (79 %),
-   nuestra entrega sigue en el otro equipo y no cambia en 2 s (en el placebo, el 28 %). Es la fase más fiable:
-   un 93,1 % de acuerdo. Un uso así se sale del plan: lo decide Ismael.
+   nuestra entrega sigue en el otro equipo y no cambia en 2 s (en el placebo, el 28 %). La revisión dice que
+   **llegamos tarde, pero llegamos:** en 17 de 24, entre 2 y 10 s después. Dentro de esas fases vamos con el
+   otro equipo en 3.365 frames (36,2 %). Un uso así se sale del plan: lo decide Ismael.
 
 ## Salida tal cual
 
@@ -79,6 +81,74 @@ Fases del Smart Tagging como pista de equipo (validation/fases_smart_tagging/BIT
 
 5. Alcance del empujón (descriptivo): frames evaluados sin balón que no son D en la entrega
    frames: 9941   con equipo de fase: 6525 (65,6 %)   con nuestra etiqueta del otro equipo: 1455 (22,3 %)
+
+   tiempo 4 s
+```
+
+## Recuento de revisión (bitácora §7 y §8; salida tal cual)
+
+Regla subida antes de ejecutar (`95e766a`). Comando:
+`python validation/partido/fases_smart_tagging_revision.py --entrega evaluation/results/equipo_v3.csv --data-dir <datos>`.
+
+**Lectura:**
+
+- **La tabla vale, excluyendo los solapados:** en el 95,3 % de los solapados interviene una fase de zona.
+- **En los contraataques llegamos tarde, pero llegamos:** en 17 de 24, nuestra etiqueta pasa a ese equipo
+  entre 2 y 10 s después del inicio. Dentro de esas fases vamos con el otro equipo en el 36,2 % de los frames
+  (3.365), y donde el balón está claramente en sus pies coincidimos en el 95,7 %.
+- **Se le propone a Ismael medir un empujón al inicio de las transiciones.**
+
+```
+Fases del Smart Tagging, recuento de revisión (validation/fases_smart_tagging/BITACORA.md §7): frames evaluados, las dos partes juntas
+
+0. Controles
+   frames evaluados: 158857   fases en la tabla: 571
+   entrega: sha256 9539ce42…cc17a   ¿es equipo_v3? sí
+
+1. Solapados con equipos distintos: 14610   con una fase de zona: 13922 (95,3 %)
+   por código (frames solapados en que interviene):
+      players in the box               11595  (79,4 %)
+      ball in final third               9129  (62,5 %)
+      ball in the box                   5565  (38,1 %)
+      build up                          5520  (37,8 %)
+      defending in attacking third      5520  (37,8 %)
+      attacking transition              5259  (36,0 %)
+      defensive transition              5259  (36,0 %)
+      long ball                         2900  (19,8 %)
+      defending in middle third         2646  (18,1 %)
+      progression                       2646  (18,1 %)
+      creating chances                  1720  (11,8 %)
+      defending in defensive third      1720  (11,8 %)
+   las 10 parejas con más frames (un código de cada lado):
+      build up                       / players in the box                4287  (29,3 %)
+      defending in attacking third   / players in the box                4287  (29,3 %)
+      attacking transition           / ball in final third               3450  (23,6 %)
+      ball in final third            / defensive transition              3450  (23,6 %)
+      attacking transition           / players in the box                3260  (22,3 %)
+      defensive transition           / players in the box                3260  (22,3 %)
+      ball in final third            / players in the box                3036  (20,8 %)
+      ball in final third            / build up                          2595  (17,8 %)
+      ball in final third            / defending in attacking third      2595  (17,8 %)
+      long ball                      / players in the box                2134  (14,6 %)
+   → la tabla VALE, excluyendo los solapados: en el 95,3 % de los solapados interviene una fase de zona (≥ 70 %)
+
+2. Contraataques: inicios de ATTACKING TRANSITION en tramos evaluados: 24   (placebo: 133)
+   cuánto tarda nuestra etiqueta en ser la de ese equipo:
+      ya lo era en el inicio   reales  < 5 (      –)   placebo   35 (26,3 %)
+      hasta 2 s                reales  < 5 (      –)   placebo  < 5 (–)
+      de 2 a 5 s               reales   11 ( 45,8 %)   placebo    9 (6,8 %)
+      de 5 a 10 s              reales    6 ( 25,0 %)   placebo    8 (6,0 %)
+      de 10 a 15 s             reales  < 5 (      –)   placebo    8 (6,0 %)
+      no lo es en 15 s         reales  < 5 (      –)   placebo   69 (51,9 %)
+   frames de las transiciones: 9291   nuestra etiqueta:
+      ese equipo   reales    5842 ( 62,9 %)   placebo   12371 (23,9 %)
+      el otro      reales    3365 ( 36,2 %)   placebo   12220 (23,6 %)
+      D o X        reales      84 (  0,9 %)   placebo   27199 (52,5 %)
+   de ellos, con control claro del equipo de la transición: 1073   nuestra etiqueta:
+      ese equipo   reales    1027 ( 95,7 %)   placebo    2223 (77,8 %)
+      el otro      reales      46 (  4,3 %)   placebo      25 (0,9 %)
+      D o X        reales       0 (  0,0 %)   placebo     609 (21,3 %)
+   → se le propone a Ismael medir un empujón al inicio: esperan más de 2 s el 83 % de los inicios (placebo 70 %); el 36 % de los frames de las transiciones va con el otro equipo
 
    tiempo 4 s
 ```

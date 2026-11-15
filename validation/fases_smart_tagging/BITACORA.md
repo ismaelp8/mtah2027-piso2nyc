@@ -229,3 +229,70 @@ contando desde el inicio.
 - **Son 24 transiciones:** muchas celdas saldrán «< 5», y una diferencia de pocos casos no dice nada.
 - **El control claro no es la GT:** que nuestra etiqueta no coincida con el equipo que tiene el balón en los
   pies dice dónde discrepamos de la proximidad, no dónde fallamos.
+
+## 8. Resultado del recuento de revisión (15/11, después de ejecutar)
+
+- **La regla de §7** se subió antes de ejecutar (`95e766a`).
+- **La ejecución:** Antonio ejecutó `python validation/partido/fases_smart_tagging_revision.py --entrega …` en
+  local, con `equipo_v3` (sha256 comprobado), en 4 s. La salida entera está en
+  `validation/resultados/2026-11-15_fases_smart_tagging.md`.
+
+### 8.1 La tabla vale (§7.1)
+
+[medido] En el **95,3 %** de los 14.610 frames solapados interviene una fase de zona (13.922), y la regla pedía
+el 70 % o más. **La tabla vale tal cual, excluyendo los solapados, y se cierra la revisión de §3.2.**
+
+- **Los códigos que más intervienen:** `PLAYERS IN THE BOX` (79,4 %), `BALL IN FINAL THIRD` (62,5 %) y
+  `BALL IN THE BOX` (38,1 %).
+- **Las parejas con más frames** cruzan una fase de zona de un equipo con un inicio del otro:
+  - `BUILD UP` frente a `PLAYERS IN THE BOX`, 4.287 frames;
+  - `ATTACKING TRANSITION` frente a `BALL IN FINAL THIRD`, 3.450;
+  - `ATTACKING TRANSITION` frente a `PLAYERS IN THE BOX`, 3.260.
+
+  [inferencia] La fase de zona del que atacaba sigue abierta cuando el otro recupera y arranca.
+
+### 8.2 Los contraataques: llegamos tarde (§7.2)
+
+[medido] Los 24 inicios de `ATTACKING TRANSITION` (en el placebo, 133):
+
+| cuánto tarda nuestra etiqueta en ser la de ese equipo | reales | placebo |
+|---|---|---|
+| ya lo era en el inicio | < 5 | 26,3 % |
+| hasta 2 s | < 5 | < 5 |
+| **de 2 a 5 s** | **11 (45,8 %)** | 6,8 % |
+| **de 5 a 10 s** | **6 (25,0 %)** | 6,0 % |
+| de 10 a 15 s | < 5 | 6,0 % |
+| no lo es en 15 s | < 5 | 51,9 % |
+
+| dentro de las fases de transición | ese equipo | el otro | `D` o `X` |
+|---|---|---|---|
+| todos los frames (9.291) | 62,9 % | **36,2 % (3.365)** | 0,9 % |
+| placebo | 23,9 % | 23,6 % | 52,5 % |
+| con control claro del equipo de la transición (1.073) | **95,7 %** | 4,3 % (46) | 0,0 % |
+| placebo | 77,8 % | 0,9 % | 21,3 % |
+
+- **Llegamos tarde, pero llegamos** [medido]: en 17 de los 24 inicios (71 %), nuestra etiqueta pasa a ese
+  equipo entre 2 y 10 s después. En el placebo, lo normal es no llegar en 15 s (51,9 %).
+- **Donde el balón está claramente en sus pies, coincidimos** (95,7 %) [medido]. El retraso está en los
+  primeros segundos de cada contraataque, antes de que la proximidad lo deje claro [inferencia]. Cuadra con lo
+  que ya se sabía: B5 pierde recuperaciones y el decodificador cobra cada cambio.
+- **Las fases de transición duran unos 15 s** de media (9.291 frames entre 24), y más de la mitad de sus
+  frames están solapados con una fase de zona del otro equipo [inferencia, con los 3.850 frames sin solapar de
+  §6].
+- **Lectura de §7.2: se le propone a Ismael medir un empujón al inicio de las transiciones.** El 83 % de los
+  inicios esperan más de 2 s (el placebo, el 70 %, casi todo «no llega»), y el 36,2 % de los frames de las
+  transiciones van con el otro equipo.
+
+**Qué se hace:**
+
+- **La tabla queda revisada.** La pista pasó la regla del plan (§6), así que el empujón pequeño del plan (solo
+  sin balón, como mucho 1.455 frames) se puede escribir como módulo aparte para que lo enchufe Ismael.
+- **Lo que más promete se sale del plan:** un empujón al inicio de las `ATTACKING TRANSITION`. Hay 3.365
+  frames con el otro equipo, justo al empezar posesiones, que es lo que más pesa en el `spellF1`. Lo decide
+  Ismael.
+  - **No se puede medir en la DFL,** que no tiene Smart Tagging. Una aproximación sería simular el empujón en
+    el harness con las recuperaciones de los eventos humanos de la DFL como si fueran los inicios. Daría una
+    cota de lo que se podría ganar, no lo que gana el Smart Tagging.
+- **Límite:** el inicio que marca el Smart Tagging no es la GT. Si lo marcara antes que la recuperación real,
+  parte de nuestra «espera» no sería un retraso.
+- Nada se ha encendido, y la entrega no cambia.
