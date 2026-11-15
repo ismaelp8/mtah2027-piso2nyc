@@ -3023,3 +3023,84 @@ espera no sería un retraso.
   juntar las dos medidas].
 - **Propuesta: cerrar la tarea 2 sin encender nada.** Con las normas del 15/11, la decisión es del equipo y la
   puede tomar Antonio.
+
+### 2026-11-15 · candidatos · el empujón en los contraataques: peso 8 y tope de 5 s, fijados antes de generar nada
+
+Quién: Antonio Azuero, con el «si a todo» de Ismael (entrada «se prueba un empujón al equipo de la fase en los
+contraataques»). La entrega de prueba la genera y la compara la sesión de integración de Ismael.
+
+Qué se hace: una capa nueva, `possession/transiciones.py`, con la firma de la de Manuel:
+`evidence(trk, paths=None, game=games.GAME)`, que devuelve `(score, allowed)`. **No se enchufa en
+`pipeline.py`:** se prueba con `--capa transiciones.evidence`, como opción apagada.
+- **Sin `paths` no opina** (todo a cero y todo permitido). Así, en la DFL y en `prueba_pipeline.py`, no cambia
+  nada.
+- **Solo `ATTACKING TRANSITION`,** con `Team` `Barcelona` (`H`) o `Atletic Club` (`A`). Las demás fases no
+  entran, y menos las de zona, que son las que se solapan con equipos distintos. `N/A` no entra.
+- **Qué suma:** el peso a la columna del equipo de la fase, desde el frame de inicio y durante el tope, sin
+  pasar del final de la fase ni del tramo evaluado. Solo cuentan las fases que empiezan en un tramo evaluado.
+- **Y el mismo peso a la columna `D` en esos frames.** Lo señaló el agente revisor, antes de generar nada.
+  - Solo cuentan las diferencias entre columnas: sumar solo al equipo también empujaría 8 por frame contra `D`.
+  - La cota de la DFL se midió con el `D` impuesto (`d_oraculo` en `validation/harness/puntuar.py`: `D`
+    prohibido en el juego y obligado en las paradas). Así que no vio ese efecto, y con el `D` impuesto la
+    columna `D` no cambia nada. **Con esto la capa hace exactamente lo que midió la cota:** empuja contra el
+    otro equipo y no opina entre jugar y parar.
+  - En el partido el `D` es blando (`dead_state` y la capa del hueco), y sin esto podría borrar o acortar una
+    parada que cayera en esos 5 s si la fase no acaba justo en el fuera.
+  - Se aparta un poco de «sumar un peso a la columna del equipo». Lo que llega a la diferencia entre `H` y
+    `A` es igual.
+- Un frame cubierto por dos transiciones del mismo equipo recibe el peso **una vez**, no dos. Si lo cubren
+  dos de equipos distintos, lo reciben las tres columnas y la capa no opina.
+- **No prohíbe nada:** `allowed` va todo a `True`.
+- **Con `paths` y sin ninguna transición con equipo, da error:** si los nombres de `Team` no coincidieran, la
+  capa no haría nada sin avisar.
+
+**El peso y el tope, uno de cada, razonados antes de generar nada:**
+- **Peso: 8 por frame.**
+  - Es el mayor de la rejilla de la cota de la DFL (`validation/posesiones_cortas/BITACORA.md` §13: w = 1, 2, 4
+    y 8) y el único con el que la cota se acercaba a algo (de +0,021 a +0,027 con marcas perfectas en cambios
+    que `main` no ve). Con 4 daba poco más de la mitad.
+  - **En esa cota ninguna combinación hizo daño, ni con un 30 % de marcas falsas** (q = 0,7). Aquí la
+    etiqueta acierta el 93,1 % en control claro (q ≈ 0,9).
+  - En la escala del decodificador, 8 por frame durante 5 s suman 1.000 frente a un coste de cambio de 25: la
+    capa fuerza el cambio al equipo de la fase frente al otro, salvo que B5 diga lo contrario con mucha fuerza.
+- **Tope: 5 s (125 frames) desde el inicio de la fase,** o hasta su final si dura menos.
+  - Es el tope de la marca en la cota de la DFL, que duraba lo que la posesión real con un máximo de 125
+    frames. Aquí el final de la fase hace de final de la posesión.
+  - No se alarga: la cota de la DFL no midió marcas más largas, y una transición mal marcada haría más daño
+    cuanto más dure.
+- **De contexto, no de motivo:** el recuento de las fases dice que llegamos de 2 a 10 s tarde en 17 de 24
+  contraataques (de 2 a 5 s en 11). Explica por qué se prueba, no por qué se eligieron 8 y 5 s, que salen de la
+  cota de la DFL.
+- **Ninguno de los dos sale del partido ni de la ventana pública,** y no se retocan después de generar la
+  entrega de prueba.
+
+Cómo se probará: no se puede medir en la DFL, que no tiene Smart Tagging. La sesión de integración genera la
+entrega de prueba con `--capa transiciones.evidence`, la compara con `equipo_v3`
+(`python validation/partido/comparar_entregas.py equipo_v3 <la de prueba>`) y la valida.
+
+**Cómo se leerá la comparación** (fijado antes de generar, como en D7). Con lo que imprime `comparar_entregas.py`:
+1. **Casi todo es un cambio de equipo:** de los frames evaluados que cambian, el 90 % o más pasan de `H` a `A` o
+   de `A` a `H`. Con la capa neutra frente a `D`, los cambios entre `D` y juego solo pueden venir de arrastre
+   del decodificador.
+2. **Las paradas no se mueven:** el número de paradas cambia en 2 como mucho.
+3. **No fragmenta:** las posesiones suben 24 como mucho, una por transición. Si la fase marca un contraataque que
+   ya veíamos, solo se adelanta el cambio y el número no se mueve. Si marca uno que no veíamos, o uno falso, se
+   añaden una o dos.
+4. **Tamaño:** como mucho cambian 5.000 frames evaluados (el 3,1 %). Los frames con el otro equipo dentro de las
+   fases de transición son 3.365, y el resto es margen para el arrastre del decodificador.
+
+**Si falla alguna, se queda apagada** y se apunta por qué. Si pasan las cuatro, **sigue apagada** hasta que el
+equipo decida encenderla. Sería una excepción a «lo que no ha ganado en el harness no entra» (plan §4), porque
+esta capa no se puede medir en la DFL, y esa excepción la decide el equipo (normas del 15/11). La ventana pública
+tampoco elige: solo dice si algo se ha roto.
+
+**Una excepción al contrato de las piezas:** `possession/tracking.py` y `docs/PLAN_ENTREGA.md` §2 dicen que
+ninguna pieza abre ficheros salvo `dead_ball.py`. Esta es la segunda que abre los del partido: solo con `paths`,
+que solo le da `pipeline.build` cuando una persona genera una entrega. Sin `paths` no abre nada, y el harness no
+le pasa rutas. Habría que añadir la excepción a esos dos textos, que son de Ismael.
+
+Descartado:
+- **un peso o un tope por código, por equipo o por duración de la fase:** «un solo peso y un solo tope»;
+- **usar las `DEFENSIVE TRANSITION`:** son el espejo exacto de las de ataque (§6 de la bitácora de las fases) y
+  no añaden nada;
+- **prohibir el otro equipo en `allowed`:** una fase mal marcada no se podría corregir.
