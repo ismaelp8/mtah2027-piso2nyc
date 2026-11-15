@@ -1647,5 +1647,12 @@ Lo que la regla no preveía (no cambia la decisión):
   saques de puerta (2 de 10).
 - **El `Team` coincide siempre con los nombres del ATD:** la capa del equipo que reanuda (27 reinicios:
   córner, saque de puerta y falta) se puede escribir. Queda pendiente.
-- **Falta comprobar la entrega regenerada:** que no haya conflictos entre piezas y que la ventana pública
-  no esté rota. Se hace antes de mergear.
+- **[medido] La entrega regenerada** (Manuel, 15/11, con la rama en `8f6ca9f`:
+  `python -m possession.pipeline --name equipo_dfronteras`; sha256 `9539ce42…cc17a`):
+  - 0 frames con piezas en conflicto;
+  - `D` en 71.625 de los 158.857 frames evaluados (45,1 %), 113 paradas y 215 posesiones, frente al 44,4 %,
+    114 y 219 de `equipo_v2`: dentro de la banda fijada para la entrega (`D` entre el 15 y el 60 %, 250
+    paradas como mucho);
+  - `validate_submission.py`: válida, y ninguna `X` en frames evaluados;
+  - ventana pública, solo para ver que no está rota (no elige ni mide la mejora): `spellF1` 0,658 y
+    `macroF1` 0,851, con 14 posesiones frente a las 17 de la GT.
