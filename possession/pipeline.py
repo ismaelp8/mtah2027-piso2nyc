@@ -17,6 +17,8 @@ harness de la DFL (validation/harness/), con el mismo código de las piezas.
 
 import argparse
 import hashlib
+import importlib
+import inspect
 import os
 import platform
 import subprocess
@@ -48,17 +50,37 @@ def default_piece(name):
     return getattr(MODULES[module], function)
 
 
-# Los módulos de los que `--capa` puede tomar una evidencia extra (ver `resolve`).
+# Los módulos de los que `--capa` puede tomar una evidencia extra (ver `resolve`). Además, cualquier otro
+# módulo de possession/ (`possession.<modulo>`), para enchufar una capa nueva sin tocar este fichero.
 LAYER_MODULES = dict(MODULES, dead_ball=dead_ball)
 
 
-def resolve(spec, modules=MODULES):
-    """La función «modulo.funcion» de `modules`. Error claro si no existe."""
+def resolve(spec, modules=MODULES, any_possession_module=False):
+    """La función «modulo.funcion» de `modules` (o de possession/, si se permite). Error claro si no existe."""
     module, _, function = spec.partition(".")
-    if module not in modules or not function or not callable(getattr(modules[module], function, None)):
-        raise ValueError("no encuentro «{}»: tiene que ser modulo.funcion, con modulo uno de {}".format(
-            spec, sorted(modules)))
-    return getattr(modules[module], function)
+    found = modules.get(module)
+    if found is None and any_possession_module and module.isidentifier():
+        try:
+            found = importlib.import_module("possession." + module)
+        except ImportError:
+            found = None
+    if found is None or not function or not callable(getattr(found, function, None)):
+        raise ValueError("no encuentro «{}»: tiene que ser modulo.funcion, con modulo uno de {}{}".format(
+            spec, sorted(modules), " o de possession/" if any_possession_module else ""))
+    return getattr(found, function)
+
+
+def with_paths(layer, paths, game):
+    """La capa tal cual si solo recibe el tracking; si tiene `paths` (como dead_ball.evidence), con las rutas.
+
+    Así una capa que lee el Smart Tagging se enchufa con `--capa` igual que una que solo mira el tracking.
+    """
+    names = inspect.signature(layer).parameters
+    if "paths" not in names:
+        return layer
+    if "game" in names:
+        return lambda clean: layer(clean, paths=paths, game=game)
+    return lambda clean: layer(clean, paths=paths)
 
 
 def overrides(piece_specs=(), layer_specs=()):
@@ -74,7 +96,7 @@ def overrides(piece_specs=(), layer_specs=()):
         if name not in PIECES:
             raise ValueError("pieza desconocida en --pieza: «{}» (valen: {})".format(name, sorted(PIECES)))
         pieces[name] = resolve(function)
-    return pieces, [resolve(spec, LAYER_MODULES) for spec in layer_specs]
+    return pieces, [resolve(spec, LAYER_MODULES, any_possession_module=True) for spec in layer_specs]
 
 
 def combine(pieces, n):
@@ -272,7 +294,8 @@ def build(game=games.GAME, data_dir=None, params=None, pieces=None, layers=()):
     trk = tracking.from_atd(paths, game, report=report)
     check_atd(report["atd"])
     anchors = lambda clean: dead_ball.evidence(clean, paths, game)  # noqa: E731
-    codes = run(trk, extra=[anchors] + list(layers), params=params, report=report, pieces=pieces)
+    layers = [with_paths(layer, paths, game) for layer in layers]
+    codes = run(trk, extra=[anchors] + layers, params=params, report=report, pieces=pieces)
     return codes, trk.blocks, report
 
 

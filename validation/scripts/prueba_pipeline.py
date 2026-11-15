@@ -363,18 +363,32 @@ def check_build_requires(folder):
     def layer(trk):
         return None
 
+    received = []
+
+    def layer_with_paths(trk, paths=None, game=None):
+        received.append((paths, game))
+        return None
+
     real = games.require, games.asset_paths, tracking.from_atd, pipeline.run
     games.require = lambda *args, **kwargs: None
-    games.asset_paths = lambda *args, **kwargs: {}
+    games.asset_paths = lambda *args, **kwargs: {"smart_tagging": "inventado"}
     tracking.from_atd, pipeline.run = clean_from_atd, record
     try:
         with no_files():
-            pipeline.build(data_dir=folder, pieces={"candidates": candidates.evidence}, layers=[layer])
+            pipeline.build(data_dir=folder, pieces={"candidates": candidates.evidence},
+                           layers=[layer, layer_with_paths])
+            seen["extra"][2]("tracking limpio")
     finally:
         games.require, games.asset_paths, tracking.from_atd, pipeline.run = real
-    check("build pasa a run la pieza cambiada y la capa, además de las anclas de dead_ball",
-          seen.get("pieces") == {"candidates": candidates.evidence} and len(seen.get("extra", [])) == 2
+    check("build pasa a run la pieza cambiada y las capas, además de las anclas de dead_ball",
+          seen.get("pieces") == {"candidates": candidates.evidence} and len(seen.get("extra", [])) == 3
           and seen["extra"][1] is layer)
+    check("a una capa con `paths` (como dead_ball.evidence) le pasa las rutas del partido y el juego",
+          received == [({"smart_tagging": "inventado"}, GAME)], "{}".format(received))
+    check("--capa admite cualquier módulo de possession/, y nada de fuera",
+          pipeline.overrides((), ["tracking.no_evidence"])[1] == [tracking.no_evidence]
+          and raises(ValueError, lambda: pipeline.overrides((), ["os.remove"]))
+          and raises(ValueError, lambda: pipeline.overrides((), ["no_existe.evidence"])))
 
 
 def check_csv(codes, folder):
