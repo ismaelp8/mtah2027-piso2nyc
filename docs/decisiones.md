@@ -2711,6 +2711,33 @@ Con qué reglas (`RULES.md` §1 y §2; `CHALLENGE.md`, «The reference is the gr
   diferencia del recuento a ojo de la PR 1 (zona gris, `docs/revision_externa_2026-11-15.md` §3.4);
 - Claude no ve el vídeo, ni la página, ni la entrega, ni notas con tiempos.
 
-Resultado: pendiente del visionado.
+Resultado (15/11, los 10 tramos de `equipo_v3`: 4 solo de borde y 6 con posesiones o paradas distintas).
+Son jugadas concretas, contadas en general; no es una medida. La página y la sincronía con el vídeo se
+comprobaron antes (saque inicial, avance de un frame, parada al final de cada tramo).
 
-Decisión y por qué: ninguna todavía. Lo que salga solo propone qué medir en datos abiertos.
+- **Cambios de equipo** (pasadas a la sesión de posesiones cortas, que las contrastó con lo medido):
+  - la GT da el cambio en el primer toque de la secuencia que gana la posesión (despeje que cae a un
+    compañero, pase de primeras, portero que coge el balón). Las etiquetas de control del harness ya fechan
+    así el cambio: no hay nada que medir (H1, H4);
+  - en el partido llegamos tarde, de 0,7 a 3 s, y en los datos abiertos no (mediana de +0 a +3 frames).
+    Hipótesis: el ATD pierde el balón en el vuelo de los balones aéreos y la degradación del harness no lo
+    copia (H5). Se mide con `validation/partido/huecos_y_cambios.py`, junto con la del portero (H3);
+  - mover cada cambio al primer acercamiento del equipo nuevo (H2): con un oráculo, techo de +0,05 con el
+    control. Sin candidato;
+  - tres posesiones cortísimas por un toque sin control (despejes) que la GT cuenta. **Es contexto:** no
+    reabre «exigir control».
+- **Balón muerto** (para Manuel y Ana):
+  - D4: la GT pone el `D` en el instante del pitido, también tras una ley de la ventaja. El sondeo del
+    silbato está sucio; solo se puede medir en el partido;
+  - D2: si nuestro `D` llega tarde, damos la posesión al equipo que va a sacar;
+  - D5: el `D` acaba en el golpeo del saque; vamos tarde o pronto según la parada;
+  - D6: `D` antes de tiempo con el balón en juego junto a la línea;
+  - D3: `D` falso de menos de 2 s en pleno juego;
+  - **D7, la más cara: el balón fuera del campo no dispara el `D`.** Ninguna pieza lo usa (comprobado en el
+    código). En un saque de puerta damos la posesión al portero que va a por el balón durante unos 10 s. La
+    revisión del 13/11 ya propuso ese disparo y no se midió.
+  - Cada una lleva su forma de medirla en la DFL o con agregados del partido.
+
+Decisión y por qué: **ninguna.** Nada se ajustó ni se eligió con la ventana. Las hipótesis se pasaron a la
+sesión de posesiones cortas y a la de la pieza de Ismael. Cuáles se miden lo decide Ismael, con su criterio
+escrito antes de medir.
