@@ -243,8 +243,9 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     frames sin línea. Desde entonces, cualquier línea rara es un error y no se genera la entrega.
   - **No hay rachas cortas:** ninguna de menos de 12 ni de 25 frames en los dos tramos.
 - **Ronda única de reentrenamiento de B5: empate** (15/11; `docs/decisiones.md` y
-  `validation/resultados/2026-11-14_apuesta_b.md` §11). **Se cierra la evidencia de equipo:** B5 sigue en la
-  entrega y `pipeline.PIECES` no cambia.
+  `validation/resultados/2026-11-14_apuesta_b.md` §11). Por la regla de parada se cerró la evidencia de
+  equipo; **Ismael la reabrió el mismo día** (punto siguiente). B5 sigue en la entrega y `pipeline.PIECES` no
+  cambia.
   - **Los candidatos:** B6 (sin las ventanas de 151 frames), B7 (más peso cerca de los cambios) y B8 (con
     el evento de toque).
   - **Ninguno cumple los tres criterios** fijados antes de medir. El que más se acerca es B7: mejora las
@@ -253,6 +254,34 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Sus coeficientes quedan en `possession/aprendida.py`.** Los de B1 a B5 no cambian.
   - **`validation/partido/slots_duplicados.py`** dice si el ATD duplica a algún jugador. Lo ejecuta Ismael,
     si quiere; arreglarlo sería un cuarto candidato.
+- **La evidencia de equipo está reabierta** (Ismael, 15/11): «Es claro que tenemos un problema en que
+  predecimos muchas menos posesiones de las que hay, sobretodo cuando son posesiones cortas.»
+  - **B5 sigue en la entrega** y `equipo_v3` sigue vigente hasta que algo gane.
+  - **El estudio está en la sesión «Posesiones cortas»,** en la rama `claude/posesiones-cortas-5e84f8`,
+    todavía sin nada en `main`.
+- **Tres exámenes de B5 en datos abiertos** (15/11, `main` en `bb4f2ef`). El pipeline de la entrega, tal
+  cual, con el `D` de las etiquetas:
+  - **SkillCorner** (`validation/skillcorner/`; `validation/resultados/2026-11-15_skillcorner.md`): 20
+    partidos de la A-League con tracking automático de retransmisión.
+    - `main` gana al baseline por +0,131 (20 de 20) y a N1 por +0,059 (19 de 20).
+    - Está partido en dos: 10 partidos para diagnosticar o entrenar y 10 de examen que no se tocan
+      (`lector.ENTRENAMIENTO` y `lector.EXAMEN`).
+  - **Metrica** (`validation/metrica/`; `validation/resultados/2026-11-15_metrica.md`): 3 partidos.
+    - `main` gana al baseline por +0,118 (3 de 3) y a N1 por +0,058 (2 de 3).
+    - Las etiquetas salen de sus eventos, así que no sirven de referencia para la convención.
+  - **Diagnóstico de errores** (`validation/scripts/diagnostico_errores.py`;
+    `validation/resultados/2026-11-15_diagnostico_errores.md`), en la DFL y en la mitad de SkillCorner:
+    - casi nunca partimos una posesión, pero cambiamos de equipo de menos: con el flag, 1.661 cambios frente
+      a 3.061 en la DFL, y 2.270 frente a 3.228 en SkillCorner;
+    - solo entre el 16 y el 37 % de los cambios reales tiene uno nuestro a menos de 1 s (en el placebo, el
+      2 %);
+    - los dos bordes de las paradas detectadas valen como mucho 0,05–0,07 en la DFL.
+  - **`validation/partido/ver_ventana.py`** dibuja la GT pública y una entrega para verlas junto al vídeo. Lo
+    ejecuta Ismael.
+- **Sin entrar todavía en `main`:**
+  - la medida del retraso del balón de Antonio (rama `exp/retraso-balon-atd`). Su calibración en la DFL
+    pasa; no se ha ejecutado en el partido;
+  - la PR 10 de David, en revisión.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
