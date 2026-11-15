@@ -204,6 +204,26 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - En la ventana pública no se rompe nada: el `D` acierta los mismos frames que la v1.
   - **Pierde recuperaciones** en los eventos humanos. Lo ajusta David con los costes, que ahora se miden
     en la escala de B5.
+- **Fronteras de `D` de Manuel en `main`** (PR 8, 15/11; `validation/resultados/2026-11-15_agregados_dead_ball.md`
+  y `docs/decisiones.md`).
+  - **Qué hace:** si el balón desaparece entre 5 y 60 s antes de un `SET PIECES` del Smart Tagging que no
+    es un saque inicial, empuja ese hueco hacia `D`. Solo puntúa: no prohíbe nada.
+  - **Cómo se decidió:** con una regla fijada antes de medir, que Manuel ejecutó en el partido. El harness
+    no puede decidirlo, porque la DFL no tiene Smart Tagging.
+  - Su peso (`GAP_SCORE` = 1) está sin ajustar y va con los costes `to_dead` y `from_dead` de David.
+  - Se midió con `ball.clean` v0. Si se enciende la limpieza de Antonio, hay que repetir esa medida y medir
+    B5, que se entrenó con el balón de `ball.clean` v0.
+  - Desde esta PR la entrega usa el Smart Tagging, y `pipeline.build` lo pide al arrancar.
+- **Decodificador de David en `main`** (PR 9, 15/11; `docs/decisiones.md`): la duración mínima y la poda
+  quedan como opciones de `possession/temporal.py` (`decode_min` y `decode_prune`). Empatan con `main`, así
+  que la entrega no cambia.
+  - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
+    el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
+    vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
+- **Entrega vigente: `equipo_v3`** (Ismael, 15/11, con `main` en `6e8fb27`): válida, con el 45,1 % de `D`
+  en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
+  - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
+  - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.

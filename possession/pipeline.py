@@ -3,7 +3,7 @@
     python -m possession.pipeline                    # escribe evaluation/results/equipo_v0.csv
     python -m possession.pipeline --name mi_prueba
 
-Lee el ATD del partido, así que **solo lo ejecuta una persona**. Imprime solo agregados.
+Lee el ATD y el Smart Tagging del partido, así que **solo lo ejecuta una persona**. Imprime solo agregados.
 
     tracking -> limpieza del balón -> evidencias (equipo, estado de D, anclas de D) -> decodificador -> CSV
 
@@ -131,8 +131,12 @@ def sha256(path):
 
 
 def build(game=games.GAME, data_dir=None, params=None):
-    """Las etiquetas del partido. Lee el ATD: solo lo ejecuta una persona."""
-    games.require(["atd_meta", "atd_raw"], game, data_dir)
+    """Las etiquetas del partido. Lee el ATD y el Smart Tagging: solo lo ejecuta una persona.
+
+    Pide los ficheros antes de leer nada. El Smart Tagging lo usa dead_ball.evidence desde el 15/11, y sin
+    él no hay entrega: el error dice qué falta y dónde se esperaba.
+    """
+    games.require(["atd_meta", "atd_raw", "smart_tagging"], game, data_dir)
     paths = games.asset_paths(game, data_dir)
     trk = tracking.from_atd(paths, game)
     report = {}
