@@ -35,6 +35,6 @@ entre versiones. Diferencias de spellF1 de menos de ~0,04 son ruido.
 - [ ] Los commits son míos, con mi identidad de git y sin `Co-Authored-By`
 
 <!--
-Revisión: la revisa otra persona del equipo, la que esté disponible. Basta una aprobación y nadie aprueba
-su propia PR.
+Revisión: puede revisarla y mergearla cualquiera del equipo, también quien la abre. Si toca código que usa
+la entrega, avísalo al mergearla para que alguien la regenere y la valide.
 -->

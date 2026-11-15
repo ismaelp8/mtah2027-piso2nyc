@@ -2675,6 +2675,8 @@ Claude de una compañera se negó a que contestara una duda que otro compañero 
 Decisión y por qué: Ismael no es una puerta.
 - Cualquiera del equipo puede contestar una duda, tomar una decisión y revisar, aprobar o mergear la PR de
   otra persona.
+- Cada uno puede mergear su propia PR, sin esperar una aprobación. Ismael lo aclaró después (15/11): «si,
+  claro que puede mergear alguien su propia PR».
 - Donde un texto del repo reserve algo a Ismael, se lee como «lo decide el equipo». Quien decide lo apunta
   aquí, con su nombre y el porqué.
 - Cambiado en `CLAUDE.md`, `CONTRIBUTING.md`, `docs/PLAN_ENTREGA.md`, `docs/GUIA_EQUIPO.md`, las skills
@@ -2682,7 +2684,6 @@ Decisión y por qué: Ismael no es una puerta.
   Ismael, 14/11») se quedan: dicen quién decidió.
 
 Lo que no cambia:
-- cada PR la mira otra persona: nadie aprueba su propia PR;
 - lo que viene después de una decisión: si toca `pipeline.PIECES`, un valor por defecto o código que usa la
   entrega, alguien regenera la entrega y la valida;
 - la regla nº 1 de los datos, la ventana pública, las reglas escritas antes de medir, que solo Ismael sube

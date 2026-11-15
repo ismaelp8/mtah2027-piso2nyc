@@ -99,7 +99,8 @@ Qué tiene que hacer cada uno hasta la entrega: [`docs/PLAN_ENTREGA.md`](docs/PL
   - Quien decide lo apunta en `docs/decisiones.md` (`/decision`), con su nombre y el porqué.
   - Lo que viene después de una decisión no cambia: si toca `pipeline.PIECES`, un valor por defecto o código
     que usa la entrega, alguien regenera la entrega y la valida.
-- **Cada PR la mira otra persona del equipo,** la que esté disponible. Nadie aprueba su propia PR.
+- **Cada uno puede mergear su propia PR,** sin esperar una aprobación. Si quiere otra opinión, se la pide a
+  quien esté disponible.
 - **Nombre de equipo para la entrega: por confirmar.** Tiene que coincidir exactamente con el que puso
   cada uno al inscribirse. Hasta entonces, `<NOMBRE_EQUIPO>`.
 
@@ -699,10 +700,11 @@ Las normas completas están en `CONTRIBUTING.md`. Esto es lo que Claude no se sa
 - **Mensaje de commit:** una frase en español que diga qué cambia y por qué (`CONTRIBUTING.md` §3).
 - **Pide confirmación** antes de cada push, de abrir una PR, de aprobarla y de mergearla. Que alguien
   pida `/subir` es pedir que se suba, pero antes enséñale el resumen.
-- **Revisión de cada PR:** la revisa, la aprueba y la mergea cualquier persona del equipo que no sea quien
-  la abre. Basta con **una aprobación**, y nadie aprueba su propia PR. `/subir` pide la revisión a Ismael
-  (`ismaelp8`) y a David (`ortegafer`) para que alguien se entere, pero no hace falta que sean ellos.
-- **Merge:** lo hace quien aprueba.
+- **Revisión de cada PR:** puede revisarla, aprobarla y mergearla cualquier persona del equipo, también
+  quien la abre: cada uno puede mergear su propia PR sin esperar una aprobación. `/subir` pide la revisión a
+  Ismael (`ismaelp8`) y a David (`ortegafer`) para que alguien se entere, pero no hace falta esperarlos.
+- **Merge:** lo hace quien la revisa o quien la abre. Si la PR toca código que usa la entrega, avísalo al
+  mergearla: alguien tiene que regenerar la entrega y validarla.
   - Por defecto con squash.
   - Las PR `sync/*` (cambios de `upstream`) con merge commit.
 - **Prohibido:**

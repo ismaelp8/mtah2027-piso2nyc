@@ -14,8 +14,9 @@ PR: $ARGUMENTS
   Pregunta cuál revisar.
 - **Con número:** ejecuta
   `gh pr view <n> --json number,title,author,headRefName,baseRefName,isDraft,reviewDecision,reviews,files,url`.
-- **Si el autor es quien te habla** (`gh api user --jq .login`), no puede aprobarla. Díselo; solo puede
-  comentar.
+- **Si el autor es quien te habla** (`gh api user --jq .login`), GitHub no le deja aprobarla, pero sí puede
+  mergearla: cada uno puede mergear su propia PR (`CONTRIBUTING.md` §5). Sáltate la aprobación y revísala
+  igual antes del merge.
 
 ## 2. Preparar la copia local
 
@@ -54,10 +55,11 @@ gh pr review <n> --comment --body-file <fichero>
 ```
 El fichero temporal va fuera del repo.
 
-## 6. Merge (solo si lo pide y hay al menos una aprobación de otra persona)
+## 6. Merge (solo si lo pide)
 
-1. Comprueba con `gh pr view <n> --json reviewDecision,reviews,mergeable` que hay una aprobación y que
-   no hay conflictos.
+1. Comprueba con `gh pr view <n> --json reviewDecision,reviews,mergeable` que no hay conflictos. No hace
+   falta una aprobación: cada uno puede mergear su propia PR. Si toca código que usa la entrega, recuérdale
+   que alguien tiene que regenerarla y validarla.
 2. Mergea según la rama:
    - **Rama normal:** `gh pr merge <n> --squash --delete-branch`
    - **Rama `sync/*`:** `gh pr merge <n> --merge --delete-branch`. Con squash, git perdería la historia

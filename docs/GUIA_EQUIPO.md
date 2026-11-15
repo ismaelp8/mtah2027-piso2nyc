@@ -373,8 +373,8 @@ Las normas completas están en **`CONTRIBUTING.md`**. En resumen:
 - solo Ismael sube directo a `main`; los demás, nunca;
 - una rama `tipo/descripcion` por tarea;
 - cada commit sale con tu identidad;
-- cada rama entra por PR con plantilla, con revisión de otra persona del equipo;
-- basta una aprobación y se mergea con squash.
+- cada rama entra por PR con plantilla; puede revisarla y mergearla cualquiera, también quien la abre;
+- se mergea con squash.
 
 Lo que **nunca entra en git** (datos, vídeos, cachés, CSV de entregas, outputs de notebooks, PDFs,
 `CLAUDE.local.md`) está en la tabla de `CONTRIBUTING.md` §7.

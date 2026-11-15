@@ -9,8 +9,8 @@ Estas normas las sigue todo el equipo, y Claude también. Si delegas el git en C
 ## Lo esencial
 
 1. **Solo Ismael (`ismaelp8`) sube directo a `main`.** Los demás, una rama por tarea y siempre por PR.
-2. **Cada PR lleva la plantilla y la revisa otra persona del equipo,** la que esté disponible. Nadie
-   aprueba su propia PR, y basta con una aprobación para mergear.
+2. **Cada PR lleva la plantilla.** Puede revisarla y mergearla cualquiera del equipo, también quien la
+   abre: no hace falta esperar una aprobación.
 3. **El commit es de quien sube los cambios,** con su propia identidad de git. Nunca aparece como hecho
    por Claude ni por otra persona.
 4. **Ningún dato del partido entra en git:** ni vídeos, ni tracking, ni cachés, ni CSV de entregas, ni
@@ -117,11 +117,13 @@ Contenido de ejemplo:
 - **Todo entra en `main` por PR, salvo lo que sube Ismael** (último punto de esta sección), con la
   plantilla de `.github/pull_request_template.md` rellena. Si todavía es trabajo en curso, se abre como
   borrador (`--draft`).
-- **Revisión:** la revisa, la aprueba y la mergea cualquier persona del equipo que no sea quien la abre
+- **Revisión:** puede revisarla, aprobarla y mergearla cualquier persona del equipo, también quien la abre
   (decisión de Ismael, 15/11). `/subir` pide la revisión a Ismael (`ismaelp8`) y a David (`ortegafer`) para
-  que alguien se entere, pero no hace falta que sean ellos.
-- **Una aprobación basta.** Nadie aprueba su propia PR.
-- **Merge:** lo hace quien aprueba (o el autor, si el reviewer se lo pide).
+  que alguien se entere, pero no hace falta esperarlos.
+- **Cada uno puede mergear su propia PR,** sin esperar una aprobación. GitHub no deja aprobar la propia,
+  pero sí mergearla. Si toca código que usa la entrega, avísalo al mergearla: alguien tiene que regenerar la
+  entrega y validarla.
+- **Merge:** lo hace quien la revisa o quien la abre.
   - Con **squash**, para que cada PR sea un commit en `main`. Después se borra la rama.
   - **Excepción: las PR `sync/*` se mergean con merge commit,** nunca con squash. Si se aplastan, git
     pierde la pista de qué commits de Metrica ya tenemos y la siguiente sincronización da conflictos.
