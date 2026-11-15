@@ -583,3 +583,82 @@ hay huecos de 0,5 a 2 s, igual que en el ATD, que casi no los tiene: la franja d
 - En pleno juego, el ATD casi no pierde el balón: 37 huecos. La mayor parte (113) va pegada a nuestras paradas.
 - **Un fallo del script, corregido:** la frase de F dejaba deducir una celda de 1 a 4 casos que la tabla
   ocultaba. Ahora F no se imprime en ese caso, y la prueba lo cubre.
+
+## 15. ¿Cuenta la GT pública los toques sin control? (regla fijada antes de mirar la GT pública)
+
+Encargo de Ismael por la sesión principal (`docs/decisiones.md`, «dos hipótesis del visionado se prueban»,
+`ed4dab3`). En su visionado salieron tres posesiones cortísimas por un toque sin control que la GT cuenta, y el
+recuento a ojo de Manuel y Antonio (PR 1) ya había visto un caso claro. Si la GT cuenta esos toques, es el caso
+en que B9 gana. Script: `python validation/posesiones_cortas/sandwiches.py --gt-publica`.
+
+**La estadística:** un «sándwich» es una posesión de menos de 2 s cuyas vecinas, la de antes y la de después,
+son las dos del otro equipo, sin un `D` en medio.
+- Separa las convenciones: un toque del rival sin control da un sándwich con el flag y no con el control.
+- Las posesiones cortas en general no sirven, porque un saque rápido es corto con cualquier etiqueta.
+- Las que corta el borde de la ventana no cuentan: les falta una vecina.
+
+**Referencias** [medido antes de mirar la GT pública; `salidas/2026-11-15_sandwiches_referencias.md`]:
+sándwiches por minuto de juego, en ventanas de 7.500 frames (lo que dura la ventana pública) con 2 minutos de
+juego o más.
+
+| etiquetas | ventanas | todas juntas | p10 | p25 | mediana | p75 | p90 |
+|---|---|---|---|---|---|---|---|
+| DFL, flag | 109 | 1,38 | 0,25 | 0,53 | 1,37 | 1,94 | 2,53 |
+| DFL, control | 109 | 0,12 | 0 | 0 | 0 | 0,26 | 0,37 |
+| SkillCorner | 155 | 0,68 | 0 | 0,31 | 0,57 | 0,92 | 1,47 |
+
+**Regla de lectura.** La ventana pública tiene 4,02 minutos de juego (anexo A.6 de la revisión externa): cada
+sándwich son unos 0,25 por minuto. En recuentos k de la ventana pública:
+- **k = 0: «la GT exige control».** Es lo normal con el control (la mitad de sus ventanas o más tiene 0) y
+  raro con el flag (menos del 10 % de sus ventanas baja de 0,25);
+- **k = 1 o 2: no concluye.** Uno (0,25) cabe en el control (p75 0,26) y en el flag (p10 0,25). Dos (0,50)
+  cae entre el p90 del control (0,37) y el p25 del flag (0,53);
+- **k ≥ 3: «la GT cuenta los toques sin control».** Tres o más (0,75 o más) quedan muy por encima del p90 del
+  control y por encima del p25 del flag. También son típicos de SkillCorner (entre su mediana y su p75), así
+  que esto dice «no como el control», no «exactamente el flag».
+
+**Lo que significa, escrito antes de tener el número:**
+- dice cómo etiqueta la GT, que es para lo que está la ventana pública. Son unas 17 posesiones: por eso la banda
+  sin concluir es ancha;
+- **no elige entre versiones.** Cambiar a B9 por este número quedaría en la línea de «la ventana no elige entre
+  versiones», y sería una decisión de Ismael, apuntada como suya;
+- **cómo se escribió:** se escribió sabiendo que el visionado vio tres posesiones cortísimas por toques. Los
+  umbrales salen de las ventanas de la DFL, no de eso, y no se cambian después de mirar.
+
+**Resultado** [medido; `salidas/2026-11-15_sandwiches_gt_publica.md`; regla en `89610fd`]: **k = 2, no concluye.**
+- Dos sándwiches de menos de 2 s en 4,02 minutos de juego: 0,50 por minuto. Uno dura menos de 1 s, y hay 4 de
+  menos de 5 s.
+- Queda entre el p90 del control (0,37) y el p25 del flag (0,53), cerca de la mediana de SkillCorner (0,57)
+  [descriptivo]. La GT pública no dice si cuenta los toques sin control.
+
+## 16. B9, listo para que decida Ismael
+
+Encargo de la sesión principal: B9 frente a `main` con el balón 4 frames tarde, lo que midió Antonio en el
+partido (PR 11), y una tabla honrada.
+`python validation/posesiones_cortas/medir_b9.py retraso --frames 4`; salida en `salidas/2026-11-15_b9_retraso4.md`.
+Es descriptivo: no cambia la regla de B9 ni su lectura (empate).
+
+| medida | B9 frente a `main` | criterio | ¿lo cumple? |
+|---|---|---|---|
+| DFL, flag («como el ATD» / «sin bloques») | +0,039 (7 de 7) / +0,048 (6 de 7) | §5.8: +0,03, intervalo > 0, 6 de 7 | sí |
+| DFL, control | −0,006 (3 de 7) / −0,005 (4 de 7) | §5.8 | no: empata |
+| DFL, control, para la lectura 2 | −0,006 / −0,005 | −0,01 o más | sí |
+| DFL con el balón 4 frames tarde: flag | +0,035 / +0,043 (7 de 7) | descriptivo | sigue ganando |
+| DFL con el balón 4 frames tarde: control | −0,005 / −0,008 (2 de 7) | descriptivo | sigue empatando |
+| DFL con el balón 12 frames tarde | flag +0,040 / +0,044; control −0,022 / −0,026 | descriptivo | – |
+| eventos: recuperaciones | +8,2 / +7,7 puntos | mayor que 0 | sí |
+| eventos: duelos con cambio | +4,8 / +5,2 puntos | descriptivo | – |
+| eventos: duelos sin cambio | −4,7 / −5,7 puntos | −5 o más | no («sin bloques») |
+| `D` propio: paradas, precisión, spellF1 | 630 / 629 paradas frente a 629 / 628; precisión a 0,1; spellF1 nunca por debajo | criterios 2 y 3 de B5 | sí |
+| SkillCorner, mitad de entrenamiento | −0,005 (1 de 10) / +0,004 (7 de 10) | mayor que 0 en las dos | no |
+| SkillCorner, examen | sin abrir | – | – |
+| placebo (la dirección desplazada 60 s) | −0,019 / −0,012 con el flag | la ganancia desaparece | sí: la señal es real |
+| GT pública: ¿cuenta toques? | k = 2 sándwiches | 0 control, ≥ 3 toques | no concluye |
+
+**Lectura** [inferencia]:
+- B9 es una apuesta de convención. Si la GT cuenta los toques como el flag, gana unos +0,04. Si exige control,
+  pierde un poco (de −0,005 a −0,008). En SkillCorner, con tracking automático y una convención intermedia, no
+  gana.
+- La GT pública no deshace la duda: k = 2 sándwiches, y su ritmo de 4,2 posesiones por minuto ya era típico del
+  control (anexo A.6 de la revisión externa).
+- Cambiar a B9 sería una decisión de Ismael: ni la regla de §5.8 ni la ventana pública lo eligen.

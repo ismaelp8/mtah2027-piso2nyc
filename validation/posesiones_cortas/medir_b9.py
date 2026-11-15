@@ -56,12 +56,12 @@ def b9_placebo(trk, fuera=None):
     return aprendida.puntuacion_de("b9", z, aprendida.balon_visible(trk), juego["alfa"], cercano)
 
 
-def retrasar(trk):
-    """El mismo `Tracking` con el balón `RETRASO` frames tarde dentro de cada tramo (al principio, sin balón)."""
+def retrasar(trk, retraso=RETRASO):
+    """El mismo `Tracking` con el balón `retraso` frames tarde dentro de cada tramo (al principio, sin balón)."""
     bx, by = np.full(len(trk.bx), np.nan), np.full(len(trk.by), np.nan)
     for a, b in trk.blocks:
-        bx[a + RETRASO:b] = trk.bx[a:b - RETRASO]
-        by[a + RETRASO:b] = trk.by[a:b - RETRASO]
+        bx[a + retraso:b] = trk.bx[a:b - retraso]
+        by[a + retraso:b] = trk.by[a:b - retraso]
     return trk._replace(bx=bx, by=by)
 
 
@@ -90,7 +90,7 @@ def comparar(recuentos, versiones, referencia, n_draws):
     return "\n".join(lineas).replace(".", ","), veredictos
 
 
-def dfl_descriptivo(modo):
+def dfl_descriptivo(modo, retraso=RETRASO):
     nombres = ["main (B5)", "B9"] + (["B9 placebo (dirección desplazada 60 s)"] if modo == "placebo" else [])
     recuentos = collections.defaultdict(list)
     for partido in dfl.PARTIDOS:
@@ -99,7 +99,7 @@ def dfl_descriptivo(modo):
         for cond in dfl.VOTAN:
             trk = puntuar.solo_lectura(dfl.tracking_de(cargado, cond))
             if modo == "retraso":
-                trk = retrasar(trk)
+                trk = retrasar(trk, retraso)
             piezas = {"main (B5)": functools.partial(aprendida.evidence_b5, fuera=partido),
                       "B9": functools.partial(aprendida.evidence_b9, fuera=partido),
                       "B9 placebo (dirección desplazada 60 s)": functools.partial(b9_placebo, fuera=partido)}
@@ -109,7 +109,7 @@ def dfl_descriptivo(modo):
                     recuentos[(cond, conv, nombre)].append(puntuar.contar(gt[conv], pred))
         print("hecho {}".format(partido), file=sys.stderr, flush=True)
     titulo = {"placebo": "Placebo: la dirección desplazada 60 s (descriptivo)",
-              "retraso": "Sensibilidad: el balón {} frames tarde, para B9 y para main (descriptivo)".format(RETRASO)}[modo]
+              "retraso": "Sensibilidad: el balón {} frames tarde, para B9 y para main (descriptivo)".format(retraso)}[modo]
     print("# B9 en la DFL. {}\n".format(titulo))
     print(comparar(recuentos, nombres, "main (B5)", BOOTSTRAP)[0])
 
@@ -157,9 +157,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("que", choices=("placebo", "retraso", "entrenamiento", "examen"))
     parser.add_argument("--una-vez", action="store_true", help="obligatorio con «examen»: se ejecuta una sola vez")
+    parser.add_argument("--frames", type=int, default=RETRASO, help="con «retraso»: frames de retraso del balón")
     args = parser.parse_args()
     if args.que in ("placebo", "retraso"):
-        dfl_descriptivo(args.que)
+        dfl_descriptivo(args.que, args.frames)
     elif args.que == "examen":
         sys.exit("B9 está descartado: el paso 4 (SkillCorner, mitad de entrenamiento) salió negativo "
                  "(docs/decisiones.md, 15/11). El examen de SkillCorner no se gasta en él.")

@@ -94,6 +94,7 @@ que faltan, los scripts y los resultados. El porqué está en
 | `posesiones_cortas/huecos_dfl.py` | la referencia de la DFL de `partido/huecos_y_cambios.py`: `main` con nuestro `D`, huecos al azar | DFL |
 | `partido/huecos_y_cambios.py` | **lee el partido** (ATD) y una entrega nuestra: dónde caen nuestros cambios respecto a los huecos del balón, frente a la DFL, con la regla de `posesiones_cortas/BITACORA.md` §14. Lo ejecuta una persona | **datos del partido: solo una persona** |
 | `scripts/prueba_huecos.py` | prueba `posesiones_cortas/huecos.py` y la regla de `partido/huecos_y_cambios.py` con datos inventados | ninguno del partido |
+| `posesiones_cortas/sandwiches.py` | ¿cuenta la GT los toques sin control? Posesiones cortas entre dos del otro equipo, por convención; con `--gt-publica`, también en la GT pública | DFL, SkillCorner (`lector.ENTRENAMIENTO`) y la GT pública |
 | `posesiones_cortas/puerta_no_lineal.py` | fase 3, puerta: una red de una capa con los rasgos de B9 y de los jugadores, fuera de muestra | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
