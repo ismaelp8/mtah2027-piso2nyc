@@ -198,19 +198,79 @@ def herramientas():
     check("desplazar 0 no cambia nada", np.allclose(rt.desplazar(v, 0), v, equal_nan=True))
 
 
-def script_del_partido():
+def sumas_familia(semilla, desfases=None):
+    """{d: sumas} de un partido inventado con el balón centrado (media de 25) y retrasado d frames."""
+    trk, (bx, by), hueco = partido_inventado(semilla)
+    cx, cy = media_centrada(bx, 25), media_centrada(by, 25)
+    desfases = rt.FAMILIA if desfases is None else desfases
+    with sin_ficheros():
+        return {int(d): rt.sumas(con_balon(trk, rt.desplazar(cx, int(d)), rt.desplazar(cy, int(d)), hueco))
+                for d in desfases}, (trk, bx, by, hueco)
+
+
+def version_2():
+    print("Versión 2: la curva entera frente a una familia")
+    fam_a, _ = sumas_familia(21)
+    fam_b, _ = sumas_familia(22)
+    familia = {d: rt.curva_de([fam_a[d], fam_b[d]]) for d in rt.FAMILIA}
+    prueba, (trk, bx, by, hueco) = sumas_familia(23, desfases=(-9, -3, 0, 5, 9))
+    for d, s in prueba.items():
+        with sin_ficheros():
+            res = rt.resumen_v2([s], familia)
+        check("un partido que no está en la familia, retrasado {:+d}: d̂ = {:+d}".format(d, d),
+              res["desfase"] is not None and abs(res["desfase"] - d) <= 1,
+              "d̂ {}, partes {}, intervalo {}, residuo {:.3f}".format(res["desfase"], res["desfase_por_tramo"],
+                                                                    res["intervalo"], res["residuo"]))
+    atras = rt.resumen_v2([rt.sumas(con_balon(trk, rt.media_atras(bx, 25), rt.media_atras(by, 25), hueco))], familia)
+    check("la media hacia atrás de 25 da d̂ = +12", atras["desfase"] is not None and abs(atras["desfase"] - 12) <= 1,
+          atras["desfase"])
+    check("resumen_v2 guarda el máximo de la versión 1 aparte",
+          atras["desfase_maximo"] == rt.resumen([rt.sumas(con_balon(trk, rt.media_atras(bx, 25),
+                                                                     rt.media_atras(by, 25), hueco))])["desfase"])
+    check("dos ejecuciones de resumen_v2 dan lo mismo", rt.resumen_v2([prueba[0]], familia) ==
+          rt.resumen_v2([prueba[0]], familia))
+
+    base = np.sin(np.linspace(0, 3, len(rt.DESFASES)))
+    check("una curva idéntica a la de d = +4 da d̂ = +4 y residuo 0", rt.ajustar(base, {0: -base, 4: base}) == (4, 0.0))
+    check("la escala y el nivel no cuentan (curvas normalizadas)", rt.ajustar(3 * base + 1, {0: -base, 4: base})[0] == 4)
+    check("en un empate entre −2 y +2 gana −2", rt.ajustar(base, {-2: base, 2: base})[0] == -2)
+    check("en un empate entre 0 y +1 gana 0", rt.ajustar(base, {1: base, 0: base})[0] == 0)
+    check("sin curva no hay d̂", rt.ajustar(np.full(len(rt.DESFASES), np.nan), {0: base}) == (None, None))
+    check("una curva plana no se puede normalizar", rt.normalizar(np.ones(len(rt.DESFASES))) is None)
+
+    def res(residuo, d=2):
+        return {"residuo": residuo, "desfase": d, "intervalo": (1.0, 3.0), "desfase_por_tramo": [d, d]}
+
+    check("residuo de más del doble del de referencia: no concluyente",
+          rt.lectura_v2(res(0.21), 0.1)[0] == rt.NO_CONCLUYENTE)
+    check("residuo justo el doble: se lee como en §5", rt.lectura_v2(res(0.2), 0.1)[0] == rt.NADA)
+    check("con el residuo bien, un d̂ de +6 es el candidato 2", rt.lectura_v2(res(0.05, 6), 0.1)[0] == rt.DESPLAZAR)
+    check("sin residuo de referencia: no concluyente", rt.lectura_v2(res(0.05), None)[0] == rt.NO_CONCLUYENTE)
+
+    rampa = np.arange(400, dtype=float)
+    check("la media exponencial con α = 1/9 va 8 frames por detrás en una rampa",
+          abs(rampa[300] - rt.media_exponencial(rampa, 1.0 / 9.0)[300] - 8.0) < 1e-6)
+    v = np.array([np.nan, 2.0, np.nan, 2.0])
+    check("la media exponencial ignora los NaN", np.allclose(rt.media_exponencial(v, 0.5), [np.nan, 2.0, 2.0, 2.0],
+                                                            equal_nan=True))
+    return familia
+
+
+def script_del_partido(familia):
     print("Script del partido (validation/partido/retraso_balon.py)")
     trk, bola, hueco = partido_inventado(semilla=3)
     caso = con_balon(trk, rt.media_atras(bola[0], 25), rt.media_atras(bola[1], 25), hueco)
     with sin_ficheros():
-        res = rt.resumen([rt.sumas(caso)])
+        res = rt.resumen_v2([rt.sumas(caso)], familia)
+    res.update({"residuo_referencia": max(res["residuo"], 1e-6), "partidos_familia": 2})
     lineas = script_partido.para_imprimir(res)
     texto = "\n".join(lineas)
-    check("imprime el desfase, el intervalo, las partes y la lectura",
-          "L̂ = +12 frames" in texto and "intervalo del 5 al 95 %" in texto and "L̂ por parte" in texto and
-          "Lectura (bitácora §5): candidato 2" in texto, lineas[-2:])
-    check("los controles salen, y no cuadran con un partido inventado", "¿cuadran los dos? NO" in texto)
-    check("una salida de pocas líneas, sin nada por frame", len(lineas) < 25 and str(TRAMO + HUECO) not in texto,
+    check("imprime el desfase, el intervalo, las partes, los residuos y la lectura",
+          "d̂ = +12 frames" in texto and "intervalo del 5 al 95 %" in texto and "d̂ por parte" in texto and
+          "de referencia (DFL)" in texto and "Lectura (bitácora §8.5): candidato 2" in texto, lineas[-2:])
+    check("y el máximo de la versión 1 como descriptivo", "L̂ de la versión 1" in texto)
+    check("los controles salen, y no cuadran con un partido inventado", "¿cuadran los tres? NO" in texto)
+    check("una salida de pocas líneas, sin nada por frame", len(lineas) < 30 and str(TRAMO + HUECO) not in texto,
           "{} líneas".format(len(lineas)))
     check("una celda de 1 a 4 casos sale como «< 5»", script_partido.celda(3) == "< 5" and
           script_partido.celda(0) == "0" and script_partido.celda(5) == "5")
@@ -218,7 +278,19 @@ def script_del_partido():
         salida = io.StringIO()
         with contextlib.redirect_stdout(salida):
             codigo = script_partido.main(["--data-dir", vacia])
-    check("sin los datos del partido avisa y sale con 1", codigo == 1 and "No encuentro el ATD" in salida.getvalue())
+        check("sin los datos del partido avisa y sale con 1", codigo == 1 and "No encuentro el ATD" in salida.getvalue())
+        # con el partido «encontrado» (require no hace nada) y la caché de la DFL vacía: avisa antes de leer nada
+        require, cache = script_partido.games.require, script_partido.cal.dfl.dfl_lector.carpeta_cache
+        script_partido.games.require = lambda *a, **k: []
+        script_partido.cal.dfl.dfl_lector.carpeta_cache = lambda: vacia
+        try:
+            salida = io.StringIO()
+            with contextlib.redirect_stdout(salida), sin_ficheros():
+                codigo = script_partido.main([])
+        finally:
+            script_partido.games.require, script_partido.cal.dfl.dfl_lector.carpeta_cache = require, cache
+        check("sin la caché de la DFL avisa y sale con 1, sin abrir nada",
+              codigo == 1 and "Falta la caché de la DFL" in salida.getvalue())
 
 
 def main():
@@ -226,7 +298,8 @@ def main():
     rachas_y_filtros(trk, bola, hueco)
     empates_y_lectura()
     herramientas()
-    script_del_partido()
+    familia = version_2()
+    script_del_partido(familia)
     print()
     if FALLOS:
         print("FALLAN {}: {}".format(len(FALLOS), "; ".join(FALLOS)))

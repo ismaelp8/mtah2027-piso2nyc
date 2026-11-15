@@ -9,6 +9,8 @@ devuelve agregados: recuentos, desfases y correlaciones del conjunto, nada por f
 - `resumen([sumas, ...])`: junta las rachas de uno o varios trackings y da el desfase, su intervalo y lo
   descriptivo.
 - `lectura(resumen)`: la lectura de la bitácora §5 para el partido.
+- `resumen_v2([sumas, ...], familia)` y `lectura_v2`: la versión 2 (bitácora §8), que compara la curva entera
+  con una familia de curvas de la DFL con retrasos conocidos en vez de quedarse con su máximo.
 
 `L > 0` es que el balón llega tarde: la velocidad del balón en `t + L` es la que mejor se parece a la del
 jugador en `t`.
@@ -258,9 +260,94 @@ def lectura(res):
         return NO_CONCLUYENTE, "el intervalo del 5 al 95 % mide {:g} frames, más de {}".format(
             p95 - p5, MAX_ANCHO_INTERVALO)
     if abs(d) <= CORTE:
-        return NADA, "|L̂| = {} ≤ {}: no se toca nada".format(abs(d), CORTE)
-    return DESPLAZAR, "|L̂| = {} ≥ {}: variante en possession/ball.py que {} el balón {} frames".format(
+        return NADA, "|desfase| = {} ≤ {}: no se toca nada".format(abs(d), CORTE)
+    return DESPLAZAR, "|desfase| = {} ≥ {}: variante en possession/ball.py que {} el balón {} frames".format(
         abs(d), CORTE + 1, "adelanta" if d > 0 else "retrasa", abs(d))
+
+
+# -- versión 2 (bitácora §8): la curva entera, comparada con una familia de curvas de la DFL --------------
+
+FAMILIA = np.arange(-18, 19)  # frames de retraso de las curvas de referencia
+MAX_RESIDUO_RELATIVO = 2.0  # el residuo del ATD, como mucho el doble del de referencia (bitácora §8.5)
+
+
+def curva_de(lista, pesos=None):
+    """La curva de correlación de las rachas de uno o varios `sumas` juntos (con `pesos` por racha)."""
+    j = _juntar(lista)
+    return curva(j["vector"], np.ones(len(j["bloque"])) if pesos is None else pesos)
+
+
+def normalizar(c):
+    """La curva menos su media y dividida por su desviación, sobre los desfases con correlación; None si no
+    se puede (menos de dos valores o todos iguales)."""
+    c = np.asarray(c, dtype=float)
+    ok = np.isfinite(c)
+    if ok.sum() < 2:
+        return None
+    desviacion = c[ok].std()
+    if desviacion == 0:
+        return None
+    return (c - c[ok].mean()) / desviacion
+
+
+def ajustar(c, familia):
+    """(d̂, residuo): el retraso de la curva de `familia` ({d: curva}) más parecida a `c`, y la media de las
+    diferencias al cuadrado con ella, con las dos normalizadas. En un empate gana el de menor |d| y después el
+    menor. (None, None) si `c` no tiene curva."""
+    z = normalizar(c)
+    if z is None:
+        return None, None
+    mejor = (None, None)
+    for d in sorted(familia, key=lambda d: (abs(d), d)):
+        zf = normalizar(familia[d])
+        if zf is None:
+            continue
+        ok = np.isfinite(z) & np.isfinite(zf)
+        if not ok.any():
+            continue
+        residuo = float(np.mean((z[ok] - zf[ok]) ** 2))
+        if mejor[1] is None or residuo < mejor[1]:
+            mejor = (int(d), residuo)
+    return mejor
+
+
+def resumen_v2(lista, familia):
+    """El retraso de las rachas de uno o varios trackings con la versión 2 (bitácora §8.2). Solo agregados.
+
+    Lleva las claves de `resumen` con `desfase`, `intervalo` y `desfase_por_tramo` de la versión 2, para que
+    `lectura` valga igual, más `residuo` y, descriptivos, `desfase_maximo` y `desfase_maximo_por_tramo` (los
+    de la versión 1).
+    """
+    base = resumen(lista)
+    j = _juntar(lista)
+    r = len(j["bloque"])
+    unos = np.ones(r)
+    desfase, residuo = ajustar(curva(j["vector"], unos), familia) if r else (None, None)
+    rng = np.random.default_rng(SEMILLA)
+    remuestreo = []
+    if r:
+        for _ in range(REMUESTREOS):
+            d = ajustar(curva(j["vector"], rng.multinomial(r, unos / r).astype(np.float64)), familia)[0]
+            if d is not None:
+                remuestreo.append(d)
+    intervalo = tuple(float(v) for v in np.percentile(remuestreo, [5, 95])) if remuestreo else (None, None)
+    tramos = len(base["desfase_por_tramo"])
+    por_tramo = [ajustar(curva(j["vector"], (j["bloque"] == k).astype(np.float64)), familia)[0]
+                 for k in range(tramos)]
+    salida = dict(base)
+    salida.update({"desfase": desfase, "intervalo": intervalo, "desfase_por_tramo": por_tramo, "residuo": residuo,
+                   "desfase_maximo": base["desfase"], "desfase_maximo_por_tramo": base["desfase_por_tramo"]})
+    return salida
+
+
+def lectura_v2(res, residuo_referencia):
+    """(candidato, por qué) según la bitácora §8.5: la de §5 con la condición del residuo delante."""
+    if res["residuo"] is None or residuo_referencia is None:
+        return NO_CONCLUYENTE, "no hay curva que comparar con la familia"
+    if res["residuo"] > MAX_RESIDUO_RELATIVO * residuo_referencia:
+        return NO_CONCLUYENTE, "el residuo ({:.3f}) es más del doble del de referencia ({:.3f})".format(
+            res["residuo"], residuo_referencia)
+    return lectura(res)
 
 
 # -- herramientas de la calibración (calibrar_dfl.py y la prueba) ----------------------------------------
@@ -277,6 +364,24 @@ def media_atras(valores, ancho):
     alto = indice + 1
     n = cuenta[alto] - cuenta[bajo]
     return np.where(n > 0, (suma[alto] - suma[bajo]) / np.maximum(n, 1), np.nan)
+
+
+def media_exponencial(valores, alfa):
+    """Media exponencial hacia atrás que ignora los NaN: cada frame pesa `alfa` y el pasado, (1 − alfa)
+    multiplicado por cada frame de distancia. Su retraso medio es (1 − alfa) / alfa frames. NaN si todavía no
+    ha habido ningún dato."""
+    valores = np.asarray(valores, dtype=float)
+    salida = np.full(len(valores), np.nan)
+    suma = peso = 0.0
+    for t, v in enumerate(valores):
+        suma *= 1.0 - alfa
+        peso *= 1.0 - alfa
+        if not np.isnan(v):
+            suma += alfa * v
+            peso += alfa
+        if peso > 0:
+            salida[t] = suma / peso
+    return salida
 
 
 def desplazar(valores, frames):

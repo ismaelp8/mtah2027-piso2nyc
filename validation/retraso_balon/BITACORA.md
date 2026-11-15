@@ -166,3 +166,86 @@ intervalo de 5 de los 7 partidos va de −7 a +6.
   (nunca el partido).
 
 **Qué se hace:** nada en `possession/`. El partido no se ha tocado.
+
+## 8. Versión 2 (Antonio, con Claude · 15/11, antes de medirla)
+
+Antonio decidió el 15/11 probar una segunda versión. Todo lo de esta sección está escrito antes de
+ejecutarla. **Es la última:** si no pasa, la tarea se cierra sin una tercera.
+
+**Aviso de honestidad:** la versión 2 se diseña **después de ver las curvas de la DFL de la sección 7**
+(nunca el partido). Para que su calibración siga siendo una prueba, se mide con partidos y retrasos que
+no se han mirado (punto 3).
+
+### 8.1 Qué cambia y qué no
+
+- **No cambia la curva:** las mismas rachas, velocidades, parejas y correlación por desfase de §2, con el
+  mismo código (`retraso.sumas`).
+- **Cambia cómo se lee la curva.** En vez de su máximo, se compara la curva **entera** con una familia de
+  curvas de referencia hechas en la DFL con retrasos conocidos. El desfase medido, `d̂`, es el retraso de la
+  curva de referencia que más se le parece.
+  - Así da igual que la curva tenga dos jorobas o no se desplace lo mismo que el balón: la familia se hace
+    con el mismo instrumento, así que trae esas rarezas dentro.
+
+### 8.2 La medida
+
+1. **La familia:** en cada partido de la DFL, el balón `centrado` de §3 (media centrada de 25 y huecos
+   «como el ATD») retrasado `d` frames, para `d` de **−18 a +18**, de uno en uno. Se construye como
+   `centrado ±6` en §3. Cada curva de la familia junta las rachas de los partidos que se usen.
+2. **Comparación:** las dos curvas se normalizan (se les resta su media y se dividen por su desviación,
+   sobre los `L` de −25 a +25) y se calcula la media de las diferencias al cuadrado. `d̂` es el `d` de la
+   menor; en un empate gana el de menor `|d|` y, después, el menor. Esa diferencia mínima es el **residuo**:
+   dice cuánto se parece la curva a la familia.
+3. **Intervalo y partes,** como en §2: bootstrap de 200 por rachas con semilla fija (la familia no se
+   remuestrea) y el `d̂` de cada parte con la misma familia.
+4. **Descriptivo:** el `L̂` de la versión 1 (el máximo de la curva).
+
+### 8.3 Calibración en la DFL (fijada antes de medir)
+
+`python validation/retraso_balon/calibrar_dfl_v2.py`, que lo ejecuta Claude.
+
+- **Dejando un partido fuera:** cada partido se mide con la familia hecha con los otros 6. Así la medida
+  nunca se compara consigo misma.
+- **Los retrasos de prueba** son el balón `centrado` retrasado **−9, −6, −3, 0, +3, +6 y +9** frames, más
+  `hacia atrás` (la media de los 25 frames anteriores de §3), que debe dar **+12**.
+  - −9, −3, +3 y +9 **no se han mirado nunca**: la sección 7 solo tiene 0, ±6 y +12.
+- **Pasa si** en cada una de las 8 pruebas el `d̂` cae a **±2** del retraso de verdad en **6 de los 7
+  partidos o más**.
+- **Descriptivo, no decide:** un balón con un suavizado de otra forma, una media exponencial hacia atrás de
+  retraso medio 8 frames (α = 1/9). Dice si la medida aguanta un filtro que no está en la familia.
+- **El residuo de referencia** es el mayor residuo de las 8 pruebas en los 7 partidos. Se usa en la lectura
+  del partido (8.5).
+
+### 8.4 El recuento en el partido
+
+El mismo script de §4 (`validation/partido/retraso_balon.py`), cambiado a la versión 2. Lo ejecuta Antonio,
+solo si la calibración de 8.3 pasa.
+
+- **Familia:** la de los 7 partidos de la DFL juntos. El script la calcula al empezar desde la caché de la
+  DFL, con el residuo de referencia, así que tarda un par de minutos y necesita la DFL bajada.
+- **Imprime solo agregados,** como en §4: `d̂`, su intervalo, `d̂` de cada parte, el residuo del ATD y el de
+  referencia, el `L̂` de la versión 1 y la lectura.
+
+### 8.5 Cómo se leerá (fijado antes de medir)
+
+Como en §5, con `d̂` en lugar de `L̂` y una condición más:
+
+1. **No concluyente** si:
+   - el residuo del ATD es **más del doble** del residuo de referencia: la curva del ATD no se parece a la
+     familia y la comparación no vale;
+   - o las partes se separan más de 4 frames;
+   - o el intervalo del 5 al 95 % mide más de 8 frames.
+
+   No se toca nada y se apunta.
+2. Si no, `|d̂| ≤ 3`: **candidato 1, no se toca nada.**
+3. Si no, `|d̂| ≥ 4`: **candidato 2,** una variante en `possession/ball.py` que desplaza el balón `d̂`
+   frames. `ball.clean` no cambia: lo decide Ismael.
+
+**Después de ver el número no se retoca nada.**
+
+### 8.6 Límites nuevos
+
+- **La familia es de la DFL.** Si el balón del ATD se relaciona con el jugador de otra manera (otro
+  proveedor y otro suavizado), la comparación puede sesgarse. El residuo lo vigila en parte: no ve un sesgo
+  que conserve la forma de la curva.
+- **La familia solo tiene el suavizado de caja de 25 frames.** Si el del ATD tiene otra forma, la prueba
+  exponencial de 8.3 dice cuánto pesa eso, pero no decide.
