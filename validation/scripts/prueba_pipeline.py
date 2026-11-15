@@ -3,13 +3,16 @@
     python validation/scripts/prueba_pipeline.py
 
 Comprueba la interfaz de las piezas, los tramos evaluados, el tramo antes del saque, el decodificador
-(contra la búsqueda exhaustiva), los errores que no pueden pasar en silencio, el determinismo, el CSV y
-el lector del ATD con un fichero sintético.
+(contra la búsqueda exhaustiva), los errores que no pueden pasar en silencio, el determinismo, el CSV, el
+resumen (rachas cortas), que el comando no escribe el CSV si hay conflictos, y el lector del ATD con un
+fichero sintético, también con líneas raras y frames que faltan.
 
-Nunca llama a `pipeline.main()`, que lee el partido. A `pipeline.build()`, que también lo lee, solo lo
-llama con `games.require` cambiado por uno que corta antes de leer nada, con una carpeta temporal vacía
-como datos y sin poder abrir ficheros. Además, mientras ejecuta las piezas, abrir cualquier fichero es un
-error (`no_files`).
+Nunca llama a `pipeline.main()` tal cual, que lee el partido: solo con `pipeline.build` cambiado por uno
+que devuelve las etiquetas del partido inventado, con `games.require` y `games.asset_paths` cambiados por
+uno que da error y escribiendo en la carpeta temporal. A `pipeline.build()` solo lo llama con
+`games.require` cambiado por uno que corta antes de leer nada, con una carpeta temporal vacía como datos y
+sin poder abrir ficheros. Además, mientras ejecuta las piezas, abrir cualquier fichero es un error
+(`no_files`).
 
 Sale con código 1 si falla alguna comprobación. Claude puede ejecutarlo (validation/README.md).
 """
@@ -31,6 +34,8 @@ sys.path.insert(0, os.path.join(ROOT, "evaluation"))
 import games  # noqa: E402
 import possession_metrics as pm  # noqa: E402
 from possession import aprendida, ball, candidates, dead_ball, dead_state, pipeline, temporal, tracking  # noqa: E402
+from possession import io as io_atd  # noqa: E402
+from possession.io import COUNT_KEYS  # noqa: E402
 from starter import baseline  # noqa: E402
 
 SEED = 20261114
@@ -309,6 +314,40 @@ def check_build_requires(folder):
     check("pipeline.build pide el ATD y el Smart Tagging (dead_ball) antes de leer nada",
           stopped and wanted <= set(asked), "pide {}".format(sorted(asked)))
 
+    # Un ATD con algo raro: build da error antes de seguir. tracking.from_atd cambiado por uno que solo rellena
+    # el recuento, y games.require por uno que no hace nada: no se lee ningún fichero.
+    reached = []
+
+    def fake_from_atd(paths, game, report=None):
+        report["atd"] = dict(counts, frames_sin_linea=3, frames_evaluados_sin_linea=1)
+        return None
+
+    def must_not_run(*args, **kwargs):
+        reached.append(True)
+        raise AssertionError("build ha seguido con un ATD raro")
+
+    counts = dict.fromkeys(COUNT_KEYS, 0)
+    counts.update(lineas=10, validas=10, frames_evaluados_sin_linea=0)
+    real = games.require, games.asset_paths, tracking.from_atd, pipeline.run
+    games.require = lambda *args, **kwargs: None
+    games.asset_paths = lambda *args, **kwargs: {}
+    tracking.from_atd, pipeline.run = fake_from_atd, must_not_run
+    message = ""
+    try:
+        with no_files():
+            pipeline.build(data_dir=folder)
+    except ValueError as error:
+        message = str(error)
+    finally:
+        games.require, games.asset_paths, tracking.from_atd, pipeline.run = real
+    check("con frames sin línea en el ATD, build da error con el recuento y no sigue",
+          "no se genera la entrega" in message and "frames sin línea: 3" in message and not reached)
+    bad = [key for key in pipeline.ATD_MUST_BE_ZERO
+           if not raises(ValueError, lambda key=key: pipeline.check_atd(dict(counts, **{key: 1})))]
+    check("cualquier línea vacía, mal formada, fuera de rango o repetida, o frame sin línea, da error",
+          not bad and not raises(ValueError, lambda: pipeline.check_atd(counts)),
+          "no da error: {}".format(bad) if bad else "")
+
 
 def check_csv(codes, folder):
     print("CSV de la entrega")
@@ -359,6 +398,146 @@ def check_reader(folder, rng):
     check("la copia del más cercano que usa B5 (la entrega) también coincide con el baseline oficial",
           bool(np.array_equal(aprendida.equipo_mas_cercano(trk), theirs)))
 
+    report = {}
+    counted = tracking.from_files(raw, meta, n, pitch, [(0, n)], 25, report=report)
+    check("con el recuento, el lector lee lo mismo", same_tracking(trk, counted))
+    clean = dict.fromkeys(COUNT_KEYS, 0)
+    clean.update(lineas=n, validas=n, frames_evaluados_sin_linea=0)
+    check("ATD sin nada raro: todas las líneas válidas y ningún frame sin línea", report["atd"] == clean,
+          "{}".format(report["atd"]))
+    check("el resumen no avisa si no hay nada raro", "OJO" not in pipeline.atd_lines(report["atd"]))
+
+    # El mismo ATD con un caso de cada: falta un frame evaluado y el último (no evaluado), un frame repetido
+    # (la misma línea), una línea vacía, una mal formada y un frame fuera de rango.
+    with open(raw) as handle:
+        rows = handle.read().splitlines()
+    missing = (9, n - 1)
+    kept = [row for frame, row in enumerate(rows) if frame not in missing]
+    kept.insert(30, rows[19])
+    kept += ["", "esto no es una línea del ATD", "{}:{}".format(n + 7, rows[0].split(":", 1)[1])]
+    odd = os.path.join(folder, "inventado_atd_raro.txt")
+    with open(odd, "w", newline="\n") as handle:
+        handle.write("\n".join(kept) + "\n")
+    report = {}
+    got = tracking.from_files(odd, meta, n, pitch, [(0, n - 5)], 25, report=report)
+    expected = dict(lineas=n + 2, validas=n - 1, vacias=1, mal_formadas=1, fuera_de_rango=1, repetidas=1,
+                    frames_sin_linea=2, frames_evaluados_sin_linea=1)
+    check("ATD con un caso raro de cada tipo: los cuenta todos", report["atd"] == expected,
+          "{}".format(report["atd"]))
+    blank = trk._replace(bx=trk.bx.copy(), by=trk.by.copy(), px=trk.px.copy(), py=trk.py.copy())
+    for array in (blank.bx, blank.by, blank.px, blank.py):
+        array[list(missing)] = np.nan
+    check("y lee lo mismo que antes: los frames sin línea quedan sin balón ni jugadores",
+          same_tracking(blank, got))
+    check("el resumen avisa", "OJO" in pipeline.atd_lines(report["atd"]))
+    check("el recuento solo lleva enteros (se puede pegar a Claude)",
+          all(type(value) is int for value in report["atd"].values()))
+
+    # Un frame_id que no es un entero y un valor que no es un número: error, sin el texto del ATD.
+    raro = "0z517"  # el valor que no es un número, en un jugador y en el balón
+    for label, row, shown in (("frame_id", "x{}".format(rows[0]), "x1"),
+                              ("valor", "1:{},0.5,1.0;{}:{},0.5,2.0".format(raro, ";".join(["NaN"] * (slots - 1)),
+                                                                           raro), raro)):
+        bad = os.path.join(folder, "inventado_atd_{}.txt".format(label))
+        with open(bad, "w", newline="\n") as handle:
+            handle.write(row + "\n")
+        messages = []
+        for load in (io_atd.load_ball, io_atd.load_players):
+            try:
+                load(bad, n, pitch)
+                messages.append("")
+            except ValueError as error:
+                messages.append(str(error))
+        check("un {} que no es un número da error en los dos lectores, sin enseñar el valor".format(label),
+              all(message and shown not in message for message in messages), " | ".join(messages))
+
+
+def same_tracking(one, other):
+    """Mismo balón y mismos jugadores, NaN incluidos."""
+    return all(bool(np.array_equal(a, b, equal_nan=True))
+               for a, b in ((one.bx, other.bx), (one.by, other.by), (one.px, other.px), (one.py, other.py)))
+
+
+def check_summary():
+    print("Resumen de la entrega: rachas cortas")
+    # Posesiones de 5, 30, 20, 11, 12, 25 y 40; juego (entre paradas) de 35, 20, 48 y 40; paradas de 10, 35
+    # y 25. Las de 12 y 25 justos no cuentan como «de menos de».
+    window = np.array([H] * 5 + [A] * 30 + [D] * 10 + [H] * 20 + [D] * 35 + [A] * 11 + [H] * 12 + [A] * 25
+                      + [D] * 25 + [H] * 40, dtype=np.int8)
+    found = pipeline.short_runs(window)
+    wanted = {("posesiones", 12): 2, ("posesiones", 25): 4, ("juego", 12): 0, ("juego", 25): 1,
+              ("paradas", 12): 1, ("paradas", 25): 1}
+    check("cuenta las posesiones, el juego entre paradas y las paradas de menos de 12 y de 25 frames",
+          found == wanted, "{}".format(found))
+    edge = pipeline.short_runs(np.array([A] * 7 + [H] * 60 + [D] * 3, dtype=np.int8))
+    check("la primera y la última racha cuentan con lo que queda dentro del tramo",
+          edge[("posesiones", 12)] == 1 and edge[("paradas", 12)] == 1 and edge[("juego", 12)] == 0)
+    lines = pipeline.summary(np.concatenate(([X] * 4, window, [X] * 3)).astype(np.int8), [(4, 4 + len(window))])
+    check("el resumen trae una línea de rachas cortas por tramo",
+          sum(line.startswith("tramo 1, rachas cortas") for line in lines) == 1)
+
+
+def check_main(codes, folder):
+    print("Comando de la entrega (pipeline.main) con pipeline.build cambiado por uno inventado")
+    blocks = tracking.evaluated_blocks(GAME)
+    counts = dict.fromkeys(COUNT_KEYS, 0)
+    counts.update(lineas=len(codes), validas=len(codes), frames_evaluados_sin_linea=0)
+
+    def refuse(*args, **kwargs):
+        raise AssertionError("pipeline.main ha intentado buscar los ficheros del partido")
+
+    def run_main(name, conflicts):
+        # build cambiado por uno inventado, y games.require y games.asset_paths por uno que da error: aunque
+        # alguien añada a main una lectura del partido, esta prueba no la haría.
+        real = pipeline.build, sys.argv, games.require, games.asset_paths
+        pipeline.build = lambda: (codes, blocks, {"atd": counts, "conflictos": conflicts})
+        sys.argv = ["pipeline", "--out", folder, "--name", name]
+        games.require = games.asset_paths = refuse
+        shown, status = io.StringIO(), 0
+        try:
+            with contextlib.redirect_stdout(shown):
+                pipeline.main()
+        except SystemExit as stop:
+            status = stop.code
+        finally:
+            pipeline.build, sys.argv, games.require, games.asset_paths = real
+        return status, shown.getvalue()
+
+    path = os.path.join(folder, "buena.csv")
+    status, shown = run_main("buena", 0)
+    reason = pm.validate_submission(pm.read_label_csv(path), len(codes)) if os.path.exists(path) else "no está"
+    check("sin conflictos: escribe el CSV, que pasa la validación oficial", status == 0 and reason is None,
+          reason or "")
+    check("e imprime las versiones de Python y numpy, las líneas del ATD, el resumen y el sha256",
+          "python " in shown and "numpy " + np.__version__ in shown and "líneas del ATD: " in shown
+          and "tramo 2, rachas cortas" in shown and "sha256: " + pipeline.sha256(path) in shown)
+    status, shown = run_main("con_conflictos", 3)
+    check("con conflictos: sale con error y no escribe nada", status == 1 and not any(
+        name.startswith("con_conflictos") for name in os.listdir(folder)))
+    other = codes.copy()
+    other[codes == H], other[codes == A] = A, H  # un CSV de antes con otras etiquetas
+    pipeline.write_submission(path, other)
+    before = pipeline.sha256(path)
+    status, shown = run_main("buena", 3)
+    check("con conflictos y un CSV de antes con ese nombre: no lo toca y avisa",
+          status == 1 and pipeline.sha256(path) == before and "Ojo" in shown)
+    check("no deja ficheros a medias", not any(".a_medias" in name for name in os.listdir(folder)))
+
+    def cut(*args, **kwargs):
+        raise OSError("corte inventado al renombrar")
+
+    real_replace = pipeline.os.replace
+    pipeline.os.replace = cut
+    try:
+        stopped = raises(OSError, lambda: pipeline.write_submission(path, codes))
+    finally:
+        pipeline.os.replace = real_replace
+    check("si la escritura se corta antes de renombrar, el CSV de antes con ese nombre sigue igual",
+          stopped and pipeline.sha256(path) == before)
+    for name in os.listdir(folder):
+        if ".a_medias" in name:
+            os.remove(os.path.join(folder, name))
+
 
 def main():
     rng = np.random.default_rng(SEED)
@@ -373,6 +552,8 @@ def main():
             check_guards(rng)
             check_pieces(np.random.default_rng(SEED + 1))  # su propio azar: no cambia el de las demás
         check_csv(codes, folder)
+        check_summary()
+        check_main(codes, folder)
         check_reader(folder, rng)
         check_build_requires(folder)
     finally:

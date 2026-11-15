@@ -24,6 +24,12 @@ Lo que hace es lo que se fijó antes de medir (docs/decisiones.md, 14/11, «apue
 - **B3, B4 y B5** (14/11): los pesos de B2 de cada pliegue, sin reentrenar. Su α se elige de
   `ALFAS_D_PROPIO` igual que la de B2, pero con la pieza de `D` de `main` (`dead_state.evidence`) dentro y
   sin oráculo.
+- **B9** (15/11, posesiones cortas) no se entrena aquí: lo entrena validation/posesiones_cortas/entrenar_b9.py,
+  y este script copia sus coeficientes del módulo tal cual.
+- **B6, B7 y B8** (15/11, una sola ronda de reentrenamiento, escrita antes de medir): cada uno entrena sus
+  pesos como B2 y elige α como B5. B6 sin las ventanas de 151 frames; B7 con los rasgos de B2 y cada fila
+  con peso `PESO_CAMBIO` a `CERCA_CAMBIO` frames o menos de un cambio de equipo del control (que también
+  está en el flag); B8 con los rasgos de B2 más el evento de toque.
 
 Además enseña, como descripción, el acierto por frame de cada pliegue en el partido que dejó fuera, frente
 a N1 (el jugador más cercano). No decide nada: decide el harness.
@@ -58,35 +64,85 @@ ALFAS = (1 / 16, 1 / 8, 1 / 4, 1 / 2, 1.0, 2.0)
 # de `main` dentro, sin oráculo, en esta rejilla.
 ALFAS_D_PROPIO = (1 / 8, 1 / 4, 1 / 2, 1.0, 2.0, 4.0, 8.0)
 CON_PESOS_DE_B2 = ("b3", "b4", "b5")
+# La ronda de reentrenamiento (docs/decisiones.md, 15/11, antes de medir): pesos propios y α como B5.
+REENTRENADOS = ("b6", "b7", "b8")
+CON_PESO_CERCA_DEL_CAMBIO = ("b7",)
+PESO_CAMBIO = 5.0  # B7: peso de una fila de entrenamiento cerca de un cambio de equipo
+CERCA_CAMBIO = 50  # frames (±2 s)
+# Los cambios que cuentan para B7: los del control, que también están en el flag. Cerca de un cambio que solo
+# está en el flag (un toque breve del rival) las filas que se entrenan son todas del equipo que retiene, y
+# pesarlas enseñaría a aguantar más: 9.847 filas así frente a 18.846 cerca de un cambio del control (15/11).
+CONVENCIONES_CAMBIO = ("control",)
 CIFRAS = 6
+# Los conjuntos que entrena este script. B9 (15/11, posesiones cortas) lo entrena
+# validation/posesiones_cortas/entrenar_b9.py; aquí sus coeficientes se copian del módulo tal cual.
+ENTRENADOS_AQUI = ("b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8")
 MODULO = os.path.join(ROOT, "possession", "aprendida.py")
 INICIO, FIN = "# >>> COEFICIENTES", "# <<< COEFICIENTES"
+# Se calculan una vez los rasgos de B8, que los tiene todos; cada conjunto es una selección de sus columnas.
+TODOS_LOS_RASGOS = "b8"
+
+
+def columnas(conjunto):
+    """Las columnas de los rasgos de B8 que usa el conjunto: un corte si son las primeras, si no una lista."""
+    todos = aprendida.NOMBRES[TODOS_LOS_RASGOS]
+    if len(set(todos)) != len(todos):
+        raise AssertionError("hay rasgos con el mismo nombre en {}".format(TODOS_LOS_RASGOS))
+    indices = [todos.index(nombre) for nombre in aprendida.NOMBRES[conjunto]]
+    return slice(0, len(indices)) if indices == list(range(len(indices))) else indices
+
+
+def cerca_de_un_cambio(gt, blocks, convenciones=CONVENCIONES_CAMBIO):
+    """Frames a `CERCA_CAMBIO` o menos de un cambio de equipo en `convenciones`, sin salir del tramo.
+
+    Un cambio es un frame cuya etiqueta y la del anterior son `H` o `A` y distintas. A través de una parada
+    no cuenta.
+    """
+    cerca = np.zeros(len(gt["flag"]), dtype=bool)
+    for inicio, fin in blocks:
+        largo = fin - inicio
+        cambio = np.zeros(largo, dtype=bool)
+        for convencion in convenciones:
+            e = np.asarray(gt[convencion][inicio:fin])
+            juego = np.isin(e, (H, A))
+            cambio[1:] |= juego[1:] & juego[:-1] & (e[1:] != e[:-1])
+        t = np.flatnonzero(cambio)
+        borde = np.zeros(largo + 1)
+        np.add.at(borde, np.maximum(t - CERCA_CAMBIO, 0), 1.0)
+        np.add.at(borde, np.minimum(t + CERCA_CAMBIO + 1, largo), -1.0)
+        cerca[inicio:fin] = np.cumsum(borde)[:largo] > 0
+    return cerca
 
 
 def preparar(partido):
-    """Rasgos de B2 (los de B1 son las primeras columnas), etiquetas y N1 de un partido, por condición."""
+    """Rasgos de B8 (los de B1 y B2 son las primeras columnas), etiquetas y N1 de un partido, por condición."""
     cargado = dfl.cargar(partido)
     gt = cargado["gt"]
     condiciones = {}
     for condicion in dfl.VOTAN:
         # Con el balón limpio, como lo ven las piezas en `pipeline.run`.
         trk = ball.clean(dfl.tracking_de(cargado, condicion))
-        condiciones[condicion] = {"rasgos": aprendida.rasgos(trk, "b2"), "blocks": trk.blocks,
+        condiciones[condicion] = {"rasgos": aprendida.rasgos(trk, TODOS_LOS_RASGOS), "blocks": trk.blocks,
                                   "visible": aprendida.balon_visible(trk), "n1": aprendida.equipo_mas_cercano(trk),
                                   "estado_d": dead_state.evidence(trk)[0][:, puntuar.D]}
         if partido == dfl.PARTIDOS[0] and condicion == CONDICION_ENTRENAMIENTO:
-            # B1 son las primeras columnas de B2: se comprueba una vez con el código del módulo.
-            b1 = aprendida.rasgos(trk, "b1")
-            if aprendida.NOMBRES["b2"][:b1.shape[1]] != aprendida.NOMBRES["b1"] or not np.array_equal(
-                    b1, condiciones[condicion]["rasgos"][:, :b1.shape[1]]):
-                raise AssertionError("los rasgos de B1 no son las primeras columnas de los de B2")
+            # Cada conjunto son columnas de B8: se comprueba una vez con el código del módulo.
+            for conjunto in ("b1", "b2", "b6"):
+                if not np.array_equal(aprendida.rasgos(trk, conjunto),
+                                      condiciones[condicion]["rasgos"][:, columnas(conjunto)]):
+                    raise AssertionError("los rasgos de {} no son sus columnas de los de {}".format(
+                        conjunto, TODOS_LOS_RASGOS))
     coinciden = (gt["flag"] == gt["control"]) & np.isin(gt["flag"], (H, A))
     filas = np.flatnonzero(coinciden & (np.arange(len(coinciden)) % PASO == 0))
-    return {"gt": gt, "condiciones": condiciones, "filas": filas, "coinciden": coinciden}
+    cerca = cerca_de_un_cambio(gt, condiciones[CONDICION_ENTRENAMIENTO]["blocks"])
+    return {"gt": gt, "condiciones": condiciones, "filas": filas, "coinciden": coinciden, "cerca_cambio": cerca}
 
 
-def ajustar(X, y):
-    """Pesos de la regresión logística (sin término independiente) en las unidades de los rasgos."""
+def ajustar(X, y, peso=None):
+    """Pesos de la regresión logística (sin término independiente) en las unidades de los rasgos.
+
+    `peso`: el de cada fila (B7). Sin él, el ajuste de siempre, operación a operación.
+    """
     rms = np.sqrt(np.mean(X ** 2, axis=0))
     rms[rms == 0] = 1.0
     Z = X / rms
@@ -94,8 +150,12 @@ def ajustar(X, y):
     paso = np.inf
     for _ in range(ITERACIONES):
         p = 1.0 / (1.0 + np.exp(-np.clip(Z @ w, -30, 30)))
-        gradiente = Z.T @ (p - y) + LAMBDA * w
-        hessiana = (Z * (p * (1 - p))[:, None]).T @ Z + LAMBDA * np.eye(len(w))
+        if peso is None:
+            gradiente = Z.T @ (p - y) + LAMBDA * w
+            hessiana = (Z * (p * (1 - p))[:, None]).T @ Z + LAMBDA * np.eye(len(w))
+        else:
+            gradiente = Z.T @ (peso * (p - y)) + LAMBDA * w
+            hessiana = (Z * (peso * p * (1 - p))[:, None]).T @ Z + LAMBDA * np.eye(len(w))
         delta = np.linalg.solve(hessiana, gradiente)
         w = w - delta
         paso = float(np.max(np.abs(delta)))
@@ -103,9 +163,10 @@ def ajustar(X, y):
     return pesos, w, paso
 
 
-def elegir_alfa(datos, partidos, pesos, k):
+def elegir_alfa(datos, partidos, pesos, conjunto):
     """α de ALFAS con más spellF1 medio (dos condiciones que votan × dos convenciones) en `partidos`."""
-    logits = {(p, c): aprendida.logit(datos[p]["condiciones"][c]["rasgos"][:, :k], pesos)
+    cols = columnas(conjunto)
+    logits = {(p, c): aprendida.logit(datos[p]["condiciones"][c]["rasgos"][:, cols], pesos)
               for p in partidos for c in dfl.VOTAN}
     medias = []
     for alfa in ALFAS:
@@ -127,8 +188,8 @@ def elegir_alfa_d_propio(datos, partidos, pesos, conjunto):
     Es lo que hace `pipeline.run` sin oráculo: la evidencia del conjunto más la de `dead_state`, todo
     permitido (ninguna de las dos prohíbe nada), y el decodificador de `main`.
     """
-    k = len(aprendida.NOMBRES[conjunto])
-    logits = {(p, c): aprendida.logit(datos[p]["condiciones"][c]["rasgos"][:, :k], pesos)
+    cols = columnas(conjunto)
+    logits = {(p, c): aprendida.logit(datos[p]["condiciones"][c]["rasgos"][:, cols], pesos)
               for p in partidos for c in dfl.VOTAN}
     medias = []
     for alfa in ALFAS_D_PROPIO:
@@ -146,10 +207,10 @@ def elegir_alfa_d_propio(datos, partidos, pesos, conjunto):
     return ALFAS_D_PROPIO[int(np.argmax(medias))], medias
 
 
-def acierto_fuera(dato, pesos, k):
+def acierto_fuera(dato, pesos, conjunto):
     """Aciertos por frame en el partido que quedó fuera («como el ATD», frames vivos donde coinciden)."""
     c = dato["condiciones"][CONDICION_ENTRENAMIENTO]
-    z = aprendida.logit(c["rasgos"][:, :k], pesos)
+    z = aprendida.logit(c["rasgos"][:, columnas(conjunto)], pesos)
     verdad = dato["gt"]["flag"]
     vivos = dato["coinciden"]
     salida = {}
@@ -211,6 +272,11 @@ def main():
     print("Apuesta B: entrenamiento en la DFL ({} partidos, balón «{}», uno de cada {} frames vivos en los "
           "que coinciden las dos convenciones)".format(len(datos), CONDICION_ENTRENAMIENTO, PASO))
     for conjunto in aprendida.CONJUNTOS:
+        if conjunto not in ENTRENADOS_AQUI:
+            modelos[conjunto] = collections.OrderedDict(
+                (clave, (juego["alfa"], juego["pesos"]))
+                for clave, juego in aprendida.COEFICIENTES.get(conjunto, {}).items())
+            continue
         k = len(aprendida.NOMBRES[conjunto])
         modelos[conjunto] = collections.OrderedDict()
         if conjunto in CON_PESOS_DE_B2:
@@ -230,22 +296,32 @@ def main():
                                                   " / ".join("{:.3f}".format(m).replace(".", ",") for m in medias)))
                 print("  hecho {} {} en {:.0f} s".format(conjunto, clave, time.time() - inicio), file=sys.stderr)
             continue
+        reentrenado = conjunto in REENTRENADOS
         print()
-        print("### {} ({} rasgos)".format(conjunto.upper(), k))
+        print("### {} ({} rasgos{})".format(conjunto.upper(), k, "; pesos propios y α como B5, con la pieza de "
+                                            "`D` de main dentro" if reentrenado else ""))
         print()
         print("| pliegue | filas | último paso de Newton | α | spellF1 medio en entrenamiento por α ({}) |".format(
-            ", ".join("{:g}".format(a) for a in ALFAS)))
+            ", ".join("{:g}".format(a) for a in (ALFAS_D_PROPIO if reentrenado else ALFAS))))
         print("|---|---|---|---|---|")
         aciertos = collections.defaultdict(lambda: np.zeros(3, dtype=np.int64))
         estandarizados = None
+        cols = columnas(conjunto)
         for clave in ["todos"] + list(dfl.PARTIDOS):
             entrena = [p for p in dfl.PARTIDOS if p != clave]
             c = CONDICION_ENTRENAMIENTO
-            X = np.vstack([datos[p]["condiciones"][c]["rasgos"][datos[p]["filas"], :k] for p in entrena])
+            X = np.vstack([datos[p]["condiciones"][c]["rasgos"][datos[p]["filas"]][:, cols] for p in entrena])
             y = np.concatenate([(datos[p]["gt"]["flag"][datos[p]["filas"]] == H).astype(float) for p in entrena])
-            pesos, w, paso = ajustar(X, y)
+            peso = None
+            if conjunto in CON_PESO_CERCA_DEL_CAMBIO:
+                peso = np.concatenate([np.where(datos[p]["cerca_cambio"][datos[p]["filas"]], PESO_CAMBIO, 1.0)
+                                       for p in entrena])
+            pesos, w, paso = ajustar(X, y, peso)
             del X
-            alfa, medias = elegir_alfa(datos, entrena, pesos, k)
+            if reentrenado:
+                alfa, medias = elegir_alfa_d_propio(datos, entrena, pesos, conjunto)
+            else:
+                alfa, medias = elegir_alfa(datos, entrena, pesos, conjunto)
             modelos[conjunto][clave] = (alfa, pesos)
             print("| {} | {} | {:.1e} | {:g} | {} |".format(
                 "los 7" if clave == "todos" else "sin " + clave, len(y), paso, alfa,
@@ -253,7 +329,7 @@ def main():
             if clave == "todos":
                 estandarizados = w
             else:
-                for nombre, valores in acierto_fuera(datos[clave], pesos, k).items():
+                for nombre, valores in acierto_fuera(datos[clave], pesos, conjunto).items():
                     aciertos[nombre] += valores
             print("  hecho {} {} en {:.0f} s".format(conjunto, clave, time.time() - inicio), file=sys.stderr)
         print()

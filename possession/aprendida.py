@@ -43,8 +43,26 @@ VEL_MAX = 12.0  # m/s: una velocidad mayor es un cambio de slot, no un jugador
 VENTANA_CERCA = 25  # frames: «sin balón cerca» es ningún frame con balón en ±12
 DECIMALES = 6
 # B3, B4 y B5 (14/11) usan los rasgos y los pesos de B2; solo cambia cómo se convierte el logit en puntuación.
-CONJUNTOS = ("b1", "b2", "b3", "b4", "b5")
-RASGOS_DE = {"b1": "b1", "b2": "b2", "b3": "b2", "b4": "b2", "b5": "b2"}
+# B6, B7 y B8 (15/11, la ronda de reentrenamiento) puntúan como B5 con sus propios pesos: B6 sin las ventanas
+# de 151 frames, B7 con los rasgos de B2 entrenados con peso cerca de los cambios y B8 con el evento de toque.
+# B9 (15/11, posesiones cortas; docs/decisiones.md) puntúa como B5 con sus pesos: los rasgos de B2 más la
+# dirección en que se mueve el balón.
+CONJUNTOS = ("b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9")
+COMO_B5 = ("b5", "b6", "b7", "b8", "b9")
+RASGOS_DE = {"b1": "b1", "b2": "b2", "b3": "b2", "b4": "b2", "b5": "b2", "b6": "b6", "b7": "b2", "b8": "b8",
+             "b9": "b9"}
+# El evento de toque de B8 (anexo A.4 de la revisión externa; docs/decisiones.md, 15/11, antes de medir).
+TOQUE_CERCA, TOQUE_LEJOS = 12, 25  # frames: velocidad del balón de t+12 a t+25 frente a la de t−25 a t−12
+TOQUE_UMBRAL = 3.0  # m/s: cambio de velocidad mínimo (el umbral de toque del experimento 0)
+TOQUE_MAXIMO = 12  # frames: el evento es el máximo del cambio en ±12
+TOQUE_RADIO = 3.0  # m: el jugador más cercano tiene que estar a esta distancia o menos (el radio de ELASTIC)
+VENTANAS_TOQUE = (13, 51)  # frames: ventanas centradas del rasgo
+# La dirección del balón de B9 (validation/posesiones_cortas/BITACORA.md §6). Fijada antes de medir B9, pero la
+# ventana y el umbral salen de un sondeo y de una puerta en los mismos 7 partidos de la DFL (se probaron 13,
+# 25 y 51 frames): no son «sin ajustar» como las de arriba.
+DIRECCION_MITAD = 6  # frames: la velocidad del balón se mide de t−6 a t+6 (13 frames)
+DIRECCION_UMBRAL = 2.0  # m/s: por encima, el balón va hacia la portería del visitante (+1); por debajo de −2, al revés
+VENTANAS_DIRECCION = (1, 13, 51)  # frames: ventanas centradas del rasgo
 N1_PUNTOS = 1.0  # el +1 de N1 que suma B5 (candidates.NEAREST_SCORE el 14/11), escrito aquí para que no cambie con él
 BLOQUE_CERCANO = 20000  # frames por bloque al buscar el más cercano (candidates.CHUNK el 14/11)
 BASE_BALON = ["signo del más cercano"] + ["núcleo {} m".format(s) for s in SIGMAS] + ["distancia del más cercano"]
@@ -63,7 +81,10 @@ NOMBRES["b2"] = NOMBRES["b1"] + [
     "velocidad en la dirección de ataque, ventana 101, sin balón cerca",
     "dispersión, ventana 51, sin balón cerca",
 ]
-NOMBRES["b3"] = NOMBRES["b4"] = NOMBRES["b5"] = NOMBRES["b2"]
+NOMBRES["b3"] = NOMBRES["b4"] = NOMBRES["b5"] = NOMBRES["b7"] = NOMBRES["b2"]
+NOMBRES["b6"] = [nombre for nombre in NOMBRES["b2"] if not nombre.endswith("ventana 151")]
+NOMBRES["b8"] = NOMBRES["b2"] + ["evento de toque, ventana {}".format(v) for v in VENTANAS_TOQUE]
+NOMBRES["b9"] = NOMBRES["b2"] + ["dirección del balón, ventana {}".format(v) for v in VENTANAS_DIRECCION]
 
 
 def media_centrada(valores, ancho):
@@ -153,6 +174,81 @@ def _rasgos_forma(bx, by, visible, equipos, largo, fps):
     return forma + [np.where(sin_balon, r, 0.0) for r in (forma[0], forma[3], forma[4], forma[5])]
 
 
+def cambio_de_velocidad(bx, by, fps):
+    """Cambio de velocidad del balón en cada frame de un tramo (m/s), a la escala del suavizado del ATD.
+
+    La norma de la diferencia entre la velocidad media de t+12 a t+25 y la de t−25 a t−12 (anexo A.4 de la
+    revisión externa). NaN si falta el balón en alguno de esos cuatro frames o si alguno cae fuera del tramo.
+    """
+    n = len(bx)
+    salida = np.full(n, np.nan)
+    if n <= 2 * TOQUE_LEJOS:
+        return salida
+    t = np.arange(TOQUE_LEJOS, n - TOQUE_LEJOS)
+    escala = fps / float(TOQUE_LEJOS - TOQUE_CERCA)
+    antes_x = (bx[t - TOQUE_CERCA] - bx[t - TOQUE_LEJOS]) * escala
+    antes_y = (by[t - TOQUE_CERCA] - by[t - TOQUE_LEJOS]) * escala
+    despues_x = (bx[t + TOQUE_LEJOS] - bx[t + TOQUE_CERCA]) * escala
+    despues_y = (by[t + TOQUE_LEJOS] - by[t + TOQUE_CERCA]) * escala
+    salida[t] = np.hypot(despues_x - antes_x, despues_y - antes_y)
+    return salida
+
+
+def eventos_de_toque(bx, by, equipos, fps):
+    """Signo del evento de toque en cada frame de un tramo: +1 local, −1 visitante, 0 sin evento o sin nadie.
+
+    Evento: un frame con un cambio de velocidad (`cambio_de_velocidad`) de `TOQUE_UMBRAL` o más que es el
+    máximo en ±`TOQUE_MAXIMO` frames; si hay empate, cuenta el primero. Su signo es el equipo del jugador más
+    cercano al balón en ese frame si está a `TOQUE_RADIO` o menos.
+    """
+    cambio = cambio_de_velocidad(bx, by, fps)
+    valor = np.where(np.isnan(cambio), -np.inf, cambio)
+    n = len(valor)
+    es_evento = valor >= TOQUE_UMBRAL
+    for k in range(1, TOQUE_MAXIMO + 1):
+        anterior = np.concatenate((np.full(k, -np.inf), valor[:-k])) if k < n else np.full(n, -np.inf)
+        siguiente = np.concatenate((valor[k:], np.full(k, -np.inf))) if k < n else np.full(n, -np.inf)
+        es_evento &= (valor > anterior) & (valor >= siguiente)
+    signo = np.zeros(n)
+    t = np.flatnonzero(es_evento)
+    if not len(t):
+        return signo
+    cercanos = []
+    for x, y, hay in equipos:
+        d2 = (x[t] - bx[t, None]) ** 2 + (y[t] - by[t, None]) ** 2
+        d2 = np.where(hay[t], d2, np.inf)
+        cercanos.append(d2.min(axis=1) if d2.shape[1] else np.full(len(t), np.inf))
+    local, visitante = cercanos
+    radio = TOQUE_RADIO * TOQUE_RADIO
+    signo[t] = np.where((local <= visitante) & (local <= radio), 1.0,
+                        np.where((visitante < local) & (visitante <= radio), -1.0, 0.0))
+    return signo
+
+
+def direccion_del_balon(bx, equipos, fps):
+    """Hacia qué portería va el balón en cada frame de un tramo: +1, −1 o 0 (B9, 15/11).
+
+    La velocidad del balón en x de t−`DIRECCION_MITAD` a t+`DIRECCION_MITAD`, con el signo de la dirección de
+    ataque del local (la de `_rasgos_forma`: el local ataca hacia donde está, en media, el visitante). +1 si
+    pasa de `DIRECCION_UMBRAL` (va hacia la portería del visitante), −1 si baja de −`DIRECCION_UMBRAL`, y 0 si
+    no, si falta el balón en alguno de los dos extremos, si alguno cae fuera del tramo o si no hay dirección.
+    Una velocidad medida en 13 frames aguanta el suavizado de unos 25 del balón del ATD.
+    """
+    (xh, _, hh), (xa, _, ha) = equipos
+    n = len(bx)
+    salida = np.zeros(n)
+    if not (hh.any() and ha.any()) or n <= 2 * DIRECCION_MITAD:
+        return salida
+    media_h = np.where(hh, xh, 0.0).sum() / int(hh.sum())
+    media_a = np.where(ha, xa, 0.0).sum() / int(ha.sum())
+    direccion = float(np.sign(media_a - media_h))
+    m = DIRECCION_MITAD
+    with np.errstate(invalid="ignore"):
+        v = (bx[2 * m:] - bx[:-2 * m]) * fps / (2.0 * m) * direccion
+        salida[m:n - m] = np.where(v > DIRECCION_UMBRAL, 1.0, np.where(v < -DIRECCION_UMBRAL, -1.0, 0.0))
+    return salida
+
+
 def rasgos(trk, conjunto):
     """Matriz (n, k) de rasgos del conjunto (`NOMBRES[conjunto]`), en float64, a cero fuera de los tramos."""
     if conjunto not in CONJUNTOS:
@@ -161,14 +257,23 @@ def rasgos(trk, conjunto):
     salida = np.zeros((n, len(NOMBRES[conjunto])))
     team = np.asarray(trk.team)
     columnas = [np.flatnonzero(team == equipo) for equipo in (H, A)]
+    tipo = RASGOS_DE[conjunto]
     for inicio, fin in trk.blocks:
         bx = np.asarray(trk.bx[inicio:fin], dtype=np.float64)
         by = np.asarray(trk.by[inicio:fin], dtype=np.float64)
         equipos = [_por_equipo(trk.px[inicio:fin], trk.py[inicio:fin], c) for c in columnas]
         base, visible = _rasgos_balon(bx, by, equipos)
         lista = [media_centrada(r, v) for r in base for v in VENTANAS_BALON]
-        if RASGOS_DE[conjunto] == "b2":
+        if tipo in ("b2", "b6", "b8", "b9"):
             lista += _rasgos_forma(bx, by, visible, equipos, float(trk.pitch[0]), float(trk.fps))
+        if tipo == "b6":
+            lista = [r for r, nombre in zip(lista, NOMBRES["b2"]) if nombre in NOMBRES["b6"]]
+        if tipo == "b8":
+            signo = eventos_de_toque(bx, by, equipos, float(trk.fps))
+            lista += [media_centrada(signo, v) for v in VENTANAS_TOQUE]
+        if tipo == "b9":
+            hacia = direccion_del_balon(bx, equipos, float(trk.fps))
+            lista += [media_centrada(hacia, v) for v in VENTANAS_DIRECCION]
         salida[inicio:fin] = np.column_stack(lista)
     return salida
 
@@ -202,7 +307,10 @@ def puntuacion_de(conjunto, z, visible, alfa, cercano=None):
       de `D`.
     - b5: b4 más N1 (`N1_PUNTOS` al equipo de `cercano`, el equipo del jugador más cercano al balón de
       `equipo_mas_cercano`, −1 donde nadie). Frente a `D` empuja como N1.
+    - b6, b7, b8 y b9: como b5, con su propio logit (15/11).
     """
+    if conjunto in COMO_B5[1:]:
+        conjunto = "b5"
     if conjunto in ("b1", "b2"):
         return puntuacion(z, alfa)
     if conjunto == "b3":
@@ -252,8 +360,8 @@ def coeficientes(conjunto, fuera=None):
     clave = "todos" if fuera is None else fuera
     juego = COEFICIENTES.get(conjunto, {}).get(clave)
     if juego is None:
-        raise KeyError("no hay coeficientes de «{}» para «{}»: hay que ejecutar "
-                       "validation/apuesta_b/entrenar.py".format(conjunto, clave))
+        raise KeyError("no hay coeficientes de «{}» para «{}»: hay que ejecutar validation/apuesta_b/entrenar.py "
+                       "(B9: validation/posesiones_cortas/entrenar_b9.py)".format(conjunto, clave))
     return juego
 
 
@@ -261,7 +369,7 @@ def _evidencia(trk, conjunto, fuera):
     juego = coeficientes(conjunto, fuera)
     z = logit(rasgos(trk, conjunto), juego["pesos"])
     cercano = None
-    if conjunto == "b5":
+    if conjunto in COMO_B5:
         # Como N1, pero a cero fuera de los tramos, como el resto de este módulo (ahí se escribe `X`).
         todos = equipo_mas_cercano(trk)
         cercano = np.full(len(trk.bx), -1, dtype=np.int8)
@@ -293,6 +401,26 @@ def evidence_b4(trk, fuera=None):
 def evidence_b5(trk, fuera=None):
     """B5: B4 más el +1 de N1 donde se ve el balón (14/11)."""
     return _evidencia(trk, "b5", fuera)
+
+
+def evidence_b6(trk, fuera=None):
+    """B6: B5 sin las ventanas de 151 frames, con sus pesos (15/11, ronda de reentrenamiento)."""
+    return _evidencia(trk, "b6", fuera)
+
+
+def evidence_b7(trk, fuera=None):
+    """B7: B5 con los pesos entrenados con peso 5 a ±2 s de un cambio de equipo (15/11)."""
+    return _evidencia(trk, "b7", fuera)
+
+
+def evidence_b8(trk, fuera=None):
+    """B8: B5 con el evento de toque a la escala del suavizado, con sus pesos (15/11)."""
+    return _evidencia(trk, "b8", fuera)
+
+
+def evidence_b9(trk, fuera=None):
+    """B9: B5 con la dirección en que se mueve el balón, con sus pesos (15/11, posesiones cortas)."""
+    return _evidencia(trk, "b9", fuera)
 
 
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------
@@ -612,6 +740,278 @@ COEFICIENTES = {
             -0.313793, -0.0248903, -0.0194702, -0.0986982, 0.0570066,
             1.15001, 0.226786, -4.0326, 0.453503, -0.018045,
             0.264411, -4.51977, -0.279009, 0.137234, 0.336248,
+        )},
+    },
+    "b6": {
+        "todos": {"alfa": 4.0, "pesos": (
+            0.0404691, 0.0502709, 0.584843, -0.0141848, 0.456653,
+            3.22999, 0.650874, -1.23696, 1.78201, 0.108128,
+            -0.197529, -0.427342, 0.0244732, -0.137698, 0.0305683,
+            1.9062, 0.591306, -5.9058, 0.356964, 0.157585,
+            0.300433, -5.25617, -0.193525, -0.0197561, 0.32174,
+        )},
+        "J03WMX": {"alfa": 1.0, "pesos": (
+            0.0419482, 0.00591851, 0.761194, 0.0127286, 0.428271,
+            2.83672, 0.606885, -1.12319, 1.78472, 0.15766,
+            -0.308131, -0.363937, 0.0102287, -0.113401, 0.00734049,
+            1.99807, 0.510595, -5.82044, 0.355904, 0.158679,
+            0.293424, -5.01303, -0.199434, -0.0183508, 0.302885,
+        )},
+        "J03WN1": {"alfa": 2.0, "pesos": (
+            0.0372139, 0.0947497, 0.386601, 0.00681781, 0.394385,
+            3.71366, 0.659632, -1.32391, 1.95217, 0.18964,
+            -0.217409, -0.557102, 0.0230227, -0.142204, 0.0333425,
+            1.64164, 0.6858, -6.0149, 0.320561, 0.194112,
+            0.32892, -5.47568, -0.136934, -0.0707009, 0.347006,
+        )},
+        "J03WOH": {"alfa": 2.0, "pesos": (
+            0.039374, 0.0478268, 0.688104, -0.0163217, 0.489974,
+            2.97956, 0.590553, -1.18347, 1.83968, 0.0387616,
+            -0.181429, -0.421004, 0.029351, -0.133097, 0.0141255,
+            2.01984, 0.595782, -5.91271, 0.346239, 0.170085,
+            0.295996, -5.12937, -0.232879, 0.0226884, 0.314606,
+        )},
+        "J03WOY": {"alfa": 1.0, "pesos": (
+            0.0404728, 0.0654194, 0.506884, -0.0107758, 0.386898,
+            3.54867, 0.671539, -1.25257, 1.62806, 0.0545122,
+            -0.096705, -0.479866, 0.0185821, -0.14021, 0.0599128,
+            1.97378, 0.567314, -5.88409, 0.350566, 0.151642,
+            0.292321, -5.38146, -0.113032, -0.109579, 0.329955,
+        )},
+        "J03WPY": {"alfa": 4.0, "pesos": (
+            0.0418402, 0.0574005, 0.542827, -0.0103627, 0.411508,
+            3.46807, 0.659407, -1.20942, 1.70627, 0.071748,
+            -0.175988, -0.361933, 0.0230612, -0.137343, 0.0159811,
+            1.9044, 0.626821, -5.96479, 0.393792, 0.114303,
+            0.300061, -5.34358, -0.223801, 0.0255416, 0.314734,
+        )},
+        "J03WQQ": {"alfa": 2.0, "pesos": (
+            0.0295503, 0.0638126, 0.595108, -0.0495036, 0.58835,
+            3.03543, 0.623729, -1.22369, 1.72426, 0.16512,
+            -0.299863, -0.29856, 0.0337933, -0.148504, 0.0358546,
+            1.91201, 0.551434, -5.83045, 0.366227, 0.163386,
+            0.293124, -5.09161, -0.268238, 0.0486274, 0.318772,
+        )},
+        "J03WR9": {"alfa": 4.0, "pesos": (
+            0.0538476, 0.0160762, 0.602124, -0.00457291, 0.454342,
+            3.09552, 0.698847, -1.27452, 1.79557, 0.0849344,
+            -0.132735, -0.473348, 0.027271, -0.14229, 0.0492909,
+            1.84285, 0.529345, -5.79873, 0.362202, 0.153665,
+            0.303491, -5.3342, -0.181865, -0.0324516, 0.324102,
+        )},
+    },
+    "b7": {
+        "todos": {"alfa": 2.0, "pesos": (
+            0.0494415, -0.0038846, -0.00275515, 1.13477, -0.0775694,
+            1.3571, 1.33042, 0.325263, 0.0254878, -0.539923,
+            1.43934, 0.437432, -0.118634, 0.436407, -0.421067,
+            -0.587678, -0.0137724, -0.0577931, -0.0912509, 0.0857342,
+            1.05075, -0.100369, -2.87184, 0.573574, -0.279541,
+            0.151917, -3.46304, -0.223839, 0.122168, 0.206106,
+        )},
+        "J03WMX": {"alfa": 2.0, "pesos": (
+            0.0512183, -0.041346, -0.0524927, 1.4615, -0.0783853,
+            1.40409, 1.27607, -0.233797, -0.0426037, -0.416017,
+            1.39981, 0.576707, -0.0408959, 0.260627, -0.269199,
+            -0.6951, -0.0259889, -0.0371615, -0.090712, 0.0654266,
+            1.0394, -0.0956983, -2.82169, 0.580812, -0.287587,
+            0.152864, -3.18067, -0.228297, 0.121989, 0.185211,
+        )},
+        "J03WN1": {"alfa": 2.0, "pesos": (
+            0.0389246, 0.0306692, 0.0250076, 0.729079, -0.0468261,
+            1.32884, 1.33541, 1.2564, -0.0334208, -0.519248,
+            1.44306, 0.643292, 0.0305551, 0.265001, -0.3425,
+            -0.761547, -0.000793251, -0.0749144, -0.0934168, 0.0901659,
+            0.939548, 0.0456418, -3.11867, 0.568473, -0.274167,
+            0.164217, -3.54545, -0.230585, 0.136634, 0.21726,
+        )},
+        "J03WOH": {"alfa": 2.0, "pesos": (
+            0.0439644, 0.0186948, -0.0226808, 1.32954, -0.0566606,
+            1.37806, 1.35748, -0.127684, -0.00867336, -0.526771,
+            1.42167, 0.536869, -0.303212, 0.636497, -0.491713,
+            -0.549239, -0.0097946, -0.0605453, -0.0821913, 0.0609177,
+            1.13017, -0.184895, -2.76961, 0.547634, -0.249314,
+            0.15367, -3.38535, -0.249944, 0.143984, 0.19863,
+        )},
+        "J03WOY": {"alfa": 2.0, "pesos": (
+            0.0485284, 0.00563139, -0.0187063, 1.05057, -0.0892758,
+            1.32998, 1.27455, 0.869174, 0.023559, -0.511618,
+            1.36129, 0.381813, -0.0781875, 0.426937, -0.490843,
+            -0.610861, -0.0177346, -0.0629691, -0.0685191, 0.090367,
+            1.07683, -0.0216514, -2.90328, 0.595271, -0.316299,
+            0.140896, -3.49603, -0.157685, 0.0445981, 0.213259,
+        )},
+        "J03WPY": {"alfa": 2.0, "pesos": (
+            0.0669513, -0.0338992, 0.0177253, 1.06348, -0.103582,
+            1.37568, 1.27184, 0.765944, 0.0898554, -0.585768,
+            1.73151, -0.0751689, -0.204929, 0.514336, -0.531473,
+            -0.312012, -0.0193238, -0.0493713, -0.117492, 0.0881672,
+            1.09746, -0.165138, -2.91561, 0.61325, -0.319851,
+            0.155451, -3.6181, -0.227105, 0.14004, 0.199237,
+        )},
+        "J03WQQ": {"alfa": 4.0, "pesos": (
+            0.0268531, 0.0295738, 0.027391, 1.1158, -0.0582768,
+            1.30505, 1.61841, -0.417431, 0.0526662, -0.56977,
+            1.28463, 0.613364, -0.112515, 0.467908, -0.387786,
+            -0.614663, -0.00356785, -0.0700819, -0.107451, 0.11468,
+            1.07522, -0.0779652, -2.90117, 0.541521, -0.231645,
+            0.145618, -3.41382, -0.26058, 0.15127, 0.205597,
+        )},
+        "J03WR9": {"alfa": 4.0, "pesos": (
+            0.0675463, -0.034192, -0.00649658, 1.16574, -0.0998918,
+            1.37748, 1.21016, 0.302045, 0.0671136, -0.613548,
+            1.43309, 0.373298, -0.118859, 0.472829, -0.42183,
+            -0.566892, -0.0161626, -0.0539793, -0.0766372, 0.0898288,
+            0.974234, -0.200916, -2.67747, 0.567828, -0.275076,
+            0.155007, -3.59378, -0.225919, 0.131705, 0.223168,
+        )},
+    },
+    "b8": {
+        "todos": {"alfa": 2.0, "pesos": (
+            0.0432226, 0.00979531, -0.322975, 1.44234, -0.0976327,
+            1.15535, 0.70883, 2.60311, 0.0662229, -0.604102,
+            1.31108, 0.708563, 0.0546563, 0.295955, -0.736659,
+            -0.277183, -0.0257919, -0.0142308, -0.083924, 0.0316819,
+            1.15642, 0.365338, -4.13601, 0.45344, -0.0277075,
+            0.26358, -4.3977, -0.29332, 0.160936, 0.331959,
+            -1.10536, 23.7908,
+        )},
+        "J03WMX": {"alfa": 2.0, "pesos": (
+            0.0351305, -0.00488014, -0.296561, 1.81794, -0.0685014,
+            1.13669, 0.618928, 1.88738, 0.0250798, -0.516515,
+            1.33098, 0.805622, 0.100484, 0.183803, -0.603632,
+            -0.39931, -0.0382002, 0.0066199, -0.0995309, 0.0144704,
+            1.24414, 0.310634, -4.12205, 0.452911, -0.0224985,
+            0.259796, -4.14384, -0.307567, 0.1672, 0.309037,
+            -1.24524, 22.0006,
+        )},
+        "J03WN1": {"alfa": 4.0, "pesos": (
+            0.0454471, 0.0272914, -0.304866, 0.946348, -0.0755839,
+            1.12093, 0.794529, 3.6813, 0.00678767, -0.534741,
+            1.1637, 1.06484, 0.166736, 0.156932, -0.650059,
+            -0.493622, -0.0238579, -0.0249655, -0.0722352, 0.027046,
+            0.935132, 0.461647, -4.29093, 0.432561, -0.0148615,
+            0.286552, -4.64811, -0.24395, 0.124864, 0.362808,
+            -1.25217, 23.638,
+        )},
+        "J03WOH": {"alfa": 1.0, "pesos": (
+            0.038764, 0.0244444, -0.340121, 1.67749, -0.111244,
+            1.18786, 0.666313, 2.08322, 0.0375919, -0.587366,
+            1.35822, 0.773582, -0.0272617, 0.360318, -0.749786,
+            -0.30497, -0.0198647, -0.0169443, -0.0917134, 0.0248977,
+            1.21664, 0.342305, -4.04433, 0.445607, -0.0193321,
+            0.263663, -4.23096, -0.327821, 0.199414, 0.320361,
+            -1.00811, 24.1969,
+        )},
+        "J03WOY": {"alfa": 4.0, "pesos": (
+            0.0456107, 0.0145246, -0.32953, 1.32917, -0.107606,
+            1.15304, 0.745516, 3.23159, 0.050427, -0.566837,
+            1.15007, 0.529325, 0.00867351, 0.38276, -0.80943,
+            -0.227569, -0.0302189, -0.0146572, -0.0648951, 0.0446221,
+            1.1859, 0.341379, -4.02276, 0.461265, -0.0548694,
+            0.251937, -4.49912, -0.223553, 0.0867242, 0.3443,
+            -1.38457, 23.9373,
+        )},
+        "J03WPY": {"alfa": 2.0, "pesos": (
+            0.0464467, 0.00291101, -0.344746, 1.33979, -0.11023,
+            1.14649, 0.685916, 3.02175, 0.103631, -0.65698,
+            1.54568, 0.226939, 0.0165539, 0.363788, -0.865333,
+            0.0098204, -0.0271147, -0.0101697, -0.103547, 0.0357135,
+            1.17287, 0.396357, -4.23348, 0.47853, -0.0538365,
+            0.266062, -4.50326, -0.319918, 0.198138, 0.322553,
+            -0.759676, 24.9104,
+        )},
+        "J03WQQ": {"alfa": 4.0, "pesos": (
+            0.0291543, 0.0278913, -0.329831, 1.455, -0.102621,
+            1.16453, 0.888765, 1.90837, 0.0675285, -0.612176,
+            1.17694, 0.92202, 0.0798674, 0.27538, -0.699175,
+            -0.261973, -0.0118713, -0.0314017, -0.0777069, 0.0377827,
+            1.18354, 0.365919, -4.16652, 0.446374, -0.00254635,
+            0.258254, -4.25303, -0.351466, 0.210232, 0.326488,
+            -0.971741, 24.5674,
+        )},
+        "J03WR9": {"alfa": 8.0, "pesos": (
+            0.0597324, -0.0207906, -0.319268, 1.49156, -0.0865065,
+            1.14795, 0.606432, 2.56443, 0.116893, -0.668447,
+            1.4001, 0.636757, 0.0554269, 0.307232, -0.748563,
+            -0.26128, -0.027511, -0.0117397, -0.0733575, 0.0374833,
+            1.10073, 0.305181, -4.00223, 0.453279, -0.022494,
+            0.264604, -4.47353, -0.279007, 0.142159, 0.336985,
+            -1.14066, 23.3698,
+        )},
+    },
+    "b9": {
+        "todos": {"alfa": 2.0, "pesos": (
+            0.0248344, 0.0740258, 0.306622, 1.29556, -0.0784222,
+            1.12275, 0.710779, 2.85105, 0.0292616, -0.655769,
+            1.59011, 0.329948, 0.0194359, 0.448331, -1.10803,
+            0.00019182, -0.0242304, -0.0398015, -0.10409, 0.112681,
+            1.47189, 0.237191, -4.32444, 0.274059, -0.00514532,
+            0.265707, -4.69382, -0.116231, 0.140765, 0.327212,
+            0.048555, 0.546326, 0.985652,
+        )},
+        "J03WMX": {"alfa": 2.0, "pesos": (
+            0.0181951, 0.0592142, 0.296572, 1.68184, -0.0459791,
+            1.08888, 0.623231, 2.14636, -0.0296597, -0.54066,
+            1.56699, 0.460461, 0.0582571, 0.337182, -0.957817,
+            -0.126979, -0.0366786, -0.0187889, -0.109146, 0.0826655,
+            1.54357, 0.17242, -4.26838, 0.278213, -0.0107448,
+            0.262006, -4.42407, -0.134267, 0.156739, 0.304283,
+            0.0583782, 0.564285, 0.969787,
+        )},
+        "J03WN1": {"alfa": 4.0, "pesos": (
+            0.0221773, 0.0932322, 0.291794, 0.843965, -0.0578681,
+            1.08143, 0.746313, 3.89818, -0.0319725, -0.59639,
+            1.58372, 0.593042, 0.123742, 0.310094, -1.0306,
+            -0.201078, -0.0229333, -0.0453525, -0.106034, 0.119968,
+            1.29312, 0.289206, -4.45472, 0.267212, 0.00322221,
+            0.284615, -4.98585, -0.0807155, 0.109217, 0.361874,
+            0.101321, 0.468832, 0.984877,
+        )},
+        "J03WOH": {"alfa": 2.0, "pesos": (
+            0.0229013, 0.0915775, 0.330472, 1.51352, -0.0781625,
+            1.13348, 0.651643, 2.33168, -0.00812638, -0.609683,
+            1.62678, 0.380989, -0.0470851, 0.481854, -1.16572,
+            0.0283859, -0.0189191, -0.043327, -0.108315, 0.0983797,
+            1.5048, 0.255978, -4.30612, 0.244337, 0.0255991,
+            0.270624, -4.50216, -0.129073, 0.15717, 0.311202,
+            0.0582856, 0.507263, 1.02767,
+        )},
+        "J03WOY": {"alfa": 4.0, "pesos": (
+            0.0265548, 0.0744194, 0.300367, 1.17825, -0.0880162,
+            1.13131, 0.751986, 3.61178, -0.000344642, -0.607015,
+            1.43067, 0.026861, -0.0191354, 0.524599, -1.16689,
+            0.0701541, -0.0316142, -0.0393799, -0.0867908, 0.133532,
+            1.48849, 0.187973, -4.16265, 0.294996, -0.0523083,
+            0.255103, -4.78434, -0.0598191, 0.0867288, 0.33877,
+            0.0161269, 0.572874, 1.01966,
+        )},
+        "J03WPY": {"alfa": 4.0, "pesos": (
+            0.02816, 0.0687362, 0.291246, 1.19097, -0.101692,
+            1.13902, 0.734977, 3.17627, 0.0748625, -0.721045,
+            1.75215, -0.0135217, -0.0310597, 0.530719, -1.20812,
+            0.20481, -0.022661, -0.040375, -0.112649, 0.10897,
+            1.49211, 0.239098, -4.37778, 0.302261, -0.0337659,
+            0.264278, -4.80449, -0.147614, 0.182126, 0.321592,
+            0.0275044, 0.570511, 0.952702,
+        )},
+        "J03WQQ": {"alfa": 2.0, "pesos": (
+            0.0176293, 0.0894984, 0.333467, 1.29535, -0.0897829,
+            1.13339, 0.872526, 2.13055, 0.041105, -0.693028,
+            1.45707, 0.623403, 0.0522428, 0.458339, -1.08769,
+            -0.0180508, -0.0114443, -0.056686, -0.102127, 0.126267,
+            1.50538, 0.268407, -4.3704, 0.248283, 0.0344559,
+            0.25892, -4.55034, -0.155558, 0.175483, 0.322431,
+            0.0542063, 0.57786, 0.998704,
+        )},
+        "J03WR9": {"alfa": 2.0, "pesos": (
+            0.0377865, 0.0422626, 0.298607, 1.33532, -0.0583347,
+            1.11331, 0.624903, 2.82396, 0.085614, -0.712399,
+            1.65472, 0.229284, 0.0389246, 0.425364, -1.09424,
+            0.0346038, -0.0252062, -0.0367692, -0.0982437, 0.119776,
+            1.42468, 0.210638, -4.25287, 0.281009, -0.000703268,
+            0.269117, -4.77913, -0.108616, 0.122367, 0.330309,
+            0.0225781, 0.57644, 0.935828,
         )},
     },
 }

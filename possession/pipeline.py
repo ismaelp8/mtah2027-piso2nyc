@@ -3,7 +3,9 @@
     python -m possession.pipeline                    # escribe evaluation/results/equipo_v0.csv
     python -m possession.pipeline --name mi_prueba
 
-Lee el ATD y el Smart Tagging del partido, así que **solo lo ejecuta una persona**. Imprime solo agregados.
+Lee el ATD y el Smart Tagging del partido, así que **solo lo ejecuta una persona**. Imprime solo agregados:
+las versiones de Python y numpy, las líneas del ATD leídas y saltadas, posesiones, paradas y rachas cortas
+por tramo, los conflictos entre piezas y el sha256. Si hay conflictos, no escribe el CSV.
 
     tracking -> limpieza del balón -> evidencias (equipo, estado de D, anclas de D) -> decodificador -> CSV
 
@@ -14,6 +16,7 @@ harness de la DFL (validation/harness/), con el mismo código de las piezas.
 import argparse
 import hashlib
 import os
+import platform
 import sys
 
 import numpy as np
@@ -97,19 +100,55 @@ def run(trk, extra=(), params=None, report=None, pieces=None):
 
 
 def write_submission(path, codes):
-    """CSV `frame,label`. Siempre con saltos de línea `\\n`, para que salga igual en cualquier sistema."""
+    """CSV `frame,label`. Siempre con saltos de línea `\\n`, para que salga igual en cualquier sistema.
+
+    Escribe primero `<nombre>.a_medias.csv` y después lo renombra: si se corta a medias, no queda un CSV a
+    medias con el nombre bueno. El de a medias acaba en `.csv` para que, si queda en la carpeta por defecto
+    (evaluation/results/), git lo ignore y Claude no lo pueda leer, como cualquier entrega (.gitignore y
+    .claude/settings.json). En otra carpeta no vale, igual que con la propia entrega.
+    """
     folder = os.path.dirname(path)
     if folder and not os.path.isdir(folder):
         os.makedirs(folder)
     labels = tracking.LETTERS[codes]
-    with open(path, "w", newline="\n") as handle:
+    root, extension = os.path.splitext(path)
+    partial = root + ".a_medias" + extension
+    with open(partial, "w", newline="\n") as handle:
         handle.write("frame,label\n")
         handle.writelines("{},{}\n".format(frame, label) for frame, label in enumerate(labels))
+    os.replace(partial, path)
     return path
 
 
+# Cotas de las rachas cortas del resumen: la duración mínima de posesión que probó David (12 frames) y la
+# del criterio del 13/11, «ninguna racha de `D` ni de juego de menos de 25 frames» (1 s).
+SHORT_RUNS = (12, 25)
+
+
+def _runs(mask):
+    """Largo de cada racha de True de `mask`."""
+    edges = np.diff(np.concatenate(([0], mask.astype(np.int8), [0])))
+    return np.flatnonzero(edges == -1) - np.flatnonzero(edges == 1)
+
+
+def short_runs(window):
+    """Rachas cortas de una salida: {(tipo, cota): cuántas}.
+
+    - "posesiones": rachas de `H` o de `A` (una posesión de `H` entre dos de `A` es una racha);
+    - "juego": rachas de juego, `H` y `A` juntos, entre paradas (las del criterio del 13/11);
+    - "paradas": rachas de `D`.
+
+    Se cuentan dentro de `window`, como las ve el scorer en un tramo evaluado: la primera y la última quedan
+    cortadas por el borde y cuentan con lo que queda dentro.
+    """
+    lengths = {"posesiones": np.concatenate((_runs(window == tracking.H), _runs(window == tracking.A))),
+               "juego": _runs((window == tracking.H) | (window == tracking.A)),
+               "paradas": _runs(window == tracking.D)}
+    return {(kind, limit): int(np.sum(lengths[kind] < limit)) for kind in lengths for limit in SHORT_RUNS}
+
+
 def summary(codes, blocks):
-    """Agregados de una salida: frames por etiqueta, y posesiones y paradas por tramo evaluado."""
+    """Agregados de una salida: frames por etiqueta, posesiones y paradas por tramo evaluado, y rachas cortas."""
     lines = ["frames por etiqueta: " + "  ".join(
         "{} {}".format(letter, int(np.sum(codes == code))) for code, letter in enumerate(tracking.LETTERS))]
     for number, (start, stop) in enumerate(blocks, 1):
@@ -119,7 +158,42 @@ def summary(codes, blocks):
         lines.append("tramo {}: {} frames, {} posesiones ({} H, {} A), {} paradas".format(
             number, len(window), int(np.sum(kinds != tracking.D)), int(np.sum(kinds == tracking.H)),
             int(np.sum(kinds == tracking.A)), int(np.sum(kinds == tracking.D))))
+        short = short_runs(window)
+        lines.append("tramo {}, rachas cortas: {}".format(number, "; ".join(
+            "de menos de {} frames, {} posesiones, {} de juego y {} paradas".format(
+                limit, short["posesiones", limit], short["juego", limit], short["paradas", limit])
+            for limit in SHORT_RUNS)))
     return lines
+
+
+def atd_lines(counts):
+    """Las líneas del ATD que se leyeron y las que se saltaron (tracking.from_files). Solo recuentos."""
+    text = ("líneas del ATD: {lineas} leídas, {validas} válidas; saltadas: {vacias} vacías, {mal_formadas} mal "
+            "formadas y {fuera_de_rango} con el frame fuera de rango; {repetidas} líneas repetidas; frames sin "
+            "línea: {frames_sin_linea}, {frames_evaluados_sin_linea} de ellos evaluados").format(**counts)
+    odd = sum(counts[key] for key in ("vacias", "mal_formadas", "fuera_de_rango", "repetidas",
+                                      "frames_evaluados_sin_linea"))
+    if odd:
+        text += "\nOJO: el lector se ha saltado o repetido líneas, o faltan frames evaluados. Apúntalo."
+    return text
+
+
+# Lo que el ATD del partido no puede tener: el 15/11, con d6bd128, Ismael midió todo a 0 (docs/decisiones.md).
+# Si cambia (un fichero cortado, otro ATD), la entrega no se genera en silencio.
+ATD_MUST_BE_ZERO = ("vacias", "mal_formadas", "fuera_de_rango", "repetidas", "frames_sin_linea")
+
+
+def check_atd(counts):
+    """Error si el ATD tiene alguna línea saltada o repetida, o algún frame sin línea. El error lleva solo
+    recuentos (`atd_lines`), así que se puede pegar a Claude."""
+    if any(counts[key] for key in ATD_MUST_BE_ZERO):
+        raise ValueError("el ATD no es como el del 15/11 (ninguna línea saltada ni frame sin línea), así que "
+                         "no se genera la entrega.\n" + atd_lines(counts))
+
+
+def versions():
+    """Python y numpy con los que se ha generado. La huella solo se repite con los mismos (requirements.txt)."""
+    return "python {}, numpy {}".format(platform.python_version(), np.__version__)
 
 
 def sha256(path):
@@ -134,12 +208,14 @@ def build(game=games.GAME, data_dir=None, params=None):
     """Las etiquetas del partido. Lee el ATD y el Smart Tagging: solo lo ejecuta una persona.
 
     Pide los ficheros antes de leer nada. El Smart Tagging lo usa dead_ball.evidence desde el 15/11, y sin
-    él no hay entrega: el error dice qué falta y dónde se esperaba.
+    él no hay entrega: el error dice qué falta y dónde se esperaba. Si el ATD tiene alguna línea saltada o
+    repetida, o algún frame sin línea, también da error (`check_atd`).
     """
     games.require(["atd_meta", "atd_raw", "smart_tagging"], game, data_dir)
     paths = games.asset_paths(game, data_dir)
-    trk = tracking.from_atd(paths, game)
     report = {}
+    trk = tracking.from_atd(paths, game, report=report)
+    check_atd(report["atd"])
     anchors = lambda clean: dead_ball.evidence(clean, paths, game)  # noqa: E731
     codes = run(trk, extra=[anchors], params=params, report=report)
     return codes, trk.blocks, report
@@ -160,15 +236,22 @@ def main():
     args = parser.parse_args()
 
     codes, blocks, report = build()
-    path = write_submission(os.path.join(args.out, args.name + ".csv"), codes)
-    print("escrito {}".format(shown(path)))
+    path = os.path.join(args.out, args.name + ".csv")
+    print(versions())
+    print(atd_lines(report["atd"]))
     for line in summary(codes, blocks):
         print(line)
     print("frames con piezas en conflicto: {}".format(report["conflictos"]))
-    print("sha256: {}".format(sha256(path)))
     if report["conflictos"]:
-        print("\nHAY PIEZAS QUE SE CONTRADICEN: esta entrega no vale hasta arreglarlo.")
+        # Se decide antes de escribir: un CSV con piezas en conflicto no se queda con el nombre bueno.
+        print("\nHAY PIEZAS QUE SE CONTRADICEN: no se escribe {}. Esta salida no vale hasta arreglarlo.".format(
+            shown(path)))
+        if os.path.exists(path):
+            print("Ojo: ya había un {} de antes, y no es esta salida.".format(shown(path)))
         sys.exit(1)
+    write_submission(path, codes)
+    print("escrito {}".format(shown(path)))
+    print("sha256: {}".format(sha256(path)))
     print("\nAhora: python evaluation/validate_submission.py {}".format(shown(path)))
 
 

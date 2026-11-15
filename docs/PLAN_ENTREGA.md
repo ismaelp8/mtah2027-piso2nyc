@@ -17,8 +17,9 @@
 - **Las piezas se enchufan con una interfaz común** (sección 2). No se cambia sin avisar a Ismael.
 - **Qué versión entra lo decide el harness de la DFL** (sección 4): los 7 partidos abiertos de la
   Bundesliga. Nunca la ventana pública de 5 minutos.
-- **Corte: lunes 16 a las 14:00.** Lo que no haya ganado en el harness para entonces no entra. Se congela
-  el lunes por la noche.
+- **Corte: martes 17** (decisión de Ismael del 15/11; antes era el lunes 16 a las 14:00). La hora es
+  provisional, las 12:00, hasta que Ismael la confirme. Lo que no haya ganado en el harness para entonces
+  no entra. El lunes por la noche se ensaya el congelado; el definitivo es el martes, tras el corte.
 
 ## 1. Quién hace qué
 
@@ -106,7 +107,53 @@ python validation/scripts/prueba_pipeline.py
 
 ## 3. Tu pieza
 
+**Desde el 15/11, cada bloque empieza por «Tareas desde el 15/11».** Salen de la revisión externa
+([`revision_externa_2026-11-15.md`](revision_externa_2026-11-15.md)), repartidas por pieza. Antes de usarla:
+
+- **Sus medidas (anexo A) son de fuera:** sus scripts no están en el repo y nadie del equipo las ha
+  repetido. Sirven para ordenar el trabajo, no para decidir qué entra.
+- **Lo que compara con las notas oficiales del baseline o con la tabla de retrasos** sale de la GT privada.
+  Es descriptivo y no elige nada mientras la organización no conteste (D21).
+- **El corte pasa al martes 17** (decisión de Ismael del 15/11). Hora provisional, las 12:00: ver la
+  sección 5.
+- **Lo demás no cambia:** regla escrita y subida antes de medir, rama nueva desde `main`, PR, y nada elegido
+  con la ventana pública.
+
 ### Ismael: esqueleto, harness e integración
+
+**Tareas desde el 15/11** (revisión externa, P3, P4 y P5):
+
+1. **Congelado sin sorpresas.**
+   - Fijar `numpy` y `pandas` con `==` en `requirements.txt` y apuntar la versión de Python (la excepción
+     prevista en `CLAUDE.md`).
+   - Reproducir el CSV en un entorno limpio con esas versiones y, si se puede, con Python 3.11.
+   - Que el comando documentado escriba `<NOMBRE_EQUIPO>.csv`: hoy el nombre por defecto es `equipo_v0`.
+2. **`possession/io.py` se salta en silencio las líneas mal formadas.** Con un ATD truncado saldría una
+   entrega válida y distinta. Primero, que el pipeline imprima cuántas líneas se saltó, y ejecutarlo: nadie
+   sabe cuántas son hoy. Solo si sale 0, convertirlo en error.
+3. **`possession/pipeline.py`:** no dejar el CSV con el nombre bueno si hay piezas en conflicto, y que el
+   resumen imprima cuántas rachas hay de menos de 12 y de 25 frames (lo pide el criterio del 13/11).
+4. **Apuesta B, una sola ronda de reentrenamiento,** con tres candidatos escritos antes de medir:
+   - B5 sin las ventanas de 151 frames;
+   - B5 con peso 5 en los frames a ±2 s de un cambio de equipo;
+   - B5 con dos rasgos nuevos: el evento de toque medido a la escala del suavizado (anexo A.4 de la
+     revisión), con signo, en ventanas de 13 y de 51 frames.
+
+   Se mide en el harness frente a `main`, con `--eventos` y con los criterios 2 y 3 de B5. **Regla de
+   parada:** si los tres empatan, se cierra la evidencia de equipo y se apunta en `docs/decisiones.md`.
+   De paso: un slot duplicado cuenta doble en los núcleos de B5 (`possession/aprendida.py`).
+5. **Dos preguntas a la organización,** que envía Ismael:
+   - D21: si se pueden usar las notas publicadas del baseline y la tabla de retrasos para elegir entre dos
+     convenciones de etiquetas de datos externos;
+   - cómo se construyen las ventanas `SET PIECES` del Smart Tagging y dónde cae el reinicio dentro de ellas.
+6. **Si se va a citar el anexo A de la revisión,** sus scripts tienen que entrar en `validation/scripts/` y
+   repetirse aquí.
+7. **Decisiones que son de Ismael y condicionan tareas de otros:**
+   - la hora del corte del martes (provisional, las 12:00);
+   - si se reabre la decisión del 13/11 («la falta de balón no es `D`») para puntuar todos los huecos largos
+     (tarea 5 de Manuel);
+   - si una medida con el `D` propio puede cambiar un valor por defecto (tarea 2 de David);
+   - si la limpieza del balón se enciende (hoy, no).
 
 **Hecho hoy:** el esqueleto (`tracking`, `ball`, `candidates`, `dead_state`, `temporal`, `pipeline`) con
 su prueba con un partido inventado, y el harness de la DFL (`validation/harness/`) con su primera medida.
@@ -127,10 +174,29 @@ congelar, y reproducir el CSV byte a byte en una máquina limpia.
 
 **Apuesta B** (evidencia aprendida, `docs/investigacion_metodos.md` §4.2; de `H` frente a `A` y no de tres
 clases, por decisión del 14/11 en `docs/decisiones.md`): en una sesión aparte, cuando el harness y la
-degradación estén comprobados. Se abandona el lunes a las 14:00 si no ha ganado. Medida el 14/11:
+degradación estén comprobados. Se abandona en el corte si no ha ganado. Medida el 14/11:
 `validation/resultados/2026-11-14_apuesta_b.md`.
 
 ### David: decodificador (`possession/temporal.py`)
+
+**Tareas desde el 15/11** (revisión de la PR 9 y revisión externa, P6):
+
+1. **Pendiente de la PR 9, en una PR corta:**
+   - `blocks = tuple(blocks)` al entrar en `_prepare`: con un generador, `decode` devuelve todo `X` sin dar
+     error. Hoy nadie lo llama así, pero es la función de la entrega;
+   - una prueba propia, `validation/scripts/prueba_decodificador.py`, y la fila de `diagnostico_spell.py` en
+     `validation/README.md`.
+2. **Medir los costes del `D` con el `D` propio. Solo medir.**
+   - `to_dead` y `from_dead` en 12, 25 y 50, en un fichero de `validation/harness/versiones/` escrito antes.
+   - Con `python validation/harness/puntuar.py --versiones <fichero> --d propio` y con
+     `python validation/apuesta_b/d_propio.py --versiones <fichero>`, que mide además con el balón a la
+     vista en los `D`. Los dos modos acotan lo que no se puede medir.
+   - Cuando Ana añada la opción de escala a su pieza (su tarea 2), repetirlo con la escala a 0,5.
+   - **Es descriptivo:** un número con el `D` propio no decide (§4), y la escala de B5 se eligió con coste
+     25. Si algo gana en los dos modos y con las dos convenciones, se le pasa a Ismael, que decide.
+3. **No hace falta más:** el coste de cambio, las duraciones mínimas y la poda ya empatan.
+
+Los textos de la PR 9 que había que corregir ya están corregidos en `main` (`05b6d98`).
 
 **Qué hay:** un Viterbi sobre {`H`, `A`, `D`} con tres costes de cambio (`switch`, `to_dead`,
 `from_dead`), todos a 25 y **sin ajustar**. Es la pieza que más mueve el `spellF1` y la única que no
@@ -186,6 +252,37 @@ mismo tipo de etiqueta que la GT del reto: lo que no aguante con el flag no cuen
 
 ### Manuel: `D`, fronteras y anclas (`possession/dead_ball.py`)
 
+**Tareas desde el 15/11** (revisión de la PR 8 y revisión externa, P2). Todas en `possession/dead_ball.py`,
+una capa cada vez y en este orden:
+
+1. **El final de la parada, en la reaparición del balón.** Hoy la capa del hueco puntúa `D` hasta el
+   inicio de la ventana `SET PIECES`. Medir antes, con agregados y regla previa, dónde cae el reinicio:
+   cuándo vuelve a verse el balón y cuándo el modelo de Ana pasa de parado a juego, contado desde el inicio
+   y desde el fin de la ventana. Si cae en un sitio fijo con poca dispersión, la capa deja de puntuar ahí.
+2. **El balón visto fuera de las líneas:** puntuación de `D` en los frames en que el balón se ve más de
+   1 m fuera. El 12/11 se midió que es el 4,2 % de los frames con balón.
+3. **Antes de tocar el principio del hueco, el agregado que falta:**
+   - de los frames que cambian de etiqueta con la capa, cuántos caen en los primeros 5 s de cada hueco;
+   - un histograma grueso de la distancia entre el inicio de cada hueco y el inicio del `D` que sale del
+     decodificador.
+
+   Solo si eso lo apoya, más peso al principio del hueco. Hoy el modelo de Ana ve `D` en el 60,9 % de esos
+   5 s: un peso alto ahí puede forzar `D` en juego.
+4. **Un ancla de juego vivo en el saque:** prohibir `D` en el frame del saque de cada parte (un frame en
+   `allowed`). En la misma PR, para que el fichero tenga un solo cambio abierto.
+5. **No entra salvo que Ismael reabra la decisión del 13/11:** puntuar `D` en todos los huecos largos,
+   también sin un reinicio delante. Es «la falta de balón como `D`», que está descartada con medidas.
+6. **Retirado de momento: el equipo que reanuda.** La revisión externa midió en la DFL que `main` falla el
+   equipo en el primer segundo tras el reinicio en el 5,5–5,7 % de los casos. No lo hemos repetido, pero
+   baja a «si sobra tiempo».
+7. **De la revisión de la PR 8:** tapar con «< 5» las celdas de menos de 5 casos en tu script del partido.
+
+**Cómo se mide cada capa:** no se puede en la DFL. Como la capa del hueco: regla escrita y subida antes
+de ejecutar, el modelo de Ana como juez, el placebo desplazado y la entrega regenerada dentro de la banda
+(del 15 al 60 % de `D` y 250 paradas como mucho). Si se enciende la limpieza de Antonio, se repite.
+
+Los comentarios de tu fichero que había que corregir ya están corregidos en `main` (`05b6d98`).
+
 **Qué hay:** tu v1 (el tramo antes del saque de la 2ª parte) y una función nueva, `evidence()`, que la
 pasa al pipeline con la interfaz común. Es la pieza del partido: usa el Smart Tagging y las constantes
 de saque, así que no corre en la DFL.
@@ -221,6 +318,27 @@ equipo anterior a través de una parada. Los tres están descartados con medidas
 
 ### Ana: `D`, estado (`possession/dead_state.py`) y documento técnico
 
+**Tareas desde el 15/11** (revisión externa, P3, P5 y P6):
+
+1. **Las ventanas de tu pieza cruzan el principio de cada tramo evaluado**
+   (`dead_state.window_mean`). Con ventanas de hasta ±2 s, los primeros segundos de la 1ª parte reciben
+   evidencia de los jugadores parados antes del saque. En la DFL no pasa, porque antes de cada parte hay un
+   hueco vacío: es una diferencia entre lo que valida el harness y lo que se entrega.
+   - Recortar las ventanas al tramo evaluado.
+   - Comprobar con `validation/scripts/d_estado/medir.py` que en la DFL no cambia nada, y con
+     `entrenar.py --comprobar` que los coeficientes siguen saliendo.
+   - Cambia un poco la entrega: Ismael la regenera.
+2. **Una opción de escala en `dead_state.evidence`,** con 1 por defecto, para que David pueda medir la
+   escala a 0,5 con el `D` propio (su tarea 2). El valor por defecto no cambia.
+3. **Apuntar la versión de `scikit-learn`** con la que entrenaste (pendiente de la PR 5).
+4. **Documento técnico,** desde el lunes y con Ismael. Además de lo previsto, tiene que declarar:
+   - el entrenamiento con la DFL, citando a Bassek et al. (2025) y la licencia CC BY 4.0;
+   - el uso de un LLM para escribir código y documentación;
+   - el uso del Smart Tagging y de las constantes de saque de `starter/load_smart_tagging.py`;
+   - que en el repo hay agregados del partido (recuentos y porcentajes), nunca valores por frame;
+   - qué nivel cabe esperar y por qué el número del harness es optimista, con la cautela del principio de
+     esta sección.
+
 **Qué hay (14/11 por la noche):** tu modelo E2, en `main` desde la PR 5. Opina en la columna `D` con
 los jugadores, y los agregados del ATD dicen que se traslada (`validation/resultados/2026-11-14_d_estado.md`
 y `2026-11-14_agregados_jugadores_atd.md`). La entrega `equipo_v1` ya lo lleva. Los puntos de abajo son
@@ -246,6 +364,33 @@ Manuel, que ponen el instante. Coordinaos.
 entrenamiento y su origen, las reglas de posesión, las limitaciones y cómo reproducirlo.
 
 ### Antonio: evidencia de equipo (`possession/candidates.py`) y limpieza (`possession/ball.py`)
+
+**Tareas desde el 15/11** (revisión externa, P1 y P7):
+
+1. **¿El balón del ATD llega con retraso?** El harness suaviza el balón con una media centrada, y nadie ha
+   medido si el suavizado del ATD es centrado o va con retraso. Unos 12 frames de retraso costarían más que
+   cualquier mejora medida hasta ahora.
+   - **La medida:** en los tramos en que un jugador lleva el balón (el mismo equipo es el más cercano a
+     1,5 m o menos durante 1 s o más), el desfase que maximiza la correlación entre la velocidad del balón
+     y la del jugador más cercano.
+   - **Primero se calibra en la DFL** (`validation/scripts/`, lo puede ejecutar Claude): con el balón
+     suavizado centrado tiene que dar 0 ± 2 frames y, con una media móvil hacia atrás de 25 frames,
+     +12 ± 2. Si no los separa, no se ejecuta en el partido.
+   - **Después, el recuento en el partido** (`validation/partido/`, lo ejecutas tú, solo agregados), con
+     estos candidatos escritos antes:
+     1. si el desfase es de 3 frames o menos en valor absoluto, no se toca nada;
+     2. si es de 4 o más, una variante en `possession/ball.py` que desplaza el balón ese desfase. `clean` no
+        cambia hasta que lo decida Ismael;
+     3. si los jugadores también pudieran venir con retraso y no se puede separar, no se toca y se apunta.
+   - **La latencia de la ventana pública no sirve de puerta:** en nuestras entregas ha salido −6,0
+     (`equipo_v1`) y +2,4 (`equipo_v3`) frames, con 5 parejas cada vez. No dice nada.
+2. **Lo último, y solo si lo decide Ismael: las fases del Smart Tagging como pista de equipo** en los
+   frames sin balón. Necesita el Smart Tagging, así que no va en `candidates.py`: sería un módulo aparte
+   que enchufa Ismael. Antes, un agregado del partido con regla previa: en los frames de control claro,
+   con qué frecuencia coincide el equipo de la fase con el del más cercano, frente a las fases desplazadas.
+   Si no llega al 80 % o no dobla al placebo, no entra.
+3. **Cerrado:** la limpieza del balón queda arreglada y apagada (PR 7), y tus textos de la PR 7 ya están
+   corregidos en `main` (`05b6d98`). No hace falta ninguna PR de seguimiento.
 
 **Qué hay:** desde el 14/11 por la noche, la pieza de equipo de la entrega es B5 (`aprendida.evidence_b5`,
 la apuesta B), no N1. Para entrar, un candidato tuyo tiene que ganar a B5 en el harness. N1 sigue en
@@ -345,9 +490,9 @@ por bueno.
 |---|---|
 | **sábado 14** | esqueleto y harness en `main`; todos con la DFL en local; agregados del partido ejecutados; primera entrega de prueba |
 | **domingo 15** | cada pieza itera contra el harness; las PR entran según ganan |
-| **lunes 16, 14:00** | **corte:** lo que no haya ganado no entra |
-| **lunes 16, tarde y noche** | congelar; reproducir byte a byte en una máquina limpia; documento técnico |
-| **martes 17** | repo público, validar el fichero exacto y enviar con margen. Límite: 23:59 CET |
+| **lunes 16** | cada pieza sigue iterando; las PR entran según ganan. Documento técnico en marcha. **Por la noche, ensayo de congelado:** regenerar la entrega con lo que haya en `main` y reproducirla byte a byte en una máquina limpia |
+| **martes 17, 12:00** (hora provisional) | **corte:** lo que no haya ganado no entra |
+| **martes 17, tarde** | congelar; reproducir byte a byte; repo público, validar el fichero exacto y enviar con margen. Límite: 23:59 CET |
 
 ## 6. Lo que solo puede hacer una persona
 

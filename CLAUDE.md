@@ -229,6 +229,93 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
+- **Lector y comando de la entrega** (Ismael, 15/11, `d6bd128`; tareas 2 y 3 de su bloque del plan). No
+  cambian ninguna etiqueta.
+  - **El lector del ATD** (`possession/io.py`) cuenta las líneas leídas y las saltadas, y los frames sin
+    línea. Si una línea no se puede leer, el error no enseña el valor.
+  - **`python -m possession.pipeline`** imprime:
+    - las versiones de Python y numpy;
+    - ese recuento;
+    - las rachas de menos de 12 y de 25 frames por tramo.
+
+    Con piezas en conflicto, no escribe el CSV.
+  - **En el partido** (Ismael lo ejecutó): 199.319 líneas, todas válidas; 0 saltadas o repetidas y 0
+    frames sin línea. Desde entonces, cualquier línea rara es un error y no se genera la entrega.
+  - **No hay rachas cortas:** ninguna de menos de 12 ni de 25 frames en los dos tramos.
+- **Ronda única de reentrenamiento de B5: empate** (15/11; `docs/decisiones.md` y
+  `validation/resultados/2026-11-14_apuesta_b.md` §11). Por la regla de parada se cerró la evidencia de
+  equipo; **Ismael la reabrió el mismo día** (punto siguiente). B5 sigue en la entrega y `pipeline.PIECES` no
+  cambia.
+  - **Los candidatos:** B6 (sin las ventanas de 151 frames), B7 (más peso cerca de los cambios) y B8 (con
+    el evento de toque).
+  - **Ninguno cumple los tres criterios** fijados antes de medir. El que más se acerca es B7: mejora las
+    recuperaciones y los duelos con cambio, y gana +0,012 y +0,015 con el flag, pero no llega al +0,03 de
+    §5.8 y con el control no se mueve.
+  - **Sus coeficientes quedan en `possession/aprendida.py`.** Los de B1 a B5 no cambian.
+  - **`validation/partido/slots_duplicados.py`** dice si el ATD duplica a algún jugador. Lo ejecuta Ismael,
+    si quiere; arreglarlo sería un cuarto candidato.
+- **La evidencia de equipo está reabierta** (Ismael, 15/11): «Es claro que tenemos un problema en que
+  predecimos muchas menos posesiones de las que hay, sobretodo cuando son posesiones cortas.»
+  - **B5 sigue en la entrega** y `equipo_v3` sigue vigente hasta que algo gane.
+  - **El estudio de las posesiones cortas está en `main`** (`4305576`;
+    `validation/resultados/2026-11-15_posesiones_cortas.md` y `validation/posesiones_cortas/BITACORA.md`).
+    La rama `claude/posesiones-cortas-5e84f8` se conserva en GitHub, porque sus commits prueban que las reglas
+    iban antes de medir. Lo que dice [medido en datos abiertos]:
+    - **Con el flag, tres cuartos de lo que no encontramos son toques del rival sin control.**
+    - **`main` saca un ritmo casi fijo de posesiones,** sea cual sea la GT. Con el control de la DFL, el
+      número cuadra (4,50 por minuto vivo frente a 4,71). En SkillCorner, que también exige control, falta
+      un 30 % (4,25 frente a 6,05).
+    - **B9, que es B5 más la dirección en que se mueve el balón, empata.** Gana con el flag (+0,039 y
+      +0,048), pero empata con el control, empeora los duelos sin cambio más de lo permitido y no mejora en
+      SkillCorner (−0,005 y +0,004). Queda en `aprendida.py`, fuera de `PIECES`.
+    - **Las fases 2 y 3 se cerraron sin candidato.** Quitar las posesiones inventadas no llega a +0,03 ni
+      con un oráculo, y una red de una capa con los mismos rasgos no gana con el control ni en SkillCorner.
+    - **Tiene en marcha una fase 4,** por encargo de Ismael: si el déficit de posesiones del partido es real
+      contando igual por igual, y cuánto valdría una pista de equipo como las fases del Smart Tagging.
+  - **La entrega no cambia con B9** [medido sin datos del partido]: los rasgos de B2, los coeficientes de B1 a
+    B8 y `evidence_b5` son idénticos, y la huella del partido inventado es la misma. Ismael la confirma al
+    regenerar.
+- **Tres exámenes de B5 en datos abiertos** (15/11, `main` en `bb4f2ef`). El pipeline de la entrega, tal
+  cual, con el `D` de las etiquetas:
+  - **SkillCorner** (`validation/skillcorner/`; `validation/resultados/2026-11-15_skillcorner.md`): 20
+    partidos de la A-League con tracking automático de retransmisión.
+    - `main` gana al baseline por +0,131 (20 de 20) y a N1 por +0,059 (19 de 20).
+    - Está partido en dos: 10 partidos para diagnosticar o entrenar y 10 de examen que no se tocan
+      (`lector.ENTRENAMIENTO` y `lector.EXAMEN`).
+  - **Metrica** (`validation/metrica/`; `validation/resultados/2026-11-15_metrica.md`): 3 partidos.
+    - `main` gana al baseline por +0,118 (3 de 3) y a N1 por +0,058 (2 de 3).
+    - Las etiquetas salen de sus eventos, así que no sirven de referencia para la convención.
+  - **Diagnóstico de errores** (`validation/scripts/diagnostico_errores.py`;
+    `validation/resultados/2026-11-15_diagnostico_errores.md`), en la DFL y en la mitad de SkillCorner:
+    - casi nunca partimos una posesión, pero cambiamos de equipo de menos: con el flag, 1.661 cambios frente
+      a 3.061 en la DFL, y 2.270 frente a 3.228 en SkillCorner;
+    - solo entre el 16 y el 37 % de los cambios reales tiene uno nuestro a menos de 1 s (en el placebo, el
+      2 %);
+    - los dos bordes de las paradas detectadas valen como mucho 0,05–0,07 en la DFL.
+  - **`validation/partido/ver_ventana.py`** dibuja la GT pública y una entrega para verlas junto al vídeo. Lo
+    ejecuta Ismael.
+- **Retraso del balón del ATD** (Antonio, PR 11, 15/11; `validation/resultados/2026-11-15_retraso_balon.md`
+  y `docs/decisiones.md`). Es su tarea 1, cerrada.
+  - **El balón llega unos 4 frames tarde respecto a los jugadores** [medido por Antonio en el partido, solo
+    agregados]: de +2 a +5, con +3 y +4 en las dos partes. El riesgo de la revisión, unos 12 frames, queda
+    descartado.
+  - **No ve un retraso que compartan el balón y los jugadores** respecto al vídeo: la medida es relativa.
+  - **En el harness, ese retraso cuesta entre −0,007 y +0,002:** es un empate. `ball.advance_ball` entra
+    **apagada**: `ball.clean` y `pipeline.PIECES` no cambian.
+  - **La entrega no cambia:** el código de antes es idéntico y solo se añade la función. Se confirma al
+    regenerar en el ensayo del lunes.
+- **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio): con el sí de Ismael del 15/11,
+  en marcha. La regla del plan no cambia.
+- **Sin entrar todavía en `main`:** la PR 10 de David. Ismael le ha pedido que antes termine su tarea 1.
+- **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
+  numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
+  - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
+  - **El entorno limpio** (`C:\Users\34656\.venvs\mtah2027-entrega`) **reproduce `equipo_v3` byte a byte:**
+    mismo sha256 `9539ce42…cc17a`, con `main` en `988ce88` y validado.
+  - **Con `main` en `4305576`** (después de la PR 11 y del estudio de posesiones cortas), Ismael sacó la misma
+    huella. Lo hizo en otro entorno, con numpy 2.3.4, así que la huella también aguanta ese cambio de versión.
+  - **En el ensayo del lunes por la noche** se repite con lo que haya en `main`, y esta vez con el python del
+    entorno limpio: `C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline`.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.
@@ -279,7 +366,8 @@ Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal par
 - **La medida del balón del ATD está hecha (14/11),** y la degradación del harness se calibró con ella
   (punto anterior).
 - **La convención sigue siendo "exigir control".** El harness puntúa con las dos: el flag y la corregida.
-- **Corte: lunes 16 a las 14:00.** Lo que no haya ganado en el harness no entra.
+- **Corte: martes 17** (decisión de Ismael del 15/11; antes, el lunes 16 a las 14:00). Hora provisional,
+  las 12:00, hasta que Ismael la confirme. Lo que no haya ganado en el harness no entra.
 
 **Si quien abre la sesión no sabe cuál es su pieza,** enséñale su parte de la sección 3 del plan antes de
 proponer nada.
@@ -453,14 +541,15 @@ LICENSE, CITATION.cff, requirements.txt, requirements-starter.txt
 ```
 
 Documentación oficial, en este orden: README → CHALLENGE → DATA → EVALUATION → SUBMISSION → RULES → FAQ.
-La única excepción prevista es fijar las versiones de `requirements.txt` antes de congelar, y la
-decide el responsable de infraestructura.
+Las versiones de la entrega no se fijan aquí: van en nuestro `requirements-entrega.txt` (decisión de Ismael,
+15/11), porque `requirements.txt` promete Python 3.8 y 3.11 y numpy 2.5.4 pide 3.12 o más.
 
 **Lo nuestro:**
 
 ```
 CLAUDE.md                    este brief
 CONTRIBUTING.md              normas del repo
+requirements-entrega.txt     versiones fijadas con las que se regenera la entrega (Python 3.13)
 .github/pull_request_template.md
 .claude/
   settings.json              deny de los datos, allow de comandos seguros, commits sin atribución a Claude
@@ -504,7 +593,8 @@ validation/                  validación externa con datos abiertos: pasos, scri
 - **Nada se ajusta contra la ventana pública.**
 - **Los scripts imprimen solo agregados:** recuentos, porcentajes, métricas y tiempos. Nada de
   `print(df.head())`, `display()` ni logs con valores por frame. Así su salida se puede pegar a Claude.
-- **Dependencias:** cada una se declara en `requirements.txt` y se fija su versión antes de congelar.
+- **Dependencias:** las de la entrega van en `requirements-entrega.txt`, con la versión fijada (`==`). Una
+  dependencia nueva del pipeline obliga a repetir el entorno limpio y la huella.
 - **Cada decisión de método** se apunta en `docs/decisiones.md` (`/decision`): qué se probó, qué se
   descartó y por qué. Es la materia prima del documento técnico.
 
@@ -668,9 +758,9 @@ de las piezas y cómo se decide qué entra.
 |---|---|
 | **sáb 14** | esqueleto y harness en `main`; todos con la DFL en local; agregados del partido ejecutados; primera entrega de prueba. Revisar las instrucciones de entrega, el formulario y las cuentas de Google |
 | **dom 15** | cada pieza itera contra el harness; las PR entran según ganan |
-| **lun 16, 14:00** | **corte:** lo que no haya ganado en el harness no entra |
-| **lun 16, tarde y noche** | **congelar** y comprobar la reproducción exacta en una máquina limpia. Documento técnico |
-| **mar 17** | hacer público el repo, validar el fichero exacto y **enviar con margen**. El formulario se puede editar hasta las 23:59 CET |
+| **lun 16** | cada pieza sigue iterando; las PR entran según ganan. Documento técnico en marcha. Por la noche, **ensayo de congelado** con lo que haya en `main`: regenerar y reproducir en una máquina limpia |
+| **mar 17, 12:00** (hora provisional) | **corte:** lo que no haya ganado en el harness no entra |
+| **mar 17, tarde** | **congelar** y comprobar la reproducción exacta; hacer público el repo, validar el fichero exacto y **enviar con margen**. El formulario se puede editar hasta las 23:59 CET |
 
 ## Checklist de entrega
 

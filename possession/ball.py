@@ -26,6 +26,16 @@ se calculan los dos sobre el balón de entrada y se quitan juntos; después va e
 Solo cambia el balón; los jugadores no se tocan. Lo de fuera de los límites del campo no se toca aquí: es
 señal para el `D` (possession/dead_ball.py).
 
+`advance_ball` (15/11) es otra variante, tampoco encendida: adelanta el balón BALL_LEAD frames. La medida del
+retraso del balón del ATD frente a los jugadores (validation/retraso_balon/BITACORA.md §8 a §10; tarea 1 de
+Antonio en docs/PLAN_ENTREGA.md §3) da +4 frames: el candidato 2 de su regla, fijada antes de medir. Es un
+agregado del tracking del partido entero, sin etiquetas, como pide el plan. Encenderla lo decide Ismael, con
+las mismas consecuencias que `clean_v1` (reentrenar o medir B5 y repetir la medida de Manuel) y una más: la
+degradación «como el ATD» del harness tendría que retrasar el balón BALL_LEAD frames. Hoy llega a su hora (media
+centrada, validation/harness/dfl.py), así que con la pieza encendida el harness mediría un balón adelantado,
+no una corrección. En el harness, ese retraso cuesta entre −0,007 y +0,002 de spellF1: empate (docs/decisiones.md,
+15/11).
+
 Límites conocidos:
 - una detección falsa de 2 frames pegada a balón bueno sobrevive a los pasos 1 y 2, porque el paso 1 exige
   el salto a los dos lados de cada punto;
@@ -45,6 +55,14 @@ MAX_SPEED = 40.0  # m/s; los golpeos más fuertes publicados rondan 18–35 m/s
 ISOLATED_MAX = 2  # frames
 MAX_GAP = 12  # frames: huecos de menos de 0,5 s
 NEAR_RIVAL = 2.0  # m: el radio de toque «ampliado» del experimento 2
+
+# La excepción, para `advance_ball`: este valor SÍ sale del partido. Es el retraso del balón del ATD frente a
+# los jugadores (d̂ = +4, del 5 al 95 % de +2 a +5), un agregado del tracking del partido entero sin ninguna
+# etiqueta, que calcula un algoritmo (validation/partido/retraso_balon.py, con la regla fijada antes de medir
+# en validation/retraso_balon/BITACORA.md §8). Es el candidato 2 de la tarea 1 de Antonio (docs/PLAN_ENTREGA.md
+# §3) y entra en lo que RULES.md permite sobre el partido: «learning without human labels… provided no person
+# decided any of them». No está ligado a frames concretos ni sale de la ventana pública. Apagado.
+BALL_LEAD = 4  # frames
 
 
 def runs(mask):
@@ -117,3 +135,21 @@ def clean_v1(trk):
     bx.setflags(write=False)
     by.setflags(write=False)
     return trk._replace(bx=bx, by=by)
+
+
+def advance_ball(trk, frames=BALL_LEAD):
+    """El tracking con el balón adelantado `frames` frames (retrasado si es negativo): el balón del frame t pasa
+    a ser el que el tracking trae en t + frames. Se quedan sin balón los últimos `frames` frames o, si es
+    negativo, los primeros. Los jugadores no se tocan y `trk` no cambia."""
+    frames = int(frames)
+    out = []
+    for values in (trk.bx, trk.by):
+        values = np.asarray(values, dtype=np.float64)
+        shifted = np.full(len(values), np.nan)
+        if frames >= 0:
+            shifted[:len(values) - frames] = values[frames:]
+        else:
+            shifted[-frames:] = values[:len(values) + frames]
+        shifted.setflags(write=False)
+        out.append(shifted)
+    return trk._replace(bx=out[0], by=out[1])

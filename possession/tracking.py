@@ -55,21 +55,30 @@ def no_evidence(n):
     return np.zeros((n, N_STATES)), np.ones((n, N_STATES), dtype=bool)
 
 
-def from_files(atd_raw, atd_meta, n_frames, pitch, blocks, fps):
-    """Un `Tracking` a partir de un ATD y sus metadatos."""
-    bx, by, _ = io.load_ball(atd_raw, n_frames, pitch)
+def from_files(atd_raw, atd_meta, n_frames, pitch, blocks, fps, report=None):
+    """Un `Tracking` a partir de un ATD y sus metadatos.
+
+    Con `report` (un diccionario), apunta en `report["atd"]` cuántas líneas del ATD se leyeron y cuántas se
+    saltaron (`io.COUNT_KEYS`), más `frames_evaluados_sin_linea`: los frames de los tramos evaluados sin
+    ninguna línea válida, que es lo que dejaría un fichero cortado. Solo recuentos.
+    """
+    counts, seen = {}, np.zeros(n_frames, dtype=bool)
+    bx, by, _ = io.load_ball(atd_raw, n_frames, pitch, counts=counts, seen=seen)
     px, py = io.load_players(atd_raw, n_frames, pitch)
     team = team_of_each_track(atd_meta)
     if len(team) != px.shape[1]:
         raise ValueError("los metadatos reparten {} slots y el ATD trae {}".format(len(team), px.shape[1]))
+    if report is not None:
+        counts["frames_evaluados_sin_linea"] = int(sum(np.sum(~seen[start:stop]) for start, stop in blocks))
+        report["atd"] = counts
     return Tracking(bx, by, px, py, team, tuple(pitch), tuple(blocks), fps)
 
 
-def from_atd(paths, game=games.GAME):
+def from_atd(paths, game=games.GAME, report=None):
     """El ATD del partido como `Tracking`. Lee datos del partido: solo lo ejecuta una persona.
 
-    `paths` es el diccionario de games.asset_paths().
+    `paths` es el diccionario de games.asset_paths(). `report`, como en `from_files`.
     """
     info = games.GAMES[game]
     return from_files(paths["atd_raw"], paths["atd_meta"], info["n_video_frames"], info["pitch"],
-                      evaluated_blocks(game), info["fps"])
+                      evaluated_blocks(game), info["fps"], report=report)

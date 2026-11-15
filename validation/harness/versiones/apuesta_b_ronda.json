@@ -1,0 +1,17 @@
+{
+  "main: B5 y coste 25": {
+    "nota": "lo que hay en main: sin params ni piezas (la evidencia de equipo es B5)"
+  },
+  "B6: B5 sin las ventanas de 151 frames": {
+    "nota": "los rasgos de B2 menos los cinco de «ventana 151»; lo demás, como B5 (docs/decisiones.md, 15/11, «una sola ronda de reentrenamiento de B5»)",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b6", "dejar_fuera": true}}
+  },
+  "B7: B5 con peso 5 a ±2 s de un cambio": {
+    "nota": "los rasgos de B2; cada fila de entrenamiento pesa 5 a 50 frames o menos de un cambio de equipo del control (que también está en el flag) y 1 si no",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b7", "dejar_fuera": true}}
+  },
+  "B8: B5 con el evento de toque": {
+    "nota": "los rasgos de B2 más el evento de toque a la escala del suavizado (anexo A.4 de la revisión externa), con signo, en ventanas de 13 y de 51 frames",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b8", "dejar_fuera": true}}
+  }
+}
