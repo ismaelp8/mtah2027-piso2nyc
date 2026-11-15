@@ -68,6 +68,18 @@ que faltan, los scripts y los resultados. El porqué está en
 | `retraso_balon/calibrar_dfl_v2.py` | versión 2: compara la curva entera con una familia de curvas de la DFL con retrasos conocidos, dejando un partido fuera, con retrasos de −9 a +12 (bitácora §8.3); da también la familia y el residuo de referencia al script del partido. Con `--anchos 13 37 49`, la sensibilidad al ancho del suavizado centrado (§11) | DFL |
 | `partido/retraso_balon.py` | **lee el partido** (ATD) y la DFL: ¿llega el balón con retraso respecto a los jugadores? El desfase de la versión 2 en los frames evaluados, con su intervalo y la lectura de la bitácora §8.5; solo si la calibración v2 pasa. Lo ejecuta una persona | **datos del partido: solo una persona** |
 | `scripts/prueba_retraso_balon.py` | prueba la medida del retraso (las dos versiones) con trackings inventados de desfase conocido, sus filtros, la familia, la lectura y que el script del partido solo imprime agregados | ninguno del partido |
+| `posesiones_cortas/diagnostico.py` | posesiones cortas, descriptivo: convención frente a modelo y margen de B5 dentro de cada posesión real | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/informacion.py` | posesiones cortas, descriptivo: acierto del más cercano por frame, con jugadores tal cual y suavizados | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/informacion_direccion.py` | posesiones cortas, descriptivo: acierto de la dirección en que se mueve el balón | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/puerta_skillcorner.py` | posesiones cortas, puerta: entrenar los rasgos de B5 con todos los frames de SkillCorner | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/techo_propuestas.py` | posesiones cortas, descriptivo: techo de proponer y clasificar trozos del rival | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/puerta_direccion.py` | posesiones cortas, puerta de la dirección del balón (en los mismos partidos) | DFL |
+| `posesiones_cortas/entrenar_b9.py` | entrena B9 (`possession/aprendida.py`) y escribe sus coeficientes; B1 a B8 se copian tal cual | DFL |
+| `posesiones_cortas/medir_b9.py` | B9: placebo, retraso del balón y SkillCorner; el modo `examen` se niega a ejecutarse (B9 descartado) | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/largas.py` | fase 2, descriptivo: por qué no encontramos las posesiones de 2 s o más | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/fase2.py` | fase 2, descriptivo: las que sobran, cuánto vale cada tipo de fallo y `main` con el balón tarde | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/inventadas.py` | fase 2, descriptivo: dónde están las posesiones inventadas y qué son con la otra convención | DFL |
+| `posesiones_cortas/puerta_no_lineal.py` | fase 3, puerta: una red de una capa con los rasgos de B9 y de los jugadores, fuera de muestra | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
 

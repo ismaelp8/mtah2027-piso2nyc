@@ -24,6 +24,8 @@ Lo que hace es lo que se fijó antes de medir (docs/decisiones.md, 14/11, «apue
 - **B3, B4 y B5** (14/11): los pesos de B2 de cada pliegue, sin reentrenar. Su α se elige de
   `ALFAS_D_PROPIO` igual que la de B2, pero con la pieza de `D` de `main` (`dead_state.evidence`) dentro y
   sin oráculo.
+- **B9** (15/11, posesiones cortas) no se entrena aquí: lo entrena validation/posesiones_cortas/entrenar_b9.py,
+  y este script copia sus coeficientes del módulo tal cual.
 - **B6, B7 y B8** (15/11, una sola ronda de reentrenamiento, escrita antes de medir): cada uno entrena sus
   pesos como B2 y elige α como B5. B6 sin las ventanas de 151 frames; B7 con los rasgos de B2 y cada fila
   con peso `PESO_CAMBIO` a `CERCA_CAMBIO` frames o menos de un cambio de equipo del control (que también
@@ -72,6 +74,9 @@ CERCA_CAMBIO = 50  # frames (±2 s)
 # pesarlas enseñaría a aguantar más: 9.847 filas así frente a 18.846 cerca de un cambio del control (15/11).
 CONVENCIONES_CAMBIO = ("control",)
 CIFRAS = 6
+# Los conjuntos que entrena este script. B9 (15/11, posesiones cortas) lo entrena
+# validation/posesiones_cortas/entrenar_b9.py; aquí sus coeficientes se copian del módulo tal cual.
+ENTRENADOS_AQUI = ("b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8")
 MODULO = os.path.join(ROOT, "possession", "aprendida.py")
 INICIO, FIN = "# >>> COEFICIENTES", "# <<< COEFICIENTES"
 # Se calculan una vez los rasgos de B8, que los tiene todos; cada conjunto es una selección de sus columnas.
@@ -267,6 +272,11 @@ def main():
     print("Apuesta B: entrenamiento en la DFL ({} partidos, balón «{}», uno de cada {} frames vivos en los "
           "que coinciden las dos convenciones)".format(len(datos), CONDICION_ENTRENAMIENTO, PASO))
     for conjunto in aprendida.CONJUNTOS:
+        if conjunto not in ENTRENADOS_AQUI:
+            modelos[conjunto] = collections.OrderedDict(
+                (clave, (juego["alfa"], juego["pesos"]))
+                for clave, juego in aprendida.COEFICIENTES.get(conjunto, {}).items())
+            continue
         k = len(aprendida.NOMBRES[conjunto])
         modelos[conjunto] = collections.OrderedDict()
         if conjunto in CON_PESOS_DE_B2:

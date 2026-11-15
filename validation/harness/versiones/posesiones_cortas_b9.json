@@ -1,0 +1,9 @@
+{
+  "main: B5 y coste 25": {
+    "nota": "lo que hay en main: sin params ni piezas (la evidencia de equipo es B5)"
+  },
+  "B9: B5 con la dirección del balón": {
+    "nota": "los rasgos de B2 más la dirección en que se mueve el balón (velocidad en 13 frames, ±2 m/s) en ventanas de 1, 13 y 51 frames; pesos propios y α como B5 (docs/decisiones.md, 15/11, posesiones cortas)",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b9", "dejar_fuera": true}}
+  }
+}
