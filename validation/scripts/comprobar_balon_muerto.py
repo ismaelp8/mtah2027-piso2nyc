@@ -844,6 +844,32 @@ def check_restart_instant(game, folder):
           and all(s["ok"] for s in a["sides"].values()) and a["placebo"]["passes"] and not a["ok"]
           and m["chosen"] == "B", "{} {}".format(a["placebo"], m["chosen"]))
 
+    # Los grupos necesitan 5 ventanas: con solo 2 sin hueco (las demás con hueco), A no se cumple y entra B.
+    two_seen = np.zeros(n)
+    two_seen[60000:70000] = bx[60000:70000]
+    for k, s in enumerate(starts):
+        two_seen[s - (0 if k in (1, 3) else 10 * fps):s + 210] = np.nan
+    m = measured(pieces, trk=tracking.Tracking(two_seen, by, np.empty((n, 0)), np.empty((n, 0)),
+                                               np.empty(0, dtype=np.int8), (length, width), blocks, fps))
+    a = m["by_type"]["throw-in"]["a"]
+    check("measure_instant: con menos de 5 ventanas sin hueco, ese grupo no decide, A no se cumple y entra B",
+          a["sharp"] and a["sides"]["sin hueco"]["n"] == 2 and not a["sides"]["sin hueco"]["ok"]
+          and a["sides"]["con hueco"]["n"] == 10 and a["sides"]["con hueco"]["ok"] and not a["ok"]
+          and m["chosen"] == "B", "{} {}".format(a["sides"], m["chosen"]))
+
+    # B no entra si ninguna ventana recibe la capa: el balón falta solo 2 s antes de cada ventana (vuelve a verse,
+    # pero no hay hueco que alargar) y el instante es borroso, así que A no se cumple.
+    short = np.zeros(n)
+    short[60000:70000] = bx[60000:70000]
+    for s in starts:
+        short[s - 2 * fps:s + 210] = np.nan
+    m = measured(pieces, blurred, trk=tracking.Tracking(short, by, np.empty((n, 0)), np.empty((n, 0)),
+                                                         np.empty(0, dtype=np.int8), (length, width), blocks, fps))
+    check("measure_instant: sin ventanas con hueco B no recibe ninguna ventana y no entra ninguno",
+          m["anchors"] == {"throw-in": 8 * fps} and list(m["tested"]) == ["B"] and m["tested"]["B"]["pushes"] == 0
+          and not m["tested"]["B"]["ok"] and m["chosen"] is None and not m["entra"],
+          "{} {}".format(m["anchors"], {k: r["pushes"] for k, r in m["tested"].items()}))
+
     # A cumple sus condiciones pero no el daño, y entra B. La parada partida: en 2 ventanas el pipeline sigue en D
     # hasta los 30 s y duda entre los 8 y los 11 s; con A el D sale a los 8 s y vuelve a los 11 s.
     late = starts[10:]
