@@ -383,3 +383,14 @@ Metrica («tal cual») y en la DFL con el balón limpio (la referencia de un bal
 **Regla, antes de medir.** «El balón de Metrica está pegado» si está a menos de 0,3 m del más cercano en el 40 % o más
 de los frames de juego con balón y en la DFL limpia en menos de la mitad de esa proporción. Si lo está, la medida de
 Metrica no vale como prueba de los rasgos de proximidad y se dice en el documento técnico.
+
+## S10. Resultado [medido]
+
+| datos | a < 0,3 m del más cercano | mediana |
+|---|---|---|
+| Metrica, los 3 partidos | 45,6 % (54,1 / 52,4 / 32,7 %) | 0,61 m |
+| DFL limpia, los 7 | 6,4 % | 1,34 m |
+
+**Con la regla: el balón de Metrica está pegado al jugador.** Confirma lo que dice la fuente. La ventaja de B5 en
+Metrica (+0,118 frente al baseline) no prueba nada de los rasgos de proximidad: allí la proximidad acierta por
+construcción. Sigue valiendo como prueba de que el pipeline corre con otro proveedor.
