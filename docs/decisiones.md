@@ -460,6 +460,244 @@ Descartado:
 - **Tomar `OBJETIVO` de las severidades baja y media:** con bloques de 5 a 15 s no lo identifican
   (bitácora §9.2).
 
+### 2026-11-14 · candidatos · apuesta B: evidencia de equipo aprendida (candidatos, antes de medir)
+
+Quién: Ismael (las tres decisiones de abajo, «Sí a las tres»); Claude escribe los candidatos y mide.
+
+Qué se prueba: la apuesta B del plan (`docs/PLAN_ENTREGA.md` §3, «Ismael»; `docs/investigacion_metodos.md`
+§4.2). Es una evidencia de equipo aprendida en la DFL que sustituye a N1 en la pieza `candidates`. El resto
+del pipeline no cambia: el decodificador va con los costes de `main` (25) y el `D` sale del oráculo.
+
+Decisiones de Ismael (14/11, antes de escribir código):
+1. **La función va en un módulo nuevo, `possession/aprendida.py`,** y el harness acepta para la pieza
+   `candidates` una función de ese módulo. Así no se toca `candidates.py`, que es de Antonio.
+2. **El harness deja un partido fuera.** Cuando la versión lo pide en el JSON, el harness pasa a la pieza
+   el partido que puntúa. El módulo guarda 7 juegos de coeficientes, cada uno entrenado sin un partido, y
+   además el de los 7, que es el de la entrega y el de por defecto. Sin `--versiones`, la salida del
+   harness no cambia.
+3. **Solo `H` frente a `A`,** con la columna `D` a cero, como N1. Con el `D` oráculo la columna `D` no
+   cambia ninguna etiqueta, y el harness tapa el balón en todos los `D`: un `D` aprendido en la DFL
+   aprendería «sin balón = `D`». El `D` sigue siendo de Ana y Manuel. Por eso el modelo es de dos clases y
+   no de tres, como decía §4.2.
+
+Lo común a los dos candidatos (fijado antes de medir):
+- **Modelo:** regresión logística de `H` frente a `A`, entrenada en numpy (Newton, iteraciones fijas, L2
+  pequeña). No hay scikit-learn ni LightGBM, y en el pipeline solo va numpy: los coeficientes quedan
+  escritos en el módulo.
+- **Simétrica por construcción:** todos los rasgos son «lo del local menos lo del visitante» y no hay
+  término independiente. Así no aprende la ventaja de jugar en casa de siete partidos de otra liga.
+- **Rasgos sin identidad,** invariantes al orden de los slots, calculados dentro de cada tramo evaluado
+  (ninguna ventana cruza el descanso). Las ventanas son medias centradas con el balón ausente a cero.
+- **Datos de entrenamiento:** los partidos de la DFL con el balón «como el ATD» (la misma degradación que
+  vota en el harness), solo los frames vivos en los que las dos convenciones coinciden (`flag` = `control`),
+  uno de cada 5. Así el modelo no aprende ninguna de las dos convenciones en los frames en que discrepan.
+- **Escala:** la puntuación es α·z a favor del equipo que el modelo da como poseedor (z, el logit) y cero
+  para el otro y para `D`, redondeada a 6 decimales. α se elige dentro de cada pliegue, con los partidos de
+  entrenamiento de ese pliegue: de la rejilla 1/16, 1/8, 1/4, 1/2, 1 y 2, la que da más `spellF1` medio en
+  las dos condiciones que votan y con las dos convenciones, con el decodificador de `main` y el `D` oráculo.
+  Si empatan, la más pequeña.
+- **Dejando un partido fuera:** 7 pliegues. En el harness, cada partido se puntúa con el pliegue que no lo
+  vio.
+
+Candidatos (solo cambia el conjunto de rasgos):
+- **B1, proximidad aprendida.** Rasgos del balón: el signo del equipo más cercano (N1); la suma de núcleos
+  gaussianos de las distancias de cada equipo al balón, con σ de 1, 2,5 y 6 m; y la distancia del más
+  cercano de cada equipo, con un tope de 15 m. Cada uno, en ventanas de 1, 13, 51 y 151 frames: 20 rasgos.
+- **B2, proximidad y forma aprendidas.** B1 más rasgos de los jugadores, que también opinan sin balón. La
+  dirección de ataque de cada equipo sale de la x media de sus jugadores en cada tramo. Con ella:
+  - la posición del juego (los dos centroides) a lo largo del ataque del local;
+  - la del balón, en ventanas de 1 y 51 frames;
+  - la velocidad media de los jugadores de los dos equipos en esa dirección, en ventanas de 25 y 101 frames,
+    sin las velocidades de más de 12 m/s, que son cambios de slot;
+  - la dispersión de cada equipo, en una ventana de 51 frames.
+
+  Además, el juego, las dos velocidades y la dispersión, repetidos solo donde no hay balón a ±12 frames:
+  30 rasgos.
+
+Cómo se medirá: `validation/harness/puntuar.py --versiones validation/harness/versiones/apuesta_b.json
+--eventos`, con el control y la versión de `main` (`{}`) en el mismo fichero. Gana con la regla de §5.8 en
+las dos condiciones que votan y con las dos convenciones, frente al control **y** frente a `main`. Los
+eventos humanos son descriptivos. Antes de medir se comprobará que, sin `--versiones`, la salida no cambia
+y que N1 por el camino nuevo da lo mismo que `{}`.
+
+Añadido tras entrenar y antes de medir en el harness (14/11):
+- **α salió 2, el borde superior de la rejilla, en los 16 pliegues** (B1 y B2). El `spellF1` medio de
+  entrenamiento todavía sube de 1 a 2, pero menos que en el paso anterior: entre +0,001 y +0,011, frente a
+  unos +0,018. **No se amplía la rejilla:** se mide con lo que da el procedimiento fijado. Además, α
+  también fija cuánto pesa `H`/`A` frente a las piezas de `D` en la entrega, y con el `D` oráculo eso no
+  se ve. Si un candidato se queda a menos de ~0,01 de la regla, la rejilla ampliada sería un tercer
+  candidato, declarado como tal.
+- **Valores fijados al escribir el código** (la entrada solo decía «iteraciones fijas, L2 pequeña»): L2 de
+  1 sobre los rasgos divididos por su raíz cuadrática media, 25 iteraciones de Newton y los pesos con 6
+  cifras significativas. Ninguno se ajustó. Con unas 90.000 filas, esa L2 es despreciable, y el último
+  paso de Newton queda por debajo de 1e-13 en los 16 pliegues.
+- **Comprobaciones del instrumento** [medido]:
+  - sin `--versiones`, la salida del harness (tabla y `--json`) es idéntica byte a byte a la de `main`;
+  - N1 por el camino nuevo (`aprendida.…` con `dejar_fuera`) da las mismas 8 celdas que `{}`, y la pieza
+    recibe los 7 partidos;
+  - `prueba_harness.py` y `prueba_pipeline.py` pasan.
+
+Resultado (14/11; `validation/resultados/2026-11-14_apuesta_b.md`, código `b63374d`) [medido]:
+- **B2 gana con la regla de §5.8 al control y a `main`,** en las dos condiciones que votan y con las dos
+  convenciones:
+  - con el flag, +0,062 [+0,050 a +0,075] y +0,045 [+0,032 a +0,058] frente a `main`, en 7 de 7;
+  - con las etiquetas de control, +0,161 y +0,158, en 7 de 7.
+- **B1 gana al control y empata con `main`:** con el flag, +0,016 y +0,011.
+- **Eventos humanos (descriptivo):** B2 es un compromiso frente a `main`. Pierde 15,4 puntos en las
+  recuperaciones y gana 14,2 en los duelos sin cambio: cambia de equipo menos y más tarde.
+- **Límites que el harness no ve:**
+  - lo que separa a B2 de B1 son los rasgos de los jugadores, y el harness no los degrada;
+  - B2 puntúa de media 4,2 por frame a favor de un equipo en los `D` (N1, 0) y 7,7 en juego con balón
+    (N1, 1), así que en la entrega compite con las piezas de `D` que puntúan.
+
+Decisión y por qué: **pendiente de Ismael.** Con la regla, B2 sustituiría a N1. Antes de cambiar
+`pipeline.PIECES` hace falta:
+- medir B2 con los jugadores degradados como el ATD. Hecho el 14/11, en la entrada siguiente: sigue
+  ganando a `main`, aunque sin voto;
+- decidir qué se hace con su escala frente al `D`.
+
+Corte: lunes 16 a las 14:00.
+
+Descartado:
+- **B1:** empata con `main`, y entre empatados se queda lo de `main`.
+- **Un `D` aprendido** (punto 3).
+- **Gradient boosting** (§4.2): no cabe sin dependencias nuevas, y sus árboles no se pueden escribir en el
+  módulo con solo numpy.
+- **Entrenar con las etiquetas `control`:** son circulares con los rasgos de proximidad (README del
+  harness).
+
+### 2026-11-14 · validación · apuesta B con los jugadores como el ATD (antes de medir)
+
+Quién: Ismael (pidió la medida: «Sí, mídelo»); Claude la escribe y mide.
+
+Qué se prueba: si la ventaja de B2 sobre `main` aguanta con los jugadores degradados como los del ATD. El
+harness no los degrada y la ventaja de B2 sobre B1 sale de los jugadores
+(`validation/resultados/2026-11-14_apuesta_b.md`). Es una medida de sensibilidad en `validation/apuesta_b/`:
+las condiciones del harness no cambian.
+
+De dónde se parte: R6 de `validation/perfil_atd/BITACORA.md`, escrita antes de medir el ATD, con una sola
+desviación (el paso 1). Lo medido de los jugadores:
+
+| | localizados por equipo: media / p10 / p50 / p90 | tramos de un slot: p50 | temblor |
+|---|---|---|---|
+| ATD | 10,20 y 10,29 / 9 / 11 / 11 | 35,5 s | 0,136 cm |
+| DFL sin degradar | 11,0 y 10,8 | 2.765 s | 1,0 cm |
+
+Cómo se degradan, por jugador, antes de barajar los slots y con un generador aparte (el balón queda
+idéntico al del harness):
+1. **Suavizado, en lugar del ruido de R6,** porque el ATD tiembla menos que la DFL: una media móvil
+   centrada de k frames. k sale de {1, 5, 9, 13, 25}, el que deje el temblor más cerca de 0,136 cm.
+2. **Los que faltan, en tres variantes,** porque no se sabe dónde le faltan los jugadores al ATD. Cada
+   variante calibra un parámetro para que la media de localizados por equipo **en los frames de juego**
+   quede en 10,25 ± 0,1. Se hace en juego porque con el `D` oráculo una ausencia en una parada no cambia
+   ninguna etiqueta.
+   - **«al azar»** (R6 tal cual): rachas presentes y ausentes que se alternan, de longitud geométrica. La
+     media de las presentes se fija para que la mediana de los tramos dé 35,5 s; la de las ausentes es el
+     parámetro que se calibra.
+   - **«en las aglomeraciones»:** un jugador a 1,5 m o menos de otro y a 15 m o menos del balón (el limpio)
+     desaparece con una probabilidad por frame, que es lo que se calibra. Vuelve tras una racha geométrica
+     de media 1 s.
+   - **«lejos de la jugada»:** falta todo jugador a más de W m del balón (el limpio) a lo largo del campo.
+     W es lo que se calibra. Es el caso difícil para B2: `main` apenas lo nota, y los rasgos de forma de
+     B2 sí.
+
+Qué variantes votan, decidido por el perfil y no por la nota de B2. Se mide con `perfil._jugadores`, el
+mismo código que midió el ATD, en los frames evaluados como en el ATD. Una variante vota si cumple las tres
+cosas:
+- media de localizados por equipo a 0,5 o menos de 10,25 (la tolerancia de R6);
+- p50 = 11, p10 entre 8 y 10 y p90 = 11;
+- mediana de los tramos entre 17,8 y 71 s (de ×½ a ×2, como R6).
+
+Las que no pasan se puntúan sin voto. Además se apuntan, como descripción:
+- qué parte de las ausencias cae en juego;
+- los saltos de más de 12 m/s por minuto (0,689 en el ATD).
+
+Qué se mide: B2 con los coeficientes ya escritos (entrenados con los jugadores limpios), B1, `main` y el
+control, con `validation/harness/versiones/apuesta_b.json` sin cambios. Se mide en las dos condiciones del
+balón que votan, con las dos convenciones y en cada variante de jugadores.
+
+Comprobación del instrumento: sin degradar a los jugadores, el tracking es idéntico al de
+`dfl.tracking_de`, y `main` repite 0,428 y 0,456 con el flag.
+
+Regla de lectura, fijada antes de medir:
+- **«B2 aguanta»:** B2 gana a `main` con §5.8 (las dos condiciones del balón que votan y las dos
+  convenciones) en todas las variantes de jugadores que votan.
+- **«depende de dónde falten»:** gana en alguna, pero no en todas.
+- **«no aguanta»:** no gana en ninguna.
+- **Si no aguanta o depende, B2 no entra tal cual.** Reentrenarla con los jugadores degradados sería un
+  candidato nuevo, declarado como tal y con el corte del lunes 16 a las 14:00.
+- **Descriptivo:** B2 frente a B1 en cada variante, para ver si la ventaja de los jugadores se mantiene.
+
+Sin modelar:
+- slots con el equipo cambiado;
+- slots de más (el ATD tiene 24 y 22 por equipo);
+- detecciones falsas de jugadores.
+
+Añadido tras calibrar y mirar el perfil, antes de puntuar ninguna versión (14/11) [medido]:
+- **La calibración** (commit `60fc9fb`): suavizado de 13 frames (0,154 cm de temblor); 78,12 frames por
+  ausencia «al azar», 0,1875 por frame «en las aglomeraciones» y W = 44,38 m «lejos de la jugada». Las tres
+  dejan 10,24–10,27 localizados por equipo en juego.
+- **Ninguna variante pasa la comprobación del perfil:**
+
+  | variante | qué falla |
+  |---|---|
+  | «al azar» | p50 del visitante: 10 |
+  | «lejos de la jugada» | p10: 7, y p50 del visitante: 10 |
+  | «en las aglomeraciones» | solo la mediana de los tramos: 16,3 s, por debajo de 17,8 |
+
+  Lo que dice [inferencia]: en el ATD faltan varios jugadores a la vez, pero no tantos ni tan a menudo
+  como lejos del balón.
+- **Saltos de más de 12 m/s:** unos 25 por minuto en las tres variantes, frente a 0,689 del ATD. Vienen del
+  barajado de slots del harness, que es mucho más duro que los cambios de slot del ATD, y vale para todas
+  las versiones.
+- **Ajuste, como en R6, que calibra también la mediana de los tramos:**
+  - «en las aglomeraciones» pasa a ausencias de 2, 3 o 4 s de media (en vez de 1 s);
+  - se toma la primera de esas tres que pase el perfil, recalibrando su probabilidad para 10,25 en juego;
+  - si pasa, es la única variante que vota;
+  - «al azar» y «lejos de la jugada» se puntúan sin voto, como descripción y como cota;
+  - si ninguna pasa, la medida no concluye y las tres se puntúan sin voto.
+- **Tampoco pasa con el ajuste** (commit `b539f85`) [medido]:
+  - con ausencias de 2, 3 y 4 s, la mediana de los tramos ya cuadra (20,4 / 24,9 / 27,6 s);
+  - pero el p50 de localizados del visitante queda en 10 en los tres casos.
+
+  Causa probable [inferencia]: en la DFL el visitante ya parte de 10,8 localizados (no de 11), y la
+  calibración iguala la media de los dos equipos, no la de cada uno.
+- **Por la regla, la medida no concluye.** No se retoca más la degradación. Las tres variantes se
+  puntúan sin voto, con la calibración de `60fc9fb` (ausencias de 1 s en las aglomeraciones), como
+  descripción y como cota.
+
+Resultado (14/11; `validation/resultados/2026-11-14_apuesta_b.md` §7) [medido, sin voto]:
+- **B2 gana a `main` con §5.8 en las tres variantes,** con las dos convenciones y en las dos condiciones
+  del balón, en 7 de 7 partidos.
+- **Con el flag**, frente a `main` («como el ATD» y «sin bloques»):
+
+  | jugadores | margen |
+  |---|---|
+  | «al azar» | +0,093 y +0,080 |
+  | «en las aglomeraciones» | +0,103 y +0,096 |
+  | «lejos de la jugada» | +0,067 y +0,050 |
+
+- **Quitar jugadores cerca del balón** baja a N1 entre 0,03 y 0,06, y a B2 como mucho 0,01.
+- **B1** gana a `main` en las dos primeras variantes y empata en la tercera.
+
+Decisión y por qué:
+- **La medida no concluye por la regla,** porque ninguna variante vota.
+- **Como descripción,** no hay ninguna señal de que la ventaja de B2 dependa de tener a los jugadores
+  perfectos de la DFL: también gana en «lejos de la jugada», el caso difícil para sus rasgos de forma.
+- **Lo que queda para decidir si B2 entra** es la escala frente al `D`. Lo decide Ismael.
+
+Añadido después (14/11, `validation/apuesta_b/d_propio.py`) [medido, descriptivo]:
+- **Con la pieza de `D` de `main` dentro** (E2 de Ana, PR 5) y sin oráculo, B2 tal cual solo ve el
+  31,6 % de las 713 paradas reales, frente al 87,8 % de N1 y el 84,7 % de B1.
+- **Por eso pierde contra `main` en `spellF1`:** 0,309 frente a 0,366 con el flag, y 0,477 frente a
+  0,505 con el control («como el ATD»).
+- **El número favorece a N1,** porque la DFL tapa el balón en los `D`. Pero el mecanismo es real: B2
+  opina con los jugadores, haya balón o no, y en las paradas le gana a la pieza de Ana.
+- **B2 no puede entrar tal cual.** Haría falta un candidato nuevo que no pese en las paradas, medido otra
+  vez. Lo decide Ismael.
+
+Descartado: retocar más la degradación hasta que una variante vote. Sería buscar hasta que algo pase.
+
 ### 2026-11-14 · `D` · estado con jugadores: candidatos y regla de lectura, escritos antes de medir
 
 Quién: Ana
@@ -636,6 +874,425 @@ Decisión y por qué:
 Descartado:
 - **Dejar la pieza sin opinar por defecto y el modelo con otro nombre:** era la alternativa si fallaba
   alguna condición.
+
+### 2026-11-14 · candidatos · limpieza fija del balón y candidatos N2 y retención frente a N1, escritos antes de medir
+
+Quién: Antonio Azuero
+
+Qué se probó: **escrito antes de medir; todavía no se ha medido nada.** Es la pieza de
+`docs/PLAN_ENTREGA.md` §3 (Antonio): `possession/ball.py` y `possession/candidates.py`.
+
+- **Limpieza del balón (`ball.py`): una sola versión, fija y sin variantes** (plan, §3 y §8). Se aplica en
+  este orden:
+  1. **salto imposible:** se quita un punto si, para llegar a él desde el punto visto anterior **y** para
+     ir de él al siguiente, el balón tendría que ir a más de 40 m/s. Se exigen los dos lados para no
+     borrar el primer punto bueno después de un salto;
+  2. **detección aislada:** se quita una racha de 1 o 2 frames con balón que tiene huecos a los dos lados;
+  3. **hueco corto:** se interpola en línea recta un hueco de 12 frames o menos (menos de 0,5 s) entre dos
+     puntos vistos, salvo en dos casos:
+     - el hueco obliga a ir a más de 40 m/s: el balón no reaparece donde se le espera;
+     - el balón reaparece junto a un jugador del otro equipo: en el primer frame tras el hueco, el más
+       cercano es del equipo contrario al más cercano del último frame antes del hueco, y está a 2 m o
+       menos. Ahí puede haber un cambio de posesión, y decide el decodificador.
+- **Evidencia de equipo (`candidates.py`): tres versiones.** Las tres dan 1 a favor de un equipo en los
+  frames en que opinan y 0 («no opino») en el resto, la misma unidad que la v0:
+  - **N1, la referencia:** el equipo del jugador más cercano al balón. Es la v0, lo mismo que el baseline;
+  - **N2, más cercano con radio y margen:** opina solo si el más cercano está a 1,5 m o menos y el más
+    cercano del otro equipo está al menos 1 m más lejos que él;
+  - **Ret, control por retención:** opina en los frames de una racha de 12 frames seguidos o más (0,48 s)
+    en la que el más cercano es siempre del mismo equipo y está a 1,5 m o menos. Va por equipo y no por
+    jugador, porque un slot no es un jugador. Es la traducción de «un toque sin control no cambia la
+    posesión».
+- **De dónde salen los valores** (ninguno sale del partido ni de la ventana pública):
+  - 40 m/s, las rachas de 1 o 2 frames y los huecos de menos de 0,5 s son los cortes que ya mide el perfil
+    del ATD (`validation/perfil_atd/BITACORA.md` §4, filas 1 y 6). Así, la medida del balón del partido
+    dirá cuánto toca cada regla en el ATD. Los golpeos más fuertes publicados rondan 18–35 m/s
+    (`docs/investigacion_metodos.md` §2.1);
+  - 1,5 m es el radio de control «ampliado» del experimento 2 (por si el ATD es más ruidoso) y el de los
+    toques del experimento 0. El margen de 1 m y Ret-12 también los mide el perfil (filas 5 y 4a);
+  - 2 m es el radio de toque «ampliado» del experimento 2.
+- **Ret se parece a la regla que fabricó las etiquetas `control`** del harness (C0-12: el mismo jugador a
+  1 m o menos durante 12 frames, o dos toques). Ganará con ellas por construcción. Se mantiene así porque
+  traduce la convención decidida el 12/11 («exigir control»). La circularidad la resuelve la regla:
+  solo cuenta lo que gane también con el `flag`.
+
+Cómo se medirá (dataset, nº de partidos/posesiones, métrica):
+
+- **Harness de la DFL** (`validation/harness/puntuar.py`): los 7 partidos de la Bundesliga (Bassek et
+  al., 2025), con el `D` oráculo, las dos convenciones (`flag` y `control`) y las tres condiciones del
+  balón. `spellF1` oficial y bootstrap pareado de 1.000 remuestreos con semilla fija.
+- **Lo único que cambia entre versiones es la evidencia:** las tres con la limpieza nueva y el
+  decodificador v0 (Viterbi con coste 25).
+- **Comparación principal: cada candidato frente a N1.** Gana con la regla de §5.8 si, en las tres
+  condiciones y con las dos convenciones, gana en 6 de los 7 partidos o más, la diferencia es de 0,03 o
+  más y el intervalo del 5 al 95 % no incluye el cero.
+  - Si no gana, es un empate y se queda N1, que es el más simple.
+  - Si ganan los dos, se comparan entre sí con la misma regla. Si empatan, entra N2, que no tiene ventana
+    temporal.
+- **Además, frente al control del harness** (baseline, voto de ±50), que es la tabla que pide el plan en
+  cada PR. No cambia la regla de arriba.
+- **Sensibilidad a la escala, que no decide:** las tres evidencias también con costes 12 y 50. N2 y Ret
+  opinan en menos frames que N1, así que con el mismo coste son más conservadoras. Si el orden cambia con
+  el coste, se apunta: la ventaja sería de la escala, que es cosa del decodificador, y no de la evidencia.
+- **La limpieza se comprueba, no se elige:** N1 con y sin la limpieza nueva. Si con ella N1 pierde 0,03 o
+  más en alguna condición o convención, se avisa a Ismael antes de la PR y no se retocan sus valores. En
+  la DFL, los pasos 1 y 2 casi no harán nada, porque la degradación no mete detecciones falsas. Su efecto
+  en el ATD no se puede medir fuera.
+- **Diagnóstico, que no decide:** acierto de equipo y posesiones predichas frente a reales.
+- **Aviso del plan (§3 y §4):** el orden entre evidencias no se da por bueno hasta que la degradación de
+  la DFL esté comprobada con la medida del balón del ATD. Con esta medida se implementa y se mide; la
+  decisión llega después.
+
+Primera medida (14/11 por la tarde, con las condiciones de antes; ya no decide): lo de arriba no ha
+cambiado.
+
+- **Cómo se midió:** como estaba escrito, con una copia local de `validation/harness/puntuar.py` que
+  dejaba elegir la evidencia de cada versión y la versión de referencia. Se hizo antes de que el harness
+  aceptara `--versiones`, sobre el `main` de entonces (84b8d7c); esa copia ya no existe.
+- **Con qué se mide:** 3.061 posesiones con el `flag` y 1.736 con `control`, y el balón visible en el
+  98,7 % de los frames de juego (limpio) o en el 58,3 % (con huecos). [medido]
+- **La comparación principal, frente a N1 con coste 25:** diferencia de `spellF1` con los 7 partidos
+  juntos, su intervalo del 5 al 95 % y en cuántos partidos gana. [medido]
+
+  | etiquetas | balón | N1 | N2 − N1 | Ret − N1 |
+  |---|---|---|---|---|
+  | flag | limpio | 0,474 | −0,095 [−0,108 a −0,083], 0 de 7 | −0,092 [−0,104 a −0,080], 0 de 7 |
+  | flag | huecos | 0,383 | −0,056 [−0,067 a −0,047], 0 de 7 | −0,070 [−0,081 a −0,059], 0 de 7 |
+  | flag | huecos y suavizado | 0,374 | −0,066 [−0,076 a −0,056], 0 de 7 | −0,068 [−0,079 a −0,057], 0 de 7 |
+  | control | limpio | 0,630 | +0,005 [−0,013 a +0,023], 4 de 7 | +0,013 [−0,005 a +0,029], 5 de 7 |
+  | control | huecos | 0,589 | −0,023 [−0,040 a −0,008], 1 de 7 | −0,046 [−0,062 a −0,029], 0 de 7 |
+  | control | huecos y suavizado | 0,573 | −0,037 [−0,054 a −0,021], 0 de 7 | −0,044 [−0,061 a −0,027], 0 de 7 |
+
+- **Ninguno de los dos gana a N1** con la regla de §5.8. [medido]
+  - Con el `flag` pierden en las tres condiciones y en los 7 partidos.
+  - Con `control`, que los favorece por construcción, empatan con el balón limpio; con huecos, N2 empata
+    (−0,023, por debajo de 0,03) y Ret pierde.
+- **Por qué, en parte:** opinan en menos frames y, con el mismo coste, cambian de equipo menos veces.
+  Con coste 25 predicen 998–1.162 posesiones (N2) y 1.025–1.232 (Ret), frente a 1.382–1.871 de N1.
+  [medido]
+- **Sensibilidad a la escala, que no decide:** [medido]
+  - con coste 50 pierden en las seis combinaciones (de −0,04 a −0,07, 0 de 7);
+  - con coste 12 y el `flag` siguen perdiendo (de −0,02 a −0,05, en 0–3 de 7);
+  - con coste 12 y `control` ganan mucho (de +0,06 a +0,21, 7 de 7). N1 con coste 12 predice 2.003–3.079
+    posesiones, frente a 1.736 reales.
+  - Con `control`, el orden cambia con el coste: es cosa de la escala del decodificador, no de la
+    evidencia. Con el `flag` no cambia con ningún coste.
+- **Cada evidencia con su mejor coste de los tres** (mirado después; solo descriptivo): con el `flag`, N1
+  sigue por delante en las tres condiciones. N1 saca 0,474 / 0,397 / 0,379, N2 0,433 / 0,364 / 0,333 y
+  Ret 0,430 / 0,344 / 0,330. [medido]
+- **La limpieza, comprobada:** N1 con y sin la limpieza nueva se mueve entre −0,002 y +0,008 (redondeado
+  a tres decimales), en las 18 combinaciones de coste, condición y convención. Está lejos del −0,03 que
+  obligaba a avisar. [medido] En la DFL solo actuaría el relleno de huecos cortos, porque la degradación
+  no mete saltos ni detecciones falsas. [inferencia: no se contaron los puntos que toca cada paso]
+- **Para el decodificador (David)** [inferencia]: la evidencia y el coste de cambio no se eligen por
+  separado.
+  - Con `control`, la mejor combinación medida es una evidencia que opina poco con un coste bajo: N2 con
+    coste 12 saca 0,680 con el balón limpio.
+  - Con el `flag`, nada gana a N1 con coste 25.
+
+Cambios antes de volver a medir (14/11 por la noche, escritos antes de la segunda medida):
+
+- **Por qué se vuelve a medir:** desde el 14/11 por la noche, el harness tapa el balón «como el ATD».
+  Votan «como el ATD» y «como el ATD, sin bloques», y para sustituir a `main` hay que ganar al control
+  **y** a `main` (entrada de Ismael de arriba; plan, §4). Las condiciones de la primera medida ya no
+  votan. Los candidatos y sus valores no cambian.
+- **Cómo se mide ahora:** sin tocar `puntuar.py`, con
+  `validation/harness/versiones/evidencia_equipo_2026-11-14.json`. El fichero trae cuatro versiones, y
+  cada una cambia una sola pieza respecto a `main`:
+  - «N1 (main)», `{}`;
+  - «limpieza v1», con `ball.clean_v1`;
+  - N2;
+  - Ret.
+- **Lo que cambia respecto a lo escrito antes de medir:**
+  - **N2 y Ret se miden sin la limpieza nueva,** frente a `main`, y no con ella frente a N1. Así cada
+    versión cambia una sola pieza. En la primera medida, la limpieza movió a N1 menos de 0,01.
+  - **La limpieza ya no entra «fija»:** pasa a ser una candidata más (`ball.clean_v1`). `ball.clean`
+    sigue siendo lo de `main` hasta que gane. El plan (§3 y §8) la daba por fija, pero la regla nueva dice
+    que, si empata con `main`, se queda lo de `main`. Si se aplica esa regla o la del plan, lo decide
+    Ismael.
+  - **La sensibilidad con costes 12 y 50 no se repite:** no decidía y ya se midió.
+- **Mensaje de Ismael (14/11 por la noche):**
+  - hay que priorizar `ball.py`, porque quitar los ~200 saltos imposibles del ATD ayuda a cualquier
+    evidencia;
+  - N2 y Ret tendrían que ganar también a la apuesta B (B2), que ya gana a `main`.
+  - Lo que sabemos del ATD (perfil del 14/11, agregados): 216 pares de frames seguidos a más de 40 m/s,
+    149 rachas con balón, menos de 5 rachas de 1 o 2 frames y 15 huecos de hasta 0,5 s que suman 51
+    frames. [medido, por Ismael] **En el partido, el paso 1 es el único que puede hacer algo.** En la DFL
+    no hay saltos que quitar, así que el harness no lo puede ver. [inferencia]
+
+Segunda medida (14/11 por la noche, harness «como el ATD»; la que decide):
+
+- **Comando:**
+  `python validation/harness/puntuar.py --versiones validation/harness/versiones/evidencia_equipo_2026-11-14.json`
+  (huella fe8bc4f406cf, código 41b1431). 7 partidos, `D` oráculo, bootstrap de 1.000 remuestreos.
+- **Con qué se mide:** 3.061 posesiones con el `flag` y 1.736 con `control`. El balón es visible en el
+  87,3 % de los frames de juego «como el ATD» y en el 98,7 % «como el ATD, sin bloques». [medido]
+- **Frente a `main`** (N1, sin limpieza): diferencia de `spellF1`, intervalo del 5 al 95 % y en cuántos
+  partidos gana, en las dos condiciones que votan. [medido]
+
+  | etiquetas | balón | `main` | limpieza v1 | N2 | Ret |
+  |---|---|---|---|---|---|
+  | flag | como el ATD | 0,428 | +0,000 [+0,000 a +0,001], 1 de 7 | −0,095 [−0,107 a −0,083], 0 de 7 | −0,082 [−0,095 a −0,070], 0 de 7 |
+  | flag | como el ATD, sin bloques | 0,456 | +0,000 [+0,000 a +0,001], 1 de 7 | −0,105 [−0,117 a −0,092], 0 de 7 | −0,088 [−0,100 a −0,076], 0 de 7 |
+  | control | como el ATD | 0,580 | +0,001 [+0,000 a +0,002], 1 de 7 | −0,017 [−0,035 a −0,000], 3 de 7 | +0,006 [−0,011 a +0,024], 5 de 7 |
+  | control | como el ATD, sin bloques | 0,602 | +0,001 [+0,000 a +0,002], 1 de 7 | −0,014 [−0,033 a +0,004], 2 de 7 | +0,016 [−0,001 a +0,033], 5 de 7 |
+
+- **Frente al control** (baseline, voto de ±50), en las condiciones que votan: `main` y la limpieza v1
+  ganan por +0,022 con el `flag` (7 de 7 y 6 de 7) y por +0,108 a +0,117 con `control`. N2 y Ret pierden
+  con el `flag` (de −0,060 a −0,083, 0 de 7) y ganan con `control` (de +0,094 a +0,125). [medido]
+- **Ninguna de las tres gana a `main`** con la regla de §5.8. [medido]
+  - N2 y Ret pierden con el `flag` en las dos condiciones y en los 7 partidos. Con `control` empatan.
+  - La limpieza v1 empata en todo: no cambia ni una posesión predicha (1.782 y 1.920, igual que `main`).
+- **Las dos condiciones sin voto** dan lo mismo que la primera medida: N2 y Ret pierden con el `flag`, y la
+  limpieza mueve menos de 0,003. [medido]
+
+Decisión y por qué:
+- **Se queda N1** (`METHOD = "N1"`). N2 y Ret pierden frente a `main` con el `flag`, en las dos medidas,
+  en todas las condiciones y en los 7 partidos. Con la regla, que exige las dos convenciones, no hay más
+  que discutir. Además, para entrar tendrían que ganar también a la apuesta B (B2).
+- **N2 y Ret se quedan en el código, sin usar,** como posibles variables de la apuesta B. Lo que entrega el
+  pipeline no cambia.
+- **La limpieza v1 no entra todavía:** `ball.clean` sigue siendo lo de `main`.
+  - En la DFL empata, como se esperaba: no hay saltos falsos que quitar y casi no hay huecos cortos.
+  - Lo que puede aportar está en los 216 saltos del ATD, y el harness no lo ve. [inferencia]
+  - Hace falta saber qué hace con el ATD antes de decidir, con un script de `validation/partido/` que
+    ejecuta una persona.
+  - Si entra con una prueba que no es el harness, lo decide Ismael, porque su regla dice que un empate con
+    `main` deja lo de `main`.
+
+Descartado (antes de medir):
+- **N4, toques por cambios de velocidad del balón:** el experimento 2 apunta a que el balón del ATD viene
+  suavizado, y el detector calibrado en la DFL casi no ve toques en él (plan, §3).
+- **N3, las zonas de FIFA:** su ganancia exige un cambio de dirección o de velocidad del balón, y tiene el
+  mismo problema que N4.
+- **Variantes de la limpieza y barridos de radios o de frames:** con muchas variantes gana el azar (plan,
+  §4 y §8).
+- **L2, las reglas de puente en los huecos:** se dejan para después, si hay tiempo, con su propia entrada.
+
+### 2026-11-14 · candidatos · apuesta B: B2 que no pesa en las paradas (candidatos, antes de medir)
+
+Quién: Ismael aprobó probarlo («Sí, pruébalo»), con estas condiciones para entrar. Claude escribe los
+candidatos y mide.
+
+Por qué: con la pieza de `D` de `main` dentro (E2 de Ana), B2 tal cual solo ve el 31,6 % de las paradas y
+pierde contra `main` (entrada del 14/11 y `validation/resultados/2026-11-14_apuesta_b.md` §4). B2 empuja de
+media 4,2 por frame hacia un equipo en las paradas, y gana a los ±8 de Ana.
+
+Lo común: el mismo logit que B2 (mismos rasgos y mismos pesos de cada pliegue, sin reentrenar). La
+columna `D` sigue a cero.
+- **Escala α:** se elige en cada pliegue con sus partidos de entrenamiento, **con la pieza de `D` de
+  `main` dentro y sin oráculo**, y con el decodificador de `main`.
+  - Criterio: más `spellF1` medio en las dos condiciones que votan y con las dos convenciones.
+  - Rejilla: 1/8, 1/4, 1/2, 1, 2, 4 y 8, más ancha que la de B2, que salió en el borde.
+  - Si empatan, la más pequeña.
+
+Candidatos:
+- **B3, B2 con puerta de balón** (el que se le explicó a Ismael): puntúa como B2 en los frames en que se ve
+  el balón, y cero en los demás. La puerta es la de N1: el balón visible en ese frame, sin ventana. Una
+  ventana de ±12 frames dejaría unos 7 frames ruidosos en cada borde de cada parada.
+  - **Cuánto baja la voz sin balón: a cero, fijado.** Con el `D` propio de la DFL, «sin balón» es casi
+    «`D`», así que cualquier ajuste se elegiría por ese artefacto.
+  - Lo que cuesta: B2 pierde su evidencia en los huecos de juego, que era el 84,7 % de acierto sin balón.
+- **B4, B2 que castiga al perdedor** (añadido; no es lo que se le explicó a Ismael): cero para el equipo
+  que da el modelo, −α·|z| para el otro y cero para `D`.
+  - La diferencia `H` − `A` es la de B2, así que con el `D` oráculo y la α de B2 da las mismas etiquetas.
+  - El margen del ganador sobre `D` es siempre cero: el `D` lo decide solo la pieza de Ana.
+  - Riesgo: sin el +1 que da N1 al ganador, puede decir `D` de más.
+
+Criterios para entrar, fijados antes de medir:
+1. **En el harness, con el `D` oráculo:** gana al control y a `main` con §5.8, en las condiciones que votan
+   y con las dos convenciones.
+2. **Con `validation/apuesta_b/d_propio.py`** (pieza de `D` de `main`, balón tapado en los `D` como en el
+   harness), en las dos condiciones que votan:
+   - ve al menos tantas paradas como `main` (87,8 % en las dos);
+   - la precisión de su `D` no queda más de 2 puntos por debajo de la de `main` (93,8 % y 94,7 %), para que
+     no gane diciendo `D` de más;
+   - su `spellF1` con el `D` propio no queda por debajo del de `main` en las cuatro celdas (0,366 / 0,505 y
+     0,394 / 0,536).
+
+   Se lee con su límite de siempre: el tapado del balón en los `D` favorece a lo que solo opina con balón.
+
+Si cumplen los dos, entra el más simple (B3). Si no cumple ninguno el lunes 16 a las 14:00, la apuesta B se
+abandona.
+
+Descriptivo, no es criterio: una segunda tabla de `d_propio.py` con el balón de la DFL a la vista en los
+`D` (congelado). Es el caso que el tapado esconde: en el ATD, el balón se ve en el 68 % de los frames de
+las ventanas `SET PIECES`.
+
+Comprobaciones del instrumento:
+- B4 con la α de B2 y el `D` oráculo da las mismas etiquetas que B2;
+- B3 con la puerta abierta y la α de B2 es B2;
+- tras entrenar, los coeficientes de `b1` y `b2` no cambian: el diff solo añade.
+
+La terquedad en los robos (los eventos) no se resuelve aquí: la ajustará David con los costes, encima de la
+evidencia que entre.
+
+Resultado (14/11; `validation/resultados/2026-11-14_apuesta_b.md` §8, código `412c705`) [medido]:
+- **Criterio 1: los dos ganan al control y a `main`** con §5.8. Frente a `main`, con el flag:
+
+  | | «como el ATD» | «sin bloques» |
+  |---|---|---|
+  | B3 | +0,056 | +0,054 |
+  | B4 | +0,066 | +0,052 |
+
+  Con el control, de +0,142 a +0,150. Todo en 7 de 7 partidos.
+- **Criterio 2, con la regla escrita: no lo cumple ninguno.**
+  - **B3** ve 625 y 624 paradas, frente a 626 de `main` (de 713). La regla pide «al menos tantas», y queda
+    1 y 2 paradas por debajo. Su precisión del `D` (97,4 y 98,9 %) y su `spellF1` con el `D` propio
+    (0,422 / 0,641 y 0,450 / 0,679) quedan por encima de los de `main`.
+  - **B4** ve más paradas (88,4 y 88,2 %), pero la precisión de su `D` (89,0 y 89,1 %) queda 4,8 y 5,6
+    puntos por debajo de la de `main`, y el límite es 2: dice `D` de más.
+- **Descriptivo, con el balón a la vista en los `D`:** B3 solo ve el 6,9 % de las paradas, `main` el
+  75,3 % y B4 el 87,8 %.
+
+Decisión y por qué: **por la regla escrita, no entra ni B3 ni B4.**
+- B3 falla por 1 y 2 paradas de 713. Además, se come las paradas en las que se ve el balón, que en el
+  ATD son muchas [inferencia].
+- B4 dice `D` de más.
+- Leer el «al menos tantas» con tolerancia, ahora que se ven los números, no vale.
+
+Siguiente candidato posible, que decide Ismael: B4 más N1, es decir, la diferencia `H` − `A` de B2 y el
+margen de 1 de N1 donde se ve el balón. Corte: lunes 16 a las 14:00.
+
+Descartado: B3 y B4 tal cual.
+
+
+### 2026-11-14 · candidatos · apuesta B: B5, B4 más el +1 de N1 (candidato, antes de medir)
+
+Quién: Ismael aprobó probarlo con un tercer criterio («Sí, prueba B5»). Claude lo escribe y lo mide.
+
+Por qué: en B3 y B4, la ventaja en `H` frente a `A` aguanta, y lo difícil es el margen del ganador sobre `D`
+(entrada anterior):
+- B3 lo daba con el balón y se comía las paradas en las que se ve el balón;
+- en B4 era cero y sobraba `D`;
+- N1 da un margen de 1 donde se ve el balón, y su `D` sale bien.
+
+**B5:** la puntuación de B4 más la de N1.
+- **B4:** los pesos de B2 y −α·|z| al equipo que no da el modelo.
+- **N1:** +1 al equipo del jugador más cercano donde se ve el balón, con
+  `candidates.nearest_team`, que es lo que hace `candidates.evidence` hoy. Se escribe aparte para que B5 no
+  cambie si cambia `candidates.evidence`.
+- **Frente a `H` y `A`:** decide la diferencia de B2 más la de N1.
+- **Frente a `D`:** empuja como `main`, con 1 donde se ve el balón y 0 donde no.
+- **α:** se elige en cada pliegue igual que en B3 y B4, con la pieza de `D` de `main` dentro y sin oráculo,
+  con la rejilla 1/8 a 8. Si empatan, la más pequeña.
+
+Criterios para entrar, los tres, fijados antes de medir:
+1. **En el harness, con el `D` oráculo:** gana al control y a `main` con §5.8, en las condiciones que votan
+   y con las dos convenciones.
+2. **Con `validation/apuesta_b/d_propio.py`, con el balón tapado en los `D` como en el harness,** en las dos
+   condiciones que votan, como en B3 y B4:
+   - al menos tantas paradas vistas como `main` (626 de 713);
+   - una precisión del `D` a 2 puntos o menos de la de `main` (93,8 % y 94,7 %);
+   - un `spellF1` con el `D` propio no por debajo del de `main` en las cuatro celdas (0,366 / 0,505 y
+     0,394 / 0,536).
+3. **Con `d_propio.py` y el balón de la DFL a la vista en los `D`** (congelado; lo que pasa en el ATD con
+   los balones parados), en las dos condiciones que votan: las paradas vistas no pueden quedar más de 1
+   punto por debajo de las de `main` (537 de 713, el 75,3 %), es decir, al menos 530 de 713.
+   - **Por qué ese margen:** un punto son 7 paradas. Es la mitad del ruido de una proporción de 713
+     (±1,6 puntos) y deja fuera lo que le pasó a B3 (6,9 %).
+   - **Va con margen y el criterio 2 no:** el 2 se fijó estricto y así se mantiene.
+
+Si cumple los tres, B5 es el candidato de la apuesta B para entrar, y la decisión de cambiar
+`pipeline.PIECES` es de Ismael. Si no, la apuesta B se abandona el lunes 16 a las 14:00.
+
+Comprobaciones del instrumento:
+- B5 menos B4 es exactamente la puntuación de N1;
+- con el `D` oráculo, la diferencia `H` − `A` de B5 es la de B2 más la de N1;
+- los coeficientes de B1 a B4 no cambian al reentrenar.
+
+Resultado (14/11; `validation/resultados/2026-11-14_apuesta_b.md` §9, código `aaa2650`) [medido]:
+**B5 cumple los tres criterios.**
+1. **En el harness** gana al control y a `main` con §5.8, en 7 de 7 partidos en todas las celdas:
+
+   | etiquetas | «como el ATD» | «sin bloques» |
+   |---|---|---|
+   | flag | +0,071 | +0,056 |
+   | control | +0,148 | +0,146 |
+
+2. **Con `d_propio.py` y el balón tapado:**
+   - ve 629 y 628 paradas, frente a 626 de `main`;
+   - la precisión de su `D` es 93,3 y 94,2 %, frente a 93,8 y 94,7 %;
+   - su `spellF1` con el `D` propio es 0,416 / 0,616 y 0,433 / 0,642, frente a 0,366 / 0,505 y
+     0,394 / 0,536.
+3. **Con el balón a la vista en los `D`:** ve 545 paradas, frente a 537 de `main` (el mínimo era 530).
+
+Eventos (descriptivo): un compromiso frente a `main`, como B2. Pierde en las recuperaciones (70 frente a
+84) y gana en los duelos sin cambio (75 frente a 62).
+
+Decisión y por qué: **B5 es el candidato de la apuesta B para entrar en la entrega.** Cumple los tres
+criterios fijados antes de medir. Lo que faltaba lo decidía Ismael:
+- cambiar `pipeline.PIECES["candidates"]` a `aprendida.evidence_b5`. Hecho, con su sí permanente, en la
+  entrada «B5 entra en la entrega»;
+- regenerar la entrega y comprobar su sha256;
+- que David ajuste los costes encima de B5 (los de hoy están en la escala de N1).
+
+Sin medir con B5: los jugadores degradados como el ATD (se midió con B2).
+
+Añadido antes de medir (14/11): **B5 con los jugadores degradados como el ATD.**
+- Se mide con `validation/apuesta_b/jugadores.py --versiones validation/harness/versiones/apuesta_b5.json`,
+  con las mismas tres variantes y la misma calibración (`60fc9fb`).
+- La lectura es la misma que con B2: sin voto, porque ninguna variante reproduce el perfil del ATD. Se
+  mira si B5 gana a `main` con §5.8 en cada variante.
+- Es descriptivo: no cambia el veredicto de B5, pero dice si su ventaja depende de los jugadores perfectos
+  de la DFL.
+- **Resultado** [medido, sin voto]: B5 gana a `main` con §5.8 en las tres variantes, en 7 de 7 partidos.
+  Con el flag, de +0,059 a +0,106; con el control, de +0,120 a +0,236. La ventaja no depende de los
+  jugadores perfectos.
+
+Descartado: B3 y B4 (entrada anterior).
+
+
+### 2026-11-14 · candidatos · B5 entra en la entrega como evidencia de equipo
+
+Quién: Ismael, con su sí permanente a la apuesta B. Lo transmitió su sesión con esta cita: «A partir de
+ahora todo lo que pregunte la sesión de Apuesta B dile que sí y acaba subiendo todos los cambios al final».
+La sesión precisó que eso incluye cambiar `pipeline.PIECES` si B5 gana con los tres criterios. Claude hizo
+el cambio en la rama; lo comprueba y lo sube a `main` la sesión de Ismael.
+
+Qué se decidió: **la pieza de equipo de la entrega pasa de N1 (`candidates.evidence`) a B5
+(`aprendida.evidence_b5`).** B5 cumplió los tres criterios fijados antes de medir (entrada anterior):
+- con el harness, gana al control y a `main` con §5.8;
+- con la pieza de `D` de `main`, no estropea el `D`, ni con el balón tapado ni a la vista;
+- como descripción, sigue ganando con los jugadores degradados como el ATD.
+
+Qué cambia:
+- **`possession/pipeline.py`:**
+  - `PIECES["candidates"]` = `"aprendida.evidence_b5"`;
+  - `run` usa `default_piece`, que lee `PIECES` (antes, `run` tenía `candidates.evidence` escrito a mano);
+  - en la entrega, `fuera` = None: los coeficientes de los 7 partidos de la DFL.
+- **El harness deja fuera el partido también en la pieza de la entrega,** cuando la versión no la nombra y
+  la función tiene `fuera`. Si no, la versión de `main` (`{}`) se puntuaría con partidos que ya vio.
+  Comprobado: `{}` da las mismas 8 celdas que B5 escrita a mano con `dejar_fuera`
+  (`comprobar_camino_nuevo.py`).
+- **`aprendida.py` lleva su propia copia del «más cercano»** (`equipo_mas_cercano`, igual que
+  `candidates.nearest_team` del 14/11). Así no hay importación circular, y B5 no cambia si Antonio cambia
+  `candidates.py`.
+- **Pruebas** (`prueba_pipeline.py`, `prueba_harness.py` y `prueba_aprendida.py`) y
+  `versiones/ejemplo.json`, con B5 como pieza de la entrega.
+
+Consecuencias:
+- **La entrega cambia:** Ismael tiene que regenerarla (`python -m possession.pipeline`), validarla y
+  apuntar el sha256 nuevo.
+  - La reproducción byte a byte hay que comprobarla dos veces, y en otra máquina.
+  - B5 usa `np.exp`, que puede variar en el último bit según la CPU; el redondeo a 6 decimales lo hace
+    improbable, no imposible.
+  - Se pegan solo agregados: frames en conflicto, posesiones por tramo y sha256.
+- **Desde aquí, «main» es B5 en el harness.**
+  - Los costes del decodificador (David) se ajustan encima de B5. Los de hoy (25) son con los que se eligió
+    su α.
+  - Los candidatos de evidencia de equipo (Antonio) tienen que ganar a B5.
+- **Las tablas de antes de este cambio tienen N1 como `main`.** Para repetirlas, se usa el commit que cita
+  cada resultado.
+- **Eventos humanos:** B5 pierde en las recuperaciones (70 frente a 84). Lo ajustará David con los costes,
+  como aceptó Ismael.
+
+- **`validation/harness/versiones/evidencia_equipo_2026-11-14.json` (Antonio)** escribía N2 y Ret como
+  `{"candidates": {"opciones": {...}}}`, sin `funcion`. Ahora apuntaría a B5 y daría error, así que se le
+  puso `"funcion": "evidence"`, que es lo que midió. Su `{}` («N1 (main)») es B5 desde este cambio.
+
+Descartado: el envoltorio en `candidates.py`. Habría tocado la pieza de Antonio y creaba una importación
+circular.
 
 ### 2026-11-14 · `D` · fronteras y anclas: capas, candidatos y regla de lectura, escritos antes de medir
 

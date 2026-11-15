@@ -29,7 +29,7 @@
 | `D`: fronteras y anclas | Manuel | `possession/dead_ball.py` | cuándo empieza y cuándo acaba cada parada, y qué equipo reanuda, con el balón, el Smart Tagging y el silbato | agregados del partido; lo del balón, también en la DFL |
 | `D`: estado, y documento técnico | Ana | `possession/dead_state.py` | la probabilidad de que el juego esté parado en cada frame, con los jugadores; desde el lunes, el documento técnico | DFL |
 | evidencia de equipo y limpieza del balón | Antonio | `possession/candidates.py`, `possession/ball.py` | quién tiene el balón cuando se ve: proximidad con control, frente al jugador más cercano | DFL degradada |
-| apuesta B: evidencia aprendida | Ismael, en una sesión aparte | — | un modelo que da las tres clases; solo si gana al de reglas | DFL |
+| apuesta B: evidencia aprendida | Ismael, en una sesión aparte | `possession/aprendida.py` | un modelo de `H` frente a `A` (decisión del 14/11); solo si gana al de reglas | DFL |
 
 Cada uno trabaja en su fichero. Si necesitas algo de otra pieza, pídeselo a su dueño.
 
@@ -37,7 +37,7 @@ Cada uno trabaja en su fichero. Si necesitas algo de otra pieza, pídeselo a su 
 
 ```
 ATD ─► Tracking ─► limpieza ─► evidencias por frame ─► suma ─► decodificador ─► CSV
-       tracking.py  ball.py    candidates.py                    temporal.py     pipeline.py
+       tracking.py  ball.py    aprendida.py (B5, 14/11)         temporal.py     pipeline.py
                                dead_state.py
                                dead_ball.py
 ```
@@ -71,9 +71,10 @@ etiqueta por frame: 0 `H`, 1 `A`, 2 `D` y 3 `X` fuera de los tramos evaluados. L
 duraciones mínimas y la poda van aquí, no en las piezas de evidencia.
 
 **Para comparar variantes de una pieza** (14/11): escríbela como otra función de tu módulo, con la misma
-firma. El harness la usa en lugar de la de siempre con `pipeline.run(..., pieces=...)`, que se rellena
+firma (la apuesta B usa además `possession/aprendida.py`, que el harness admite para `candidates`). El harness la usa en lugar de la de siempre con `pipeline.run(..., pieces=...)`, que se rellena
 desde el fichero de `--versiones` (README del harness). La entrega usa siempre las de siempre:
-`ball.clean`, `candidates.evidence`, `dead_state.evidence` y `temporal.decode`, que son las que nombra
+`ball.clean`, `aprendida.evidence_b5` (la apuesta B, desde el 14/11; antes `candidates.evidence`),
+`dead_state.evidence` y `temporal.decode`, que son las que nombra
 `pipeline.PIECES`. Todas las versiones reciben el mismo tracking, de solo lectura: una pieza devuelve una
 copia (`trk._replace(...)`), nunca lo cambia.
 
@@ -124,9 +125,10 @@ su prueba con un partido inventado, y el harness de la DFL (`validation/harness/
 **Domingo y lunes:** revisar y mergear las PR a diario, mantener una entrega válida en todo momento,
 congelar, y reproducir el CSV byte a byte en una máquina limpia.
 
-**Apuesta B** (evidencia aprendida de tres clases, `docs/investigacion_metodos.md` §4.2): en una sesión
-aparte, cuando el harness y la degradación estén comprobados. Se abandona el lunes a las 14:00 si no ha
-ganado.
+**Apuesta B** (evidencia aprendida, `docs/investigacion_metodos.md` §4.2; de `H` frente a `A` y no de tres
+clases, por decisión del 14/11 en `docs/decisiones.md`): en una sesión aparte, cuando el harness y la
+degradación estén comprobados. Se abandona el lunes a las 14:00 si no ha ganado. Medida el 14/11:
+`validation/resultados/2026-11-14_apuesta_b.md`.
 
 ### David: decodificador (`possession/temporal.py`)
 
@@ -149,10 +151,12 @@ tenía dueño.
 duraciones mínimas; (c) el mismo con poda. El control es el voto por mayoría de ±50 frames del baseline.
 
 **El orden importa (14/11 por la noche).** Los costes se miden en las unidades de la evidencia de equipo.
-- **Qué evidencia hay:** la de `main` es el jugador más cercano, con un empujón fijo por frame. La apuesta
-  B de Ismael (B2, evidencia aprendida con la proximidad y la forma de los equipos) va ganando a `main` y
-  da empujones de tamaño variable, con una escala ajustada para el coste 25 de hoy. Falta comprobarla con
-  jugadores como los del ATD.
+- **Qué evidencia hay (14/11, de noche):** la de `main` es B5, la apuesta B de Ismael
+  (`aprendida.evidence_b5`): la evidencia aprendida de B2 más el +1 del jugador más cercano. Entró porque
+  cumplió los tres criterios fijados antes de medir (`docs/decisiones.md`). Da empujones de tamaño
+  variable, con una escala elegida para el coste 25 de hoy y con la pieza de `D` de Ana dentro. En los
+  eventos humanos pierde en las recuperaciones (70 frente a 84): es lo que hay que mirar al ajustar los
+  costes.
 - **Ya, sobre `main`:** escribe el código de (b) y (c) y el fichero de versiones con los candidatos.
 - **Cuando se decida B2 (entra o se descarta):** ajusta los costes encima de la evidencia que quede en
   `main`. Ismael avisa. Si entra B2 y cambias los costes, hay que volver a mirar su escala: coordínalo con
@@ -217,8 +221,10 @@ equipo anterior a través de una parada. Los tres están descartados con medidas
 
 ### Ana: `D`, estado (`possession/dead_state.py`) y documento técnico
 
-**Qué hay:** una versión que no opina. Solo usa el `Tracking`, así que corre igual en el partido y en la
-DFL.
+**Qué hay (14/11 por la noche):** tu modelo E2, en `main` desde la PR 5. Opina en la columna `D` con
+los jugadores, y los agregados del ATD dicen que se traslada (`validation/resultados/2026-11-14_d_estado.md`
+y `2026-11-14_agregados_jugadores_atd.md`). La entrega `equipo_v1` ya lo lleva. Los puntos de abajo son
+el plan con el que se hizo.
 
 **Qué tienes que hacer:**
 
@@ -241,8 +247,9 @@ entrenamiento y su origen, las reglas de posesión, las limitaciones y cómo rep
 
 ### Antonio: evidencia de equipo (`possession/candidates.py`) y limpieza (`possession/ball.py`)
 
-**Qué hay:** el jugador más cercano al balón (N1), que es lo que hace el baseline, y una limpieza que
-todavía no hace nada.
+**Qué hay:** desde el 14/11 por la noche, la pieza de equipo de la entrega es B5 (`aprendida.evidence_b5`,
+la apuesta B), no N1. Para entrar, un candidato tuyo tiene que ganar a B5 en el harness. N1 sigue en
+`candidates.evidence`; el control del harness sigue siendo el baseline (N1 con voto de ±50).
 
 **Qué tienes que hacer:**
 

@@ -110,7 +110,7 @@ Qué tiene que hacer cada uno hasta la entrega: [`docs/PLAN_ENTREGA.md`](docs/PL
 
 ---
 
-## Dónde estamos (actualizado el 14/11/2026)
+## Dónde estamos (actualizado el 15/11/2026)
 
 Lee esto para saber en qué punto está el equipo. El detalle está en los ficheros enlazados.
 
@@ -175,6 +175,35 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - Se comprueba sin datos del partido con `python validation/scripts/prueba_pipeline.py`.
   - La entrega la genera una persona con `python -m possession.pipeline`.
   - Los valores por defecto están sin ajustar.
+  - **Reproducible:** Ismael (Windows) y un compañero (Linux) sacaron el mismo sha256 de `equipo_v0`.
+- **Pieza de `D` de estado de Ana en `main`** (PR 5, 14/11; `validation/resultados/2026-11-14_d_estado.md`
+  y `2026-11-14_agregados_jugadores_atd.md`).
+  - El modelo E2, con los jugadores, opina en la columna `D`. Los agregados del ATD dicen que se traslada.
+  - **Entrega `equipo_v1`** (Ismael, con `main` en `4738082`): válida, con el 43,4 % de `D` en los frames
+    evaluados, 111 paradas y sha256 `c7d3dd31…647d`.
+  - En la ventana pública ya marca el `D` (F1 de `D` 0,77). La ventana solo dice que no está rota; no
+    elige.
+- **Evidencia de equipo y limpieza de Antonio en `main`** (PR 6, 14/11): N2 y la retención pierden
+  frente a `main` con el flag, así que se quedan como opciones (`candidates.evidence(trk, method=...)`). La
+  limpieza va como variante (`ball.clean_v1`): empata en el harness, que no puede ver los saltos falsos del
+  ATD, y tiene un fallo conocido que hay que arreglar antes de usarla. La entrega no cambia.
+- **La evidencia de equipo de la entrega es B5 desde el 14/11 por la noche** (apuesta B de Ismael;
+  `validation/resultados/2026-11-14_apuesta_b.md` y `docs/decisiones.md`).
+  - **Qué es:** un modelo aprendido en la DFL, con la proximidad al balón y la forma de los equipos, decide
+    entre `H` y `A`. Frente al `D` empuja como N1, para no tapar la pieza de Ana.
+  - **Cumplió los tres criterios fijados antes de medir:**
+    - gana al control y a N1 con §5.8;
+    - con la pieza de Ana ve tantas paradas como N1;
+    - aguanta con el balón a la vista en las paradas.
+  - **En el harness** la fila por defecto («Viterbi, coste 25 (v0)») es ya B5: 0,498 / 0,512 con el flag.
+  - **Entrega `equipo_v2`** (Ismael, 15/11, con `main` en `962bddd`): válida, con el 44,4 % de `D` en los
+    frames evaluados, 114 paradas, 219 posesiones de 16,1 s de media (la v1 tenía 321 de 11,2 s) y sha256
+    `864ef3d9…5007`.
+    - **Reproducible:** sale el mismo sha256 dos veces en Windows y una en Linux. En esas dos máquinas, el
+      `np.exp` de B5 no cambia el resultado.
+    - En la ventana pública no se rompe nada: el `D` acierta los mismos frames que la v1.
+  - **Pierde recuperaciones** en los eventos humanos. Lo ajusta David con los costes, que ahora se miden
+    en la escala de B5.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.

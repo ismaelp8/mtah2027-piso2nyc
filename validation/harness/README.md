@@ -105,9 +105,50 @@ es una opción de la función de siempre, basta con las opciones: `{"candidates"
 | clave | qué es |
 |---|---|
 | `params` | los parámetros del decodificador que use la versión (con el de siempre, las claves de `temporal.DEFAULTS`). Sin ella, los de por defecto |
-| `piezas` | qué función usa cada pieza en lugar de la de siempre. Las piezas: `ball` (en lugar de `clean`), `candidates` y `dead_state` (en lugar de `evidence`) y `temporal` (en lugar de `decode`). La función tiene que estar en ese módulo de `possession/`. Vale su nombre (`"evidence_n2"`) o `{"funcion": ..., "opciones": {...}}`; sin `funcion`, la de siempre. Las opciones se le pasan como argumentos con nombre |
+| `piezas` | qué función usa cada pieza en lugar de la de la entrega (`pipeline.PIECES`). Las piezas: `ball` (en lugar de `clean`), `candidates` (en lugar de `aprendida.evidence_b5` desde el 14/11; antes, `evidence`), `dead_state` (en lugar de `evidence`) y `temporal` (en lugar de `decode`). La función tiene que estar en ese módulo de `possession/`. Vale su nombre (`"evidence_n2"`) o `{"funcion": ..., "opciones": {...}}`; sin `funcion`, la de la entrega (en `candidates`, desde el 14/11, B5, que pide `"dejar_fuera": true`). Las opciones se le pasan como argumentos con nombre |
 | `nota` | texto libre: qué es y por qué. Sale en la cabecera |
 | `tipo` | `pipeline` (por defecto) o `control`. Un `control` es el baseline con otra ventana (`"ventana": 125`) |
+
+**Una pieza aprendida, dejando un partido fuera** (decisión de Ismael del 14/11, para la apuesta B). Dos
+añadidos a `piezas`:
+
+- **`"modulo.funcion"`:** la función sale de otro módulo de `possession/` en lugar del de la pieza. Solo los
+  que admite `OTROS_MODULOS` en `puntuar.py`: hoy, `aprendida` para la pieza `candidates`. Así la apuesta B
+  vive en `possession/aprendida.py` sin tocar `candidates.py`.
+- **`"dejar_fuera": true`:** al puntuar cada partido de la DFL, el harness le pasa a la función
+  `fuera=<partido>`, y la función usa los coeficientes que se entrenaron sin ese partido. Sin él, un modelo
+  entrenado con los 7 se puntuaría sobre partidos que ya vio, contra §5.8. Fuera del harness (la entrega),
+  `fuera` vale `None`: los coeficientes de los 7. Al leer el fichero, la versión se prueba con `None` y con
+  cada partido, así que un pliegue que falta da error antes de medir.
+
+```json
+{
+  "main: N1 y coste 25": {},
+  "B1: proximidad aprendida": {
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b1", "dejar_fuera": true}}
+  }
+}
+```
+
+`validation/harness/versiones/apuesta_b.json` es el fichero de la apuesta B, y
+`validation/apuesta_b/entrenar.py` escribe los coeficientes de cada pliegue en el módulo.
+
+**Lo que da error a propósito:**
+- una función que acepta `fuera` sin `"dejar_fuera": true`, porque se puntuaría con los coeficientes de los
+  7 partidos, sobre partidos que ya vio;
+- puntuar una versión que deja fuera el partido sin decir cuál.
+
+**Desde el 14/11 la pieza de equipo de la entrega es B5 (`aprendida.evidence_b5`), que deja fuera un
+partido.** El harness se lo pasa también cuando la versión no nombra la pieza: la versión de `main` (`{}`)
+se puntúa, partido a partido, con el pliegue que no lo vio. Comprobado con
+`validation/apuesta_b/comprobar_camino_nuevo.py`: `{}` da las mismas celdas que B5 escrita a mano con
+`dejar_fuera`. Las tablas de antes del 14/11 tienen N1 como `main`. Los ficheros `apuesta_b*.json` llaman
+«main: N1 y coste 25» a `{}`, y desde ese día `{}` es B5: para repetir sus tablas, usa el commit que cita
+cada resultado.
+
+**Ojo con la fila «elegida dejando un partido fuera»** cuando hay versiones con `dejar_fuera`: no está
+anidada del todo. Para elegir la versión de un partido mira lo que sacan las versiones en los otros seis, y
+cada uno se puntuó con un pliegue que sí vio el primero. La regla de §5.8 no usa esa fila.
 
 **Las erratas dan error al leer el fichero, antes de cargar ningún partido:** una clave desconocida, una
 pieza o una función que no existe, una opción que la función no acepta, `NaN` o `Infinity`, o un nombre
@@ -221,4 +262,4 @@ Hace falta el XML de eventos de cada partido, que baja `descargar_datos_abiertos
 |---|---|
 | `dfl.py` | carga un partido de la caché, calcula sus etiquetas con las dos convenciones, degrada el balón y lo pasa al formato de `possession/tracking.py` |
 | `puntuar.py` | ejecuta cada versión, la puntúa y aplica la regla |
-| `versiones/` | los ficheros de versiones de `--versiones`; `ejemplo.json` es el de muestra |
+| `versiones/` | los ficheros de versiones de `--versiones`; `ejemplo.json` es el de muestra y `apuesta_b.json`, el de la apuesta B |

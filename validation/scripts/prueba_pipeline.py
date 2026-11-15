@@ -28,7 +28,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "evaluation"))
 import games  # noqa: E402
 import possession_metrics as pm  # noqa: E402
-from possession import ball, candidates, dead_ball, dead_state, pipeline, temporal, tracking  # noqa: E402
+from possession import aprendida, ball, candidates, dead_ball, dead_state, pipeline, temporal, tracking  # noqa: E402
 from starter import baseline  # noqa: E402
 
 SEED = 20261114
@@ -126,7 +126,8 @@ def synthetic_tracking(n, blocks, pitch, rng, slots_per_team=23):
 def check_interface(trk):
     print("Interfaz de las piezas")
     n = len(trk.bx)
-    for name, piece in (("candidates", candidates.evidence(trk)), ("dead_state", dead_state.evidence(trk)),
+    for name, piece in (("candidates", candidates.evidence(trk)), ("aprendida (B5, la de la entrega)",
+                         aprendida.evidence_b5(trk)), ("dead_state", dead_state.evidence(trk)),
                         ("dead_ball", dead_ball.evidence(trk, None, GAME))):
         score, allowed = piece
         check("{}.evidence devuelve (score, allowed) de forma (n, 3)".format(name),
@@ -246,10 +247,9 @@ def check_pieces(rng):
     print("Cambiar una pieza por otra función (lo que usa el harness para comparar versiones)")
     trk = synthetic_tracking(400, [(50, 350)], (105.0, 68.0), rng, slots_per_team=5)
     block = slice(50, 350)
-    modules = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal}
-    explicit = {name: getattr(modules[name], function) for name, function in pipeline.PIECES.items()}
-    check("PIECES nombra las funciones que usa `run` por defecto",
-          explicit == {"ball": ball.clean, "candidates": candidates.evidence,
+    explicit = {name: pipeline.default_piece(name) for name in pipeline.PIECES}
+    check("PIECES nombra las funciones que usa `run` por defecto (la de equipo, B5 desde el 14/11)",
+          explicit == {"ball": ball.clean, "candidates": aprendida.evidence_b5,
                        "dead_state": dead_state.evidence, "temporal": temporal.decode})
     base = pipeline.run(trk)
     check("sin `pieces`, con {} y con las de PIECES una a una sale lo mismo",
@@ -267,7 +267,8 @@ def check_pieces(rng):
     def silent(t):
         return tracking.no_evidence(len(t.bx))
 
-    out = pipeline.run(trk, pieces={"ball": no_ball, "dead_state": silent})
+    # N1 a mano: sin balón se calla, así que todo sale `H`. B5, la de la entrega, opina también con los jugadores.
+    out = pipeline.run(trk, pieces={"ball": no_ball, "dead_state": silent, "candidates": candidates.evidence})
     check("la limpieza cambiada se usa, y las demás piezas reciben su tracking",
           seen == [len(trk.bx)] and bool(np.all(out[block] == H)))
 
@@ -330,6 +331,8 @@ def check_reader(folder, rng):
     theirs = baseline.nearest_player_labels(raw, baseline.team_of_each_track(meta), n, pitch)
     check("el candidato v0 coincide con el jugador más cercano del baseline oficial",
           bool(np.array_equal(ours, theirs)), "{} frames con balón".format(int(np.sum(ours >= 0))))
+    check("la copia del más cercano que usa B5 (la entrega) también coincide con el baseline oficial",
+          bool(np.array_equal(aprendida.equipo_mas_cercano(trk), theirs)))
 
 
 def main():

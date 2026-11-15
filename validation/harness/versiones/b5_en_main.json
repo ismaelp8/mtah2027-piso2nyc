@@ -1,0 +1,9 @@
+{
+  "main (B5 desde el 14/11)": {
+    "nota": "la entrega: B5 (aprendida.evidence_b5) como pieza de equipo; el harness deja fuera el partido que puntúa"
+  },
+  "N1 a mano": {
+    "nota": "la pieza de equipo de antes del cambio (candidates.evidence, N1), escrita a mano: tiene que repetir 0,428 y 0,456 con el flag",
+    "piezas": {"candidates": "evidence"}
+  }
+}
