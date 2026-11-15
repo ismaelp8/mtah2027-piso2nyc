@@ -13,9 +13,17 @@ al., 2025, CC BY 4.0). Devuelve el logaritmo de la razón de probabilidades de `
   donde se usa scikit-learn. Aquí solo hay numpy.
 - Qué se comparó, cómo se midió y qué salió: docs/decisiones.md (14/11) y
   validation/resultados/2026-11-14_d_estado.md.
+- Nada cruza el borde de un tramo evaluado (`trk.blocks`): ni las ventanas de los rasgos ni la velocidad
+  de un jugador usan frames del otro lado (`segments`). En la DFL del harness fuera de cada parte no hay
+  datos; en el partido sí (los jugadores parados antes del saque), y sin el recorte los primeros segundos
+  de cada parte recibían una evidencia que el harness nunca ve (docs/decisiones.md, 15/11).
 
 Interfaz: `evidence(trk)` devuelve `(score, allowed)`; ver possession/tracking.py. La histéresis y la
 duración mínima no van aquí: las pone el decodificador (possession/temporal.py).
+
+`evidence(trk, scale=...)` multiplica la puntuación, para medir cuánto pesa esta pieza frente a la de
+equipo y a los costes del decodificador. La entrega usa la escala 1. En el harness se pide con
+`"piezas": {"dead_state": {"funcion": "evidence", "opciones": {"scale": 0.5}}}`.
 """
 
 import numpy as np
@@ -81,6 +89,7 @@ SCORE_GRID = 1024.0
 
 # El candidato E2, ajustado con los 7 partidos de la DFL (200.532 frames, 44,8 % `D`). Es la salida, tal
 # cual, de validation/scripts/d_estado/entrenar.py; `--comprobar` dice si sigue saliendo lo mismo.
+# Entrenado con scikit-learn 1.7.2 (numpy 2.2.4, scipy 1.15.3 y Python 3.10.12).
 MODEL = {
     "intercept": 6.24631,
     "coef": {
@@ -127,11 +136,25 @@ def _row_percentile(values, valid, count, q):
     return np.where(count > 0, a + (b - a) * (position - low), np.nan)
 
 
+def segments(n, blocks):
+    """El segmento de cada frame: `(low, high)`, dos arrays (n,) con low[t] <= t < high[t].
+
+    Los bordes de los tramos evaluados (`blocks`) cortan los frames 0…n-1 en segmentos: cada tramo es
+    uno, y lo que queda antes, entre medias y después, otros. Nada de lo que se calcula para un frame usa
+    frames de fuera de su segmento. Sin tramos hay un solo segmento, todo el tracking.
+    """
+    edges = np.clip(np.asarray(blocks, dtype=np.int64).reshape(-1), 0, n)
+    cuts = np.unique(np.concatenate((np.array([0, n], dtype=np.int64), edges)))
+    after = np.searchsorted(cuts, np.arange(n), side="right")  # cuántos cortes hay hasta t, él incluido
+    return cuts[after - 1], cuts[after]
+
+
 def raw_series(trk):
     """Las series de `RAW`, una por frame: {nombre: array (n,)}. NaN donde no se ve a nadie.
 
     Todo son agregados de los slots que se ven en cada frame. Nada depende del índice de un slot, salvo
-    su velocidad entre dos frames a 0,16 s, que se descarta si el salto no es de un jugador.
+    su velocidad entre dos frames a 0,16 s, que se descarta si el salto no es de un jugador o si uno de
+    los dos frames cae fuera del segmento del frame (`segments`).
     """
     with np.errstate(invalid="ignore", divide="ignore"):  # NaN y filas vacías: ya se tratan abajo
         return _raw_series(trk)
@@ -143,6 +166,7 @@ def _raw_series(trk):
     lag = SPEED_LAG
     seconds = 2.0 * lag / trk.fps
     home, away = trk.team == 0, trk.team == 1
+    seg_low, seg_high = segments(n, trk.blocks)
     out = {name: np.full(n, np.nan) for name in RAW}
     for start in range(0, n, CHUNK):
         stop = min(n, start + CHUNK)
@@ -161,6 +185,9 @@ def _raw_series(trk):
             after = slice(first + lag - lo, last + lag - lo)
             step = np.hypot(x[after] - x[before], y[after] - y[before]) / seconds
             speed[first - start:last - start] = step
+        # Los dos extremos, dentro del segmento del frame: la velocidad no mira al otro lado de un borde.
+        index = np.arange(start, stop)
+        speed[(index - lag < seg_low[start:stop]) | (index + lag >= seg_high[start:stop])] = np.nan
         moving = ~np.isnan(speed) & (speed <= MAX_PLAYER_SPEED)
         slow = moving & (speed < SLOW_SPEED)
         count = moving.sum(axis=1)
@@ -197,10 +224,14 @@ def _raw_series(trk):
     return out
 
 
-def window_mean(values, back, ahead):
+def window_mean(values, back, ahead, bounds=None):
     """Media de `values` entre el frame t - back y el t + ahead, los dos incluidos, sin contar los NaN.
 
-    NaN donde no hay ningún dato en la ventana.
+    Con `bounds` (lo que devuelve `segments`), la ventana de cada frame se recorta a su segmento. NaN
+    donde no hay ningún dato en la ventana.
+
+    Las sumas acumuladas son las mismas con y sin `bounds`: lejos de los bordes el resultado no cambia ni
+    en el último bit, y tampoco donde lo que queda fuera del segmento no tiene datos (la DFL del harness).
     """
     values = np.asarray(values, dtype=np.float64)
     ok = ~np.isnan(values)
@@ -209,20 +240,27 @@ def window_mean(values, back, ahead):
     index = np.arange(len(values))
     low = np.maximum(0, index - back)
     high = np.minimum(len(values), index + ahead + 1)
+    if bounds is not None:
+        low, high = np.maximum(low, bounds[0]), np.minimum(high, bounds[1])
     seen = count[high] - count[low]
     return np.where(seen > 0, (total[high] - total[low]) / np.maximum(seen, 1), np.nan)
 
 
 def features(trk, names):
-    """Los rasgos de `names` (claves de `FEATURES`): {nombre: array (n,)}. NaN donde no se ve a nadie."""
+    """Los rasgos de `names` (claves de `FEATURES`): {nombre: array (n,)}. NaN donde no se ve a nadie.
+
+    Cada ventana se recorta al segmento de su frame (`segments`): no cruza el borde de un tramo evaluado.
+    """
     unknown = sorted(set(names) - set(FEATURES))
     if unknown:
         raise KeyError("rasgos desconocidos: {}".format(unknown))
     raw = raw_series(trk)
+    bounds = segments(len(trk.bx), trk.blocks)
     out = {}
     for name in names:
         series, back_s, ahead_s = FEATURES[name]
-        out[name] = window_mean(raw[series], int(round(back_s * trk.fps)), int(round(ahead_s * trk.fps)))
+        out[name] = window_mean(raw[series], int(round(back_s * trk.fps)), int(round(ahead_s * trk.fps)),
+                                bounds)
     return out
 
 
@@ -245,11 +283,31 @@ def log_odds(trk, model=None):
     return np.round(np.clip(total, -SCORE_CLIP, SCORE_CLIP) * SCORE_GRID) / SCORE_GRID
 
 
-def evidence(trk):
+def scaled(odds, scale):
+    """`scale` · `odds`, recortado a ±SCORE_CLIP y redondeado a múltiplos de 1/SCORE_GRID, como `log_odds`.
+
+    Con la escala 1 devuelve `odds` tal cual, bit a bit. Con 0,5, la mitad; el redondeo la mueve como mucho
+    1/(2·SCORE_GRID), porque la mitad de un múltiplo impar de 1/SCORE_GRID cae entre dos. La escala es un
+    número finito y no negativo; con 0 la pieza no opina.
+    """
+    if isinstance(scale, bool) or not isinstance(scale, (int, float, np.integer, np.floating)):
+        raise ValueError("la escala tiene que ser un número: {!r}".format(scale))
+    if not np.isfinite(scale) or scale < 0:
+        raise ValueError("la escala tiene que ser finita y no negativa: {!r}".format(scale))
+    return np.round(np.clip(float(scale) * odds, -SCORE_CLIP, SCORE_CLIP) * SCORE_GRID) / SCORE_GRID
+
+
+def evidence(trk, scale=1.0):
     """El logaritmo de la razón de probabilidades de `D` en la columna `D`. No prohíbe nada.
 
     Positivo: el juego parece parado. Negativo: parece vivo. Cero: no opina (no se ve a ningún jugador).
+
+    `scale` multiplica la puntuación (`scaled`). Por defecto 1, que es lo que lleva la entrega: está sin
+    ajustar frente a la pieza de equipo y a los costes del decodificador. Como en la sensibilidad de
+    validation/scripts/d_estado/medir.py, la escala se aplica a la puntuación ya recortada, así que con
+    0,5 la pieza puntúa entre −SCORE_CLIP/2 y +SCORE_CLIP/2. A diferencia de ella, aquí se vuelve a
+    redondear a la rejilla: con 0,5 las dos difieren en 1/(2·SCORE_GRID) como mucho.
     """
     score, allowed = no_evidence(len(trk.bx))
-    score[:, D] = log_odds(trk)
+    score[:, D] = scaled(log_odds(trk), scale)
     return score, allowed

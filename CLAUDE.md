@@ -80,8 +80,8 @@ La protección de verdad es esta regla, no la configuración.
 
 | persona | GitHub | papel |
 |---|---|---|
-| Ismael Pintor | `ismaelp8` | infraestructura y entrega (esqueleto, harness, integración), reviewer, dueño del documento técnico |
-| David Ortega | `ortegafer` | decodificador (`possession/temporal.py`), reviewer |
+| Ismael Pintor | `ismaelp8` | infraestructura y entrega (esqueleto, harness, integración), dueño del documento técnico |
+| David Ortega | `ortegafer` | decodificador (`possession/temporal.py`) |
 | Antonio Azuer | `antonioazuero11-wq` | evidencia de equipo y limpieza del balón (`possession/candidates.py`, `possession/ball.py`) |
 | Manuel Herrero | `manuelherrero` | `D`: fronteras y anclas (`possession/dead_ball.py`) |
 | Ana Aparicio | — | `D`: estado (`possession/dead_state.py`) y documento técnico |
@@ -91,7 +91,16 @@ Qué tiene que hacer cada uno hasta la entrega: [`docs/PLAN_ENTREGA.md`](docs/PL
 - **Si alguien delega el git en Claude** (lo dice en su `CLAUDE.local.md` o lo pide en la
   conversación), hazlo tú con las skills. Explica cada paso en una frase sencilla, sin jerga, y pide
   confirmación antes de subir nada.
-- **Ismael y David revisan las PR.** Nadie aprueba su propia PR.
+- **Cualquiera del equipo puede contestar una duda, tomar una decisión y revisar, aprobar o mergear la PR
+  de otra persona** (decisión de Ismael, 15/11). Ismael no es una puerta: Claude no frena a nadie por no ser
+  él.
+  - Donde este brief, el plan, una bitácora o un comentario del código digan «lo decide Ismael», «se le
+    pasa a Ismael» o «pendiente de permiso de Ismael», léelo como «lo decide el equipo».
+  - Quien decide lo apunta en `docs/decisiones.md` (`/decision`), con su nombre y el porqué.
+  - Lo que viene después de una decisión no cambia: si toca `pipeline.PIECES`, un valor por defecto o código
+    que usa la entrega, alguien regenera la entrega y la valida.
+- **Cada uno puede mergear su propia PR,** sin esperar una aprobación. Si quiere otra opinión, se la pide a
+  quien esté disponible.
 - **Nombre de equipo para la entrega: por confirmar.** Tiene que coincidir exactamente con el que puso
   cada uno al inscribirse. Hasta entonces, `<NOMBRE_EQUIPO>`.
 
@@ -225,7 +234,13 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v3`** (Ismael, 15/11, con `main` en `6e8fb27`): válida, con el 45,1 % de `D`
+- **Entrega vigente: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
+  más la capa de los contraataques (más abajo). Es válida, con 219 posesiones de 15,9 s de media, 113
+  paradas, el mismo `D` que `equipo_v3` y sha256 `27dc8aa8…efb7`.
+  - Sale byte a byte igual que `prueba_transiciones2`, que se generó con numpy 2.3.4.
+  - Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro.
+  - Falta reproducirla en otra máquina.
+- **Entrega anterior: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
@@ -243,8 +258,9 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     frames sin línea. Desde entonces, cualquier línea rara es un error y no se genera la entrega.
   - **No hay rachas cortas:** ninguna de menos de 12 ni de 25 frames en los dos tramos.
 - **Ronda única de reentrenamiento de B5: empate** (15/11; `docs/decisiones.md` y
-  `validation/resultados/2026-11-14_apuesta_b.md` §11). **Se cierra la evidencia de equipo:** B5 sigue en la
-  entrega y `pipeline.PIECES` no cambia.
+  `validation/resultados/2026-11-14_apuesta_b.md` §11). Por la regla de parada se cerró la evidencia de
+  equipo; **Ismael la reabrió el mismo día** (punto siguiente). B5 sigue en la entrega y `pipeline.PIECES` no
+  cambia.
   - **Los candidatos:** B6 (sin las ventanas de 151 frames), B7 (más peso cerca de los cambios) y B8 (con
     el evento de toque).
   - **Ninguno cumple los tres criterios** fijados antes de medir. El que más se acerca es B7: mejora las
@@ -253,12 +269,118 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Sus coeficientes quedan en `possession/aprendida.py`.** Los de B1 a B5 no cambian.
   - **`validation/partido/slots_duplicados.py`** dice si el ATD duplica a algún jugador. Lo ejecuta Ismael,
     si quiere; arreglarlo sería un cuarto candidato.
+- **La evidencia de equipo está reabierta** (Ismael, 15/11): «Es claro que tenemos un problema en que
+  predecimos muchas menos posesiones de las que hay, sobretodo cuando son posesiones cortas.»
+  - **B5 sigue en la entrega** y `equipo_v3` sigue vigente hasta que algo gane.
+  - **El estudio de las posesiones cortas está en `main`** (`4305576`;
+    `validation/resultados/2026-11-15_posesiones_cortas.md` y `validation/posesiones_cortas/BITACORA.md`).
+    La rama `claude/posesiones-cortas-5e84f8` se conserva en GitHub, porque sus commits prueban que las reglas
+    iban antes de medir. Lo que dice [medido en datos abiertos]:
+    - **Con el flag, tres cuartos de lo que no encontramos son toques del rival sin control.**
+    - **`main` saca un ritmo casi fijo de posesiones,** sea cual sea la GT. Con el control de la DFL, el
+      número cuadra (4,50 por minuto vivo frente a 4,71). En SkillCorner, que también exige control, falta
+      un 30 % (4,25 frente a 6,05).
+    - **B9, que es B5 más la dirección en que se mueve el balón, empata.** Gana con el flag (+0,039 y
+      +0,048), pero empata con el control, empeora los duelos sin cambio más de lo permitido y no mejora en
+      SkillCorner (−0,005 y +0,004). Queda en `aprendida.py`, fuera de `PIECES`. **Ismael se queda con B5**
+      (`5fc02b8`). La entrega de prueba con B9 cambia poco: 216 posesiones frente a 215.
+    - **Las fases 2 y 3 se cerraron sin candidato.** Quitar las posesiones inventadas no llega a +0,03 ni
+      con un oráculo, y una red de una capa con los mismos rasgos no gana con el control ni en SkillCorner.
+    - **La fase 4 tampoco abre nada** (`a950880`; `docs/decisiones.md`):
+      - el déficit de posesiones no es propio del partido: con nuestro `D`, 4,29 y 4,26 por minuto en la DFL
+        y 4,11 en SkillCorner, y las 3,7 del partido caen dentro;
+      - una pista de equipo de fuera, como las fases del Smart Tagging, daría poco, y solo con un alcance
+        mayor que el del plan;
+      - H3 y H5 del visionado no concluyen: en el partido, nuestros cambios no se juntan con los huecos del
+        balón más que en la DFL. No se abre ninguna degradación nueva antes de la entrega.
+  - **La entrega no cambia con B9** [medido sin datos del partido]: los rasgos de B2, los coeficientes de B1 a
+    B8 y `evidence_b5` son idénticos, y la huella del partido inventado es la misma. Ismael la confirma al
+    regenerar.
+- **Tres exámenes de B5 en datos abiertos** (15/11, `main` en `bb4f2ef`). El pipeline de la entrega, tal
+  cual, con el `D` de las etiquetas:
+  - **SkillCorner** (`validation/skillcorner/`; `validation/resultados/2026-11-15_skillcorner.md`): 20
+    partidos de la A-League con tracking automático de retransmisión.
+    - `main` gana al baseline por +0,131 (20 de 20) y a N1 por +0,059 (19 de 20).
+    - Está partido en dos: 10 partidos para diagnosticar o entrenar y 10 de examen que no se tocan
+      (`lector.ENTRENAMIENTO` y `lector.EXAMEN`).
+  - **Metrica** (`validation/metrica/`; `validation/resultados/2026-11-15_metrica.md`): 3 partidos.
+    - `main` gana al baseline por +0,118 (3 de 3) y a N1 por +0,058 (2 de 3).
+    - Las etiquetas salen de sus eventos, así que no sirven de referencia para la convención.
+  - **Diagnóstico de errores** (`validation/scripts/diagnostico_errores.py`;
+    `validation/resultados/2026-11-15_diagnostico_errores.md`), en la DFL y en la mitad de SkillCorner:
+    - casi nunca partimos una posesión, pero cambiamos de equipo de menos: con el flag, 1.661 cambios frente
+      a 3.061 en la DFL, y 2.270 frente a 3.228 en SkillCorner;
+    - solo entre el 16 y el 37 % de los cambios reales tiene uno nuestro a menos de 1 s (en el placebo, el
+      2 %);
+    - los dos bordes de las paradas detectadas valen como mucho 0,05–0,07 en la DFL.
+  - **`validation/partido/ver_ventana.py`** dibuja la GT pública y una entrega para verlas junto al vídeo. Lo
+    ejecuta Ismael.
+- **Retraso del balón del ATD** (Antonio, PR 11, 15/11; `validation/resultados/2026-11-15_retraso_balon.md`
+  y `docs/decisiones.md`). Es su tarea 1, cerrada.
+  - **El balón llega unos 4 frames tarde respecto a los jugadores** [medido por Antonio en el partido, solo
+    agregados]: de +2 a +5, con +3 y +4 en las dos partes. El riesgo de la revisión, unos 12 frames, queda
+    descartado.
+  - **No ve un retraso que compartan el balón y los jugadores** respecto al vídeo: la medida es relativa.
+  - **En el harness, ese retraso cuesta entre −0,007 y +0,002:** es un empate. `ball.advance_ball` entra
+    **apagada**: `ball.clean` y `pipeline.PIECES` no cambian.
+  - **La entrega no cambia:** el código de antes es idéntico y solo se añade la función. Se confirma al
+    regenerar en el ensayo del lunes.
+- **Las fases del Smart Tagging como pista de equipo** (tarea 2 de Antonio, PR 13, `4ceff85`): la tabla de
+  fases vale, y llegamos de 2 a 10 s tarde en 17 de los 24 contraataques. Con la cota de la DFL, ningún uso
+  llega a +0,03.
+  - **Capa apagada `transiciones.evidence`** (PR 14, `9f89d10`): suma 8 por frame al equipo de cada «Attacking
+    Transition» durante sus 5 primeros segundos, y lo mismo a `D`, así que solo empuja contra el otro equipo.
+  - Antonio escribió cuatro criterios antes de generar nada (`docs/decisiones.md`). **La primera versión los falla:**
+    crea 18 paradas, así que se queda apagada.
+  - **La segunda, `transiciones.evidence_equipo`** (`5920c7f`), pone el peso solo al equipo de la fase y **pasa los
+    cuatro:**
+    - cambian 817 frames, todos de un equipo al otro;
+    - las paradas no se mueven y hay 4 posesiones más.
+  - **Encendida desde el 15/11** (Ismael: «Sí, enciéndela»): `pipeline.DELIVERY_LAYERS`. Es una excepción a la
+    regla del harness, porque la DFL no tiene Smart Tagging.
+  - **La entrega cambia:** es `equipo_v5` (arriba), igual byte a byte que `prueba_transiciones2`.
+  - Si se enciende, hay que añadir en `possession/tracking.py` y en el plan (§2) la excepción de que abre
+    ficheros del partido, como `dead_ball.py`.
+- **D7, el balón fuera del campo como señal de `D`** (`docs/decisiones.md`; capas apagadas en
+  `possession/dead_ball.py`):
+  - **El recuento del partido la deja abierta:** con `equipo_v3` llegamos tarde en 23 de 47 rachas en que el
+    ATD ve el balón fuera. En SkillCorner, un balón visto fuera es `D` el 93–94 % de las veces.
+  - **Primera versión, `ball_out`: se queda apagada.** Con ella llegamos tarde en 12 de 47 (25,5 %), y el
+    criterio pedía menos del 15 %. No hace daño: los 574 frames que cambia pasan todos de `H` o `A` a `D`.
+  - **Segunda versión, `ball_out_hold`** (`0043a3c`): mantiene la parada hasta que el balón vuelve a verse
+    dentro. Su entrega de prueba sale byte a byte igual que la de la primera, así que tampoco cumple el
+    criterio 1. **D7 se cierra:** las dos capas quedan apagadas.
+- **Entregas de prueba sin tocar `PIECES`:**
+  - `python -m possession.pipeline --name <prueba> --pieza nombre=modulo.funcion --capa modulo.funcion`. Con
+    el nombre de la entrega da error, y la salida dice qué se ha cambiado.
+  - `python validation/partido/probar_entrega.py <prueba> --capa ...` hace la prueba entera en un solo comando:
+    genera la entrega, cuenta el balón fuera y la compara con `equipo_v3`.
+  - Lo ejecuta una persona (regla nº 1).
+- **`D` de estado: tareas 1 a 3 de Ana en `main`** (PR 12, `98c38ca`; `docs/decisiones.md`).
+  - Las ventanas de `dead_state` ya no cruzan el principio ni el final de los tramos evaluados.
+  - `evidence` admite una escala, con 1 por defecto, para la medida de David.
+  - Queda apuntada la versión de scikit-learn del entrenamiento (1.7.2).
+  - En la DFL, el resultado es idéntico bit a bit, según Ana.
+  - La mergeó Ana (cada uno puede mergear su propia PR); la sesión planificadora la revisó después.
+  - **La entrega no cambia** [medido por Ismael]. Cambian los rasgos de los 52 primeros y 52 últimos frames de
+    cada tramo, pero ninguna etiqueta:
+    - `equipo_v4` se regeneró en el entorno limpio con `main` en `8f90dea` y sale byte a byte igual que
+      `equipo_v3` (`9539ce42…cc17a`);
+    - `validation/partido/comparar_entregas.py` da 0 frames distintos, y el validador da `Valid`.
+- **Sin entrar todavía en `main`:** la PR 10 de David. Ismael le ha pedido que antes termine su tarea 1.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
   - **El entorno limpio** (`C:\Users\34656\.venvs\mtah2027-entrega`) **reproduce `equipo_v3` byte a byte:**
     mismo sha256 `9539ce42…cc17a`, con `main` en `988ce88` y validado.
-  - En el ensayo del lunes por la noche se repite con lo que haya en `main`.
+  - **Con `main` en `4305576`** (después de la PR 11 y del estudio de posesiones cortas), Ismael sacó la misma
+    huella. Lo hizo en otro entorno, con numpy 2.3.4, así que la huella también aguanta ese cambio de versión.
+  - **Con `main` en `8f90dea`** (después de la PR 12), ya en el entorno limpio, sale otra vez el mismo
+    sha256.
+  - **En el ensayo del lunes por la noche** se repite con lo que haya en `main`, con el python del entorno
+    limpio: `C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline`.
+    - El comando imprime el commit con el que se genera. Si el código de la entrega tiene cambios sin
+      commitear, lo avisa.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.
@@ -315,7 +437,7 @@ Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal par
 **Si quien abre la sesión no sabe cuál es su pieza,** enséñale su parte de la sección 3 del plan antes de
 proponer nada.
 
-**Pendiente de permiso de Ismael:**
+**Pendiente de que el equipo lo decida:**
 
 - descargar los tiempos humanos de ELASTIC, en 3 partidos de la DFL;
 - instalar `databallpy`.
@@ -522,8 +644,8 @@ validation/                  validación externa con datos abiertos: pasos, scri
   `games.half_video_blocks()`), y los datos se localizan con `MTAH_DATA_DIR`.
 - **Interfaz común** (`possession/tracking.py` y `docs/PLAN_ENTREGA.md` §2):
   - cada pieza recibe un `Tracking`: arrays indexados por **frame de vídeo**, **199.319** en el partido.
-    No recibe rutas ni abre ficheros; solo `possession/dead_ball.py` usa además los del partido, con las
-    rutas de `games.asset_paths()`;
+    No recibe rutas ni abre ficheros; solo `possession/dead_ball.py` y `possession/transiciones.py` (desde
+    el 15/11) usan además los del partido, con las rutas de `games.asset_paths()`;
   - las piezas de evidencia devuelven `(score, allowed)`: dos arrays de forma (n, 3), con las columnas
     `H`, `A` y `D`;
   - el decodificador devuelve una etiqueta por frame de vídeo.
@@ -614,16 +736,11 @@ Las normas completas están en `CONTRIBUTING.md`. Esto es lo que Claude no se sa
 - **Mensaje de commit:** una frase en español que diga qué cambia y por qué (`CONTRIBUTING.md` §3).
 - **Pide confirmación** antes de cada push, de abrir una PR, de aprobarla y de mergearla. Que alguien
   pida `/subir` es pedir que se suba, pero antes enséñale el resumen.
-- **Reviewers de cada PR:**
-
-  | abre la PR | revisa |
-  |---|---|
-  | Ismael | `ortegafer` |
-  | David | `ismaelp8` |
-  | cualquier otra persona | los dos |
-
-  Basta con **una aprobación**, y nadie aprueba su propia PR.
-- **Merge:** lo hace quien aprueba.
+- **Revisión de cada PR:** puede revisarla, aprobarla y mergearla cualquier persona del equipo, también
+  quien la abre: cada uno puede mergear su propia PR sin esperar una aprobación. `/subir` pide la revisión a
+  Ismael (`ismaelp8`) y a David (`ortegafer`) para que alguien se entere, pero no hace falta esperarlos.
+- **Merge:** lo hace quien la revisa o quien la abre. Si la PR toca código que usa la entrega, avísalo al
+  mergearla: alguien tiene que regenerar la entrega y validarla.
   - Por defecto con squash.
   - Las PR `sync/*` (cambios de `upstream`) con merge commit.
 - **Prohibido:**
@@ -640,7 +757,7 @@ Las normas completas están en `CONTRIBUTING.md`. Esto es lo que Claude no se sa
 | `/empezar <tarea>` | actualiza `main` y crea la rama con nombre convencional |
 | `/subir` | limpia notebooks, revisa, hace el commit con tu autoría, push y PR con plantilla y reviewers; Ismael puede subir directo a `main` |
 | `/actualizar` | trae lo último de `main` a tu rama; si tu PR ya está mergeada, vuelve a `main` y borra la rama |
-| `/revisar-pr <n>` | para Ismael y David: revisa una PR con el agente `revisor`, aprueba o pide cambios, y mergea |
+| `/revisar-pr <n>` | para quien revise la PR de otra persona: revisa una PR con el agente `revisor`, aprueba o pide cambios, y mergea |
 | `/sincronizar-upstream` | trae las correcciones de Metrica en una rama `sync/` con su PR |
 | `/evaluar [csv]` | valida y puntúa una entrega, solo agregados |
 | `/decision <título>` | apunta una decisión de método en `docs/decisiones.md` |

@@ -2,9 +2,11 @@
 
     python -m possession.pipeline                    # escribe evaluation/results/equipo_v0.csv
     python -m possession.pipeline --name mi_prueba
+    python -m possession.pipeline --name prueba_b9 --pieza candidates=aprendida.evidence_b9   # de prueba
 
 Lee el ATD y el Smart Tagging del partido, así que **solo lo ejecuta una persona**. Imprime solo agregados:
-las versiones de Python y numpy, las líneas del ATD leídas y saltadas, posesiones, paradas y rachas cortas
+las versiones de Python y numpy, el commit del código, las líneas del ATD leídas y saltadas, posesiones,
+paradas y rachas cortas
 por tramo, los conflictos entre piezas y el sha256. Si hay conflictos, no escribe el CSV.
 
     tracking -> limpieza del balón -> evidencias (equipo, estado de D, anclas de D) -> decodificador -> CSV
@@ -15,18 +17,27 @@ harness de la DFL (validation/harness/), con el mismo código de las piezas.
 
 import argparse
 import hashlib
+import importlib
+import inspect
 import os
 import platform
+import subprocess
 import sys
 
 import numpy as np
 
 import games
-from possession import aprendida, ball, candidates, dead_ball, dead_state, temporal, tracking
+from possession import aprendida, ball, candidates, dead_ball, dead_state, temporal, tracking, transiciones
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_DIR = os.path.join(ROOT, "evaluation", "results")
 DEFAULT_NAME = "equipo_v0"
+
+# Las capas del partido que la entrega suma a las piezas, además de las anclas de `dead_ball.evidence`. Reciben
+# las rutas del partido (`with_paths`), así que no corren en el harness. Desde el 15/11, el empujón al equipo de
+# cada «Attacking Transition» del Smart Tagging (`transiciones.evidence_equipo`): pasó sus cuatro criterios
+# escritos antes y el equipo decidió encenderlo (docs/decisiones.md, «se enciende la capa de los contraataques»).
+DELIVERY_LAYERS = (transiciones.evidence_equipo,)
 
 # Las piezas que `run` deja cambiar por otra función (argumento `pieces`) y la función de cada una que va
 # en la entrega: «funcion» de su módulo o «modulo.funcion». El harness de la DFL las usa para comparar
@@ -43,6 +54,55 @@ def default_piece(name):
     spec = PIECES[name]
     module, function = spec.split(".", 1) if "." in spec else (name, spec)
     return getattr(MODULES[module], function)
+
+
+# Los módulos de los que `--capa` puede tomar una evidencia extra (ver `resolve`). Además, cualquier otro
+# módulo de possession/ (`possession.<modulo>`), para enchufar una capa nueva sin tocar este fichero.
+LAYER_MODULES = dict(MODULES, dead_ball=dead_ball)
+
+
+def resolve(spec, modules=MODULES, any_possession_module=False):
+    """La función «modulo.funcion» de `modules` (o de possession/, si se permite). Error claro si no existe."""
+    module, _, function = spec.partition(".")
+    found = modules.get(module)
+    if found is None and any_possession_module and module.isidentifier():
+        try:
+            found = importlib.import_module("possession." + module)
+        except ImportError:
+            found = None
+    if found is None or not function or not callable(getattr(found, function, None)):
+        raise ValueError("no encuentro «{}»: tiene que ser modulo.funcion, con modulo uno de {}{}".format(
+            spec, sorted(modules), " o de possession/" if any_possession_module else ""))
+    return getattr(found, function)
+
+
+def with_paths(layer, paths, game):
+    """La capa tal cual si solo recibe el tracking; si tiene `paths` (como dead_ball.evidence), con las rutas.
+
+    Así una capa que lee el Smart Tagging se enchufa con `--capa` igual que una que solo mira el tracking.
+    """
+    names = inspect.signature(layer).parameters
+    if "paths" not in names:
+        return layer
+    if "game" in names:
+        return lambda clean: layer(clean, paths=paths, game=game)
+    return lambda clean: layer(clean, paths=paths)
+
+
+def overrides(piece_specs=(), layer_specs=()):
+    """Las piezas cambiadas (`--pieza nombre=modulo.funcion`) y las capas añadidas (`--capa modulo.funcion`).
+
+    Devuelve `(pieces, layers)`: el diccionario para `run(pieces=...)` y la lista de evidencias extra, que
+    reciben el tracking con el balón ya limpio. Sirve para escribir una entrega de prueba con otra pieza o
+    con una capa encendida sin tocar `PIECES`.
+    """
+    pieces = {}
+    for spec in piece_specs:
+        name, _, function = spec.partition("=")
+        if name not in PIECES:
+            raise ValueError("pieza desconocida en --pieza: «{}» (valen: {})".format(name, sorted(PIECES)))
+        pieces[name] = resolve(function)
+    return pieces, [resolve(spec, LAYER_MODULES, any_possession_module=True) for spec in layer_specs]
 
 
 def combine(pieces, n):
@@ -191,6 +251,27 @@ def check_atd(counts):
                          "no se genera la entrega.\n" + atd_lines(counts))
 
 
+# Lo que genera la entrega: si cambia algo aquí sin commitear, el CSV no sale del commit que se imprime.
+DELIVERY_CODE = ("possession", "games.py", "starter", "requirements-entrega.txt")
+
+
+def code_version():
+    """El commit con el que se genera y si el código de la entrega tiene cambios sin commitear. Sin git, lo dice."""
+    def git(*args):
+        return subprocess.run(["git", "-C", ROOT] + list(args), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              universal_newlines=True, timeout=30)
+    try:
+        head = git("rev-parse", "--short", "HEAD")
+        local = git("status", "--porcelain", "--", *DELIVERY_CODE)
+    except (OSError, subprocess.SubprocessError):
+        return "código: sin git"
+    if head.returncode or local.returncode:
+        return "código: sin git"
+    estado = ("CON CAMBIOS SIN COMMITEAR en el código de la entrega" if local.stdout.strip()
+              else "sin cambios locales en el código de la entrega")
+    return "código: commit {}, {}".format(head.stdout.strip(), estado)
+
+
 def versions():
     """Python y numpy con los que se ha generado. La huella solo se repite con los mismos (requirements.txt)."""
     return "python {}, numpy {}".format(platform.python_version(), np.__version__)
@@ -204,12 +285,15 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def build(game=games.GAME, data_dir=None, params=None):
+def build(game=games.GAME, data_dir=None, params=None, pieces=None, layers=()):
     """Las etiquetas del partido. Lee el ATD y el Smart Tagging: solo lo ejecuta una persona.
 
     Pide los ficheros antes de leer nada. El Smart Tagging lo usa dead_ball.evidence desde el 15/11, y sin
     él no hay entrega: el error dice qué falta y dónde se esperaba. Si el ATD tiene alguna línea saltada o
     repetida, o algún frame sin línea, también da error (`check_atd`).
+
+    Suma las anclas de `dead_ball.evidence` y las capas de DELIVERY_LAYERS, con las rutas del partido.
+    `pieces` y `layers` son para entregas de prueba (`overrides`): sin ellos, la entrega.
     """
     games.require(["atd_meta", "atd_raw", "smart_tagging"], game, data_dir)
     paths = games.asset_paths(game, data_dir)
@@ -217,7 +301,8 @@ def build(game=games.GAME, data_dir=None, params=None):
     trk = tracking.from_atd(paths, game, report=report)
     check_atd(report["atd"])
     anchors = lambda clean: dead_ball.evidence(clean, paths, game)  # noqa: E731
-    codes = run(trk, extra=[anchors], params=params, report=report)
+    layers = [with_paths(layer, paths, game) for layer in tuple(DELIVERY_LAYERS) + tuple(layers)]
+    codes = run(trk, extra=[anchors] + layers, params=params, report=report, pieces=pieces)
     return codes, trk.blocks, report
 
 
@@ -233,11 +318,24 @@ def main():
     parser = argparse.ArgumentParser(description="Genera la entrega a partir del ATD del partido.")
     parser.add_argument("--name", default=DEFAULT_NAME, help="nombre del CSV, sin extensión")
     parser.add_argument("--out", default=RESULTS_DIR, help="carpeta de salida")
+    parser.add_argument("--pieza", action="append", default=[], metavar="NOMBRE=MODULO.FUNCION",
+                        help="entrega de prueba: cambia una pieza de PIECES (candidates=aprendida.evidence_b9)")
+    parser.add_argument("--capa", action="append", default=[], metavar="MODULO.FUNCION",
+                        help="entrega de prueba: suma una evidencia, que recibe el tracking con el balón limpio")
     args = parser.parse_args()
 
-    codes, blocks, report = build()
+    pieces, layers = overrides(args.pieza, args.capa)
+    if (pieces or layers) and args.name == DEFAULT_NAME:
+        print("Una entrega de prueba (--pieza o --capa) necesita su propio --name: así no se confunde con la "
+              "entrega.")
+        sys.exit(2)
+    codes, blocks, report = build(pieces=pieces, layers=layers)
     path = os.path.join(args.out, args.name + ".csv")
     print(versions())
+    print(code_version())
+    print("piezas: {}".format("; ".join(["{} cambiada por {}".format(*spec.split("=", 1)) for spec in args.pieza]
+                                        + ["capa añadida {}".format(spec) for spec in args.capa])
+                              or "las de la entrega (PIECES y DELIVERY_LAYERS), sin capas añadidas"))
     print(atd_lines(report["atd"]))
     for line in summary(codes, blocks):
         print(line)

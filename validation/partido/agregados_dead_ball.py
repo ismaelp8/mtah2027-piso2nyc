@@ -7,6 +7,9 @@ se puede pegar en el chat: recuentos, porcentajes y cuantiles, sin números de f
   fallan. Las medianas de duración, solo con 3 tramos o más. Si anclan 1 o 2 goles, la suma de frames y
   la fila «de gol a saque» describen esas paradas: siguen siendo agregados, sin ningún frame.
 - **Los reinicios se desglosan por tipo solo con 5 casos o más;** los demás van juntos en «otros».
+- **Todos los recuentos de casos** (goles, tramos, ventanas, reinicios) por debajo de 5 se imprimen como
+  «< 5», también el 0, y su porcentaje no sale (revisión de la PR 8, 15/11). Los frames y sus porcentajes
+  salen tal cual. Lo que decide la regla se imprime aparte, como «sí» o «no».
 
     python validation/partido/agregados_dead_ball.py
 
@@ -40,8 +43,8 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 import games  # noqa: E402
-from comun import (FPS, MIN_CASES_PER_TYPE, SET_PIECES_CODE, graded_mask, mean_speed,  # noqa: E402
-                   moving_average, norm, pct, print_bins, quantiles, utf8_stdout)
+from comun import (FPS, MIN_CASES_PER_TYPE, SET_PIECES_CODE, bins_s, graded_mask, mean_speed,  # noqa: E402
+                   moving_average, norm, pct, quantiles, utf8_stdout)
 from possession import dead_ball, dead_state, pipeline, tracking  # noqa: E402
 from starter import load_smart_tagging  # noqa: E402
 from starter.baseline import team_names  # noqa: E402
@@ -140,6 +143,25 @@ def share(value):
 
 def yes(flag):
     return "sí" if flag else "no"
+
+
+def cell(k, whole):
+    """Un recuento de ventanas con su porcentaje, o «< 5» si es menor que 5 (también el 0), como en el perfil
+    del ATD."""
+    return "< 5" if k < MIN_CASES_PER_TYPE else "{} ({})".format(k, pct(k, whole))
+
+
+def few(k):
+    """Un recuento de casos (goles, tramos, ventanas, reinicios), o «< 5» si es menor que 5 (también el 0)."""
+    return "< 5" if k < MIN_CASES_PER_TYPE else str(k)
+
+
+def print_masked_bins(title, values_s, edges, indent="   "):
+    """Como comun.print_bins, con los recuentos de menos de 5 tapados (y su porcentaje)."""
+    values_s = [v for v in values_s if v is not None and not np.isnan(v)]
+    print("{}{} (n={})".format(indent, title, few(len(values_s))))
+    for name, k in bins_s(values_s, edges):
+        print("{}   {:<14} {}".format(indent, name, cell(k, len(values_s))))
 
 
 def by_type(windows):
@@ -295,7 +317,7 @@ def main():
     print("limpieza del balón: ball.{} (pipeline.PIECES)".format(pipeline.PIECES["ball"]))
     print("\n1. De cada gol a su saque")
     print("   goles {}   saques tras gol {}   goles que anclan {} de {}".format(
-        m["goals"], m["kickoffs"], m["spans"], m["goals"]))
+        few(m["goals"]), few(m["kickoffs"]), few(m["spans"]), few(m["goals"])))
     print("   frames anclados (evaluados), sumados: {} ({} de los evaluados)".format(
         m["anchored_frames"], pct(m["anchored_frames"], n_graded)))
     # Las medianas, solo con 3 o más: con menos describirían una o dos paradas concretas.
@@ -313,14 +335,15 @@ def main():
     print("   pruebas: tramo entero, y {} s desde {} s dentro de cada borde; deciden con ≥ {} frames de balón"
           " visto".format(EDGE_S, EDGE_SKIP_S, MIN_SEEN_FRAMES))
     print("   tramos anclados {}   pasan {}   fallan {}   no deciden {}".format(
-        m["spans"], m["n_pass"], m["n_fail"], m["spans"] - m["n_pass"] - m["n_fail"]))
-    print("   fallos por prueba: tramo entero {}   borde inicial {}   borde final {}".format(*m["fails_by_test"]))
+        few(m["spans"]), few(m["n_pass"]), few(m["n_fail"]), few(m["spans"] - m["n_pass"] - m["n_fail"])))
+    print("   fallos por prueba: tramo entero {}   borde inicial {}   borde final {}".format(
+        *(few(k) for k in m["fails_by_test"])))
     print("   bordes que no deciden (ahí la frontera queda sin comprobar): inicial {} ((a))   final {} ((b))"
-          .format(*m["undecided_edges"]))
+          .format(*(few(k) for k in m["undecided_edges"])))
     print("   control (tramo antes del saque de la 2ª parte): {}".format(", ".join(m["control"]) or "no hay"))
-    print("   placebo (desplazados {} s): {} tramos, deciden {}, fallan {} ({} de los que deciden)".format(
-        "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), m["placebo"], m["placebo_deciding"],
-        m["placebo_fail"], pct(m["placebo_fail"], m["placebo_deciding"])))
+    print("   placebo (desplazados {} s): {} tramos, deciden {}, fallan {} de los que deciden".format(
+        "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), few(m["placebo"]), few(m["placebo_deciding"]),
+        cell(m["placebo_fail"], m["placebo_deciding"])))
     for r in m["regions"]:
         print("   {:<46} {:>7} frames   balón visto {}   deprisa {} de los vistos".format(
             r["label"], r["frames"], r["seen"], r["fast"]))
@@ -335,19 +358,18 @@ def main():
     teams = [norm({norm(k): v for k, v in e["tags"].items()}.get("team")) for e in set_pieces]
     with_team = [t for t in teams if t not in ("", "n/a")]
     print("   SET PIECES {}   con equipo {}   igual al local {}   igual al visitante {}   sin coincidir {}".format(
-        len(set_pieces), len(with_team), sum(t == home for t in with_team), sum(t == away for t in with_team),
-        sum(t not in (home, away) for t in with_team)))
+        few(len(set_pieces)), few(len(with_team)), few(sum(t == home for t in with_team)),
+        few(sum(t == away for t in with_team)), few(sum(t not in (home, away) for t in with_team))))
 
     print("\n4. El hueco sin balón antes de cada reinicio (no se cuentan los saques iniciales)")
-    print("   ventanas que empiezan en frames evaluados: {}".format(m["windows"]))
-    print("   " + "   ".join("{} {} ({})".format(state, k, pct(k, m["windows"]))
-                             for state, k in m["states"].items()))
+    print("   ventanas que empiezan en frames evaluados: {}".format(few(m["windows"])))
+    print("   " + "   ".join("{} {}".format(state, cell(k, m["windows"])) for state, k in m["states"].items()))
     for kind, n, k in m["by_type"]:
-        print("      {:<22} n={:>3}   con hueco {} ({})".format(kind, n, k, pct(k, n)))
-    print("   placebo (inicios desplazados {} s): {} inicios, con hueco {} ({})".format(
-        "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), m["shifted"], m["placebo_gaps"],
-        pct(m["placebo_gaps"], m["shifted"])))
-    print_bins("duración de los huecos", m["gap_lengths_s"], GAP_LENGTH_EDGES_S, indent="   ")
+        print("      {:<22} n={:>3}   con hueco {}".format(kind, few(n), cell(k, n)))
+    print("   placebo (inicios desplazados {} s): {} inicios, con hueco {}".format(
+        "/".join("{:+d}".format(s) for s in PLACEBO_SHIFTS_S), few(m["shifted"]),
+        cell(m["placebo_gaps"], m["shifted"])))
+    print_masked_bins("duración de los huecos", m["gap_lengths_s"], GAP_LENGTH_EDGES_S)
     print("   frames de hueco (evaluados), sumados: {} ({} de los evaluados)".format(
         m["gap_frames"], pct(m["gap_frames"], n_graded)))
     print("   control del modelo de Ana: el tramo antes del saque{}".format(
@@ -356,7 +378,7 @@ def main():
           " huecos {}".format(share(m["g_match"]), share(m["g_ctrl"]), share((m["g_match"] + m["g_ctrl"]) / 2),
                               share(m["g_gap"]), EDGE_S, share(m["g_first"])))
     print("   modelo de Ana en los huecos, por grupo (descriptivo): " + "   ".join(
-        "{} (n={}) {}".format(label, n, share(g)) for label, n, g in m["g_groups"]))
+        "{} (n={}) {}".format(label, few(n), share(g)) for label, n, g in m["g_groups"]))
     print("   jugadores (m/s) en los huecos: {}".format(m["gap_players"]))
     print("   regla: cobertura ≥ 50 % {}   ≥ 2 veces el placebo {}   el modelo de Ana separa el control del"
           " partido {}   huecos ≥ punto medio {}   -> la capa entra: {}".format(

@@ -2,7 +2,8 @@
 
 Todas las piezas reciben un `Tracking` y devuelven arrays por frame de vídeo. El mismo código corre con el
 ATD del partido y con los partidos abiertos de la Bundesliga que prepara `validation/harness/`. Por eso
-ninguna pieza abre ficheros por su cuenta, salvo `dead_ball.py`, que usa los ficheros del partido.
+ninguna pieza abre ficheros por su cuenta, salvo `dead_ball.py` y, desde el 15/11, `transiciones.py`, que
+usan los ficheros del partido (el Smart Tagging) solo cuando `pipeline.build` les pasa las rutas.
 
 Contrato de las piezas de evidencia (`candidates`, `dead_state`, `dead_ball`): cada una tiene una función
 `evidence(trk, ...)` que devuelve `(score, allowed)`. La pieza de equipo de la entrega es, desde el 14/11,

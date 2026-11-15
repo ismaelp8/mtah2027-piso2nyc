@@ -205,7 +205,12 @@ def viterbi_min(emission, cost, minimum):
 
 
 def _prepare(score, allowed, blocks, params):
-    """Comprobaciones comunes de los decodificadores. Devuelve (cost, emission, codes vacío)."""
+    """Comprobaciones comunes de los decodificadores. Devuelve (blocks, cost, emission, codes vacío).
+
+    `blocks` vuelve como tupla: si llega un generador, la comprobación de abajo lo gastaría y el decodificador
+    no vería ningún tramo (todo `X`, sin error).
+    """
+    blocks = tuple((int(start), int(stop)) for start, stop in blocks)
     unknown = sorted(set(params or {}) - set(DEFAULTS))
     if unknown:
         raise KeyError("parámetros desconocidos del decodificador: {}".format(unknown))
@@ -222,7 +227,7 @@ def _prepare(score, allowed, blocks, params):
                 int((~finite).sum())))
         if not allowed[start:stop].any(axis=1).all():
             raise ValueError("hay frames evaluados sin ningún estado permitido")
-    return cost_matrix(merged), np.where(allowed, score, -np.inf), np.full(len(score), X, dtype=np.int8)
+    return blocks, cost_matrix(merged), np.where(allowed, score, -np.inf), np.full(len(score), X, dtype=np.int8)
 
 
 def decode(score, allowed, blocks, params=None):
@@ -233,7 +238,7 @@ def decode(score, allowed, blocks, params=None):
     fin) con el fin sin incluir. `params` cambia los costes de `DEFAULTS`; una clave que no esté ahí o un
     coste negativo dan error, para que una errata no pase por un ajuste.
     """
-    cost, emission, codes = _prepare(score, allowed, blocks, params)
+    blocks, cost, emission, codes = _prepare(score, allowed, blocks, params)
     for start, stop in blocks:
         codes[start:stop] = viterbi(emission[start:stop], cost)
     return codes
@@ -244,7 +249,7 @@ def decode_min(score, allowed, blocks, params=None, min_live=MIN_LIVE, min_dead=
     de `min_dead`, salvo las que cortan el borde del tramo o lo prohibido (`viterbi_min`)."""
     if int(min_live) < 1 or int(min_dead) < 1:
         raise ValueError("las duraciones mínimas son de 1 frame o más")
-    cost, emission, codes = _prepare(score, allowed, blocks, params)
+    blocks, cost, emission, codes = _prepare(score, allowed, blocks, params)
     minimum = [0] * N_STATES
     minimum[H] = minimum[A] = int(min_live)
     minimum[D] = int(min_dead)
@@ -316,6 +321,7 @@ def decode_prune(score, allowed, blocks, params=None, min_len=PRUNE):
     """Candidato (c): el Viterbi de `decode` y después `prune` en cada tramo evaluado."""
     if int(min_len) < 0:
         raise ValueError("la poda es de 0 frames o más")
+    blocks = tuple(blocks)  # se recorre dos veces: en `decode` y aquí
     codes = decode(score, allowed, blocks, params)
     for start, stop in blocks:
         codes[start:stop] = prune(codes[start:stop], allowed[start:stop], int(min_len))

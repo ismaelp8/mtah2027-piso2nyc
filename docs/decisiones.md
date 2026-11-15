@@ -2061,11 +2061,25 @@ entrega.**
   ninguno de los dos tramos. En la entrega se cumple la condición del criterio del 13/11 de que no haya
   rachas de `D` ni de juego de menos de 25 frames.
 
+Añadido (15/11, `main` en `4305576`) [medido por Ismael]: **con numpy 2.3.4 también sale `9539ce42…cc17a`.**
+- Se regeneró, sin querer, en otro entorno de Ismael: Python 3.13.9 con numpy 2.3.4, en vez del entorno limpio.
+- Salen los mismos recuentos y el validador da `Valid`.
+- Es la primera prueba de que la huella aguanta un cambio de versión de numpy. No cambia lo fijado: la entrega
+  se regenera con `requirements-entrega.txt`.
+
+Añadido (15/11, `main` en `8f90dea`, después de la PR 12 de Ana) [medido por Ismael]: **la PR 12 no cambia la
+entrega.**
+- `equipo_v4` se regeneró en el entorno limpio (Python 3.13.9, numpy 2.5.4). Sale con el sha256 de `equipo_v3`,
+  y `validation/partido/comparar_entregas.py` da 0 frames evaluados distintos.
+- Se comprobó que la copia de Ismael estaba en `8f90dea` y sin cambios locales en el código de la entrega.
+- Desde entonces el comando imprime el commit con el que se genera y avisa si el código tiene cambios sin
+  commitear (`pipeline.code_version`), para que no haga falta comprobarlo a mano.
+
 Falta:
-- **Repetir la huella en el ensayo del lunes por la noche,** con lo que haya entrado en `main` hasta
+- **Repetir la huella en el ensayo del lunes por la noche,** en el entorno limpio
+  (`C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe`), con lo que haya entrado en `main` hasta
   entonces.
-- **La versión de numpy de la máquina Linux** que reprodujo `equipo_v2` [sin verificar]. Si era otra, la
-  huella ya aguanta un cambio de versión.
+- **La versión de numpy de la máquina Linux** que reprodujo `equipo_v2` [sin verificar].
 - **El nombre del CSV:** `<NOMBRE_EQUIPO>` sigue sin confirmar. Hasta entonces, el comando lo recibe con
   `--name` y el nombre por defecto sigue siendo `equipo_v0`.
 
@@ -2211,3 +2225,1784 @@ combinaciones.
 Descartado: B6, B7 y B8. Y arreglar el slot duplicado de los núcleos: sería un cuarto candidato.
 `validation/partido/slots_duplicados.py` dice cuánto pasa en el partido, si Ismael lo ejecuta.
 
+### 2026-11-15 · candidatos · se reabre la evidencia de equipo tras la ronda de B5
+
+Quién: Ismael, el mismo 15/11, después de que la ronda única de reentrenamiento de B5 empatara y la regla de
+parada cerrara la evidencia de equipo (entrada anterior). Sus palabras: «si, claramente vamos a reabrirla
+dejate de decisiones tomadas de tiempo. Es claro que tenemos un problema en que predecimos muchas menos
+posesiones de las que hay, sobretodo cuando son posesiones cortas.»
+
+Por qué [medido, `validation/resultados/2026-11-15_diagnostico_errores.md`]:
+- **Cambiamos de equipo de menos.** Con el flag, `main` hace 1.661 cambios de equipo en la DFL y hay 3.061;
+  en la mitad de SkillCorner para diagnosticar, 2.270 frente a 3.228.
+- **Llegamos tarde o no llegamos.** Solo entre el 16 y el 37 % de los cambios reales tiene uno nuestro a
+  menos de 1 s (en el placebo, el 2 %).
+- **Casi nunca partimos una posesión en dos.** El problema está en las que faltan, no en las que sobran.
+
+Qué cambia:
+- **La regla de parada del 15/11 deja de valer.** La evidencia de equipo vuelve a admitir candidatos.
+- **Lo demás sigue igual:** cada candidato se escribe antes de medir, y para entrar tiene que ganar a `main`
+  con §5.8 en el harness de la DFL. SkillCorner tiene 10 partidos de examen que no se tocan hasta el final.
+- **B5 sigue en la entrega** (`equipo_v3`) hasta que algo gane.
+- **El estudio lo hace la sesión «Posesiones cortas»,** en su rama. Sus resultados se apuntan aquí cuando
+  entren en `main`.
+
+### 2026-11-15 · balón · el balón del ATD llega unos 4 frames tarde: la corrección queda escrita y apagada
+
+Quién: Antonio Azuero. Encenderla o no lo decide Ismael.
+
+Qué se probó: la tarea 1 de Antonio en `docs/PLAN_ENTREGA.md` §3 (P1 de la revisión externa): si el balón
+del ATD, suavizado unos 25 frames, llega tarde respecto a los jugadores. Si fuera una media hacia atrás,
+serían unos 12 frames, y eso costaría más que cualquier mejora medida.
+- **La medida** (`validation/retraso_balon/`, con su bitácora): en las rachas en que el mismo slot está a
+  1,5 m o menos del balón durante 1 s o más, la correlación entre la velocidad del balón y la del jugador,
+  para cada desfase de −25 a +25 frames. Es relativa al jugador.
+- **v1:** el desfase del máximo de esa curva.
+- **v2:** la curva entera, comparada con una familia de curvas de la DFL con retrasos conocidos (de −18 a
+  +18). Se diseñó después de ver las curvas de la v1 en la DFL, nunca el partido.
+- Las reglas de las dos se escribieron antes de medir. La de la v2 se subió antes de calibrar (`3e92064`).
+
+Cómo se midió:
+- **Calibración:** en los 7 partidos de la DFL, con el tracking del harness y retrasos conocidos. La v2,
+  dejando un partido fuera, con retrasos de −9 a +12; los de −9, −3, +3 y +9 no se habían mirado antes.
+- **Partido:** `validation/partido/retraso_balon.py`, ejecutado por Antonio en local, solo agregados. 572
+  rachas, 29.183 frames.
+- **Coste, descriptivo:** el harness con el balón de la DFL retrasado 4 frames frente a `main`
+  (`validation/harness/versiones/retraso_balon_2026-11-15.json`).
+
+Resultado [medido]:
+- **La v1 no pasa la calibración:** con el balón centrado da −7 (se esperaba 0), y adelantado 6 frames da
+  −11. La curva tiene dos jorobas, hacia −6 y hacia +3, y el máximo salta de una a otra. No se ejecutó en el
+  partido.
+- **La v2 pasa:** 8 de 8 pruebas, con los 7 partidos a ±2 en todas. Intervalos de 1 a 4 frames y residuo de
+  referencia 0,027. Con un suavizado exponencial, que no está en la familia, se queda corta, pero su residuo
+  es de 3 a 8 veces el de referencia: la regla la habría dado por no concluyente.
+- **Partido:** `d̂` = **+4** (del 5 al 95 %, de +2 a +5; por parte, +3 y +4; residuo 0,018). Es el candidato 2
+  de la regla.
+- **Coste de ese retraso en el harness,** frente a `main`:
+  - con el flag, +0,001 («como el ATD») y +0,002 («sin bloques»);
+  - con control, −0,007 y −0,006.
+
+  Con §5.8, **empate**.
+
+Decisión y por qué:
+- **Se escribe la variante `ball.advance_ball`,** que adelanta el balón `BALL_LEAD` = 4 frames, como pide el
+  candidato 2. Tiene sus pruebas en `validation/scripts/prueba_retraso_balon.py`.
+  - `BALL_LEAD` **sí sale del partido:** es un agregado del tracking entero, sin ninguna etiqueta, que
+    calcula un algoritmo con la regla fijada antes de medir. Entra en lo que RULES.md permite («learning
+    without human labels… provided no person decided any of them»). No está ligado a frames concretos ni
+    sale de la ventana pública.
+- **Queda apagada:** `ball.clean` y la entrega no cambian. Encenderla ganaría como mucho unas 0,007
+  [inferencia, del harness], muy por debajo del 0,03 de §5.8. Y obligaría a tres cosas:
+  - reentrenar o medir B5;
+  - repetir la medida de Manuel;
+  - que la degradación «como el ATD» del harness retrase el balón 4 frames. Hoy llega a su hora (media
+    centrada), así que el harness mediría un balón adelantado, no una corrección.
+- **Propuesta para Ismael: no encenderla.** El riesgo de la revisión (unos 12 frames) queda descartado y la
+  tarea se cierra.
+- **Para Ismael, dueño del harness:** la degradación «como el ATD» no imita ese +4. Según esta medida, en la
+  DFL cuesta entre −0,007 y +0,002.
+
+**Después de medir el partido** (bitácora §11):
+- **La revisión de Ismael** llegó cuando el partido ya se había medido; él había revisado `3e92064`. Pidió
+  que, con `d̂` de −4 o menos, se apunte y no se toque nada: un suavizado centrado de 49 frames sin retraso da
+  entre −6 y −1, y unos jugadores que llegan tarde también dan negativo.
+  - Entra en `retraso.lectura` («negativo, se apunta»), pero ya no se pudo subir antes de ejecutar.
+  - No cambia la lectura del partido: +4 es positivo.
+- **Sensibilidad al ancho del suavizado** (DFL, descriptivo; `calibrar_dfl_v2.py --anchos 13 37 49`). Con el
+  balón centrado sin retraso:
+
+  | ancho | `d̂` en los 7 partidos |
+  |---|---|
+  | 13 | de −1 a +2 |
+  | 37 | de −3 a +1 |
+  | 49 | de −6 a −1 |
+
+  Un suavizado centrado de otro ancho no fabrica un +4. Si el ATD suavizara menos de 25 frames, el retraso
+  de verdad podría estar más cerca de +2. La decisión no cambia.
+- La salida entera del partido está en `validation/resultados/2026-11-15_retraso_balon.md`.
+
+Descartado:
+- la v1, porque no pasó la calibración;
+- una tercera versión, que la regla de la v2 ya excluía;
+- la latencia de la ventana pública como puerta (plan §3).
+
+Límites:
+- La medida es relativa: si los jugadores del ATD también llegaran tarde, no se vería.
+- `d̂` está en el corte: el intervalo incluye +2 y +3, que habrían sido el candidato 1.
+
+Nota de la revisión (Ismael, 15/11), al mergear la PR 11 (`acec765`):
+- «El riesgo de unos 12 frames queda descartado» se lee con el primer límite: descartado **respecto a los
+  jugadores**. Un retraso que el balón y los jugadores compartan respecto al vídeo no se puede ver con esta
+  medida.
+- El cambio del lado negativo de la lectura (con −4 o menos se apunta y no se toca) lo pidió la revisión y
+  entró después de ejecutar en el partido. No cambia el resultado, que es positivo.
+- `ball.advance_ball` entra apagada, como propone la PR. La entrega no cambia. Encenderla sigue siendo
+  decisión de Ismael.
+
+### 2026-11-15 · candidatos · Antonio empieza su tarea 2: las fases del Smart Tagging como pista de equipo
+
+Quién: Ismael. La tarea 2 de Antonio (`docs/PLAN_ENTREGA.md` §3) estaba reservada a su decisión. Sus palabras
+(15/11): «si, quiero que haga su tarea 2 le doy mi si».
+
+Qué se probó: nada todavía. Es el permiso para empezar.
+
+Por qué ahora:
+- Antonio ha cerrado su tarea 1: el balón llega 4 frames tarde respecto a los jugadores y la corrección queda
+  apagada (entrada anterior).
+- El estudio de las posesiones cortas (rama `claude/posesiones-cortas-5e84f8`, todavía fuera de `main`) mide,
+  en datos abiertos, que lo que más vale es acertar el equipo en las posesiones de 2 a 10 s, y que ninguna
+  señal del tracking lo arregla: B9 y una red de una capa empatan con las etiquetas de control.
+- Las fases son la única información de equipo que la entrega no usa. Cubren el 68,1 % de los frames
+  evaluados [medido, `validation/resultados/2026-11-14_agregados_balon_muerto.md`].
+
+Cómo se medirá: no se puede medir en la DFL, que no tiene Smart Tagging. Vale la regla del plan, sin
+cambios: un recuento del partido, que ejecuta Antonio, con el acuerdo entre el equipo de la fase y el del
+más cercano en los frames de control claro, frente a las fases desplazadas. Si no llega al 80 % o no dobla
+al placebo, no entra.
+
+Lo que se añade al recuento, escrito antes de ejecutarlo y solo descriptivo:
+- la tabla de cada código a «tiene el balón el equipo de la fase» o «lo tiene el otro», sacada de
+  `OVERVIEW.md` (`Team` es el equipo que hace la fase). Quedan fuera `N/A`, `SET PIECES` y `GOALS`;
+- cuántos frames tienen fases solapadas que dan equipos distintos. Esos frames se excluyen, y una tasa alta
+  dice que la tabla está mal;
+- cuántos inicios de «Attacking Transition» tienen un cambio nuestro a ese equipo a menos de 2 s, frente al
+  placebo.
+
+Decisión y por qué: Antonio empieza. El alcance de lo que puede entrar es el del plan: un empujón pequeño,
+en los frames sin balón. Un uso más amplio pide otra decisión de Ismael, porque no se puede medir.
+
+Descartado: copiar las fases como etiquetas, o darles un peso comparable al coste de cambio
+(`docs/revision_externa_2026-11-15.md`).
+
+### 2026-11-15 · candidatos · posesiones cortas: B9, B5 con la dirección del balón (candidato, antes de medir)
+
+Quién: sale de la reapertura de Ismael («se reabre la evidencia de equipo tras la ronda de B5», más arriba).
+Claude lo escribe, lo entrena y lo mide en la rama
+`claude/posesiones-cortas-5e84f8`. La regla tiene commit antes de entrenar.
+
+Por qué (`validation/resultados/2026-11-15_posesiones_cortas.md` y `validation/posesiones_cortas/BITACORA.md`):
+- en las posesiones que no encontramos, la evidencia de B5 apunta al otro equipo durante casi toda la
+  posesión. Hay que cambiar su signo, no el coste de cambio;
+- el más cercano no trae información por frame en las de menos de 2 s, ni con el balón limpio;
+- la dirección en que se mueve el balón sí la trae: en las de 2 a 5 s acierta el 81 % de los frames en que
+  opina en la DFL (el más cercano, el 57–60 %) y el 66 % en SkillCorner;
+- dos ideas se descartaron antes con su puerta: entrenar con SkillCorner y «proponer y clasificar».
+
+**Cómo se eligió el diseño, para que conste:** la señal, el umbral de 2 m/s y la ventana de 13 frames salen
+de un sondeo y de una puerta hechos en los mismos 7 partidos de la DFL (BITACORA §6). Dejar un partido fuera
+protege los coeficientes, no el diseño. Lo único que no ha visto nada de esto es el examen de SkillCorner
+(`lector.EXAMEN`).
+
+Candidato, uno solo. **B9 es B5 con tres rasgos más,** la dirección del balón
+(`aprendida.direccion_del_balon`):
+- en cada frame, la velocidad del balón en x de t−6 a t+6, con el signo de la dirección de ataque del local
+  (la de B2: el local ataca hacia donde está, en media, el visitante);
+- vale +1 si pasa de 2 m/s y −1 si baja de −2 m/s. Vale 0 si no, si falta el balón en alguno de los dos
+  extremos o si alguno cae fuera del tramo;
+- los rasgos son su media centrada en 1, 13 y 51 frames.
+
+Lo demás, como B6, B7 y B8 (`validation/posesiones_cortas/entrenar_b9.py`):
+- las mismas filas: frames vivos en los que el flag y el control coinciden, uno de cada 5, con el balón
+  «como el ATD» y `ball.clean`;
+- la misma regresión y los mismos pliegues;
+- la misma puntuación que B5;
+- la misma elección de α, con la pieza de `D` de `main` dentro y sin oráculo.
+
+No hay segundo candidato. Reentrenar con peso cerca de los cambios (B7) y con más filas (la puerta de
+SkillCorner) ya salió plano con el control.
+
+Comprobaciones del instrumento, antes de leer nada:
+- los coeficientes de B1 a B8 quedan iguales byte a byte;
+- los rasgos de B9 son los de B5 más las tres columnas de la puerta;
+- la elección de α del script, con los pesos de B2, repite la α de B5 en cada pliegue;
+- la fila de `main` repite 0,498 / 0,512 / 0,728 / 0,748 en el harness y 629 / 628 / 545 en
+  `d_propio.py`;
+- `prueba_aprendida.py` y `prueba_harness.py` en verde.
+
+Cómo se mide, en este orden:
+1. **Harness con el `D` oráculo y `--eventos`,** con `validation/harness/versiones/posesiones_cortas_b9.json`
+   y `dejar_fuera`. Regla de §5.8 frente a `main` y frente al control, en las dos condiciones que votan y con
+   las dos convenciones.
+2. **Eventos humanos,** en la misma ejecución, como en la ronda de B5: la estimación de la diferencia frente
+   a `main`, en las dos condiciones que votan. La de las recuperaciones tiene que ser mayor que cero, y la de
+   los duelos sin cambio no puede bajar de −5 puntos.
+3. **Criterios 2 y 3 de B5,** con `validation/apuesta_b/d_propio.py --versiones` y el mismo fichero, como en
+   la ronda de B5. Quedarse corto por poco cuenta como no cumplir.
+4. **SkillCorner, mitad de entrenamiento (descriptivo, antes del examen):** B9 con los coeficientes de los 7
+   frente a `main`, con el `D` oráculo, en las dos condiciones que votan. Si la diferencia no es mayor que
+   cero en las dos, el examen no se ejecuta.
+5. **SkillCorner, examen (una sola vez):** lo mismo en `lector.EXAMEN`.
+   - **Aguanta:** la diferencia frente a `main` es de 0 o más en las dos condiciones que votan.
+   - **Gana:** la diferencia es de +0,03 o más, con el intervalo por encima de cero y ganando en 8 de los 10
+     partidos o más, en las dos condiciones.
+
+Descriptivo, escrito antes de medir. No decide nada:
+- **placebo:** B9 con sus pesos, pero con las tres columnas de la dirección desplazadas 60 s dentro de cada
+  tramo. Con el flag, la ganancia sobre `main` tiene que desaparecer (+0,01 o menos);
+- **sensibilidad:** el balón retrasado 12 frames, como si el suavizado del ATD fuera hacia atrás, para B9 y
+  para `main`. ¿Se mantiene la ganancia?
+
+Regla de lectura, fijada antes de medir:
+- **Lectura 1, la de siempre: entra** si cumple 1, 2 y 3 y aguanta en el examen (5). Se propone a Ismael
+  cambiar `pipeline.PIECES`, en un commit aparte, y la decisión es suya.
+- **Lectura 2, para que decida Ismael.** Se le presenta, sin entrar sola, si cumple todo esto:
+  - con el flag, gana a `main` con §5.8: +0,03 o más, en 6 de 7 o más y con el intervalo por encima de cero,
+    en las dos condiciones que votan;
+  - con el control, no pierde: la diferencia frente a `main` es de −0,01 o más en las dos condiciones que
+    votan;
+  - cumple 2 y 3;
+  - en el examen de SkillCorner, la diferencia frente a `main` es mayor que cero con el intervalo por encima
+    de cero, en las dos condiciones que votan.
+
+  Es el caso «mejor con el flag y con SkillCorner, igual con el control». Si la GT del reto está entre las
+  dos convenciones, como sugiere SkillCorner, saldría a cuenta. §5.8 tal cual lo llamaría empate.
+- **Si no cumple ni la 1 ni la 2, es un empate.** Se apunta y se cierra con el informe.
+- **Nada de lo medido cambia el candidato:** ni el umbral, ni las ventanas, ni las filas, ni la rejilla de α.
+
+Resultado (15/11; `validation/resultados/2026-11-15_posesiones_cortas.md`, código `4e662ad`; salidas en
+`validation/posesiones_cortas/salidas/`) [medido]:
+- **Instrumento:**
+  - B1 a B8 sin cambios (el diff solo añade B9);
+  - los rasgos de B9 son los de B5 más los de la puerta;
+  - la elección de α repite la de B5 en los 8 pliegues;
+  - `main` repite 0,498 / 0,512 / 0,728 / 0,748 y 629 / 628 / 545;
+  - las dos pruebas, en verde.
+- **1. Harness, frente a `main`:** con el flag gana con §5.8 (+0,039 en 7 de 7 y +0,048 en 6 de 7, los dos
+  intervalos por encima de cero). Con el control empata (−0,006 y −0,005, los dos intervalos cruzan el cero).
+  Frente al control del harness gana en todo.
+- **2. Eventos: no cumple.** Las recuperaciones suben +8,2 y +7,7 puntos, y los duelos con cambio, +4,8 y
+  +5,2. Pero los duelos sin cambio bajan −4,7 («como el ATD») y −5,7 («sin bloques»), y el límite era −5.
+- **3. `D` propio: cumple.**
+  - Con el balón tapado: 630 y 629 paradas vistas, frente a 629 y 628. La precisión del `D` queda a 0,1
+    puntos. El spellF1 con el `D` propio no baja en ninguna celda: 0,456 / 0,618 y 0,480 / 0,643, frente a
+    0,416 / 0,616 y 0,433 / 0,642.
+  - Con el balón a la vista: 543 paradas vistas frente a 545, a 0,3 puntos.
+- **4. SkillCorner, mitad de entrenamiento: no es positivo en las dos condiciones.** «Detectado» da −0,005
+  [−0,009 a +0,000], ganando en 1 de 10. «Detectado, suavizado» da +0,004 [−0,002 a +0,009], en 7 de 10.
+  **El examen no se ejecuta:** `lector.EXAMEN` sigue intacto.
+- **Placebo** (descriptivo): con la dirección desplazada 60 s, la ganancia con el flag desaparece (−0,019 y
+  −0,012). La señal es real en la DFL.
+- **Sensibilidad** (descriptivo): con el balón 12 frames tarde, B9 mantiene la ganancia con el flag (+0,040 y
+  +0,044), pero con el control pierde (−0,022 y −0,026). **De paso:** el propio `main` cae de 0,728 a 0,640
+  con el control y de 0,498 a 0,472 con el flag.
+
+Decisión y por qué: **no cumple ni la lectura 1 ni la 2. Es un empate: B5 sigue en la entrega y
+`pipeline.PIECES` no cambia.**
+- Falla el paso 4 de las dos lecturas, y la lectura 2 también falla el criterio 2.
+- B9 es la primera idea que encuentra posesiones cortas de verdad en la DFL. Las de 2 a 5 s encontradas con
+  el control pasan del 53 al 62 % en la puerta. Las recuperaciones suben 8 puntos.
+- Pero no mejora en SkillCorner, el tracking automático más parecido al ATD que hay abierto. Ahí la dirección
+  del balón ya acertaba menos (el 66 % en las de 2 a 5 s, frente al 81 % en la DFL) [sin explicar].
+- SkillCorner también exige control, y B9 también empata con el control de la DFL. No se puede separar si en
+  SkillCorner falla por el tracking automático o por la convención.
+
+Descartado: B9 tal cual. Queda en `possession/aprendida.py`, con sus coeficientes y fuera de
+`pipeline.PIECES`, como referencia del documento técnico.
+
+### 2026-11-15 · candidatos · posesiones cortas, fase 3: con estos rasgos no hay más, ni con un modelo flexible
+
+Quién: lo pidió la sesión principal (orquestadora, por encargo de Ismael). Claude escribió la puerta con su
+regla (`validation/posesiones_cortas/BITACORA.md` §10, commit `3193b43`) antes de ejecutarla.
+
+Qué se probó: si lo que limita es la forma lineal de B5 y B9 o los rasgos. Una red de una capa de 32, en
+numpy y sin sesgos, con los rasgos de B9, y con ellos más 6 señales de los jugadores alrededor de un cambio.
+Mismas filas, pliegues y elección de α que B9.
+
+Cómo se midió: fuera de muestra, con el `D` de las etiquetas. En la DFL, cada partido con el pliegue que no lo
+vio; en `lector.ENTRENAMIENTO` de SkillCorner, con el modelo de los 7 partidos. El examen no se abrió.
+
+Resultado [medido]:
+- con el control, la red empata con `main` (−0,005 a −0,003) y con su versión lineal;
+- en SkillCorner pierde (−0,019 a −0,025);
+- con el flag gana mucho (+0,061 a +0,092 frente a `main`).
+
+Encuentra más posesiones de 2 a 10 s, pero predice tantas de más que con el control no gana.
+
+Decisión y por qué: **se cierra la pregunta. Con estos rasgos no hay más, ni con un modelo flexible.** No se
+abre ningún candidato, B5 sigue en la entrega y `pipeline.PIECES` no cambia. Lo que la red gana con el flag
+es una apuesta de convención que no se traslada a SkillCorner.
+
+Descartado: la red, en sus dos brazos, y las señales de los jugadores alrededor de un cambio.
+
+### 2026-11-15 · `D` · el estado con jugadores no mira fuera de los tramos evaluados
+
+Quién: Ana. Es la tarea 1 de su bloque (`docs/PLAN_ENTREGA.md` §3), que Ismael repartió a partir del punto
+14 y de P3 de la revisión externa (`docs/revision_externa_2026-11-15.md`).
+
+Qué pasaba:
+- **Las ventanas de `possession/dead_state.py` cruzaban el borde de cada tramo evaluado.** Los rasgos
+  promedian hasta ±2 s alrededor de cada frame, y la velocidad de un jugador usa los frames t − 2 y t + 2.
+- **En la DFL del harness, fuera de cada parte no hay datos,** y la media los ignora. En el partido sí los
+  hay: los jugadores están parados antes del saque. Los primeros segundos de cada parte recibían una
+  evidencia de `D` que el harness nunca ve [inferencia de la revisión; no se ha medido en el partido].
+
+Qué se cambió:
+- **`dead_state.segments`** corta el tracking por los bordes de `trk.blocks`. Ni la ventana de un rasgo ni
+  la velocidad de un jugador usan frames de fuera del segmento de su frame.
+- **No se reentrena:** el modelo E2 y sus coeficientes son los mismos.
+- **Las sumas acumuladas siguen siendo las de todo el partido.** Solo se recortan los límites de cada
+  ventana. Donde fuera de los tramos no hay datos (la DFL del harness), el resultado es idéntico, bit a
+  bit, al de antes.
+
+Cómo se midió (7 partidos de la DFL, sin datos del partido) [medido]:
+- **Los 19 rasgos y la puntuación, bit a bit iguales a los de antes** en los frames evaluados de los 7
+  partidos (entre 137.214 y 146.810 por partido). Comparado con el código de `main` en `fb9e921`.
+- **`validation/scripts/d_estado/medir.py`:** la misma salida que antes, salvo los tiempos.
+- **`entrenar.py --comprobar`:** `MODEL` coincide con el recalculado (diferencia máxima 0).
+- **`validation/scripts/d_estado/prueba_d_estado.py`** (nuevo, con un partido inventado): lo que haya fuera
+  de los tramos no cambia la puntuación de dentro. Sin recortar, sí la cambia: 96 de los 100 primeros
+  frames de los dos tramos.
+- **`prueba_pipeline.py` y `prueba_harness.py`:** en verde.
+
+Decisión y por qué: **entra, porque quita una diferencia entre lo que valida el harness y lo que se
+entrega,** y en la DFL no cambia nada.
+- **En el partido solo pueden cambiar los rasgos de los 52 primeros y los 52 últimos frames de cada tramo
+  evaluado:** los 50 frames (2 s) de la ventana más larga del modelo E2, más los 2 del desfase de la
+  velocidad (`SPEED_LAG`). Lo que cambien las etiquetas ahí está [sin verificar]: lo dirá la entrega que
+  regenere Ismael.
+- **Más lejos de los bordes, los rasgos de velocidad pueden cambiar en el último bit.** La velocidad pierde
+  2 valores en cada borde, y eso mueve el redondeo de la suma acumulada de ahí en adelante. El redondeo de
+  la puntuación a 1/1024 lo absorbe. Con un partido inventado de 60.000 frames con datos fuera de los
+  tramos [medido]: los rasgos de velocidad cambian menos de 1e-12 en términos relativos hasta a unos
+  11.000 frames de un borde, y la puntuación cambia en 52 de 48.000 frames evaluados, todos a 51 frames o
+  menos de un borde.
+- **Para la regeneración:** conviene contar cuántas etiquetas cambian respecto a `equipo_v3` y cuántas caen
+  lejos de los cuatro bordes, porque el decodificador puede mover un cambio más allá de esos 52 frames. Los
+  frames afectados incluyen el principio de la 1ª parte, que previsiblemente cae en la ventana pública
+  [sin verificar]: lo que salga ahí no decide si el cambio se queda.
+- **Fuera de los tramos,** un frame pegado a un tramo ya no ve los datos de dentro. Ahí se escribe `X` y
+  no se evalúa.
+
+Descartado: calcular los rasgos tramo a tramo, con una suma acumulada por tramo. Haría que lo de fuera no
+moviera ni el último bit, pero cambiaría el último bit de las sumas en la 2ª parte de la DFL, y lo medido
+en el harness dejaría de ser idéntico bit a bit a lo de antes. En el partido no hay diferencia práctica
+entre las dos opciones: con las dos el último bit puede moverse lejos de los bordes.
+
+### 2026-11-15 · `D` · el estado con jugadores: opción de escala y versión de `scikit-learn`
+
+Quién: Ana. Son las tareas 2 y 3 de su bloque (`docs/PLAN_ENTREGA.md` §3; P6 de la revisión externa y lo
+que quedó pendiente de la PR 5).
+
+Qué se cambió:
+- **`dead_state.evidence(trk, scale=1.0)`:** la escala multiplica la puntuación de la columna `D`. Se
+  aplica a la puntuación ya recortada a ±8, como en la sensibilidad de
+  `validation/scripts/d_estado/medir.py`, y además se vuelve a redondear a múltiplos de 1/1024. Con 0,5 la
+  pieza puntúa entre −4 y +4.
+- **No es idéntica a esa sensibilidad:** `medir.py` no redondea, así que con 0,5 las dos difieren en 1/2048
+  como mucho. `medir.py` se queda como está, para que siga dando las cifras del 14/11: con el redondeo,
+  cuatro de ellas cambian en el último decimal (E1 y E3 con la escala 0,5; E2, ninguna) [medido, DFL].
+- **El valor por defecto es 1 y la entrega no cambia:** con la escala 1 la puntuación es la misma bit a
+  bit [medido, con un partido inventado].
+- **Para el harness:** `"piezas": {"dead_state": {"funcion": "evidence", "opciones": {"scale": 0.5}}}` en
+  un fichero de `validation/harness/versiones/`. Es lo que necesita David para su tarea 2.
+- **La versión de `scikit-learn` del entrenamiento del 14/11 es la 1.7.2,** con numpy 2.2.4, scipy 1.15.3
+  y Python 3.10.12. Queda apuntada en `possession/dead_state.py`, en `entrenar.py` (que ahora imprime las
+  versiones que usa) y en el README de `validation/scripts/d_estado/`.
+  - Es la que hay instalada en la máquina de Ana desde antes del entrenamiento [medido: fecha de
+    instalación]. Con ella, `entrenar.py --comprobar` da hoy los mismos coeficientes (diferencia máxima 0)
+    [medido].
+
+Cómo se midió: `validation/scripts/d_estado/prueba_d_estado.py`, con un partido inventado. Comprueba la
+escala 1, 0,5, 2 y 0, las escalas que dan error, que el harness acepta la opción y que el pipeline da las
+mismas etiquetas con la escala 1.
+
+Decisión y por qué: **la opción entra, apagada.** No se ha medido ninguna escala distinta de 1 con ella:
+eso es la tarea 2 de David, que es descriptiva, y lo que gane en sus dos modos y con las dos convenciones
+lo decide Ismael.
+
+Descartado:
+- **Aplicar la escala antes de recortar:** con 0,5 la pieza seguiría llegando a ±8 en los frames más
+  claros. No sería la escala que midió `medir.py` el 14/11 (a la mitad, algo mejor; al doble, peor).
+- **No volver a redondear:** con una escala que no sea potencia de 2, las sumas del decodificador dejarían
+  de ser exactas y la pieza podría deshacer empates entre `H` y `A`. El coste es que la escala 0,5 mueve la
+  puntuación 1/2048 como mucho.
+
+### 2026-11-15 · validación · posesiones cortas, fase 4: el déficit no es propio del partido; cota de una pista de equipo de fuera
+
+Quién: lo pidió Ismael por la sesión principal («haga una investigacion tambien para ver como arreglar lo
+demas»). Claude escribió las dos reglas (`validation/posesiones_cortas/BITACORA.md` §11, commit `ba55354`) antes
+de ejecutar. Es descriptivo.
+
+Qué se probó y resultado [medido]:
+- **¿Es real el déficit del partido?** Con nuestro `D`, `main` saca 4,29 / 4,26 posesiones por minuto de juego
+  predicho en la DFL y 4,11 en SkillCorner, con partidos de 3,45 a 5,76. Las 3,7 del partido caen dentro: con
+  la regla, «cerca». El déficit es el de siempre, no propio del partido.
+- **¿Cuánto valdría una pista de equipo de fuera (como las fases del Smart Tagging)?** Con una pista sintética
+  en la DFL (trozos de 7,5 s que aciertan o fallan enteros, sin mirar los bordes):
+  - solo en los frames sin balón, que es el alcance del plan, no cambia nada (±0,008);
+  - en todos los frames, ayuda con el control (+0,011 a +0,022) solo si acierta el 90 % o más y pesa 2 o 4;
+  - con el flag no ayuda nunca.
+
+  Es una cota superior: los fallos son independientes de los de B5.
+
+Decisión y por qué: ninguna. Lo de la pista se pasa a Antonio y a Ismael para la tarea 2:
+- con el alcance del plan, la pista casi no tiene dónde actuar;
+- para que pese, tendría que acertar mucho y usarse en todos los frames, y eso es otra decisión de Ismael;
+- valdría más si marca dónde cambia la posesión, y eso no se ha medido.
+
+**Añadido el mismo día, con su regla antes de ejecutar** (`validation/posesiones_cortas/BITACORA.md` §13, commit
+`92b4771`): una pista sintética que marca dónde cambia la posesión, como las «Attacking Transition».
+- Con las 24 transiciones del partido (≈ 16 % de los cambios), perfectas y con peso 8 en todos los frames,
+  daría +0,013 a +0,016 si caen al azar y +0,021 a +0,027 si caen en cambios que `main` no ve [medido, cota
+  superior].
+- Para llegar a +0,03 hace falta el 30 % de los cambios, todos de los que `main` no ve y a 1 s o menos.
+- Ninguna combinación hace daño.
+- Para Antonio: lo que importa es cuántas transiciones caen a 1 s o menos de un cambio real, cuántas no las ve
+  `main` y con qué retraso.
+- Para Ismael: solo pesaría con un alcance mayor que el del plan (todos los frames, peso fuerte).
+
+**H3 y H5 del visionado, el mismo día** (regla en `validation/posesiones_cortas/BITACORA.md` §14, commit `41c3c23`,
+antes de que Ismael ejecutara `validation/partido/huecos_y_cambios.py`):
+- en el partido, nuestros cambios no se juntan con los huecos del balón más que en la DFL (R 1,19 frente a
+  1,20), y tras un hueco cambiamos menos;
+- con solo 6 cambios junto a un hueco, la regla dice que no concluye;
+- en pleno juego el ATD casi no pierde el balón (37 huecos).
+
+Decisión: ninguna. No se abre ni una degradación nueva ni un candidato antes de la entrega.
+
+
+### 2026-11-15 · infraestructura · cualquiera del equipo puede contestar, decidir y revisar
+
+Quién: Ismael. Sus palabras (15/11): «No puede ser todo tan restrictivo lo que te dije yo de que me utilizaran
+de revisor era orientativo pero todo el mundo puede responder, decidir y revisar. Por eso si eliminar eso
+mejor».
+
+Qué pasaba: las normas decían que las PR las revisaban Ismael y David, y el plan y las bitácoras reservaban
+muchas decisiones a Ismael («lo decide Ismael», «se le pasa a Ismael», «pendiente de permiso de Ismael»). El
+Claude de una compañera se negó a que contestara una duda que otro compañero tenía para Ismael.
+
+Decisión y por qué: Ismael no es una puerta.
+- Cualquiera del equipo puede contestar una duda, tomar una decisión y revisar, aprobar o mergear la PR de
+  otra persona.
+- Cada uno puede mergear su propia PR, sin esperar una aprobación. Ismael lo aclaró después (15/11): «si,
+  claro que puede mergear alguien su propia PR».
+- Donde un texto del repo reserve algo a Ismael, se lee como «lo decide el equipo». Quien decide lo apunta
+  aquí, con su nombre y el porqué.
+- Cambiado en `CLAUDE.md`, `CONTRIBUTING.md`, `docs/PLAN_ENTREGA.md`, `docs/GUIA_EQUIPO.md`, las skills
+  `/subir` y `/revisar-pr` y la plantilla de PR. Las menciones de decisiones ya tomadas («decisión de
+  Ismael, 14/11») se quedan: dicen quién decidió.
+
+Lo que no cambia:
+- lo que viene después de una decisión: si toca `pipeline.PIECES`, un valor por defecto o código que usa la
+  entrega, alguien regenera la entrega y la valida;
+- la regla nº 1 de los datos, la ventana pública, las reglas escritas antes de medir, que solo Ismael sube
+  directo a `main` y el resto de las normas de git.
+
+Descartado: buscar y cambiar cada frase de las bitácoras, los resultados y los comentarios del código. Basta
+con la regla general de `CLAUDE.md`, que todas las sesiones leen al empezar.
+
+### 2026-11-15 · validación · visionado de la ventana pública junto al vídeo (reglas, escritas antes de mirar)
+
+Quién: Ismael (mira el vídeo); Claude prepara la herramienta y ordena lo que cuente, sin ver nada del partido.
+
+Qué se hace:
+- Ismael mira, junto al vídeo táctico, los tramos de los 5 minutos públicos en que `equipo_v3` y la GT
+  pública no coinciden, con `validation/partido/clips_ventana.py`. Esa página la abre solo él, y su guía es
+  `validation/partido/GUIA_VISIONADO.md`.
+- Lo que vea se convierte en hipótesis generales, cada una con su forma de medirla en la DFL y en
+  SkillCorner y su criterio escrito antes de medir.
+
+Con qué reglas (`RULES.md` §1 y §2; `CHALLENGE.md`, «The reference is the ground truth»):
+- mirar el vídeo y la GT pública para entender cómo se etiquetan los casos está permitido;
+- no se convierte nada en etiquetas, correcciones ni reglas o constantes ligadas a momentos del partido;
+- no se ajusta ni se elige nada con la ventana: son 17 posesiones;
+- Ismael cuenta patrones generales, sin minutos, frames ni recuentos tramo a tramo. No es una medida, a
+  diferencia del recuento a ojo de la PR 1 (zona gris, `docs/revision_externa_2026-11-15.md` §3.4);
+- Claude no ve el vídeo, ni la página, ni la entrega, ni notas con tiempos.
+
+Resultado (15/11, los 10 tramos de `equipo_v3`: 4 solo de borde y 6 con posesiones o paradas distintas).
+Son jugadas concretas, contadas en general; no es una medida. La página y la sincronía con el vídeo se
+comprobaron antes (saque inicial, avance de un frame, parada al final de cada tramo).
+
+- **Cambios de equipo** (pasadas a la sesión de posesiones cortas, que las contrastó con lo medido):
+  - la GT da el cambio en el primer toque de la secuencia que gana la posesión (despeje que cae a un
+    compañero, pase de primeras, portero que coge el balón). Las etiquetas de control del harness ya fechan
+    así el cambio: no hay nada que medir (H1, H4);
+  - en el partido llegamos tarde, de 0,7 a 3 s, y en los datos abiertos no (mediana de +0 a +3 frames).
+    Hipótesis: el ATD pierde el balón en el vuelo de los balones aéreos y la degradación del harness no lo
+    copia (H5). Se midió con `validation/partido/huecos_y_cambios.py`, junto con la del portero (H3), y
+    **no concluye** (`validation/resultados/2026-11-15_huecos_y_cambios.md`). R vale 1,19 en el partido,
+    frente a 1,20 en la DFL, y solo 6 de nuestros 103 cambios caen junto a un hueco. H3 y H5 se cierran sin
+    candidato;
+  - mover cada cambio al primer acercamiento del equipo nuevo (H2): con un oráculo, techo de +0,05 con el
+    control. Sin candidato;
+  - tres posesiones cortísimas por un toque sin control (despejes) que la GT cuenta. **Es contexto:** no
+    reabre «exigir control».
+- **Balón muerto** (para Manuel y Ana):
+  - D4: la GT pone el `D` en el instante del pitido, también tras una ley de la ventaja. El sondeo del
+    silbato está sucio; solo se puede medir en el partido;
+  - D2: si nuestro `D` llega tarde, damos la posesión al equipo que va a sacar;
+  - D5: el `D` acaba en el golpeo del saque; vamos tarde o pronto según la parada;
+  - D6: `D` antes de tiempo con el balón en juego junto a la línea;
+  - D3: `D` falso de menos de 2 s en pleno juego;
+  - **D7, la más cara: el balón fuera del campo no dispara el `D`.** Ninguna pieza lo usa (comprobado en el
+    código). En un saque de puerta damos la posesión al portero que va a por el balón durante unos 10 s. La
+    revisión del 13/11 ya propuso ese disparo y no se midió. Coincide con la tarea 2 de Manuel en
+    `docs/PLAN_ENTREGA.md` §3 («el balón visto fuera de las líneas»), que está sin hacer.
+  - Cada una lleva su forma de medirla en la DFL o con agregados del partido.
+
+Decisión y por qué: **ninguna.** Nada se ajustó ni se eligió con la ventana. Las hipótesis se pasaron a la
+sesión de posesiones cortas y a la de la pieza de Ismael. Cuáles se miden lo decide Ismael, con su criterio
+escrito antes de medir.
+
+### 2026-11-15 · validación · dos hipótesis del visionado se prueban: el balón fuera del campo y los toques sin control
+
+Quién: Ismael. Sus palabras (15/11): «vale las tenemos como hipotesis pero no quieres aplicar alguna? Puede que
+probando algunas de las cosas que he comentado puede que tengamos mejores soluciones».
+
+Qué se abre, y en qué orden:
+- **D7, el balón fuera del campo como señal de `D`.** Es la tarea 2 de Manuel en `docs/PLAN_ENTREGA.md` §3,
+  sin hacer, con la definición del plan (el balón visto a más de 1 m fuera). No se puede medir en la DFL: allí
+  el balón se queda quieto mientras está muerto, así que «fuera es `D`» se cumple por construcción.
+  - Primero, un recuento del partido que ejecuta Ismael: de los frames con el balón visto a más de 1 m fuera,
+    cuántos etiqueta ya `equipo_v3` como `D`, como `H` y como `A`. Si casi todos son `D`, se cierra.
+  - Después, una capa nueva en `possession/dead_ball.py`, apagada, con un solo peso escrito y razonado antes
+    del recuento. Sin variantes, y sin mover el margen para encajar ningún caso del visionado.
+- **La convención de los toques sin control.** En el visionado salieron tres posesiones cortísimas por un
+  toque sin control que la GT cuenta. Se cuenta, en la GT pública, cuántas posesiones cortas quedan entre dos
+  del otro equipo sin un `D` en medio, con el mismo código medido antes en el flag y el control de la DFL y en
+  SkillCorner, y con la lectura escrita antes de mirar.
+  - Dice qué significan las etiquetas, que es para lo que está la GT pública. Cambiar a B9 por ese número
+    sería una decisión aparte de Ismael, porque la ventana no elige entre versiones.
+
+Qué no se abre, y por qué:
+- D2 (un cambio de equipo falso antes de la parada): es consecuencia de un `D` que llega tarde y su techo es
+  de +0,015 a +0,027. Se vuelve a mirar después de D7.
+- D5 (el final de la parada): es la rama abierta de Manuel.
+- D4 (el pitido): el sondeo del silbato salió sucio y añade una dependencia del audio.
+- D3 y D6: no tienen una palanca clara.
+
+Cómo termina cada una: como una opción apagada con su evidencia. Encenderla es una decisión aparte, y obliga a
+regenerar la entrega y validarla.
+
+### 2026-11-15 · `D` · D7, el balón fuera del campo: peso y regla del recuento, antes de ejecutarlo
+
+Quién: lo prueba la sesión de integración, por encargo de Ismael pasado por la sesión principal (entrada
+anterior). Es la tarea 2 de Manuel en el plan, sin hacer. Si sale una capa, será una función nueva en
+`possession/dead_ball.py`, sin tocar sus líneas, y apagada.
+
+**El peso, con una fórmula fijada antes de calcularlo** (`validation/scripts/peso_balon_fuera.py`, commit
+`ec3c1ce`):
+- La capa sumaría `W` en la columna `D` en cada frame con el balón visto a más de 1 m fuera. En ese frame, el
+  equipo más cercano lleva el +1 de N1 dentro de B5 y el `D` lleva la puntuación de `dead_state` (`ds`). El
+  frame empuja hacia `D` si `W + ds > 1`.
+- Fórmula: `W = 1 − P95`, con `P95` el percentil 95 de `ds` en el juego vivo a 5 s o más de cualquier parada,
+  en la DFL, redondeado hacia abajo. Así, un balón visto fuera por error en pleno juego (un balón de repuesto,
+  el temblor junto a la línea) empujaría hacia `D` como mucho en el 5 % de esos frames.
+- **Resultado [medido en la DFL]: `W = 0`.** En el juego vivo, `ds` tiene una mediana de −3,42 y un P95 de
+  0,25. En el primer segundo de las paradas reales, la mediana es −0,31.
+- **Lectura:** con esa seguridad, la capa no aporta nada. Cualquier peso de 1 o más empujaría hacia `D` en más
+  del 5 % del juego vivo si el ATD viera fuera un balón que no lo está. La fórmula no se cambia después de ver
+  el resultado.
+
+**El recuento del partido, igualmente** (`validation/partido/balon_fuera.py`; lo ejecuta Ismael, solo
+agregados; prueba con datos inventados en `validation/scripts/prueba_balon_fuera.py`). Sirve para saber cuánto
+premio hay y decidir si merece la pena una decisión nueva sobre el peso.
+- **Balón fuera:** visto a más de 1 m fuera de las líneas, con el balón como lo ve el pipeline, en los tramos
+  evaluados y sin el tramo antes del saque de la 2ª parte.
+- **Racha:** frames seguidos con el balón fuera, de 5 o más.
+- **Llegamos tarde** a una racha si empieza con `H` o `A` en `equipo_v3` y nuestro `D` empieza más de 12
+  frames (0,5 s) después, o no llega en 10 s.
+- **Regla:**
+  - **se cierra** si las rachas en que llegamos tarde son menos de 10 o menos del 15 % de las rachas;
+  - **queda abierta** si son 10 o más y el 25 % o más. Abierta no enciende nada: hará falta una decisión
+    nueva sobre el peso, con su riesgo escrito antes;
+  - en medio, no concluye y no se abre nada.
+
+Si queda abierta, la decisión nueva tendría que contar con dos cosas, medidas antes de elegir el peso:
+- **Lo que no se sabe:** cuántas veces el ATD ve el balón fuera mientras el juego sigue. Lo mejor que hay son
+  SkillCorner y Metrica, si su balón sale alguna vez del campo con el juego vivo.
+- **Un riesgo al final de las paradas:** el balón del ATD va suavizado unos 25 frames, así que tras un saque de
+  banda se sigue viendo fuera unos frames con el juego ya en marcha. Una capa con peso retrasaría el final del
+  `D`, que ya llega tarde a veces (D5 del visionado).
+
+Añadido el mismo día, antes del recuento del partido [medido en datos abiertos, descriptivo;
+`validation/scripts/balon_fuera_abiertos.py`]: **«fuera es `D`» en SkillCorner y en Metrica.** Es el único
+número que no es circular: allí el `D` sale de las fases de juego o de los eventos, no de dónde está el balón.
+- **SkillCorner,** mitad de entrenamiento (el examen no se toca):
+  - de los frames con el balón visto a más de 1 m fuera, el 93,0 % son `D` con el balón detectado, y el 94,3 %
+    con el balón suavizado como el ATD;
+  - de las rachas de 5 frames o más (596 y 465), caen enteras en juego 45 y 26. De ellas duran 2 s o más 3
+    y 3, y 5 s o más, ninguna;
+  - 44 y 38 rachas empiezan en juego y acaban en `D`: allí la parada de la etiqueta empieza después de que se
+    vea el balón fuera.
+- **Metrica** (3 partidos):
+  - el 69,8 % de esos frames son `D` con el balón tal cual, y el 74,6 % suavizado;
+  - de las rachas (47 y 22), caen enteras en juego 17 y 7. De ellas duran 2 s o más 2 y 2.
+  - Sus etiquetas salen de eventos con su propia hora, así que el borde de la parada es más impreciso.
+- **Lectura:** un balón visto fuera durante 2 s o más con el juego vivo es raro en los dos. Una capa que solo
+  pudiera crear una parada nueva con 2 s seguidos de balón fuera inventaría pocas. Esto no cambia el peso
+  fijado (W = 0): sirve para la decisión nueva sobre el peso, si el recuento del partido la abre.
+
+**Resultado del recuento del partido** (15/11, ejecutado por Ismael con `equipo_v3`) [medido]: **queda abierta.**
+- Hay 2.319 frames evaluados con el balón a más de 1 m fuera. En 1.476 decimos `D`; en 843 (36 %), `H` o `A`.
+  En SkillCorner, esa proporción es del 6–7 %.
+- Hay 47 rachas de 5 frames o más (13 por el fondo y 34 por la banda). En 22 ya decimos `D` al empezar.
+- **Llegamos tarde en 23 (48,9 %).** En 10 de ellas, nuestro `D` no llega en 10 s.
+
+**La decisión nueva sobre el peso,** escrita antes de generar ninguna entrega con la capa (la propone Claude;
+encenderla la decide el equipo con los criterios de abajo):
+- **Capa `dead_ball.ball_out`, apagada.** Es una función nueva, al final de `possession/dead_ball.py`, sin tocar
+  sus líneas, y no la llama `evidence`.
+- **Qué puntúa:** el balón visto a más de 1 m fuera, en las rachas de 5 frames o más, dentro de los tramos
+  evaluados. No puntúa los 16 últimos frames de cada racha: tras un saque de banda, el balón del ATD se sigue
+  viendo fuera con el juego ya en marcha, por el suavizado (la mitad de 25, 12 frames) y por el retraso medido
+  por Antonio (4 frames).
+- **Peso `BALL_OUT_SCORE` = 5,** el entero más grande con el que, en el juego vivo típico, un balón visto
+  fuera tiene que durar 3 s o más para crear una parada él solo.
+  - Cada frame suma `W + ds − 1` hacia `D`, donde el −1 es el +1 de N1, y una parada nueva cuesta 50
+    (`to_dead` + `from_dead`). Con la mediana del juego vivo en la DFL (−3,42), `L ≥ 50 / (W − 4,42) ≥ 75`
+    frames, así que `W ≤ 5,09`.
+  - Por qué 3 s: en SkillCorner, las rachas de balón fuera con el juego vivo de 2 s o más son 3 en 10
+    partidos, y de 5 s o más, ninguna.
+  - Al principio de una parada real (mediana −0,31), cada frame con el balón fuera empuja +3,7 hacia `D`.
+- **En la DFL no cambia casi nada** [medido]: con el `D` propio, 23 frames de 2.012.288 en las dos condiciones
+  que votan. Allí el balón está tapado en los `D`, como se esperaba. No es una ganancia.
+
+**Cómo se mide y cuándo se propone encenderla** (entrega de prueba que genera Ismael:
+`python -m possession.pipeline --name prueba_d7 --capa dead_ball.ball_out`). Se propone encenderla si se
+cumplen los tres:
+1. `python validation/partido/balon_fuera.py --entrega prueba_d7`: llegamos tarde en menos del 15 % de las
+   rachas, que con la regla de arriba se cerraría;
+2. el resumen de `prueba_d7`: el `D` en los frames evaluados no pasa del 60 % y las paradas no pasan de 250
+   (la banda de la capa de Manuel), y como mucho hay 15 paradas más que en `equipo_v3` (113). El recuento
+   tiene 10 rachas sin `D`; muchas más serían paradas inventadas;
+3. `python validation/partido/comparar_entregas.py equipo_v3 prueba_d7`: el 80 % o más de los frames que
+   cambian pasan de `H` o `A` a `D`.
+
+Si no se cumple alguno, la capa se queda apagada y se apunta aquí. Si se cumplen, encenderla es una decisión
+del equipo: se añade la capa a `pipeline.build`, se regenera la entrega en el entorno limpio, se valida y se
+apunta la huella.
+
+**Resultado de la entrega de prueba `prueba_d7`** (15/11; la generó Ismael con el código de `cb95d90`, sin
+cambios locales) [medido, solo agregados]: **falla el criterio 1, así que la capa se queda apagada.**
+1. **Llegamos tarde en 12 de 47 rachas (25,5 %), frente a 23 (48,9 %) sin la capa.** Al empezar la racha ya
+   decimos `D` en 34 (antes, 22), y en 7 nuestro `D` no llega en 10 s (antes, 10). Se pedía menos del 15 %:
+   **no se cumple.**
+2. **Se cumple.** El `D` ocupa el 45,4 % de los frames evaluados (`equipo_v3`: 45,1 %), y hay 116 paradas, 3 más.
+3. **Se cumple.** Cambian 574 frames evaluados (0,361 %): 331 de `H` a `D` y 243 de `A` a `D`, ningún otro par,
+   todos a más de 250 frames de un borde. Las posesiones siguen siendo 215.
+
+Lectura: no hace daño y arregla la mitad de las rachas en que llegábamos tarde, pero no llega al criterio
+fijado antes. **No se enciende.** El sha256 de `prueba_d7` es `eb244885…4f7f`. La sesión principal le propone a
+Ismael una segunda versión que mantenga la parada desde que el balón se ve fuera hasta que vuelve a verse
+dentro. Sería una decisión nueva, escrita antes de generar nada.
+
+### 2026-11-15 · validación · la GT pública no dice si cuenta los toques sin control; B9, listo para decidir
+
+Quién: Claude, por el encargo de «dos hipótesis del visionado se prueban» (más arriba). Regla en `validation/posesiones_cortas/BITACORA.md` §15,
+con commit (`89610fd`) antes de mirar la GT pública.
+
+Qué se midió y resultado [medido]:
+- **Sándwiches:** posesiones de menos de 2 s metidas entre dos del otro equipo, sin `D` en medio.
+  - Por minuto de juego, en ventanas de 7.500 frames, la mediana es 1,37 con el flag de la DFL, 0 con el
+    control y 0,57 en SkillCorner.
+  - La GT pública tiene 2 en 4,02 minutos (0,50 por minuto).
+  - La regla decía «exige control» con 0 y «cuenta toques» con 3 o más: con 2, **no concluye**.
+- **B9 con el balón 4 frames tarde** (lo que midió Antonio en el partido) sale igual que sin retraso: +0,035
+  y +0,043 con el flag, −0,005 y −0,008 con el control. La tabla completa de lo que B9 cumple y no cumple
+  está en la §16 de la bitácora.
+
+Decisión: ninguna. B5 sigue en la entrega. Cambiar a B9 sería una decisión de Ismael, apuntada como suya: ni
+§5.8 ni la ventana pública lo eligen.
+
+**Decisión de Ismael (15/11): «Me quedo con B5».** B9 queda apagado en `possession/aprendida.py`, fuera de
+`pipeline.PIECES`, y no se genera ninguna entrega de prueba con él. Se le recomendó así porque B9 no gana ni en
+SkillCorner ni con el control, y la GT pública no apunta al flag.
+
+Añadido (15/11) [medido por Ismael]: la entrega de prueba con B9 (`--pieza candidates=aprendida.evidence_b9`,
+commit `2a4232c`) cambia poco en el partido: 216 posesiones frente a 215, y 49 frames más de `D`. No cambia la
+decisión.
+
+### 2026-11-15 · candidatos · se prueba un empujón al equipo de la fase en los contraataques, como opción apagada
+
+Quién: Ismael. A la pregunta de si Antonio preparaba la opción de las transiciones, apagada, contestó (15/11):
+«si a todo».
+
+Por qué, con los números de la PR 13 de Antonio (`validation/resultados/2026-11-15_fases_smart_tagging.md`,
+agregados del partido con `equipo_v3`):
+- en los frames de control claro, la etiqueta de «Attacking Transition» coincide con el equipo que tiene el
+  balón en el 93,1 %;
+- en 19 de los 24 inicios seguimos con el otro equipo, y en 17 tardamos de 2 a 10 s en cambiar;
+- dentro de esas fases vamos con el equipo equivocado en 3.365 frames (36,2 %).
+
+Antonio proponía cerrar: con la cota de la DFL (`validation/posesiones_cortas/BITACORA.md`, pista de
+transiciones), una pista así daría como mucho de +0,02 a +0,03, por debajo del +0,03 de §5.8. Se prueba de
+todos modos porque ese umbral es para medidas del harness, el mecanismo está comprobado en el partido y en
+esa cota ninguna combinación hacía daño. La ganancia esperada es pequeña (en torno a +0,01 o +0,02) y no se
+puede medir en otros partidos, que no tienen Smart Tagging.
+
+Qué se hace:
+- Antonio escribe una función nueva en `possession/` que suma un peso a la columna del equipo de la fase
+  durante los primeros segundos de cada «Attacking Transition». Un solo peso y un solo tope, escritos y
+  razonados antes de generar nada.
+- La sesión de integración la enchufa como capa de prueba (`--capa`), sin tocar `pipeline.PIECES`.
+- Ismael genera la entrega de prueba, la compara con `equipo_v3` (`validation/partido/comparar_entregas.py`)
+  y la valida.
+
+Cómo termina: como una opción apagada con su comparación. Encenderla es una decisión aparte.
+
+### 2026-11-15 · candidatos · fases del Smart Tagging: pasan la regla del plan por poco y la tabla hay que revisarla
+
+Quién: Antonio Azuero. Un uso más amplio que el del plan lo decide Ismael.
+
+Qué se probó: la tarea 2 de Antonio (`docs/PLAN_ENTREGA.md` §3, P7 de la revisión externa), con el sí de
+Ismael (entrada «Antonio empieza su tarea 2»). Se probó si el equipo de las fases del Smart Tagging sirve de
+pista en los frames sin balón.
+- **La tabla de cada código al equipo con el balón,** de `OVERVIEW.md`: en las fases de ataque lo tiene el
+  equipo de la fase y en las de defensa, el otro. Quedan fuera `SET PIECES`, `GOALS` y `Team = N/A`.
+- **La regla** se escribió y se subió antes de ejecutar (`7d8a2ca`, `validation/fases_smart_tagging/BITACORA.md`).
+  «Dobla al placebo» se lee como «el desacuerdo es, como mucho, la mitad del del placebo»; lo aceptó Ismael
+  a través de Antonio.
+
+Cómo se midió: `validation/partido/fases_smart_tagging.py`, ejecutado por Antonio en local con `equipo_v3`
+(sha256 comprobado). Solo agregados del partido entero.
+- **Control claro:** el mismo equipo a 1 m durante 1 s.
+- **Placebo:** las fases desplazadas ±240, ±360 y ±480 s.
+
+Resultado [medido; la salida entera está en `validation/resultados/2026-11-15_fases_smart_tagging.md`]:
+- **Acuerdo en control claro: 81,8 %** (10.256 frames). El desacuerdo es del 18,2 %, frente al 44,2 % del
+  placebo. **La regla del plan se cumple, por poco.**
+- **Solapados con equipos distintos: 13,5 %** de los frames con fase. Pasa del 10 % de §3.2, así que hay que
+  revisar la tabla antes de usar nada.
+  - El sentido de ataque y defensa está bien: las fases salen a pares idénticos (cada ataque de un equipo con
+    la defensa del otro).
+  - Los solapes vendrían de las fases largas «de zona», como `PLAYERS IN THE BOX` o `BALL IN FINAL THIRD`
+    [inferencia, sin verificar]. Esas, junto con `BALL IN THE BOX` y `CREATING CHANCES`, son las que menos
+    aciertan (del 72 al 75 %). Las transiciones aciertan el 93 %, y la progresión, el 92 %.
+- **Transiciones:** en 19 de los 24 inicios de `ATTACKING TRANSITION` (79 %), nuestra entrega sigue en el
+  otro equipo y no cambia en ±2 s. En el placebo pasa en el 28 %. Los pocos cambios que hay llegan de +1 a
+  +2 s.
+- **Alcance del empujón del plan:** como mucho 1.455 frames sin balón (menos del 1 % de los evaluados) tienen
+  nuestra etiqueta del otro equipo y una fase.
+
+Decisión y por qué:
+- **Según la regla, entra, pero no se enciende nada todavía.** §3.2 pide revisar la tabla antes. La revisión
+  que falta es un agregado: los solapes por pareja de códigos.
+- **Con el alcance del plan, la pista vale poco:** no más de 1.455 frames. Cuadra con la medida en la
+  Bundesliga, según la cual «este equipo tiene el balón» apenas ayuda con ese alcance.
+- **Lo que más promete son los contraataques,** porque llegamos tarde o no llegamos a casi 4 de cada 5. Un
+  empujón al inicio de las `ATTACKING TRANSITION` se sale del plan: **lo decide Ismael**. Antes convendría
+  medir cuánto tarda nuestro cambio después de esos inicios.
+- La entrega no cambia.
+
+Descartado, de momento:
+- elegir solo los códigos que más aciertan: sería decidirlo después de ver los números;
+- copiar las fases como etiquetas (decisión del 15/11).
+
+### 2026-11-15 · candidatos · fases del Smart Tagging, revisión: la tabla vale y en los contraataques llegamos 2–10 s tarde
+
+Quién: Antonio Azuero. Lo que se le propone, lo decide Ismael.
+
+Qué se probó: el recuento de revisión de `validation/fases_smart_tagging/BITACORA.md` §7. La regla se subió
+antes de ejecutar (`95e766a`). Tiene dos partes:
+- cerrar la revisión de la tabla que pedía la entrada anterior;
+- medir cuánto tardamos en los contraataques.
+
+Cómo se midió: `validation/partido/fases_smart_tagging_revision.py`, ejecutado por Antonio en local con
+`equipo_v3`. Solo agregados, frente a los mismos inicios desplazados.
+
+Resultado [medido; salida en `validation/resultados/2026-11-15_fases_smart_tagging.md`]:
+- **La tabla vale:** en el 95,3 % de los 14.610 frames solapados interviene una fase de zona (`PLAYERS IN THE
+  BOX`, `BALL IN FINAL THIRD` o `BALL IN THE BOX`), y la regla pedía el 70 %. La fase de zona del equipo que
+  atacaba sigue abierta cuando el otro arranca [inferencia].
+- **Contraataques:** de los 24 inicios de `ATTACKING TRANSITION`, nuestra etiqueta pasa a ese equipo entre 2 y
+  5 s después en 11, y entre 5 y 10 s en 6. Menos de 5 ya lo eran o llegan antes de 2 s. En el placebo, lo
+  normal es no llegar en 15 s (51,9 %).
+- **Dentro de esas fases** vamos con el otro equipo en el 36,2 % de los frames (3.365); en el placebo, en el
+  23,6 %. Donde el balón está claramente en los pies del equipo que contraataca, coincidimos en el 95,7 %.
+
+Decisión y por qué:
+- **La revisión de la tabla se cierra:** vale tal cual, excluyendo los solapados. Con la regla del plan ya
+  cumplida, el empujón pequeño (solo sin balón, como mucho 1.455 frames) se puede escribir como módulo aparte
+  para que lo enchufe Ismael. Vale poco.
+- **Se le propone a Ismael medir un empujón al inicio de las `ATTACKING TRANSITION`,** como pide la lectura
+  de §7.2: el 83 % de los inicios espera más de 2 s (el placebo, el 70 %, casi todo sin llegar) y el 36 % de los
+  frames va con el otro equipo.
+  - Es más que el empujón del plan: 3.365 frames, justo al empezar posesiones.
+  - Se sale del alcance del plan.
+  - No se puede medir en la DFL. Una cota sería simular el empujón en el harness con las recuperaciones de los
+    eventos humanos de la DFL.
+- La entrega no cambia.
+
+Límite: el inicio que marca el Smart Tagging no es la GT. Si fuera antes de la recuperación real, parte de la
+espera no sería un retraso.
+
+**Junto con la cota de la DFL** (entrada «posesiones cortas, fase 4»; bitácora §9):
+- Una pista perfecta que marque las 24 transiciones, con peso 8 en todos los frames, daría de +0,021 a +0,027
+  si cae en cambios que `main` no ve [medido allí, cota superior]. Según nuestros recuentos, es justo el caso
+  del partido: 19 de 24 sin cambio a ±2 s, y de 2 a 10 s tarde [medido aquí].
+- **Ni así llega al +0,03 de §5.8,** y el empujón del plan, solo sin balón, se queda en ±0,008 [inferencia, al
+  juntar las dos medidas].
+- **Propuesta: cerrar la tarea 2 sin encender nada.** Con las normas del 15/11, la decisión es del equipo y la
+  puede tomar Antonio.
+
+### 2026-11-15 · candidatos · el empujón en los contraataques: peso 8 y tope de 5 s, fijados antes de generar nada
+
+Quién: Antonio Azuero, con el «si a todo» de Ismael (entrada «se prueba un empujón al equipo de la fase en los
+contraataques»). La entrega de prueba la genera y la compara la sesión de integración de Ismael.
+
+Qué se hace: una capa nueva, `possession/transiciones.py`, con la firma de la de Manuel:
+`evidence(trk, paths=None, game=games.GAME)`, que devuelve `(score, allowed)`. **No se enchufa en
+`pipeline.py`:** se prueba con `--capa transiciones.evidence`, como opción apagada.
+- **Sin `paths` no opina** (todo a cero y todo permitido). Así, en la DFL y en `prueba_pipeline.py`, no cambia
+  nada.
+- **Solo `ATTACKING TRANSITION`,** con `Team` `Barcelona` (`H`) o `Atletic Club` (`A`). Las demás fases no
+  entran, y menos las de zona, que son las que se solapan con equipos distintos. `N/A` no entra.
+- **Qué suma:** el peso a la columna del equipo de la fase, desde el frame de inicio y durante el tope, sin
+  pasar del final de la fase ni del tramo evaluado. Solo cuentan las fases que empiezan en un tramo evaluado.
+- **Y el mismo peso a la columna `D` en esos frames.** Lo señaló el agente revisor, antes de generar nada.
+  - Solo cuentan las diferencias entre columnas: sumar solo al equipo también empujaría 8 por frame contra `D`.
+  - La cota de la DFL se midió con el `D` impuesto (`d_oraculo` en `validation/harness/puntuar.py`: `D`
+    prohibido en el juego y obligado en las paradas). Así que no vio ese efecto, y con el `D` impuesto la
+    columna `D` no cambia nada. **Con esto la capa hace exactamente lo que midió la cota:** empuja contra el
+    otro equipo y no opina entre jugar y parar.
+  - En el partido el `D` es blando (`dead_state` y la capa del hueco), y sin esto podría borrar o acortar una
+    parada que cayera en esos 5 s si la fase no acaba justo en el fuera.
+  - Se aparta un poco de «sumar un peso a la columna del equipo». Lo que llega a la diferencia entre `H` y
+    `A` es igual.
+- Un frame cubierto por dos transiciones del mismo equipo recibe el peso **una vez**, no dos. Si lo cubren
+  dos de equipos distintos, lo reciben las tres columnas y la capa no opina.
+- **No prohíbe nada:** `allowed` va todo a `True`.
+- **Con `paths` y sin ninguna transición con equipo, da error:** si los nombres de `Team` no coincidieran, la
+  capa no haría nada sin avisar.
+
+**El peso y el tope, uno de cada, razonados antes de generar nada:**
+- **Peso: 8 por frame.**
+  - Es el mayor de la rejilla de la cota de la DFL (`validation/posesiones_cortas/BITACORA.md` §13: w = 1, 2, 4
+    y 8) y el único con el que la cota se acercaba a algo (de +0,021 a +0,027 con marcas perfectas en cambios
+    que `main` no ve). Con 4 daba poco más de la mitad.
+  - **En esa cota ninguna combinación hizo daño, ni con un 30 % de marcas falsas** (q = 0,7). Aquí la
+    etiqueta acierta el 93,1 % en control claro (q ≈ 0,9).
+  - En la escala del decodificador, 8 por frame durante 5 s suman 1.000 frente a un coste de cambio de 25: la
+    capa fuerza el cambio al equipo de la fase frente al otro, salvo que B5 diga lo contrario con mucha fuerza.
+- **Tope: 5 s (125 frames) desde el inicio de la fase,** o hasta su final si dura menos.
+  - Es el tope de la marca en la cota de la DFL, que duraba lo que la posesión real con un máximo de 125
+    frames. Aquí el final de la fase hace de final de la posesión.
+  - No se alarga: la cota de la DFL no midió marcas más largas, y una transición mal marcada haría más daño
+    cuanto más dure.
+- **De contexto, no de motivo:** el recuento de las fases dice que llegamos de 2 a 10 s tarde en 17 de 24
+  contraataques (de 2 a 5 s en 11). Explica por qué se prueba, no por qué se eligieron 8 y 5 s, que salen de la
+  cota de la DFL.
+- **Ninguno de los dos sale del partido ni de la ventana pública,** y no se retocan después de generar la
+  entrega de prueba.
+
+Cómo se probará: no se puede medir en la DFL, que no tiene Smart Tagging. La sesión de integración genera la
+entrega de prueba con `--capa transiciones.evidence`, la compara con `equipo_v3`
+(`python validation/partido/comparar_entregas.py equipo_v3 <la de prueba>`) y la valida.
+
+**Cómo se leerá la comparación** (fijado antes de generar, como en D7). Con lo que imprime `comparar_entregas.py`:
+1. **Casi todo es un cambio de equipo:** de los frames evaluados que cambian, el 90 % o más pasan de `H` a `A` o
+   de `A` a `H`. Con la capa neutra frente a `D`, los cambios entre `D` y juego solo pueden venir de arrastre
+   del decodificador.
+2. **Las paradas no se mueven:** el número de paradas cambia en 2 como mucho.
+3. **No fragmenta:** las posesiones suben 24 como mucho, una por transición. Si la fase marca un contraataque que
+   ya veíamos, solo se adelanta el cambio y el número no se mueve. Si marca uno que no veíamos, o uno falso, se
+   añaden una o dos.
+4. **Tamaño:** como mucho cambian 5.000 frames evaluados (el 3,1 %). Los frames con el otro equipo dentro de las
+   fases de transición son 3.365, y el resto es margen para el arrastre del decodificador.
+
+**Si falla alguna, se queda apagada** y se apunta por qué. Si pasan las cuatro, **sigue apagada** hasta que el
+equipo decida encenderla. Sería una excepción a «lo que no ha ganado en el harness no entra» (plan §4), porque
+esta capa no se puede medir en la DFL, y esa excepción la decide el equipo (normas del 15/11). La ventana pública
+tampoco elige: solo dice si algo se ha roto.
+
+**Una excepción al contrato de las piezas:** `possession/tracking.py` y `docs/PLAN_ENTREGA.md` §2 dicen que
+ninguna pieza abre ficheros salvo `dead_ball.py`. Esta es la segunda que abre los del partido: solo con `paths`,
+que solo le da `pipeline.build` cuando una persona genera una entrega. Sin `paths` no abre nada, y el harness no
+le pasa rutas. Habría que añadir la excepción a esos dos textos, que son de Ismael.
+
+Descartado:
+- **un peso o un tope por código, por equipo o por duración de la fase:** «un solo peso y un solo tope»;
+- **usar las `DEFENSIVE TRANSITION`:** son el espejo exacto de las de ataque (§6 de la bitácora de las fases) y
+  no añaden nada;
+- **prohibir el otro equipo en `allowed`:** una fase mal marcada no se podría corregir.
+
+
+### 2026-11-15 · `D` · D7, segunda versión: mantener la parada hasta que el balón vuelva a verse dentro (antes de generar)
+
+Quién: Ismael la pidió por la sesión principal («Sí, pídela»). Claude la escribe. **Es la segunda versión, y se
+diseñó después de ver el resultado de la primera** (entrada «D7» de más arriba: con `prueba_d7` llegamos tarde
+en 12 de 47 rachas, frente a 23 sin la capa, y en 7 nuestro `D` no llega en 10 s). Es el segundo intento, y no
+habrá un tercero con estos criterios.
+
+Por qué: la primera versión solo puntúa mientras el balón se ve fuera. Si se ve fuera un momento y después el
+ATD lo pierde, como en el saque de puerta que vio Ismael, el `D` no llega. Por el reglamento, un balón que ha
+salido no vuelve al juego sin un saque.
+
+**La capa, `dead_ball.ball_out_hold`,** una función nueva al final de `possession/dead_ball.py`, apagada. No
+toca las líneas que ya había, ni `pipeline.build`, ni `PIECES`.
+- **Lo mismo que la primera versión**, con el mismo peso (5) y la misma cola (16 frames).
+- **Además, en cada racha visible de 25 frames (1 s) o más con el balón fuera,** mantiene el peso en `D`
+  mientras el balón no se ve o se ve fuera, hasta 16 frames antes de que vuelva a verse dentro (a 1 m o menos
+  de las líneas).
+- **Tope:** si el balón no vuelve a verse dentro en 60 s, o se acaba el tramo, no se mantiene. Es el tope de
+  la capa del hueco de Manuel.
+- **Por qué 1 s de racha visible:** es el riesgo de una parada falsa, un balón visto fuera por error y perdido
+  justo después.
+  - En SkillCorner (mitad de entrenamiento), las rachas enteras en juego de 1 s o más son 7 en 10 partidos
+    (0,7 por partido): menos de una por partido aunque todas acabaran con el balón perdido. Con 5 frames
+    serían 26–45, de 2,6 a 4,5 por partido.
+  - En el partido, el ATD casi no pierde el balón en pleno juego: 37 huecos
+    (`validation/resultados/2026-11-15_huecos_y_cambios.md`).
+  - No se ha fijado con el resultado de la primera versión.
+- **En el hueco el empujón es más fuerte que con el balón a la vista:** sin balón, B5 no da el +1 de N1, así
+  que cada frame suma `5 + ds` hacia `D`. Por eso la racha mínima: sin ella, un balón perdido tras un error de
+  un instante crearía una parada.
+
+**Cómo se mide: los mismos tres criterios que la primera, sin tocar los umbrales,** con la entrega de prueba
+`prueba_d7b`. Ahora se genera y se mide con un solo comando, que ejecuta Ismael:
+`python validation/partido/probar_entrega.py prueba_d7b --capa dead_ball.ball_out_hold`.
+1. llegamos tarde en menos del 15 % de las rachas;
+2. el `D` no pasa del 60 % de los frames evaluados, hay como mucho 250 paradas y como mucho 15 más que en
+   `equipo_v3` (113);
+3. el 80 % o más de los frames que cambian frente a `equipo_v3` pasan de `H` o `A` a `D`.
+
+Si se cumplen los tres, se propone encenderla: se añade a `pipeline.build`, se regenera la entrega en el
+entorno limpio, se valida y se apunta la huella. Si no, se queda apagada y D7 se cierra aquí.
+
+En la DFL [medido, con el `D` propio en las dos condiciones que votan]: cambian 23 frames de 2.012.288, los mismos que con la primera versión. Con el balón tapado en
+los `D`, como se esperaba. No es una ganancia.
+
+**Resultado de `prueba_d7b`** (15/11; la generó Ismael con `validation/partido/probar_entrega.py` y el código de
+`0043a3c`, sin cambios locales) [medido, solo agregados]: **sale byte a byte igual que `prueba_d7`** (sha256
+`eb244885…4f7f`). Mantener la parada en el hueco no cambia ninguna etiqueta del partido.
+1. Llegamos tarde en 12 de 47 rachas (25,5 %), y en 7 nuestro `D` sigue sin llegar en 10 s: **no se cumple.**
+2. Se cumple: 116 paradas, 3 más, y el `D` en el 45,4 %.
+3. Se cumple: los 574 frames que cambian frente a `equipo_v3` pasan de `H` o `A` a `D`.
+
+**Decisión, con la regla fijada antes: la segunda versión se queda apagada y D7 se cierra aquí.** Las dos capas
+siguen en `possession/dead_ball.py`, apagadas, con su evidencia.
+
+[inferencia, sin medir] En las 7 rachas que quedan, o el balón se ve fuera menos de 1 s antes de perderse, o
+no vuelve a verse dentro en 60 s. No se mide, porque D7 está cerrada.
+
+### 2026-11-15 · candidatos · el empujón en los contraataques: la primera versión crea paradas; segunda versión, solo al equipo
+
+Quién: lo prueba la sesión principal de Ismael (Claude), con su encargo del 15/11: «haz todo lo que necesites no
+dependas de que yo te diga que si a las cosas». La capa es de Antonio (PR 14).
+
+**Resultado de la primera versión** (`transiciones.evidence`; entrega de prueba `prueba_transiciones`, generada
+por Ismael con `main` en `9f89d10`; solo agregados) [medido]:
+- cambian 2.202 frames evaluados (el 1,386 %): de `H` a `A` 171, de `A` a `H` 226, de `H` a `D` 660 y de `A` a
+  `D` 1.145;
+- las posesiones pasan de 215 a 219 y las paradas de 113 a 131. Aparecen 2 paradas y 1 posesión de menos de 25
+  frames;
+- **con los cuatro criterios escritos antes, fallan dos:** el 1 (el 18 % de los cambios son de equipo; se pedía
+  el 90 %) y el 2 (18 paradas más; se pedían 2 como mucho). Pasan el 3 (4 posesiones más) y el 4 (2.202 frames).
+  **Se queda apagada.**
+
+**Por qué crea paradas** [inferencia, con el código]:
+- B5 no premia al equipo que prefiere: resta al otro. En `possession/aprendida.py`, la columna del equipo que B5
+  no prefiere lleva −α·|z|, y la del que prefiere, 0.
+- Donde B5 prefiere al otro equipo, la columna del equipo de la fase queda por debajo de la de `D`, que en el
+  juego vivo ronda −3,4 (la mediana de `dead_state` en la DFL, entrada de D7).
+- Al sumar 8 a las dos, `D` queda por encima del equipo de la fase y también del otro, y el decodificador elige
+  `D`. La capa «neutra frente a `D`» le daba la ventaja a `D`.
+
+**Segunda versión, `transiciones.evidence_equipo`,** escrita antes de generar ninguna entrega con ella:
+- lo mismo que la primera, pero el peso va **solo a la columna del equipo de la fase.** Es lo que se pidió al
+  principio y lo que hacía la pista de la cota de la DFL (`validation/posesiones_cortas/BITACORA.md` §13);
+- el mismo peso (8) y el mismo tope (5 s). No se tocan;
+- **el riesgo,** el que señaló el revisor de la PR 14: también empuja contra `D`, así que puede acortar una
+  parada que caiga en esos 5 s, por ejemplo una falta que corta el contraataque. Lo vigila el criterio 2;
+- **los mismos cuatro criterios, con los mismos umbrales.** Si falla alguno, se queda apagada;
+- es la segunda versión y se diseñó después de ver el resultado de la primera. Si no pasa, la idea se cierra:
+  no se prueba otro peso ni otro tope.
+
+Cómo se prueba (lo ejecuta Ismael):
+`python -m possession.pipeline --name prueba_transiciones2 --capa transiciones.evidence_equipo` y
+`python validation/partido/comparar_entregas.py equipo_v3 prueba_transiciones2`.
+
+Si pasa los cuatro, sigue apagada: encenderla es una decisión aparte, y obliga a regenerar y validar la entrega.
+
+**Resultado de la segunda versión** (`prueba_transiciones2`; la generó Ismael con
+`validation/partido/probar_entrega.py` y el código de `5920c7f`, sin cambios locales; sha256 `27dc8aa8…efb7`)
+[medido, solo agregados]: **pasa los cuatro criterios.**
+1. Cambian 817 frames evaluados, todos de un equipo al otro: 274 de `H` a `A` y 543 de `A` a `H`. Es el 100 %, y
+   se pedía el 90 %.
+2. Las paradas no se mueven: 113 y 113. Se permitían 2 de diferencia.
+3. Las posesiones pasan de 215 a 219: 4 más, y se permitían 24.
+4. Cambian 817 frames, el 0,514 %, y se permitían 5.000.
+
+No hay rachas de menos de 25 frames ni piezas en conflicto, y todos los cambios caen a más de 250 frames de un
+borde.
+
+Con la regla, **sigue apagada hasta que el equipo decida encenderla.** Sería una excepción a «lo que no ha
+ganado en el harness no entra», porque esta capa no se puede medir en la DFL.
+
+
+### 2026-11-15 · candidatos · se enciende la capa de los contraataques (`transiciones.evidence_equipo`)
+
+Quién: Ismael («Sí, enciéndela»), con la recomendación de Claude, después de que la segunda versión pasara sus
+cuatro criterios (entrada «el empujón en los contraataques: la primera versión crea paradas»).
+
+Qué se decidió: **la entrega suma `transiciones.evidence_equipo`.** Es una excepción a «lo que no ha ganado en el
+harness no entra» (plan §4), que la regla de la capa dejaba en manos del equipo. La DFL no tiene Smart Tagging,
+así que el harness no puede medirla.
+
+Por qué se recomendó:
+- **Hace lo que se buscaba.** En 17 de 24 contraataques llegábamos de 2 a 10 s tarde, y la capa adelanta el
+  cambio al equipo de la fase.
+- **Pasó los cuatro criterios escritos antes:**
+  - los 817 frames que cambian son todos de un equipo al otro;
+  - las paradas no se mueven y hay 4 posesiones más;
+  - no hay rachas cortas.
+- **En la cota de la DFL nunca hizo daño,** ni con un 30 % de marcas falsas, y aquí la etiqueta de equipo de
+  las fases acierta el 93,1 % en control claro.
+- **La ganancia esperada es pequeña:** de +0,013 a +0,027 como cota superior con marcas perfectas. No se ha
+  medido con el `spellF1` del partido, ni se puede.
+
+Qué cambia:
+- **`possession/pipeline.py`:** `DELIVERY_LAYERS = (transiciones.evidence_equipo,)`. `build` la suma a las anclas
+  de `dead_ball.evidence`, con las rutas del partido. `PIECES` y `run` no cambian, así que el harness y la DFL
+  siguen igual.
+- **La excepción de que la capa abre el Smart Tagging,** escrita en `possession/tracking.py`, en el plan (§2) y
+  en `CLAUDE.md`.
+- **La entrega cambia:** hay que regenerarla en el entorno limpio. Tiene que salir igual que `prueba_transiciones2`
+  (sha256 `27dc8aa8…efb7`, generada con numpy 2.3.4), con 817 frames distintos frente a `equipo_v3`. Pasará a ser
+  la entrega vigente, y la comprobación del lunes por la noche se hace con ella.
+
+Resultado (15/11) [medido por Ismael]: **`equipo_v5`, la entrega vigente.**
+- Se regeneró en el entorno limpio (Python 3.13.9, numpy 2.5.4) con `main` en `2f34a7f`, sin cambios locales.
+- Sale con el sha256 `27dc8aa8…efb7`, byte a byte igual que `prueba_transiciones2`.
+- Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro. Las paradas siguen en 113, y las
+  posesiones pasan de 215 a 219.
+- El validador oficial la da por válida.
+- Falta reproducirla en otra máquina.
+
+### 2026-11-15 · `D` · el instante del reinicio: regla escrita antes de medir
+
+Quién: Manuel, en el orden de prioridades que fijó Ismael el 15/11 (primero el instante del reinicio,
+después el equipo que reanuda; ni las paradas tras gol ni el final de cada parte).
+
+Por qué: cada final de parada es el principio de una posesión, y llegar 1 s tarde cuesta mucho `spellF1`.
+En la DFL, el modelo de Ana (E2) acaba la parada a 25 frames o menos en el 40 % de los casos, con un sesgo
+mediano de +17 frames [medido en la DFL; entrada «`D` · estado con jugadores: resultado de la medida», 14/11].
+
+**Cambia dos cosas escritas, por decisión de Ismael.**
+- **La decisión del 14/11.** Ese día se escribió: «No se va a medir dónde cae el golpeo dentro de la ventana
+  para fijarlo: sería circular (el golpeo no se ha validado) y daría una constante sacada del partido».
+- **`docs/PLAN_ENTREGA.md` §2:** «Ninguna constante sale del partido ni de la ventana pública. Los umbrales
+  se fijan en la DFL».
+
+Lo que hay a favor: la parte de Manuel en el mismo plan (§3) pide el fin del `D` «dentro de cada ventana
+`SET PIECES`, con lo que digan los agregados». Y dice que lo que usa el Smart Tagging se comprueba en el
+partido con agregados, porque la DFL no lo tiene. El mensaje de Ismael del 15/11 lo pide así: «Si cae en un
+sitio fijo con poca dispersión, ancla ahí el final del D». La excepción a §2 es suya, y la confirma o no al
+revisar la PR.
+
+Frente a lo del 14/11 hay dos diferencias:
+- **no se usa el golpeo,** sino dos señales que no son etiquetas ni dependen de él: cuándo vuelve a verse el
+  balón y cuándo el modelo de Ana (entrenado en la DFL) pasa de parado a juego;
+- **lo que sale no es un frame del partido,** sino un desfase desde el inicio de la ventana, uno por tipo de
+  reinicio.
+
+Sigue siendo un parámetro estimado con este partido, sin etiquetas. Se declara así, y no se ajusta nada con
+la ventana pública.
+
+Qué se va a medir: `validation/partido/agregados_instante_reinicio.py`, que ejecuta Manuel. Una sola
+ejecución mide las señales, aplica la regla, comprueba las condiciones del candidato A y prueba los
+candidatos en el pipeline.
+- **Las ventanas:** las `SET PIECES` que no son saques iniciales y empiezan en un tramo evaluado (53 en este
+  partido). Los saques iniciales quedan fuera: el de cada parte ya tiene su ancla, y los de después de un
+  gol son 4.
+- **Las señales** se buscan desde el inicio de la ventana hasta 10 s después de su fin, sin pasar del inicio
+  del siguiente `GOALS` o `SET PIECES`:
+  - **el modelo de Ana pasa a juego:** el primer frame con log-odds > 0 en el anterior y < 0 durante los 2 s
+    siguientes. El frame tiene que caer antes del corte; los 2 s de sostén pueden pasar de él;
+  - **el balón vuelve a verse:** si no se veía en el frame anterior al inicio de la ventana, el primero en
+    que se ve. Si se veía, no cuenta.
+- **Desde el inicio o desde el fin:** las ventanas duran 35 s fijos [medido, 14/11], así que la dispersión
+  es la misma. Se mide desde el inicio. Para comprobarlo, el script imprime la duración mediana y cuántas
+  ventanas se apartan de ella más de 1 s.
+- **Todo se cuenta en frames** y se imprime en segundos. Así una frontera exacta (25 o 50 frames) no falla
+  por la coma flotante, como pasaría al restar segundos (55/25 − 30/25 da algo más de 1).
+
+Regla de lectura, fijada antes de ejecutarlo:
+- **Un tipo de reinicio tiene ancla si se cumplen las cinco cosas:**
+  - hay 10 ventanas o más con la transición del modelo de Ana;
+  - su recorrido intercuartílico es de 2 s (50 frames) o menos, así que la mitad de las ventanas cae en 2 s;
+  - hay 5 ventanas o más en las que vuelve a verse el balón, y la mediana de esa reaparición queda a 1 s
+    (25 frames) o menos de la mediana de la transición. Son dos señales independientes que señalan el
+    mismo sitio;
+  - **el ancla fija gana a la señal de cada ventana:** en las ventanas con las dos señales (5 o más), la
+    distancia mediana del balón al ancla es menor que la distancia mediana del balón a la transición de su
+    propia ventana. Si la dispersión de la transición fuera real (saques rápidos y lentos), una constante
+    movería la mitad de las salidas un segundo o más; esta condición exige que, por lo menos, no se aleje de
+    la otra señal. Un empate no basta;
+  - **el placebo no se concentra** (lo pide el plan del 15/11 para cada capa):
+    - son las mismas ventanas desplazadas ±4, 6 y 8 minutos, como el placebo de la capa del hueco;
+    - solo cuentan las que empiezan en un tramo evaluado y lejos de cualquier `GOALS` o `SET PIECES` real
+      (a más de su duración más 10 s, antes o después);
+    - si la transición del modelo de Ana en el placebo también tiene 10 casos o más con recorrido de 2 s o
+      menos, la concentración de las ventanas reales no dice nada, y el tipo se queda sin ancla.
+
+  Los tipos con menos de 5 ventanas van juntos en «otros», sin ancla.
+- **El juez.** El plan pide el modelo de Ana como juez, pero aquí da una de las dos señales; la que confirma es
+  la otra, el balón. No hay un juez aparte.
+- **El ancla** es la mediana de la transición, en frames desde el inicio de la ventana.
+- **Los dos candidatos de la capa** (mensaje de Ismael del 15/11: «ni A ni B a ciegas»):
+  - **comunes a los dos:**
+    - empuje blando y corto, con la escala que tenía `GAP_SCORE` el 15/11 (1 por frame), sin prohibir nada.
+      Queda fijada por esta regla: si `GAP_SCORE` cambia, esta no cambia sola;
+    - se cortan en el siguiente `GOALS` o `SET PIECES`;
+    - una ventana no recibe nada si el instante cae en ese corte o después, o si otro reinicio empieza en
+      el mismo frame;
+  - **candidato 1, B:** solo en las ventanas con hueco (las que puntúa la capa del hueco), +1 en `D` desde el
+    inicio de la ventana hasta el instante. Alarga el `D` del hueco hasta el instante, y nada más;
+  - **candidato 2, A:** en todas las ventanas del tipo:
+    - +1 en `D` antes del instante. En las ventanas con hueco empieza en el inicio de la ventana, como en B;
+      en las demás solo cubre los 3 s anteriores al instante;
+    - −1 en `D` durante los 3 s siguientes.
+  - **Los 3 s de cada lado** están sin ajustar y quedan fijos por esta regla. Son a priori: cubren el segundo
+    de margen que se le exige al instante en A.
+  - **En las ventanas con hueco,** el empuje antes del instante dura lo que el ancla, porque alargar el `D`
+    del hueco hasta el instante es justo eso. El mensaje solo pide recortarlo en las ventanas sin hueco.
+- **Un tipo con ancla cumple A si además se cumplen tres cosas, con estos números:**
+  1. **El instante es nítido:** el 80 % de las ventanas del tipo tiene la transición a menos de 1 s
+     (25 frames) de la mediana. Las ventanas sin transición cuentan como lejos. Con menos de 10 ventanas no
+     hay ancla, así que un tipo con pocos casos no entra por separado (las faltas son 5).
+  2. **El modelo de Ana está de acuerdo a los dos lados del instante,** con el criterio del punto medio de
+     la capa del hueco:
+     - se compara con tres proporciones de `D` del modelo de Ana:
+       - la del partido, en lo evaluado;
+       - la del control de `D`: el tramo antes del saque de la 2ª parte, `D` según el FAQ;
+       - la del control de juego: los frames evaluados a más de 60 s de cualquier `GOALS` o `SET PIECES`
+         (antes de su inicio o después de su fin). Es el mismo horizonte que el hueco más largo de la capa
+         del hueco, y no usa etiquetas. Incluye paradas que el Smart Tagging no marca (solo trae 5 faltas),
+         así que es un control de juego imperfecto: si no queda por debajo del partido, el instrumento no
+         separa y A no entra. El balón deprisa no sirve: no separa `D` de juego en este partido (46,7 % frente
+         a 50,5 %, entrada «fronteras y anclas» del 15/11);
+     - el instrumento tiene que separar: el control de `D` por encima del partido y el control de juego por
+       debajo;
+     - en los 3 s anteriores al instante, la proporción de `D` queda en el punto medio entre el partido y el
+       control de `D`, o por encima;
+     - en los 3 s siguientes queda en el punto medio entre el partido y el control de juego, o por debajo;
+     - se mide por separado en las ventanas con hueco y en las demás, casi todas con el balón a la vista
+       hasta el inicio. Cada grupo necesita 5 ventanas o más, y los dos tienen que cumplirlo: las segundas
+       son las que A añade y las de más riesgo.
+  3. **El placebo no pasa:** se toman los mismos instantes en las ventanas desplazadas del placebo de
+     arriba, todas juntas (sin separar por grupos) y 5 o más. Si ahí la proporción de `D` también cumple el
+     punto medio a los dos lados, el acuerdo de las ventanas reales no dice nada.
+- **La condición de daño** de cada candidato que se prueba, con el pipeline de la entrega sin la capa y con
+  ella:
+  - ningún frame con piezas en conflicto;
+  - **ninguna ventana que recibe la capa queda partida por ella:** con la capa tiene dos tramos de `D` o más,
+    y más de los que tenía sin ella.
+    - Los tramos se cuentan desde el inicio de la ventana hasta 10 s después de su fin o del fin de la capa,
+      lo que llegue más tarde, sin pasar del siguiente reinicio.
+    - Así se ve si el `D` sale en el instante y vuelve donde acaba la capa (`D`, 3 s de juego y otra vez `D`):
+      esa parada partida añade una posesión.
+    - Pasar de ningún tramo a uno no cuenta: es lo que hace la capa cuando alarga hasta el instante un `D`
+      que acababa en el inicio de la ventana (por ejemplo, el de la capa del hueco);
+  - las posesiones no suben más que las paradas (cada posesión nueva tiene que venir de una parada nueva
+    que la parte);
+  - **la entrega con la capa queda dentro de la banda del plan** (§3, 15/11): del 15 al 60 % de `D` en lo
+    evaluado y 250 paradas como mucho.
+- **Qué entra, en este orden:**
+  1. **Si algún tipo cumple A,** se prueba el candidato A: A en esos tipos y B en los demás tipos con ancla.
+     Entra si alguna ventana recibe la capa y se cumple la condición de daño.
+  2. **Si no,** se prueba B en todos los tipos con ancla, con la misma condición.
+  3. **Si tampoco,** no entra nada.
+
+  Con esta salida no se reajusta nada: ni los 2 s, ni las 10 y 5 ventanas, ni el 1 s, ni los 2 s de sostén,
+  ni los 10 s de búsqueda, ni el placebo, ni la banda, ni el 80 %, ni los 3 s de cada lado, ni las
+  puntuaciones.
+- **Si entra uno,** y solo entonces, el script imprime los desfases en frames y el modo de cada tipo, listos
+  para copiar. Cómo se conectan en `evidence` lo decide Ismael:
+  - copiando la constante en `possession/dead_ball.py`, que es la excepción a §2;
+  - o calculando el ancla al ejecutar, con estas mismas funciones.
+
+  La medida es la misma en los dos casos. Después se regenera la entrega y se comprueba que no hay
+  conflictos y que sigue dentro de la banda.
+- **Con qué se midió:** el script imprime:
+  - las piezas del pipeline (`pipeline.PIECES`, con la limpieza del balón) y los costes del decodificador
+    (`temporal.DEFAULTS`);
+  - una huella del modelo de Ana (`dead_state.MODEL`);
+  - una huella del código de `possession/`.
+
+  Si antes de que la capa entre cambian la limpieza o el modelo de Ana, se repite todo con esta misma regla.
+  Si cambian la evidencia de equipo o los costes, se repite por lo menos la sección 3 (el daño).
+- **Descriptivo, no decide:**
+  - los cuantiles de las dos señales por tipo, solo con 10 ventanas o más: con menos serían ventanas sueltas;
+  - cuántas ventanas tienen el balón visto al empezar;
+  - la distancia entre las dos señales, y la del balón al ancla fija;
+  - cuántas salidas del `D` del pipeline caen a 1 s o menos del instante, sin la capa y con ella;
+  - cuántos frames evaluados cambian antes del instante, después y fuera de la capa, por tipo de cambio
+    (lo que pidió Ismael);
+  - las proporciones de `D` del modelo de Ana a cada lado del instante, por grupo y en el placebo.
+- **Lo que espero [inferencia]:**
+  - **Con los recuentos ya medidos** (15/11, entrada «fronteras y anclas»: con hueco, banda 13 de 26, córner
+    11 de 12, saque de puerta 2 de 10), A solo puede entrar en los saques de banda. Los córners tienen
+    1 ventana sin hueco y los saques de puerta 2 con hueco, menos de 5 en un grupo: en ellos A no entra, y
+    como mucho reciben B. En los saques de banda es justo donde el modelo de Ana ve peor la parada.
+  - Con 10 ventanas como mínimo, solo pueden tener ancla los saques de banda (26), los córners (12) y los
+    saques de puerta (10, y tendrían que tener transición las 10). Las faltas (5) nunca.
+  - Los saques de banda y de puerta pueden quedarse sin ancla. Antes de ellos la velocidad media de los
+    jugadores casi no baja: está por debajo de 1,2 m/s en el 44 % y el 36 % de los frames, frente al 91 %
+    antes de un córner (entrada «el estado con jugadores (E2) entra por defecto», 14/11). El modelo de Ana puede no llegar a decir «parado» ahí, y
+    la transición faltaría o saldría dispersa.
+- **Lo que no comprueba [sin verificar]:**
+  - **Que las señales caigan en el reinicio de verdad.** Las dos son aproximaciones, y el balón puede volver a
+    verse antes del saque (colocado) o después. Que coincidan las dos es lo único que lo apoya.
+  - **El retraso que hereda el ancla.** Es la mediana de una señal que llega tarde: en la DFL, E2 acaba las
+    paradas con un sesgo mediano de +17 frames (la misma entrada del 14/11 de «Por qué»). La coincidencia con el balón (25 frames) no puede ver un sesgo
+    así. Si se traslada al ATD, el ancla llega unos 0,7 s tarde, y la capa solo quita la dispersión, no el
+    sesgo.
+  - **Corregirlo sería otra regla,** que decidirían Ismael y Ana: restar un sesgo medido en la DFL, o anclar
+    en el balón. No se hace con esta salida.
+  - **Que «el ancla gana» distinga siempre.** Si las dos señales son precisas y el reinicio cae siempre en el
+    mismo sitio, las dos medianas se parecen y, con 5 a 13 pares, la condición sale casi a cara o cruz. En
+    ese caso la capa apenas movería nada, así que perderla cuesta poco.
+  - **Que el acuerdo del modelo de Ana en A sea independiente.** El instante sale de la transición del
+    propio modelo, así que el punto 2 está en parte a favor por construcción. Lo que añade es mirarlo por
+    grupos (con hueco y sin él). El placebo aporta poco aquí: en instantes al azar las proporciones de antes
+    y de después se parecen a la del partido, así que casi nunca pasa.
+  - **Que la transición sea la de esa parada.** Es la primera que aparece. Si el modelo no llega a decir
+    «parado» en la ventana, puede coger un repunte suelto. Eso se ve en la dispersión: un tipo con
+    transiciones así no pasa el recorrido de 2 s.
+- **Los recuentos de ventanas por debajo de 5 se imprimen como «< 5»,** como en el perfil del ATD. Valen
+  también para las ventanas con ancla, las que tienen más tramos de `D` y las salidas cerca del instante.
+  Las duraciones solo salen como mediana y como recuento de las que se apartan.
+- **El script imprime la regla aplicada.** Si lo impreso y este texto no cuadran, manda este texto.
+- **Que el código aplica este texto se comprueba en el repo:** sección 11 de
+  `validation/scripts/comprobar_balon_muerto.py`, con datos inventados y la apertura de ficheros
+  prohibida. Comprueba:
+  - que las constantes de la regla son estas, también el 5 de «otros»;
+  - qué cuenta como parada partida (de 0 a 1 tramos no; de 0 o 1 a 2, sí);
+  - que la huella del código sale igual con finales de línea de Windows y de Linux;
+  - las señales y la regla en sus límites exactos, en frames;
+  - la capa y sus cortes;
+  - la condición de daño;
+  - los empujes de cada candidato en las ventanas con hueco y sin él, y sus cortes;
+  - el 80 % justo, el segundo justo y el punto medio a cada lado;
+  - el control de juego (60 s antes y después de cada reinicio);
+  - las condiciones de A una a una: no se cumple con 4 ventanas en el placebo, con el placebo pasando, con 10
+    transiciones nítidas de 13 ventanas (77 %) ni con un grupo de 4; el placebo solo usa su tipo;
+  - que las proporciones de grupos de menos de 5 ventanas se impriman como «—»;
+  - partidos de punta a punta (12 saques de banda, 6 con hueco y 6 con el balón a la vista):
+    - con el instante nítido y el modelo de Ana de acuerdo: entra A, y lo que cambia cae después del
+      instante;
+    - con el instante borroso: entra B, que alarga el `D` del hueco y no toca las ventanas sin hueco;
+    - con el modelo de Ana sin ver parado antes del instante en las ventanas sin hueco: entra B;
+    - con el placebo de A pasando (aunque el de la transición no se concentre): entra B;
+    - con solo 2 ventanas sin hueco: ese grupo no puede avalar A, y entra B;
+    - sin ninguna ventana con hueco y con el instante borroso: B no recibe ninguna ventana y no entra nada;
+    - con la parada partida en dos ventanas, y con una posesión nueva sin parada: A no entra y entra B;
+    - con dos ventanas que ya tenían dos tramos de `D` sin la capa, que A no empeora: entra A;
+    - con la entrega fuera de la banda: ninguno; justo en su borde (A la saca, B no): entra B;
+    - con conflictos: ninguno;
+    - con el reinicio disperso, con tres tipos de 4 ventanas y con el siguiente reinicio cortando la
+      búsqueda: sin ancla;
+    - con 10 ventanas separadas 10 minutos: sin transiciones en el placebo hay ancla; con el placebo tan
+      concentrado como las reales, no.
+
+  Romper la capa y el script a propósito (80 cambios, uno a uno, entre ellos los que las revisiones vieron
+  pasar sin que fallara nada) hace fallar alguna prueba. Uno más se dejó fuera porque no cambia nada:
+  medir la salida del `D` desde el primer empuje en vez de desde el inicio de la ventana. Esa salida quedaría
+  a más de 3 s del instante, y el umbral descriptivo es de 1 s.
+
+**Revisión antes de subirla (15/11).** El revisor encontró en la primera versión seis agujeros, y se
+arreglaron antes de ejecutar nada:
+- la parada partida no se contaba, porque los tramos de `D` se miraban solo hasta el fin de la capa;
+- las fronteras se comparaban en segundos;
+- el ancla podía ganar sin superar a la señal de cada ventana;
+- la máscara «< 5» estaba incompleta;
+- el ancla se imprimía en segundos, pero la capa espera frames;
+- la sección 11 dejaba pasar 8 de sus 9 roturas: las constantes sin fijar, el frame anterior al inicio,
+  los bordes de los cortes y las posesiones con y sin la capa al revés.
+
+También pidió nombrar el choque con §2 del plan y el retraso que hereda el ancla, que van arriba.
+
+**El plan nuevo de Ismael (15/11, tras la revisión externa)** pide para cada capa de esta pieza un placebo
+desplazado y la entrega dentro de la banda. Las dos cosas se añadieron a la regla antes de ejecutar nada, igual
+que el histograma de la tarea 3.
+
+**Mensaje de Ismael (15/11), antes de ejecutar: «ni A ni B a ciegas».** La primera versión tenía una sola
+forma de la capa (la que ahora es A, con 5 s después del instante). El plan del 15/11 describía otra (la que
+ahora es B). Ismael pidió escribir las dos como candidatos en la misma regla, con las condiciones de A y
+sus números antes de medir, y que decida la medida.
+
+**Para que Ismael las confirme antes de ejecutar,** estas son todas las interpretaciones de su mensaje:
+1. **El 80 %** («por ejemplo, el 80 %») queda fijado en el 80 %. Se cuenta sobre todas las ventanas del
+   tipo: las que no tienen transición cuentan como lejos. «A menos de 1 s» es estricto (24 frames sí, 25 no).
+2. **El máximo de cada lado** es de 3 s.
+3. **En las ventanas con hueco,** el empuje antes del instante no tiene ese máximo: empieza en el inicio de
+   la ventana y dura lo que el ancla, porque eso es «alargar el `D` del hueco hasta el instante». El máximo
+   de 3 s se aplica en las ventanas sin hueco y después del instante.
+4. **«Sin hueco»** es toda ventana que la capa del hueco no puntúa. Casi todas tienen el balón a la vista
+   hasta su inicio (23 de 25 el 15/11); las otras 2 tenían otro reinicio dentro del hueco.
+5. **Los dos grupos** (con hueco y sin él) necesitan 5 ventanas o más cada uno, y los dos tienen que
+   cumplir el punto medio. La alternativa sería dar A solo al grupo que lo cumple; no se hace. Con los
+   recuentos medidos, eso deja A solo para los saques de banda.
+6. **El control de juego** del punto medio, que la capa del hueco no tenía, son los frames a más de 60 s de
+   cualquier reinicio. La primera versión usaba el balón deprisa, que no separa `D` de juego en este
+   partido (lo vio la tercera revisión).
+7. **A y B se mezclan por tipo:** el candidato A lleva A en los tipos que lo cumplen y B en los demás. Si
+   ese candidato no pasa el daño, se prueba B en todos; no se prueba quitando A tipo a tipo.
+8. **El placebo de A** junta las ventanas desplazadas del tipo, sin separar por grupos, con 5 o más.
+9. **El recuento de antes y después del instante** usa en los dos candidatos el mismo tramo de después
+   (3 s), aunque B no empuje ahí.
+
+**Tercera revisión (15/11), antes de ejecutar:**
+- **El control de juego del punto medio era el balón deprisa,** que ya se había medido que no separa `D` de
+  juego en este partido. Además se atribuía mal: el umbral es de la prueba de gol a saque, no de la capa
+  del hueco. Ahora son los frames a más de 60 s de cualquier reinicio (punto 6 de arriba).
+- **Tres condiciones sin prueba que fallara si se rompían:** el mínimo de 5 ventanas del placebo de A, que el
+  80 % se cuente sobre todas las ventanas y que el placebo de A use solo su tipo. Ahora las tres tienen
+  prueba (las condiciones de A van en una función, `a_conditions`).
+- **Lo impreso enseñaba las proporciones de grupos de menos de 5 ventanas.** Ahora salen como «—».
+- **Con B, la fila de «después del instante» salía siempre vacía.** Ahora el tramo de después es el mismo en
+  los dos candidatos.
+- Detalles: `restart_anchor_spans` ya no recibe `fps`, que no usaba, y `ANCHOR_SCORE` es 1 fijo, no un alias
+  de `GAP_SCORE`.
+
+**Segunda revisión (15/11), también antes de subirla y de ejecutar nada:**
+- **La condición de daño contaba como parada partida el paso de 0 a 1 tramos de `D`.** Es justo lo que hace la
+  capa cuando alarga el `D` del hueco hasta el instante: la habría rechazado cuando hace su trabajo. Ahora
+  hacen falta 2 tramos o más, y más que sin la capa.
+- **La línea para copiar las anclas salía aunque la capa no entrara.** Ahora solo sale si entra.
+- **El grupo «otros» no tenía ninguna prueba.** Ahora la tiene, y la capa además exige que alguna ventana la
+  reciba.
+- **Lo impreso no decía con qué evidencia de equipo ni con qué costes se midió el daño.** Ahora lo dice.
+
+Lo que pidió el revisor de la PR #8:
+- **Los comentarios de `GAP_SCORE`, `LONG_GAP_S` y `MAX_GAP_BEFORE_RESTART_S`** los dejó Ismael en `main`
+  (`05b6d98`), y esta rama se queda con su texto.
+- **Los recuentos de casos de menos de 5** (goles, tramos, ventanas, reinicios) se tapan con «< 5» en todas
+  las secciones de `validation/partido/agregados_dead_ball.py`; los frames, no.
+- **Los agregados que faltaban** (tarea 3 del plan del 15/11) van como sección 4 de este script, y los dos
+  son descriptivos:
+  - de los frames que cambian de etiqueta con la capa del hueco, cuántos caen en los primeros 5 s de cada
+    hueco;
+  - un histograma grueso de la distancia entre el inicio de cada hueco y el inicio del `D` de la entrega: por
+    debajo de 0 (el `D` ya venía de antes), de 0 a 1 s, de 1 a 3, de 3 a 5, 5 s o más, y sin `D`.
+
+  Dar más peso al principio del hueco necesitaría su propia regla, escrita antes de medir.
+- **Si se enciende la limpieza de Antonio** (`clean_v1`), se repiten `agregados_dead_ball.py` y este script con
+  la misma regla. Los dos imprimen con qué limpieza se midió.
+
+Abierto:
+- **El equipo que reanuda:** retirado de momento (plan del 15/11, tarea 6: la revisión externa midió en la
+  DFL que `main` falla el equipo en el primer segundo tras el reinicio en el 5,5–5,7 % de los casos). Si se
+  retoma: una puntuación a favor del equipo que saca durante los primeros segundos tras el reinicio, con los
+  segundos medidos en la DFL. La versión medida el 15/11 (restar al otro equipo durante toda la ventana) no
+  entró: está en la rama `feat/d-equipo-reanuda`, con su resultado. Allí se midió que el `Team` del Smart
+  Tagging es fiable (20 de 20 con la física).
+
+**Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado).** Lo ejecutó Manuel en local el
+15/11. Apunta la lectura la sesión de Claude de Ana, que sigue la pieza desde ese día. La salida entera está en
+`validation/resultados/2026-11-15_instante_reinicio.md`.
+- **Con qué se midió** [medido]:
+  - el script y esta regla, tal como quedaron en `569d3b4`, con el `possession/` de `main` en `98c38ca`, que
+    trajo el merge `17f7648`. Ese `possession/` lleva, entre otras cosas, la PR 12 de Ana: las ventanas de
+    `dead_state` ya no cruzan los bordes de los tramos, así que cambian sus rasgos en los 52 primeros y los 52
+    últimos frames de cada tramo;
+  - la huella del código de `possession/` que imprimió el script, `b8a00a1a1aea`, es la de ese `possession/`. En
+    `569d3b4` era `6169ad54157a`. La del modelo de Ana, `def73c1ebf2b`, es la misma en los dos, porque solo mira
+    `dead_state.MODEL`;
+  - el modelo de Ana cambió, pues, entre escribir la regla y ejecutarla. La ejecución ya lo lleva, así que no
+    obliga a repetir nada;
+  - piezas `ball.clean`, `aprendida.evidence_b5`, `dead_state.evidence` y `temporal.decode`, con los costes 25 /
+    25 / 25;
+  - 53 ventanas, de 35,0 s de mediana; menos de 5 se apartan más de 1 s de ella.
+- **La regla, por tipo** [medido]. Los desfases van desde el inicio de la ventana.
+
+  | tipo | ventanas | con transición del modelo de Ana | su recorrido intercuartílico | el balón vuelve a verse | medianas a ≤ 1 s | ¿gana el ancla fija? | ancla |
+  |---|---|---|---|---|---|---|---|
+  | saque de banda | 26 | 25 (mediana +6,9 s) | **3,2 s** | 17 (mediana +6,1 s; recorrido 3,0 s) | sí (0,8 s) | no (2,0 s frente a 1,6 s) | **no** |
+  | córner | 12 | 11 (mediana +4,8 s) | **3,1 s** | 11 (mediana +6,6 s; recorrido 1,7 s) | no (1,8 s) | no (2,0 s frente a 1,8 s) | **no** |
+  | saque de puerta | 10 | 8, menos de 10 | no se calcula | < 5 (en 8 se veía al empezar) | no se calcula | no se calcula | **no** |
+  | falta | 5 | < 5 | no se calcula | < 5 | no se calcula | no se calcula | **no** |
+
+  - «¿Gana el ancla fija?» compara la distancia mediana del balón a la mediana del tipo con la del balón a la
+    transición de su propia ventana (16 pares en los saques de banda y 11 en los córners).
+  - El placebo (103 ventanas desplazadas) no se concentra en ningún tipo.
+- **→ Ningún tipo tiene ancla, no se prueba ningún candidato y no entra ninguna de las dos capas del instante**
+  [medido]. En los saques de banda y los córners, los dos tipos con 10 transiciones o más, falla primero la
+  dispersión: el recorrido pasa de 3 s, y el máximo era 2 s. En los saques de puerta y las faltas falla antes el
+  número de transiciones.
+- **El modelo de Ana como instrumento** [medido]: ve `D` en el 47,4 % de lo evaluado, en el 94,6 % del control de
+  `D` y en el 49,6 % del control de juego. Las tres proporciones se cuentan en los frames en que el modelo opina
+  (log-odds distinto de 0). El control de juego queda por encima del partido: el instrumento no separa por el lado
+  del juego.
+  - [inferencia, comprobada en el código: `ana_agrees` exige que el control de juego quede por debajo del
+    partido, y las tres proporciones no dependen de las anclas] **A no habría podido entrar en ningún tipo aunque
+    hubiera habido ancla** (condición 2 de A). El script no llegó a mirar A.
+- **Qué dice:**
+  - [medido] En los dos tipos que se pueden medir, la transición del modelo de Ana no cae en un sitio fijo de la
+    ventana.
+  - **Saques de banda.** [medido] Las dos señales se dispersan (3,2 s la transición y 3,0 s el balón), y la
+    transición de cada ventana queda más cerca del balón (1,6 s de mediana) que la mediana fija (2,0 s).
+    [inferencia] La diferencia entre ventanas parece real (saques rápidos y lentos), no solo ruido del
+    instrumento. La ventaja de la transición de cada ventana sobre la mediana es pequeña (0,4 s, con cifras
+    redondeadas a 0,1 s y 16 pares), así que no da para más.
+  - **Córners.** [medido] El balón se concentra (recorrido de 1,7 s) y la transición no (3,1 s); la mediana del
+    balón cae 1,8 s después que la de la transición. [inferencia] Aquí la dispersión parece más del instrumento
+    que del reinicio, y el 2,0 frente a 1,8 s sale sobre todo de ese desfase. Anclar los córners en el balón no
+    se puede con esta salida: sería una regla nueva, estimada con este mismo partido y escrita antes de medir
+    otra vez.
+  - [inferencia] Para fechar el fin del `D` de cada saque de banda haría falta una señal por ventana, por ejemplo
+    la reaparición del balón en las ventanas con hueco, no un desfase fijo. También sería una regla nueva.
+  - [inferencia] El control de juego puede tener tanto `D` por tres cosas: el tramo antes del saque de la 2ª parte
+    (punto siguiente), paradas que el Smart Tagging no marca (solo trae 5 faltas) o `D` del modelo en pleno
+    juego. [sin verificar] El final de cada parte tampoco lo marca ningún `SET PIECES`.
+- **Algo que se vio después de ejecutar, en el control de juego** [inferencia, comprobada en el código]:
+  - `far_from_restarts` aplica la regla al pie de la letra: parte de todos los frames evaluados y quita los que
+    están a menos de 60 s de un `GOALS` o un `SET PIECES`. La ventana `Kick Off (Start)` de la 2ª parte es un
+    `SET PIECES`, así que quita unos 1.500 frames del tramo antes del saque, pero no el resto. Ese tramo es `D`
+    según el FAQ y es el control de `D`.
+  - La cuenta: 2.934 − 1.500 − (lo que va del inicio de la ventana al saque, de 0 a unos 125 frames) deja en el
+    control de juego entre unos 1.310 y 1.434 frames. Supone que la ventana dura unos 5 s y contiene el saque
+    (entrada del 12/11), y que ningún otro `GOALS` o `SET PIECES` cae a menos de 60 s del tramo (el Smart Tagging
+    tiene falsos positivos).
+  - En el tramo entero el modelo de Ana ve `D` el 94,6 %. La parte que se queda en el control es la más lejana al
+    saque [sin verificar que ahí sea igual].
+  - Si fuera el 94,6 %, quitarla dejaría el control de juego por debajo del 47,4 % si tiene menos de unos
+    27.000–32.000 frames en los que el modelo opina [inferencia, cuenta con las cifras redondeadas]. El script no
+    imprimía ese recuento.
+  - No cambia el veredicto, que falla antes por la dispersión. Ana decidió después quitar el tramo para cualquier
+    repetición (abajo, «Cambios a la regla después de la ejecución»).
+- **La tarea 3 del plan** (sección 4 de la misma salida; son agregados descriptivos, sin un criterio escrito
+  antes de medir) [medido]:
+  - la capa del hueco cambia 1.083 frames evaluados, 561 de ellos (el 51,8 %) en los primeros 5 s de cada hueco;
+    sin ella no hay frames con piezas en conflicto;
+  - el `D` de la entrega empieza, respecto al inicio de cada uno de los 28 huecos: antes del hueco en 11; en su
+    primer segundo (de 0 a 1 s) en 8; de 1 a 3 s, de 3 a 5 s, a 5 s o más, o sin `D`, menos de 5 cada uno (9
+    entre los cuatro).
+  - [inferencia] En 19 de 28 huecos el `D` ya empieza antes del hueco o en su primer segundo, así que dar más
+    peso al principio del hueco tendría poco que ganar ahí. En los otros 9 (un tercio) empieza 1 s tarde o más, o
+    no hay `D`. En contra de subir el peso está lo que ya decía el plan: en esos 5 s el modelo de Ana solo ve `D`
+    el 60,9 %, y un peso alto puede forzar `D` en juego.
+  - La tarea pide hacerlo «solo si eso lo apoya». Cerrarla como «no se apoya» sería una lectura de estos
+    agregados, no el resultado de una regla. Queda por decidir.
+- **El orden real de los mensajes** [fuente: los mensajes del 15/11 entre Manuel, Ana e Ismael]:
+  - Manuel mandó las 9 interpretaciones de arriba para que se confirmaran antes de ejecutar.
+  - Contestó Ana, que lo había hablado con Ismael: confirmó las 9 sin cambios y pidió dos añadidos, para antes de
+    ejecutar.
+  - Su respuesta llegó cuando Manuel ya había ejecutado. **Se ejecutó antes de recibir la confirmación de las 9 y
+    sin los dos añadidos.** Las 9 se confirmaron sin cambios, así que la ejecución aplica la regla confirmada.
+- **Los dos añadidos de Ana**, tal como los pidió:
+  1. que el script imprima cuántos frames tiene el control de juego; si son menos del 5 % de los frames evaluados
+     (7.943 de 158.857), el instrumento no separa y A no entra;
+  2. que el ancla sea la mediana de la transición menos el retraso mediano medido en la DFL para ese tipo: 20
+     frames en los saques de banda y 16 en los córners. Los tipos sin una medida propia de 50 paradas o más en la
+     DFL no se corrigen. Es un número de la DFL, no del partido.
+     - En la DFL la transición llega esa mediana tarde, y de las paradas con transición solo el 45 % (saques de
+       banda) y el 57 % (córners) caen a menos de 1 s del fin real [fuente: medida de Ana en la DFL, 15/11; su
+       script y su salida, abajo].
+     - Salvedad de Ana: en la DFL se busca desde el inicio de la parada, y aquí desde el inicio de la ventana
+       `SET PIECES`. [inferencia] Al buscar desde antes, en la DFL se pueden coger transiciones falsas tempranas
+       (en los saques de banda, p10 −26 y p25 −2 frames), así que, si acaso, los 20 y 16 frames corrigen de menos.
+- **Por qué los añadidos no cambian el veredicto** [inferencia, comprobada en el código: `anchor_rule` exige
+  `tight`, que solo usa el recorrido de las transiciones tal cual; `a_conditions` solo se llama en los tipos con
+  ancla]:
+  - en los saques de banda y los córners falla primero la dispersión; restar un retraso fijo por tipo mueve todos
+    sus instantes por igual y no cambia el recorrido;
+  - en los saques de puerta y las faltas falla antes el número de transiciones, que los añadidos tampoco tocan;
+  - el mínimo del control de juego solo actúa sobre A, que solo se mira en los tipos con ancla, y no hay ninguno.
+
+Abierto, después del resultado:
+- **La excepción a §2 del plan no hace falta mientras el veredicto siga siendo «no entra»:** no se copia en
+  `possession/dead_ball.py` ninguna constante sacada del partido.
+- **¿Se repite si cambia el modelo de Ana?** La regla dice que se repite todo si cambian la limpieza o el modelo de
+  Ana antes de que la capa entre. Eso incluye `dead_state.MODEL` y también el cálculo de los rasgos y de los
+  log-odds: la PR 12 los cambió sin tocar `MODEL` ni su huella. Como la capa no ha entrado, un cambio así obliga
+  a repetir la medida. Repetir con cada cambio sería buscar hasta que salga. Queda por decidir si el veredicto se
+  cierra como «no entra».
+  - Ojo con la huella del código: con el merge de `main` del 15/11 por la noche (`69f4647`) pasó a ser
+    `fafbd30245b5` [medido], porque `possession/pipeline.py` ahora imprime el commit. Una repetición enseñaría otra
+    huella sin que cambie nada que afecte a esta medida; cualquier cambio de `possession/` la cambia.
+- **La tarea 3:** cerrarla como «no se apoya» sería una lectura (arriba). Queda por decidir.
+- **Una señal por ventana** en vez de un desfase fijo: es solo una idea, sin regla.
+- **La rama `feat/d-equipo-reanuda`** sigue en GitHub, sin PR. Queda por decidir si se guarda como registro. Como
+  ya está subida, no se reescribe: se haría una rama nueva desde `main` con esos commits.
+- **La máscara «< 5» del script se puede deshacer restando** en algunas filas: en los saques de banda, «no vuelve»
+  sale de restar al total «vuelve a verse» y «visto al empezar»; también salen, restando, las ventanas sin
+  transición. No son datos de ninguna jugada, pero si se quiere que tape de verdad, hay que tapar también una celda
+  complementaria.
+- **Para la pieza de estado (`dead_state`)** [inferencia]: el control de juego tiene más `D` que el partido. El
+  tramo antes del saque puede explicar una parte (arriba); lo demás serían paradas sin marcar o `D` del modelo en
+  pleno juego.
+
+**Cambios a la regla después de la ejecución del 15/11 (decisión de Ana, 15/11).** Valen para cualquier
+repetición. La ejecución del 15/11 no los lleva, y su veredicto no cambia (arriba). Los dos primeros son los
+añadidos que Ana pidió para antes de ejecutar; el tercero lo decidió después de ver la salida.
+- Las precisiones del punto 2 (dónde se usa el ancla corregida, qué sigue sin corregir y la mediana positiva) no
+  estaban en el mensaje de Ana: se fijaron después de la ejecución, la última al repetir su medida de la DFL, y
+  ninguna mira el partido.
+- Estos cambios no son, por sí solos, motivo para repetir la medida.
+- Si se repite por otra causa: la condición 2 de A, con el control de juego nuevo, se cambió viendo que fallaba
+  (49,6 % frente a 47,4 %). Un «sí» de esa condición no será una prueba a ciegas, y así se dirá al leer su resultado.
+
+1. **El control de juego tiene que tener frames suficientes** (añadido de Ana). El script imprime cuántos frames
+   tiene (todos, opine o no el modelo en ellos), qué parte son de lo evaluado y el mínimo. Si son menos del 5 % de
+   los 158.857 frames evaluados, contando el tramo antes del saque (7.943; en el código, en enteros,
+   `PLAY_MIN_NUM, PLAY_MIN_DEN = 1, 20`), A no se cumple en ningún tipo.
+2. **El ancla es la mediana de la transición menos su retraso en la DFL** (añadido de Ana):
+   `DFL_DELAY = {"throw-in": 20, "corner kick": 16}`, en frames.
+   - **Dónde se usa el ancla corregida:** en el instante de la capa (los dos candidatos), en las condiciones de A
+     a los dos lados del instante y en el placebo de A. Es también lo que se imprime para copiar si la capa entra.
+   - **Qué sigue con la mediana sin corregir:** si un tipo tiene ancla no cambia. El recorrido, «nítido» y la
+     coincidencia con el balón no se tocan. «El ancla fija gana» se calcula con la mediana sin corregir,
+     comparada con las transiciones sin corregir; en lo impreso se llama ahora «la mediana gana».
+   - **Dos efectos de aplicarlo así** [inferencia]. Es como lo describía el traspaso de Manuel (el ancla corregida
+     para la capa, los lados de A y el placebo de A). Si se cambia lo decide Ana, como dueña de la pieza y del modelo
+     de estado, antes de cualquier repetición, y lo apunta aquí:
+     - la coincidencia con el balón se mira con la mediana sin corregir, así que ya no avala del todo el instante
+       que se usa. Con el balón 0,9 s después de la mediana la condición se cumple, y el ancla de los saques de
+       banda quedaría a 1,7 s del balón. El 15/11, en los córners, el balón caía 1,8 s después de la transición:
+       restar 16 frames lo alejaría hasta unos 2,4 s;
+     - los lados de A se miran en el ancla corregida con el mismo instrumento que llega tarde. Si el retraso de la
+       DFL se traslada al partido, de los 75 frames de «después» unos 20 (16 en los córners) son `D` del
+       instrumento por construcción: el 27 % y el 21 %, con un umbral que el 15/11 fue del 48,5 %. Juega en contra
+       de A;
+     - la alternativa sería comparar el balón con la mediana corregida y mirar los lados de A en la mediana, donde
+       ve el instrumento. Entonces contaría que la reaparición del balón también puede llegar tarde (el balón del
+       ATD viene suavizado unos 25 frames y unos 4 frames tarde respecto a los jugadores), y eso no está medido.
+   - **Si el ancla corregida cae antes del inicio de la ventana** (una mediana menor que el retraso), ese tipo no
+     recibe la capa ni puede cumplir A. Con las medianas del 15/11 (de 120 a 172 frames) no puede pasar.
+   - **Qué tipos se corrigen.** Ana escribió «los tipos sin una medida propia de 50 paradas o más en la DFL no
+     se corrigen». Al repetir su medida salió que las faltas y los saques de puerta también pasan de 50 paradas,
+     con la mediana negativa. Ana decidió que solo se corrigen los saques de banda y los córners: una mediana
+     negativa no es un retraso, porque la transición llega antes del fin real. Así, la regla es «50 paradas o
+     más con transición y la mediana positiva».
+   - **La medida** [medido en la DFL; el 15/11, en la máquina de Ana, con
+     `validation/scripts/d_estado/retraso_transicion.py`, que es el script de Ana y entra hoy en el repo]:
+
+     | tipo | paradas | con transición | mediana de la transición − el fin real | a menos de 1 s, de las que tienen transición |
+     |---|---|---|---|---|
+     | saque de banda | 301 | 266 | +20 frames | 45 % |
+     | córner | 57 | 54 | +16,5 frames | 57 % |
+     | falta | 160 | 148 | −5,5 frames | 46 % |
+     | saque de puerta | 109 | 106 | −114,5 frames | 26 % |
+
+     La mediana exacta de los córners es 16,5. Se usa 16, como en el mensaje de Ana (el script redondea al par).
+     La salida entera está en `validation/resultados/2026-11-15_instante_reinicio.md`.
+3. **El control de juego no incluye el tramo antes del saque de la 2ª parte** (decidido después de ver la
+   salida; no es uno de los dos añadidos):
+   - qué pasaba: el código seguía la regla escrita, «los frames evaluados a más de 60 s de cualquier `GOALS` o
+     `SET PIECES`». Eso deja dentro unos 1.310–1.434 frames de ese tramo, que es `D` según el FAQ y es el propio
+     control de `D` (arriba, «Algo que se vio después de ejecutar»);
+   - qué cambia: el control de juego son esos mismos frames sin el tramo antes del saque de cada parte
+     (`dead_ball.pre_kickoff`);
+   - por qué: un control de juego no puede llevar frames que son `D` seguro. Es un cambio de la regla visto con la
+     salida delante (49,6 % frente a 47,4 %), así que se apunta como posterior. No cambia el veredicto del 15/11.
+
+Lo que no cambia: el resto de la regla y todos sus números.
+
+**El pipeline de la entrega, con sus capas** (15/11, por la noche). `main` encendió ese día la capa de los
+contraataques (`pipeline.DELIVERY_LAYERS`), que `pipeline.build` suma a `dead_ball.evidence`. El script corre ahora el
+pipeline con esas capas en sus tres ejecuciones (sin la capa, con cada candidato y sin la capa del hueco); si no, sus
+secciones 3 y 4 no medirían la entrega. También lee el ATD como `pipeline.build` (una línea rara es un error) e imprime
+las versiones y el commit. No es un cambio de la regla, que ya decía «el pipeline de la entrega», y la ejecución del
+15/11 no se ve afectada: entonces la entrega no tenía esa capa.
+
+Cómo se comprobó:
+- **Pruebas** (sección 11 de `validation/scripts/comprobar_balon_muerto.py`, con partidos inventados y la apertura de
+  ficheros prohibida):
+  - las constantes nuevas, congeladas, y el 5 % justo en enteros (7.943 de 158.857 vale; 7.942, no);
+  - el ancla de la capa: la mediana menos 20 frames en los saques de banda, menos 16 en los córners y sin corregir
+    en los saques de puerta y las faltas;
+  - de punta a punta, con un modelo de Ana inventado que deja de ver parado en el frame 180, 20 frames antes de la
+    mediana de su transición (10 o 30 antes de cada una; un destello retrasa la transición formal). Es un caso
+    inventado que prueba que el retraso se aplica donde toca:
+    - con el retraso, A entra en el 180 y el `D` sale ahí; sin él, en el 200;
+    - las condiciones de A se miran en el ancla corregida: si el modelo vuelve a ver parado de los 10,4 a los 11 s,
+      A se cumple en el 180 y no en el 200;
+    - el placebo de A usa el ancla corregida, no la mediana;
+    - en los córners se restan 16 frames y en los saques de puerta, ninguno;
+    - con un retraso mayor que la mediana, ninguna ventana recibe la capa y no entra nada;
+  - el control de juego: no incluye los 2.934 frames del tramo antes del saque; cuenta todos sus frames, también
+    donde el modelo no opina; el 5 % se cuenta sobre los 158.857 evaluados (316 s de control no llegan, aunque
+    llegarían sobre lo evaluado sin el tramo antes del saque); y con menos del 5 %, A no se cumple aunque se cumpla
+    todo lo demás (entra B);
+  - lo impreso: el `main` del script, con las funciones que leen el partido sustituidas y la apertura de ficheros
+    prohibida, imprime los cambios a la regla, la mediana y el ancla corregida, «la mediana gana», el control de
+    juego con su mínimo en frames y, en la línea para copiar, el ancla corregida;
+  - las capas de la entrega: van en las tres ejecuciones del pipeline (una capa que bloquea 10 frames da 10 conflictos
+    en las tres); `main` lee el ATD como `pipeline.build`, pasa las rutas del partido a `dead_ball.evidence` y a las
+    capas (a la entrega sin la capa del hueco, sin rutas) e imprime las versiones y el commit;
+  - las pruebas de antes de los cambios siguen, con el ancla igual a la mediana (`no_delay`), salvo la de los 10
+    saques de banda separados 10 minutos, que va con los retrasos por defecto. Dos cambian por el tercer cambio:
+    - en el partido base, el control de juego pasa a tener un 0 % de `D`. Antes tenía algo porque llevaba el tramo
+      antes del saque;
+    - en la del placebo que pasa, los 3 s de después del instante se ponen en juego también en las ventanas
+      desplazadas que caen en una parada real. Antes la prueba pasaba porque ese tramo subía el punto medio.
+- **Sabotajes** (una vez, en memoria, fuera del repo): 33 roturas de lo nuevo, una a una. Las pruebas detectan 32,
+  entre ellas las dos que encontró la segunda revisión (el 5 % contado sobre lo evaluado sin el tramo antes del
+  saque, y contar solo los frames en que el modelo opina) y las de lo impreso (la línea para copiar con la mediana,
+  la mediana y el ancla cruzadas, «el ancla gana» y el mínimo redondeado hacia abajo). La que no, no cambia nada:
+  medir el control de `D` en todo el tramo antes del saque en vez de en su parte evaluada, que es el tramo entero.
+- **Lo impreso, a mano** (una vez, fuera del repo): el `main` con un partido inventado en un caso en que entra A y
+  en otro en que no hay ancla. Tapa con «< 5» y «—» lo que debe. Cambian tres textos: en la cabecera de la sección
+  2, «el ancla fija más cerca» pasa a ser «la mediana fija más cerca»; en cada tipo, «el ancla gana» pasa a ser «la
+  mediana gana»; y «del balón al ancla fija», «del balón a la mediana fija». Hay líneas nuevas: la de los cambios a
+  la regla, el recuento del control de juego con su mínimo, «sin el tramo antes del saque» y «control de juego
+  suficiente».
+
+### 2026-11-15 · `D` · juego vivo en el saque de cada parte: regla escrita antes de regenerar la entrega
+
+Quién: Ana, que sigue la pieza de Manuel desde el 15/11. Es la tarea 4 de Manuel en `docs/PLAN_ENTREGA.md` §3:
+«prohibir `D` en el frame del saque de cada parte (un frame en `allowed`). En la misma PR, para que el fichero tenga
+un solo cambio abierto».
+
+Qué cambia en `possession/dead_ball.py`:
+- `kickoff_mask(game)` da el frame del saque de cada parte. Son los de FAQ.md, tal como los guarda el código oficial
+  (`KICKOFF_VIDEO_FRAMES`: 11.185 y 113.742), los mismos que ya usa el tramo antes del saque. Solo cuenta un saque si
+  cae en su tramo evaluado, y solo para BAR-ATH: con otro partido da error, como `pre_kickoff`.
+- En `evidence`: `allowed[kickoff_mask(game), D] = False`. No toca ninguna puntuación. Va también sin rutas
+  (`paths=None`), como el tramo antes del saque, porque no lee ningún fichero.
+- No choca con el tramo antes del saque, que acaba en el frame anterior (113.741). En la 1ª parte el primer frame
+  evaluado ya es el saque, así que allí no hay tramo.
+
+Por qué [fuente: FAQ.md]: los 2.934 frames de 110.808 a 113.741 son `D`, y en el 113.742 se saca: desde ese frame el
+balón está en juego. La GT pública tampoco tiene `D` en el primer frame evaluado de la 1ª parte (sección 3 de
+`validation/scripts/comprobar_balon_muerto.py`). No sale ninguna constante del partido: son las de `games.py` y del
+código oficial.
+
+Qué puede salir mal [inferencia]: obligado a salir de `D` en el saque, el decodificador puede volver a `D` justo
+después, si la evidencia de `D` de los segundos siguientes suma más de lo que cuesta volver a `D` y salir otra vez
+(`to_dead` + `from_dead`, 50 con los costes de hoy). Saldría una posesión de 1 frame y una parada partida, peor que no
+hacer nada. Por eso la regla mira las posesiones, las paradas y las rachas cortas.
+
+No lleva juez ni placebo: el saque no es una señal estimada, sino un frame que da la organización. Lo que se mide es
+que no haga daño. Tampoco se puede medir en la DFL: la pieza usa constantes de este partido.
+
+Cómo se mide: `validation/partido/agregados_saque_juego_vivo.py`, que ejecuta una persona.
+- Corre el pipeline de la entrega dos veces, sin escribir ningún fichero: con `dead_ball.evidence` tal cual y con el
+  ancla quitada (`D` permitido otra vez en esos dos frames). Las dos veces suma las demás capas de la entrega
+  (`pipeline.DELIVERY_LAYERS`, desde el 15/11 la de los contraataques), como `pipeline.build`, y lee el ATD como él.
+- Imprime las versiones de Python y numpy, el commit y los dos sha256. El de «sin el ancla» tiene que ser el de la
+  entrega vigente, `equipo_v5` (`27dc8aa8…efb7`).
+
+Regla de lectura, fijada antes de ejecutarlo. **Entra si se cumplen las seis:**
+0. sin el ancla sale la entrega vigente: el sha256 empieza por `27dc8aa8` y acaba en `efb7` (`equipo_v5`). Si no,
+   ha cambiado algo más (el código de `main` o el entorno, por ejemplo la versión de numpy). Entonces la regla no se
+   aplica: el script avisa, no enseña nada más y sale con código 1. No entra hasta explicarlo y volver a ejecutar:
+   - en un entorno que reproduzca `equipo_v5`;
+   - o con la entrega vigente puesta al día (`VIGENTE` del script). Solo se pone al día a una entrega generada con
+     `python -m possession.pipeline` desde `main`, validada y apuntada en este fichero con su sha256, en un commit
+     anterior a la nueva ejecución. Nunca al sha256 «sin el ancla» que imprime este script;
+1. con el ancla, ningún frame evaluado con piezas en conflicto (lo mismo que exige `pipeline` para escribir el CSV);
+2. cada parte tiene su saque en su tramo evaluado, y en ese frame la entrega con el ancla no tiene `D`;
+3. la entrega con el ancla queda dentro de la banda del plan: del 15 al 60 % de `D` en lo evaluado y 250 paradas
+   como mucho;
+4. en cada tramo, con el ancla no suben las posesiones, ni las paradas, ni las rachas cortas (de posesión, de juego y
+   de parada, de menos de 12 y de menos de 25 frames, como las cuenta `pipeline.short_runs`);
+5. todo lo que cambia cae en los 60 s después del saque de su parte: nada antes del saque ni más tarde. Los 60 s son a
+   priori, el mismo horizonte que `dead_ball.MAX_GAP_BEFORE_RESTART_S`. Lo esperado es que solo cambien frames justo
+   después de los saques; si cambia algo más lejos, no entra hasta entender por qué.
+- Si no cambia ningún frame, entra igual: en este partido no hace nada, pero deja fijada la frontera.
+- **La condición 4 también rechaza un caso bueno** [inferencia]: un saque seguido de una parada real en los primeros
+  segundos. Sin el ancla, el `D` puede seguir de largo por esa jugada; con ella, la salida ya está pagada y la entrega
+  se queda en juego hasta la parada: sale una posesión más y una parada más, aunque las etiquetas fueran mejores. Se
+  acepta perderlo: sin juez no se distingue de un rebote.
+- Con esta salida no se reajusta nada: ni los 60 s, ni la banda, ni el frame del saque.
+- Descriptivo: cuántos frames cambian, de qué clase (de `D` a juego, de juego a `D` o de un equipo al otro) y a qué
+  distancia después del saque (de 0 a 1 s, de 1 a 5, de 5 a 30, de 30 a 60 y 60 s o más), y qué sube en cada tramo.
+- **Lo que imprime y la regla nº 1:** como solo hay dos saques, lo que cambia describe como mucho dos tramos de nuestra
+  propia entrega, junto a ellos. Por eso junta las dos partes y no dice de qué equipo a cuál; tampoco da ningún número
+  de frame.
+
+Lo que espero [inferencia]: que cambien pocos frames, de `D` a juego, en los primeros segundos tras el saque de la 2ª
+parte, porque el modelo de Ana acaba las paradas tarde (sesgo mediano de +17 frames en la DFL, entrada del 14/11), y
+que en la 1ª parte cambie poco o nada. El riesgo es el rebote de arriba.
+
+**Cuándo se mergea:** la rama se sube con el ancla ya en `evidence` y con esta regla, pero no se mergea en `main`
+hasta ejecutar el script en ella. Si entrara en `main` antes, `python -m possession.pipeline` dejaría de dar `equipo_v5`
+sin que nadie hubiera aplicado la regla.
+
+Si entra:
+- una persona regenera la entrega (`python -m possession.pipeline --name equipo_v6`) y la valida
+  (`python evaluation/validate_submission.py evaluation/results/equipo_v6.csv`, o `/evaluar`);
+- el sha256 que imprime el comando tiene que ser el «con el ancla» del script. Si no lo es, esa entrega no se usa y se
+  investiga;
+- la entrega deja de ser `equipo_v5`: hay que avisar al equipo para que el ensayo del lunes la reproduzca con esta
+  rama ya en `main`.
+
+Si no entra: se quita de `evidence` la línea del ancla antes del merge (la función se queda, probada) y se apunta
+aquí por qué.
+
+Lo que no comprueba [sin verificar]:
+- que el saque caiga justo en ese frame: lo dice la organización [fuente: FAQ.md]. El 12/11 se vio que las ventanas
+  `Kick Off (Start)` del Smart Tagging lo contienen;
+- qué equipo saca: lo decide el decodificador con la evidencia de equipo, como antes.
+
+Relación con las otras medidas de la pieza: `validation/partido/agregados_instante_reinicio.py` corre el pipeline con
+`dead_ball.evidence` como entrega (secciones 3 y 4), así que, si se repite, ya lleva el ancla del saque y las demás
+capas de la entrega. Como el instante no entró, no hay que repetir su sección 3 (el daño).
+`validation/partido/agregados_dead_ball.py` no corre el pipeline.
+
+Cómo se comprobó, antes de ejecutar nada:
+- **Pruebas** (sección 12 de `validation/scripts/comprobar_balon_muerto.py`, con datos inventados y la apertura de
+  ficheros prohibida):
+  - `kickoff_mask`: los dos frames de FAQ.md y ninguno más; con otro partido, error; un saque fuera de su tramo no se
+    ancla;
+  - `evidence`, con rutas y sin ellas: `D` prohibido justo en esos dos frames, con `H` y `A` permitidos ahí; ningún
+    frame se queda sin estado permitido (la prueba de la sección 7 que decía que `evidence` nunca prohibía `D` ahora
+    dice esto);
+  - quitar el ancla devuelve la evidencia de antes de la tarea 4, sin tocar la que recibe; el sha256 del script es el
+    mismo que el del CSV que escribe `pipeline.write_submission`;
+  - la regla con etiquetas puestas a mano: entra si el `D` que seguía tras el saque acaba en él, o si no cambia nada;
+    no entra si sin el ancla no sale la entrega vigente, si vuelve a `D` justo después, si solo sube una racha corta,
+    solo el número de posesiones o solo el de paradas, si cambia algo a 60 s o más o antes del saque, con `D` en el
+    saque, si una parte no tiene su saque o tiene dos, con conflictos o fuera de la banda (mirada con el ancla puesta,
+    también por las 250 paradas). En el primer frame de la 1ª parte: entra si desaparece el `D` del principio y no si
+    sale un frame y vuelve a `D`;
+  - de punta a punta, con el pipeline y piezas controladas: con poca evidencia de `D` tras el saque de la 2ª parte,
+    cambian 75 frames de `D` a `H` y entra; con mucha, rebota (1 frame de `H`), suben las posesiones y las paradas y
+    no entra; si la entrega sin el ancla no es la vigente, no entra; con otra pieza que solo permite `D` en el saque,
+    hay conflicto y no entra; las demás capas de la entrega van en las dos ejecuciones; los dos sha256 salen en su
+    orden;
+  - el pipeline es el de la entrega: con las lecturas del partido sustituidas, la entrega «con el ancla» del script
+    es, byte a byte, la que sale de `pipeline.build`, con una capa de la entrega que solo opina si recibe las rutas;
+  - lo impreso: el `main` del script, con las funciones que leen el partido sustituidas. Lee el ATD como
+    `pipeline.build`, pasa las rutas del partido a `dead_ball.evidence` y a las capas de la entrega, imprime las
+    versiones y el commit, y cada número sale en su sitio (sin el ancla y con ella), sin equipos. Si solo falla la
+    condición 0, avisa, no enseña nada más y sale con código 1; si solo falla la banda, la línea de la banda dice
+    «no» y no sale el aviso.
+- **Sabotajes** (en memoria, fuera del repo): 77 roturas, una a una. En el ancla: quitarla, prohibir `H` en vez de
+  `D`, ponerla un frame tarde o un frame antes, alargarla 25 frames, quitar la guarda del tramo, aplicarla a cualquier
+  partido o solo con rutas. En el script: la entrega vigente, las capas y las rutas de la entrega, la lectura del ATD,
+  quitar el ancla mal, el sha256, las rachas, lo que sube, las distancias, las clases de cambio, cada condición de la
+  regla, cada número de lo impreso y la parada en la condición 0; y que `run_main` no devuelva las funciones a su
+  sitio. Las pruebas detectan 75. Las dos que no, hoy no cambian nada:
+  - contar como «de `D` a juego» también de `D` a `D`, que no puede pasar en un frame que cambia;
+  - sumar las capas de la entrega antes que `dead_ball.evidence`: solo cambiaría el orden de la suma, y hoy cada una
+    puntúa columnas distintas. Si una capa futura puntuara la misma columna, la condición 0 lo pararía.
+  Del instante: 38 roturas, 37 detectadas, y la equivalente de siempre.
+- **Lo impreso, a mano:** el `main` con un partido inventado, en un caso en que entra y en otro en que rebota, con
+  el código de antes de la cuarta revisión. Con el partido inventado el sha256 «sin el ancla» no es el de `equipo_v5`,
+  así que se vio también el aviso de la condición 0.
+- **Cuatro revisiones** del agente `revisor` antes de subirla. La tercera vio que `main` había cambiado la entrega
+  (`equipo_v5`, con la capa de los contraataques) y que la regla no decía qué hacer si el sha256 no cuadraba: de ahí la
+  condición 0, las capas de la entrega en el script y lo de no decir equipos. La cuarta, sin ningún 🔴, pidió que la
+  condición 0 se pudiera aplicar de verdad (el script se para y no enseña nada más, y cómo se pone al día la entrega
+  vigente), pruebas de que `main` pasa las rutas y las capas, y escribir que la rama no se mergea hasta aplicar la
+  regla.
+
+**Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado).** Lo ejecutó Ana en local el 15/11, con la
+rama en `03fe7e8` y sin cambios locales en el código de la entrega. La salida entera está en
+`validation/resultados/2026-11-15_saque_juego_vivo.md`.
+- **Con qué se midió** [medido]: Python 3.10.12 y numpy 2.2.4; huellas del modelo de Ana `def73c1ebf2b` y del código
+  de `possession/` `bb963526df2a`; las piezas de `pipeline.PIECES`, costes 25 / 25 / 25 y la capa de los contraataques.
+- **Condición 0:** sin el ancla sale `equipo_v5` byte a byte (`27dc8aa8…efb7`), así que la regla se aplica [medido].
+- **→ Entra:** se cumplen las seis condiciones [medido].
+  - Con el ancla la entrega sale con el mismo sha256: no cambia ningún frame. La entrega ya salía del `D` en el frame
+    de los dos saques.
+  - Sin conflictos, con un 45,09 % de `D` y 113 paradas; las posesiones (103 y 116), las paradas (53 y 60) y las
+    rachas cortas de cada tramo no se mueven.
+- **Qué dice** [inferencia]: el rebote que preocupaba no pasa, porque no hay nada que corregir en este partido. El
+  ancla no mejora la entrega de hoy; deja fijada la frontera para cualquier cambio futuro de las piezas de `D`, que ya
+  no podrá alargar una parada más allá del saque.
+- **Lo que sigue, según la regla:** regenerar la entrega con `python -m possession.pipeline --name equipo_v6` y
+  validarla. Su sha256 tiene que ser `27dc8aa8…efb7`, el mismo que `equipo_v5`: la entrega vigente no cambia de
+  contenido. Después la rama ya se puede mergear.
+
+**Entrega regenerada (15/11)** [medido por Ana, en su máquina, con la rama en `f6a8880`]: `python -m possession.pipeline
+--name equipo_v6` da 0 conflictos, ninguna racha corta y el sha256 `27dc8aa8…efb7`, el mismo que el «con el ancla» del
+script y que `equipo_v5`. El validador oficial la da por válida (199.319 filas). La entrega vigente no cambia de
+contenido: `equipo_v6` es `equipo_v5` byte a byte. La rama ya se puede mergear.

@@ -82,7 +82,8 @@ El script solo imprime recuentos.
   - **Cómo se ha comprobado:** solo agregados.
   - **Checklist:** marca solo lo que sea verdad.
   - Sin "Generated with Claude Code" ni atribuciones.
-- **Reviewers,** según quién abre. Mira quién es con `gh api user --jq .login`:
+- **A quién se le pide la revisión por defecto,** según quién abre. Puede revisarla cualquier otra persona
+  del equipo. Mira quién es con `gh api user --jq .login`:
 
   | login | `--reviewer` |
   |---|---|
@@ -117,10 +118,9 @@ gh pr create --base main --head <rama> --title "<título>" --body-file <fichero-
 ## 9. Cierre
 
 Dale el enlace de la PR y explícale lo que sigue:
-- revisa Ismael o David;
-- con una aprobación, quien aprueba la mergea;
+- puede mergearla él mismo con `/revisar-pr <n>`, o esperar a que la mire otra persona del equipo;
 - después, `/actualizar` le devuelve a `main` limpio.
 
 **Directo a `main`:** dale el hash del commit subido. Los demás lo reciben con `/actualizar`.
 
-No mergees tú.
+No la mergees en este paso: si quiere mergearla ya, que lo pida y usa `/revisar-pr <n>`.
