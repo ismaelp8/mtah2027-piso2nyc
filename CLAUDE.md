@@ -225,8 +225,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v3`**, hasta la PR 12 de Ana: después hay que regenerarla (ver más abajo).
-  La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
+- **Entrega vigente: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
@@ -319,9 +318,11 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - En la DFL, el resultado es idéntico bit a bit, según Ana.
   - **La mergeó Ana sin revisión de nadie,** contra `CONTRIBUTING.md`. La sesión planificadora la miró
     después.
-  - **La entrega cambia en el partido:** solo en los rasgos de los 52 primeros y 52 últimos frames de cada
-    tramo. **`equipo_v3` deja de ser la entrega de `main`** hasta que Ismael la regenere y lo compare con
-    `validation/partido/comparar_entregas.py`.
+  - **La entrega no cambia** [medido por Ismael]. Cambian los rasgos de los 52 primeros y 52 últimos frames de
+    cada tramo, pero ninguna etiqueta:
+    - `equipo_v4` se regeneró en el entorno limpio con `main` en `8f90dea` y sale byte a byte igual que
+      `equipo_v3` (`9539ce42…cc17a`);
+    - `validation/partido/comparar_entregas.py` da 0 frames distintos, y el validador da `Valid`.
 - **Sin entrar todavía en `main`:** la PR 10 de David. Ismael le ha pedido que antes termine su tarea 1.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
@@ -330,8 +331,12 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     mismo sha256 `9539ce42…cc17a`, con `main` en `988ce88` y validado.
   - **Con `main` en `4305576`** (después de la PR 11 y del estudio de posesiones cortas), Ismael sacó la misma
     huella. Lo hizo en otro entorno, con numpy 2.3.4, así que la huella también aguanta ese cambio de versión.
-  - **En el ensayo del lunes por la noche** se repite con lo que haya en `main`, y esta vez con el python del
-    entorno limpio: `C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline`.
+  - **Con `main` en `8f90dea`** (después de la PR 12), ya en el entorno limpio, sale otra vez el mismo
+    sha256.
+  - **En el ensayo del lunes por la noche** se repite con lo que haya en `main`, con el python del entorno
+    limpio: `C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline`.
+    - El comando imprime el commit con el que se genera. Si el código de la entrega tiene cambios sin
+      commitear, lo avisa.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.

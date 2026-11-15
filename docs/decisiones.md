@@ -2067,6 +2067,14 @@ Añadido (15/11, `main` en `4305576`) [medido por Ismael]: **con numpy 2.3.4 tam
 - Es la primera prueba de que la huella aguanta un cambio de versión de numpy. No cambia lo fijado: la entrega
   se regenera con `requirements-entrega.txt`.
 
+Añadido (15/11, `main` en `8f90dea`, después de la PR 12 de Ana) [medido por Ismael]: **la PR 12 no cambia la
+entrega.**
+- `equipo_v4` se regeneró en el entorno limpio (Python 3.13.9, numpy 2.5.4). Sale con el sha256 de `equipo_v3`,
+  y `validation/partido/comparar_entregas.py` da 0 frames evaluados distintos.
+- Se comprobó que la copia de Ismael estaba en `8f90dea` y sin cambios locales en el código de la entrega.
+- Desde entonces el comando imprime el commit con el que se genera y avisa si el código tiene cambios sin
+  commitear (`pipeline.code_version`), para que no haga falta comprobarlo a mano.
+
 Falta:
 - **Repetir la huella en el ensayo del lunes por la noche,** en el entorno limpio
   (`C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe`), con lo que haya entrado en `main` hasta
