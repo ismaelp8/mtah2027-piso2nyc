@@ -114,6 +114,49 @@
       convención que B9, más grande, y en SkillCorner pierde [inferencia].
     - Detalle: `validation/posesiones_cortas/BITACORA.md` §10.
 
+14. **Fase 4: el déficit del partido no es propio del partido** [medido, regla subida antes en `ba55354`].
+    Con nuestro `D`, `main` saca en los datos abiertos el mismo ritmo que en el partido:
+
+    | | posesiones por minuto de juego predicho | por partido | duración media |
+    |---|---|---|---|
+    | partido (`equipo_v3`) | 3,70 | – | 16,2 s |
+    | DFL «como el ATD», balón tapado en los `D` | 4,29 | 3,75–5,76 | 14,0 s |
+    | DFL «como el ATD», balón a la vista en los `D` | 4,26 | 3,83–5,50 | 14,1 s |
+    | SkillCorner «detectado» | 4,11 | 3,45–4,96 | 14,6 s |
+
+    - Las 3,7 del partido son el 86–90 % de esos ritmos y caen dentro de su rango por partido. Con la regla,
+      «cerca»: el déficit del partido es el mismo de siempre (el signo de la evidencia en las posesiones de
+      2 a 10 s), y no hace falta un script del partido.
+    - El hueco frente a las posesiones reales es el que ya se medía: 4,7 por minuto con el control de la DFL,
+      6,05 en SkillCorner y 8,3 con el flag.
+15. **Fase 4: una pista de equipo de fuera valdría poco tal como está planteada** [medido con una pista
+    sintética, descriptivo, cota superior]. Trozos de 7,5 s de media que dicen un equipo y aciertan o fallan
+    enteros, colocados sin mirar los bordes de las posesiones, sumados a `main`:
+    - **solo en los frames sin balón (el alcance del plan):** no cambia nada (±0,008), porque en «como el ATD»
+      solo el 12,7 % de los frames vivos no tiene balón;
+    - **en todos los frames:** con el control ayuda (+0,011 a +0,022) solo si acierta el 90 % o más y pesa 2
+      o 4 por frame. Con el flag no ayuda nunca. Con un acierto del 70 % y peso 4, tiende a empeorar el control;
+    - **es una cota superior:** los fallos sintéticos son independientes de los de B5, y los de las fases
+      reales no lo serán;
+    - **lo que no mide:** unas fases que empezaran cerca de los cambios reales, que valdrían más;
+    - **no decide nada** hasta que Antonio tenga la cobertura y el acuerdo reales;
+    - detalle: `validation/posesiones_cortas/BITACORA.md` §11.
+16. **Fase 4: una pista que marque dónde cambia la posesión valdría algo más, pero solo en el mejor caso**
+    [medido con una pista sintética de transiciones, descriptivo, cota superior; regla en `92b4771`]. Marcas que
+    empiezan en un cambio real y dicen el equipo nuevo durante hasta 5 s:
+    - con las 24 transiciones del partido (≈ 16 % de los cambios), perfectas y con peso 8, darían +0,013 a
+      +0,016 si caen al azar, y +0,021 a +0,027 si caen todas en cambios que `main` no ve;
+    - con 1 s de error y un 90 % de precisión se quedan en +0,009 a +0,019;
+    - para llegar a +0,03 hace falta el 30 % de los cambios, todos de los que `main` no ve, a 1 s o menos y con
+      peso 8 en todos los frames, que va más allá del alcance del plan;
+    - ninguna combinación hace daño;
+    - detalle: `validation/posesiones_cortas/BITACORA.md` §13.
+17. **H3 y H5 del visionado (¿caen los huecos del balón del ATD en los cambios?): no concluye** [medido en el
+    partido por Ismael, con la regla subida antes]. R sale igual que en la DFL (1,19 frente a 1,20) y F por
+    debajo, pero solo 6 de nuestros cambios caen junto a un hueco. En pleno juego el ATD casi no pierde el
+    balón (37 huecos): la mayor parte va pegada a nuestras paradas. No se abre nada antes de la entrega.
+    Detalle: `validation/resultados/2026-11-15_huecos_y_cambios.md`.
+
 ## Estado de cada idea
 
 | idea | estado |

@@ -46,6 +46,10 @@ que faltan, los scripts y los resultados. El porqué está en
 | `metrica/sensibilidad_paradas.py` | comprobaciones de la revisión: cuánto dura cada evento que para el juego, cuántos saques llegan sin parada antes y la misma medida con la parada en el frame final del evento. Descriptivo, escrito después de medir | Metrica sample-data, datos abiertos de otros partidos |
 | `scripts/diagnostico_errores.py` | ¿por qué fallamos? Causa de cada posesión que no encontramos, retraso de los cambios y qué borde del `D` cuesta más. Descriptivo. Solo usa la mitad de SkillCorner; la otra queda como examen | la DFL y SkillCorner, datos abiertos de otros partidos |
 | `partido/ver_ventana.py` | **lee una entrega nuestra:** dibuja la GT pública y la entrega en una imagen, con el tiempo del vídeo, para ver los 5 minutos junto al vídeo. No imprime etiquetas y escribe fuera del repo | **una entrega nuestra** y la GT pública: solo lo ejecuta una persona |
+| `partido/comparar_entregas.py` | **lee dos entregas nuestras:** cuántos frames evaluados cambian de etiqueta entre una y otra, a qué distancia de los bordes de los tramos evaluados y de qué etiqueta a cuál. Para cuando una pieza cambia y la entrega se regenera. No imprime etiquetas ni frames | **dos entregas nuestras:** solo lo ejecuta una persona |
+| `scripts/prueba_comparar_entregas.py` | prueba `partido/comparar_entregas.py` con dos entregas inventadas | ninguno |
+| `partido/clips_ventana.py` | **lee una entrega nuestra:** escribe, fuera del repo, una página para el navegador con el vídeo táctico y un tramo por cada sitio en que la entrega y la GT pública difieren, con las dos etiquetas en directo debajo del vídeo. Solo imprime cuántos tramos hay y la ruta. Cómo se usa y qué mirar: [`partido/GUIA_VISIONADO.md`](partido/GUIA_VISIONADO.md) | **una entrega nuestra**, la GT pública y el vídeo táctico: solo lo ejecuta una persona |
+| `scripts/prueba_clips_ventana.py` | prueba `partido/clips_ventana.py` con una GT y una entrega inventadas: tramos, margen, fundido, recortes, etiquetas «borde», «equipo» y «D», datos de la página, salida solo de recuentos y que no escribe en el repo | GT pública (contra sí misma) |
 | `partido/comun.py` | constantes y utilidades de los dos diagnósticos (no se ejecuta solo) | — |
 | `partido/agregados_smart_tagging.py` | ventanas `SET PIECES` por tipo (duración, `Team N/A`), cobertura de los frames evaluados por las fases, huecos entre fases, goles → saque posterior | **datos del partido: solo una persona** |
 | `partido/agregados_balon_reinicios.py` | ¿las "reanudaciones" del detector de golpeo caen donde acaba la ventana `SET PIECES` y donde suben los jugadores? Balón que desaparece saliendo del campo; columna de velocidad del ATD frente al desplazamiento suavizado | **datos del partido: solo una persona** |
@@ -82,6 +86,14 @@ que faltan, los scripts y los resultados. El porqué está en
 | `posesiones_cortas/largas.py` | fase 2, descriptivo: por qué no encontramos las posesiones de 2 s o más | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 | `posesiones_cortas/fase2.py` | fase 2, descriptivo: las que sobran, cuánto vale cada tipo de fallo y `main` con el balón tarde | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 | `posesiones_cortas/inventadas.py` | fase 2, descriptivo: dónde están las posesiones inventadas y qué son con la otra convención | DFL |
+| `posesiones_cortas/ritmo_d_propio.py` | fase 4: posesiones por minuto de juego predicho con nuestro `D`, para comparar con el partido igual con igual | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/pista_sintetica.py` | fase 4, descriptivo: cuánto valdría una pista de equipo de fuera (como las fases del Smart Tagging), con una pista sintética | DFL |
+| `posesiones_cortas/pista_transiciones.py` | fase 4, descriptivo: cuánto valdría una pista que marque dónde cambia la posesión (como las transiciones del Smart Tagging), con una pista sintética | DFL |
+| `posesiones_cortas/retraso_cambios.py` | descriptivo: retraso con signo de nuestros cambios de equipo hasta ±4 s | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `posesiones_cortas/huecos.py` | biblioteca: dónde caen nuestros cambios de equipo respecto a los huecos del balón en el juego (H3 y H5 del visionado) | ninguno: lo decide quien la llama |
+| `posesiones_cortas/huecos_dfl.py` | la referencia de la DFL de `partido/huecos_y_cambios.py`: `main` con nuestro `D`, huecos al azar | DFL |
+| `partido/huecos_y_cambios.py` | **lee el partido** (ATD) y una entrega nuestra: dónde caen nuestros cambios respecto a los huecos del balón, frente a la DFL, con la regla de `posesiones_cortas/BITACORA.md` §14. Lo ejecuta una persona | **datos del partido: solo una persona** |
+| `scripts/prueba_huecos.py` | prueba `posesiones_cortas/huecos.py` y la regla de `partido/huecos_y_cambios.py` con datos inventados | ninguno del partido |
 | `posesiones_cortas/puerta_no_lineal.py` | fase 3, puerta: una red de una capa con los rasgos de B9 y de los jugadores, fuera de muestra | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:

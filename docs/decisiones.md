@@ -2067,6 +2067,14 @@ Añadido (15/11, `main` en `4305576`) [medido por Ismael]: **con numpy 2.3.4 tam
 - Es la primera prueba de que la huella aguanta un cambio de versión de numpy. No cambia lo fijado: la entrega
   se regenera con `requirements-entrega.txt`.
 
+Añadido (15/11, `main` en `8f90dea`, después de la PR 12 de Ana) [medido por Ismael]: **la PR 12 no cambia la
+entrega.**
+- `equipo_v4` se regeneró en el entorno limpio (Python 3.13.9, numpy 2.5.4). Sale con el sha256 de `equipo_v3`,
+  y `validation/partido/comparar_entregas.py` da 0 frames evaluados distintos.
+- Se comprobó que la copia de Ismael estaba en `8f90dea` y sin cambios locales en el código de la entrega.
+- Desde entonces el comando imprime el commit con el que se genera y avisa si el código tiene cambios sin
+  commitear (`pipeline.code_version`), para que no haga falta comprobarlo a mano.
+
 Falta:
 - **Repetir la huella en el ensayo del lunes por la noche,** en el entorno limpio
   (`C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe`), con lo que haya entrado en `main` hasta
@@ -2609,6 +2617,164 @@ Descartado:
 - **No volver a redondear:** con una escala que no sea potencia de 2, las sumas del decodificador dejarían
   de ser exactas y la pieza podría deshacer empates entre `H` y `A`. El coste es que la escala 0,5 mueve la
   puntuación 1/2048 como mucho.
+
+### 2026-11-15 · validación · posesiones cortas, fase 4: el déficit no es propio del partido; cota de una pista de equipo de fuera
+
+Quién: lo pidió Ismael por la sesión principal («haga una investigacion tambien para ver como arreglar lo
+demas»). Claude escribió las dos reglas (`validation/posesiones_cortas/BITACORA.md` §11, commit `ba55354`) antes
+de ejecutar. Es descriptivo.
+
+Qué se probó y resultado [medido]:
+- **¿Es real el déficit del partido?** Con nuestro `D`, `main` saca 4,29 / 4,26 posesiones por minuto de juego
+  predicho en la DFL y 4,11 en SkillCorner, con partidos de 3,45 a 5,76. Las 3,7 del partido caen dentro: con
+  la regla, «cerca». El déficit es el de siempre, no propio del partido.
+- **¿Cuánto valdría una pista de equipo de fuera (como las fases del Smart Tagging)?** Con una pista sintética
+  en la DFL (trozos de 7,5 s que aciertan o fallan enteros, sin mirar los bordes):
+  - solo en los frames sin balón, que es el alcance del plan, no cambia nada (±0,008);
+  - en todos los frames, ayuda con el control (+0,011 a +0,022) solo si acierta el 90 % o más y pesa 2 o 4;
+  - con el flag no ayuda nunca.
+
+  Es una cota superior: los fallos son independientes de los de B5.
+
+Decisión y por qué: ninguna. Lo de la pista se pasa a Antonio y a Ismael para la tarea 2:
+- con el alcance del plan, la pista casi no tiene dónde actuar;
+- para que pese, tendría que acertar mucho y usarse en todos los frames, y eso es otra decisión de Ismael;
+- valdría más si marca dónde cambia la posesión, y eso no se ha medido.
+
+**Añadido el mismo día, con su regla antes de ejecutar** (`validation/posesiones_cortas/BITACORA.md` §13, commit
+`92b4771`): una pista sintética que marca dónde cambia la posesión, como las «Attacking Transition».
+- Con las 24 transiciones del partido (≈ 16 % de los cambios), perfectas y con peso 8 en todos los frames,
+  daría +0,013 a +0,016 si caen al azar y +0,021 a +0,027 si caen en cambios que `main` no ve [medido, cota
+  superior].
+- Para llegar a +0,03 hace falta el 30 % de los cambios, todos de los que `main` no ve y a 1 s o menos.
+- Ninguna combinación hace daño.
+- Para Antonio: lo que importa es cuántas transiciones caen a 1 s o menos de un cambio real, cuántas no las ve
+  `main` y con qué retraso.
+- Para Ismael: solo pesaría con un alcance mayor que el del plan (todos los frames, peso fuerte).
+
+**H3 y H5 del visionado, el mismo día** (regla en `validation/posesiones_cortas/BITACORA.md` §14, commit `41c3c23`,
+antes de que Ismael ejecutara `validation/partido/huecos_y_cambios.py`):
+- en el partido, nuestros cambios no se juntan con los huecos del balón más que en la DFL (R 1,19 frente a
+  1,20), y tras un hueco cambiamos menos;
+- con solo 6 cambios junto a un hueco, la regla dice que no concluye;
+- en pleno juego el ATD casi no pierde el balón (37 huecos).
+
+Decisión: ninguna. No se abre ni una degradación nueva ni un candidato antes de la entrega.
+
+
+### 2026-11-15 · infraestructura · cualquiera del equipo puede contestar, decidir y revisar
+
+Quién: Ismael. Sus palabras (15/11): «No puede ser todo tan restrictivo lo que te dije yo de que me utilizaran
+de revisor era orientativo pero todo el mundo puede responder, decidir y revisar. Por eso si eliminar eso
+mejor».
+
+Qué pasaba: las normas decían que las PR las revisaban Ismael y David, y el plan y las bitácoras reservaban
+muchas decisiones a Ismael («lo decide Ismael», «se le pasa a Ismael», «pendiente de permiso de Ismael»). El
+Claude de una compañera se negó a que contestara una duda que otro compañero tenía para Ismael.
+
+Decisión y por qué: Ismael no es una puerta.
+- Cualquiera del equipo puede contestar una duda, tomar una decisión y revisar, aprobar o mergear la PR de
+  otra persona.
+- Cada uno puede mergear su propia PR, sin esperar una aprobación. Ismael lo aclaró después (15/11): «si,
+  claro que puede mergear alguien su propia PR».
+- Donde un texto del repo reserve algo a Ismael, se lee como «lo decide el equipo». Quien decide lo apunta
+  aquí, con su nombre y el porqué.
+- Cambiado en `CLAUDE.md`, `CONTRIBUTING.md`, `docs/PLAN_ENTREGA.md`, `docs/GUIA_EQUIPO.md`, las skills
+  `/subir` y `/revisar-pr` y la plantilla de PR. Las menciones de decisiones ya tomadas («decisión de
+  Ismael, 14/11») se quedan: dicen quién decidió.
+
+Lo que no cambia:
+- lo que viene después de una decisión: si toca `pipeline.PIECES`, un valor por defecto o código que usa la
+  entrega, alguien regenera la entrega y la valida;
+- la regla nº 1 de los datos, la ventana pública, las reglas escritas antes de medir, que solo Ismael sube
+  directo a `main` y el resto de las normas de git.
+
+Descartado: buscar y cambiar cada frase de las bitácoras, los resultados y los comentarios del código. Basta
+con la regla general de `CLAUDE.md`, que todas las sesiones leen al empezar.
+
+### 2026-11-15 · validación · visionado de la ventana pública junto al vídeo (reglas, escritas antes de mirar)
+
+Quién: Ismael (mira el vídeo); Claude prepara la herramienta y ordena lo que cuente, sin ver nada del partido.
+
+Qué se hace:
+- Ismael mira, junto al vídeo táctico, los tramos de los 5 minutos públicos en que `equipo_v3` y la GT
+  pública no coinciden, con `validation/partido/clips_ventana.py`. Esa página la abre solo él, y su guía es
+  `validation/partido/GUIA_VISIONADO.md`.
+- Lo que vea se convierte en hipótesis generales, cada una con su forma de medirla en la DFL y en
+  SkillCorner y su criterio escrito antes de medir.
+
+Con qué reglas (`RULES.md` §1 y §2; `CHALLENGE.md`, «The reference is the ground truth»):
+- mirar el vídeo y la GT pública para entender cómo se etiquetan los casos está permitido;
+- no se convierte nada en etiquetas, correcciones ni reglas o constantes ligadas a momentos del partido;
+- no se ajusta ni se elige nada con la ventana: son 17 posesiones;
+- Ismael cuenta patrones generales, sin minutos, frames ni recuentos tramo a tramo. No es una medida, a
+  diferencia del recuento a ojo de la PR 1 (zona gris, `docs/revision_externa_2026-11-15.md` §3.4);
+- Claude no ve el vídeo, ni la página, ni la entrega, ni notas con tiempos.
+
+Resultado (15/11, los 10 tramos de `equipo_v3`: 4 solo de borde y 6 con posesiones o paradas distintas).
+Son jugadas concretas, contadas en general; no es una medida. La página y la sincronía con el vídeo se
+comprobaron antes (saque inicial, avance de un frame, parada al final de cada tramo).
+
+- **Cambios de equipo** (pasadas a la sesión de posesiones cortas, que las contrastó con lo medido):
+  - la GT da el cambio en el primer toque de la secuencia que gana la posesión (despeje que cae a un
+    compañero, pase de primeras, portero que coge el balón). Las etiquetas de control del harness ya fechan
+    así el cambio: no hay nada que medir (H1, H4);
+  - en el partido llegamos tarde, de 0,7 a 3 s, y en los datos abiertos no (mediana de +0 a +3 frames).
+    Hipótesis: el ATD pierde el balón en el vuelo de los balones aéreos y la degradación del harness no lo
+    copia (H5). Se midió con `validation/partido/huecos_y_cambios.py`, junto con la del portero (H3), y
+    **no concluye** (`validation/resultados/2026-11-15_huecos_y_cambios.md`). R vale 1,19 en el partido,
+    frente a 1,20 en la DFL, y solo 6 de nuestros 103 cambios caen junto a un hueco. H3 y H5 se cierran sin
+    candidato;
+  - mover cada cambio al primer acercamiento del equipo nuevo (H2): con un oráculo, techo de +0,05 con el
+    control. Sin candidato;
+  - tres posesiones cortísimas por un toque sin control (despejes) que la GT cuenta. **Es contexto:** no
+    reabre «exigir control».
+- **Balón muerto** (para Manuel y Ana):
+  - D4: la GT pone el `D` en el instante del pitido, también tras una ley de la ventaja. El sondeo del
+    silbato está sucio; solo se puede medir en el partido;
+  - D2: si nuestro `D` llega tarde, damos la posesión al equipo que va a sacar;
+  - D5: el `D` acaba en el golpeo del saque; vamos tarde o pronto según la parada;
+  - D6: `D` antes de tiempo con el balón en juego junto a la línea;
+  - D3: `D` falso de menos de 2 s en pleno juego;
+  - **D7, la más cara: el balón fuera del campo no dispara el `D`.** Ninguna pieza lo usa (comprobado en el
+    código). En un saque de puerta damos la posesión al portero que va a por el balón durante unos 10 s. La
+    revisión del 13/11 ya propuso ese disparo y no se midió. Coincide con la tarea 2 de Manuel en
+    `docs/PLAN_ENTREGA.md` §3 («el balón visto fuera de las líneas»), que está sin hacer.
+  - Cada una lleva su forma de medirla en la DFL o con agregados del partido.
+
+Decisión y por qué: **ninguna.** Nada se ajustó ni se eligió con la ventana. Las hipótesis se pasaron a la
+sesión de posesiones cortas y a la de la pieza de Ismael. Cuáles se miden lo decide Ismael, con su criterio
+escrito antes de medir.
+
+### 2026-11-15 · validación · dos hipótesis del visionado se prueban: el balón fuera del campo y los toques sin control
+
+Quién: Ismael. Sus palabras (15/11): «vale las tenemos como hipotesis pero no quieres aplicar alguna? Puede que
+probando algunas de las cosas que he comentado puede que tengamos mejores soluciones».
+
+Qué se abre, y en qué orden:
+- **D7, el balón fuera del campo como señal de `D`.** Es la tarea 2 de Manuel en `docs/PLAN_ENTREGA.md` §3,
+  sin hacer, con la definición del plan (el balón visto a más de 1 m fuera). No se puede medir en la DFL: allí
+  el balón se queda quieto mientras está muerto, así que «fuera es `D`» se cumple por construcción.
+  - Primero, un recuento del partido que ejecuta Ismael: de los frames con el balón visto a más de 1 m fuera,
+    cuántos etiqueta ya `equipo_v3` como `D`, como `H` y como `A`. Si casi todos son `D`, se cierra.
+  - Después, una capa nueva en `possession/dead_ball.py`, apagada, con un solo peso escrito y razonado antes
+    del recuento. Sin variantes, y sin mover el margen para encajar ningún caso del visionado.
+- **La convención de los toques sin control.** En el visionado salieron tres posesiones cortísimas por un
+  toque sin control que la GT cuenta. Se cuenta, en la GT pública, cuántas posesiones cortas quedan entre dos
+  del otro equipo sin un `D` en medio, con el mismo código medido antes en el flag y el control de la DFL y en
+  SkillCorner, y con la lectura escrita antes de mirar.
+  - Dice qué significan las etiquetas, que es para lo que está la GT pública. Cambiar a B9 por ese número
+    sería una decisión aparte de Ismael, porque la ventana no elige entre versiones.
+
+Qué no se abre, y por qué:
+- D2 (un cambio de equipo falso antes de la parada): es consecuencia de un `D` que llega tarde y su techo es
+  de +0,015 a +0,027. Se vuelve a mirar después de D7.
+- D5 (el final de la parada): es la rama abierta de Manuel.
+- D4 (el pitido): el sondeo del silbato salió sucio y añade una dependencia del audio.
+- D3 y D6: no tienen una palanca clara.
+
+Cómo termina cada una: como una opción apagada con su evidencia. Encenderla es una decisión aparte, y obliga a
+regenerar la entrega y validarla.
 
 ### 2026-11-15 · candidatos · fases del Smart Tagging: pasan la regla del plan por poco y la tabla hay que revisarla
 

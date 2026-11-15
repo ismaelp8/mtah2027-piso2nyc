@@ -9,8 +9,8 @@ Estas normas las sigue todo el equipo, y Claude también. Si delegas el git en C
 ## Lo esencial
 
 1. **Solo Ismael (`ismaelp8`) sube directo a `main`.** Los demás, una rama por tarea y siempre por PR.
-2. **Cada PR lleva la plantilla y pide revisión** a Ismael (`ismaelp8`) y a David (`ortegafer`). Nadie
-   aprueba su propia PR, y basta con una aprobación para mergear.
+2. **Cada PR lleva la plantilla.** Puede revisarla y mergearla cualquiera del equipo, también quien la
+   abre: no hace falta esperar una aprobación.
 3. **El commit es de quien sube los cambios,** con su propia identidad de git. Nunca aparece como hecho
    por Claude ni por otra persona.
 4. **Ningún dato del partido entra en git:** ni vídeos, ni tracking, ni cachés, ni CSV de entregas, ni
@@ -117,16 +117,13 @@ Contenido de ejemplo:
 - **Todo entra en `main` por PR, salvo lo que sube Ismael** (último punto de esta sección), con la
   plantilla de `.github/pull_request_template.md` rellena. Si todavía es trabajo en curso, se abre como
   borrador (`--draft`).
-- **Reviewers:**
-
-  | abre la PR | revisa |
-  |---|---|
-  | Ismael | David (`ortegafer`) |
-  | David | Ismael (`ismaelp8`) |
-  | Antonio, Manuel, Ana | los dos |
-
-- **Una aprobación basta.** Nadie aprueba su propia PR.
-- **Merge:** lo hace quien aprueba (o el autor, si el reviewer se lo pide).
+- **Revisión:** puede revisarla, aprobarla y mergearla cualquier persona del equipo, también quien la abre
+  (decisión de Ismael, 15/11). `/subir` pide la revisión a Ismael (`ismaelp8`) y a David (`ortegafer`) para
+  que alguien se entere, pero no hace falta esperarlos.
+- **Cada uno puede mergear su propia PR,** sin esperar una aprobación. GitHub no deja aprobar la propia,
+  pero sí mergearla. Si toca código que usa la entrega, avísalo al mergearla: alguien tiene que regenerar la
+  entrega y validarla.
+- **Merge:** lo hace quien la revisa o quien la abre.
   - Con **squash**, para que cada PR sea un commit en `main`. Después se borra la rama.
   - **Excepción: las PR `sync/*` se mergean con merge commit,** nunca con squash. Si se aplastan, git
     pierde la pista de qué commits de Metrica ya tenemos y la siguiente sincronización da conflictos.
@@ -228,7 +225,7 @@ Antes de subir nada te enseña un resumen y te pide confirmación.
 | `/empezar detector de balón muerto` | actualiza `main` y te crea la rama `feat/detector-balon-muerto` |
 | `/subir` | limpia notebooks, revisa los ficheros, hace el commit a tu nombre, lo sube y abre la PR con reviewers (Ismael puede subir directo a `main`) |
 | `/actualizar` | trae lo último de `main` a tu rama; si tu PR ya se mergeó, te devuelve a `main` limpio |
-| `/revisar-pr 12` | (Ismael y David) revisa la PR 12, te propone aprobar o pedir cambios, y mergea si se lo dices |
+| `/revisar-pr 12` | (quien revise) revisa la PR 12, te propone aprobar o pedir cambios, y mergea si se lo dices |
 | `/sincronizar-upstream` | (Ismael) trae las correcciones de Metrica en una rama `sync/` con su PR |
 | `/evaluar` | valida y puntúa una entrega, solo con agregados |
 | `/decision HMM frente a histéresis` | apunta la decisión en `docs/decisiones.md` |

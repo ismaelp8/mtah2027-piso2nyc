@@ -310,3 +310,276 @@ un rato, ignora las lentas» no es lineal. Script: `python validation/posesiones
 - Con el flag, la red saca más cambios de toque en la DFL, pero eso no se traslada a SkillCorner. Es una
   apuesta de convención, más grande que la de B9 [inferencia].
 - Las señales de los jugadores alrededor de un cambio ayudan solo con el flag.
+
+## 11. Fase 4: ¿es real el déficit del partido? y ¿cuánto valdría una pista de equipo de fuera? (reglas fijadas antes de ejecutar)
+
+Lo pide Ismael por la sesión principal: «haga una investigacion tambien para ver como arreglar lo demas». Las
+fases 2 y 3 no se repiten. Rama `claude/posesiones-fase4`, cortada de `main` en `4305576`.
+
+### 11.1 ¿Es real el déficit del partido? Igual con igual
+
+`python validation/posesiones_cortas/ritmo_d_propio.py`. Las 3,7 posesiones por minuto vivo del partido
+(`equipo_v3`: 215 posesiones, de 16,2 s de media) van con nuestro `D`. Las 4,50 de la DFL y las 4,25 de
+SkillCorner, con el `D` de las etiquetas. Aquí todo va con nuestro `D`: `main` sin oráculo.
+
+- **Qué se mide:** posesiones predichas por minuto de juego predicho, en los tramos evaluados, y su reparto
+  por duración (< 2 s, 2–5 s, 5–10 s, 10–20 s, ≥ 20 s) y su duración media. Con todos los partidos juntos y
+  por partido.
+- **Referencias que deciden:**
+  - R1: la DFL «como el ATD», con el balón tapado en los `D`;
+  - R2: la DFL «como el ATD», con el balón a la vista en los `D` (`d_propio.con_balon_en_d`);
+  - R3: SkillCorner, `lector.ENTRENAMIENTO`, «detectado».
+
+  «Como el ATD, sin bloques» y «detectado, suavizado» se enseñan sin voto.
+- **Regla:**
+  - **«El partido va más corto»** si, en al menos dos de las tres referencias, 3,7 queda por debajo de 0,85
+    veces su ritmo con todos los partidos juntos **y** por debajo de su mínimo por partido. Entonces se
+    escribe el script de `validation/partido/` que pide la sesión principal, con su lectura escrita antes.
+  - **Si no, «cerca»:** no hay un déficit propio del partido, la respuesta sigue siendo el signo de la
+    evidencia y se cierra.
+  - La duración media (16,2 s) se compara igual, pero solo como descripción.
+
+### 11.2 ¿Cuánto valdría una pista de equipo de fuera? Una pista sintética en la DFL
+
+`python validation/posesiones_cortas/pista_sintetica.py`. Antonio tiene el sí de Ismael para usar las fases del
+Smart Tagging como pista de equipo (`docs/decisiones.md`, 15/11), y la DFL no tiene Smart Tagging. Aquí se acota
+cuánto podría valer una pista así con una inventada. **No decide nada.**
+
+- **La pista:**
+  - en cada tramo evaluado se alternan trozos con pista y huecos sin ella. Los trozos duran, de media, 188
+    frames (7,5 s: las 575 fases del partido cubren el 68,1 % de 158.857 frames); los huecos tienen la media
+    que da la cobertura c. Las dos longitudes son geométricas, con semilla fija;
+  - cada trozo dice el equipo que tiene la mayor parte de sus frames vivos según el control, con
+    probabilidad p, y el otro si no. Acierta o falla entero;
+  - se colocan al azar, sin mirar dónde empiezan las posesiones: no da información sobre los bordes;
+  - suma w por frame a la columna de su equipo. Con dos alcances: solo en los frames sin balón (el del plan)
+    y en todos;
+  - para cada c, la colocación y el sorteo de aciertos son los mismos en toda la rejilla (números aleatorios
+    comunes): al subir p solo cambian trozos de fallo a acierto.
+- **Rejilla fija:** p en 0,7, 0,8, 0,9 y 0,95; c en 0,3, 0,5 y 0,68; w en 0,25, 0,5, 1, 2 y 4.
+- **Medida:** `main` con la pista sumada a su evidencia, el `D` de las etiquetas, las dos condiciones que votan
+  y las dos convenciones. spellF1 frente a `main` sin pista, con el intervalo del 5 al 95 % por bootstrap
+  pareado.
+- **Lectura** (descriptiva):
+  - **ayuda:** +0,01 o más con el intervalo por encima de cero, con las dos convenciones y en las dos
+    condiciones;
+  - **hace daño:** −0,01 o menos con el intervalo por debajo de cero, con alguna convención, en las dos
+    condiciones;
+  - se dice, por alcance y cobertura, el menor acierto con el que algún peso ayuda, y con p = 0,7, desde qué
+    peso hace daño.
+- **Es una cota superior:** los fallos sintéticos son independientes de los de B5, y los de las fases reales
+  no lo serán. Además, colocar los trozos al azar no dice nada de los bordes, y las fases reales pueden
+  empezar cerca de un cambio (eso valdría más). Nada de esto decide hasta que Antonio tenga la cobertura y el
+  acuerdo reales.
+
+### 11.3 Resultados
+
+**11.1, el ritmo** [medido; `salidas/2026-11-15_ritmo_d_propio.md`]. Con nuestro `D`, posesiones por minuto de
+juego predicho:
+- R1 (DFL «como el ATD», balón tapado): 4,29, con partidos entre 3,75 y 5,76;
+- R2 (balón a la vista en los `D`): 4,26, entre 3,83 y 5,50;
+- R3 (SkillCorner «detectado»): 4,11, entre 3,45 y 4,96.
+
+El reparto por duración es parecido en las tres: 5–6 % de menos de 2 s, unos 20 % de 2 a 5 s y el resto de 5 s
+o más. La duración media va de 14,0 a 14,6 s; la del partido, 16,2 s.
+- **Regla: «cerca».** En ninguna referencia 3,7 queda por debajo de las dos cotas. Lo más cerca, R1:
+  3,70 frente a 3,65 y 3,75.
+- **No hay un déficit propio del partido.** No se escribe el script de `validation/partido/`.
+- El partido predice algo menos y algo más largo que la media de los datos abiertos, dentro del rango por
+  partido [medido]. Puede ser el partido o nuestro `D`; con esto no se separa [sin verificar].
+
+**11.2, la pista sintética** [medido; `salidas/2026-11-15_pista_sintetica.md`].
+- **Instrumento:** `main` sin pista repite 0,498 / 0,728 / 0,512 / 0,748.
+- **Cobertura conseguida** sobre los frames evaluados: 23, 38 y 50 % para c = 0,3, 0,5 y 0,68. Queda por debajo
+  de lo nominal porque se descartan los trozos sin ningún frame vivo, que caen enteros en una parada. Sobre los
+  frames vivos debería quedar cerca de c [inferencia, sin medir].
+- **Solo en los frames sin balón:** ninguna celda ayuda ni hace daño (±0,008). En «como el ATD» solo el 12,7 %
+  de los frames vivos no tiene balón, y en «sin bloques», el 1,3 %.
+- **En todos los frames:**
+  - **con el control** ayuda (▲) con p ≥ 0,9 y w ≥ 2. Con c = 0,68 son +0,014 a +0,022; con c = 0,3, p ≥ 0,9 y
+    w = 4, +0,011;
+  - **con el flag** no ayuda nunca (de −0,008 a +0,002);
+  - con p = 0,7 y w = 4 tiende a empeorar: −0,011 / −0,007 con el control y −0,006 / −0,003 con el flag. No
+    llega al ▼ de la regla.
+- **Lectura con la regla:**
+  - ningún peso ayuda con las dos convenciones a la vez, con ningún acierto ni ninguna cobertura;
+  - con p = 0,7, ningún peso llega a «hace daño» en las dos condiciones;
+  - una pista de equipo colocada sin mirar los bordes solo refuerza el equipo de las posesiones largas, que
+    B5 ya acierta: no crea cambios donde faltan [inferencia].
+- **Para Antonio** [inferencia]: con el alcance del plan (sin balón), su pista casi no tiene dónde actuar.
+  Pesaría algo solo si acierta el 90 % o más y se usa en todos los frames, y eso exige otra decisión de
+  Ismael. Valdría más si las fases marcan dónde cambia la posesión (las transiciones), y eso no se ha medido.
+
+## 12. Hipótesis del visionado de la ventana pública, contrastadas con lo medido
+
+La sesión «ventana-video» pasó cuatro hipótesis generales del visionado de Ismael (nota compartida
+`2026-11-15_ventana-video_hipotesis.md`; sin momentos ni frames). Nada se mide en la ventana.
+
+- **H1 y H4 (la GT fecha el cambio en el primer toque de la secuencia que gana; un toque libre vale ya):**
+  - las etiquetas de control del harness ya lo hacen así [comprobado en el código]. `correccion.corregir`
+    (`validation/experimento1/correccion.py`) solo sobrescribe las rachas del flag sin control; las que acepta
+    conservan su inicio, que es el primer toque de la racha del equipo nuevo;
+  - el pase de primeras a un compañero entra por «dos toques» (dos toques seguidos del mismo equipo a 50 frames
+    o menos), y el despeje que cae a un compañero, por el control de ese compañero;
+  - el harness no premia ir tarde.
+- **«Llegamos unos 2 s tarde»:** en los datos abiertos, no [medido, descriptivo;
+  `python validation/posesiones_cortas/retraso_cambios.py`, salida en `salidas/2026-11-15_retraso_cambios.md`].
+  De los cambios reales con un cambio nuestro al mismo equipo a ±4 s:
+  - con el control de la DFL llegamos tarde de 1 a 4 s en el 14–17 % y pronto en el 15–16 %, con mediana de +0
+    a +3 frames;
+  - con el flag, tarde en el 10–12 % y pronto en el 6–7 %, con mediana de +6 a +9 frames;
+  - en SkillCorner, tarde en el 6–7 % y pronto en el 13 %, con mediana de −12 frames;
+  - lo que domina es que no hay ningún cambio nuestro a ±4 s: el 28–32 % con el control, el 63–64 % con el
+    flag y el 64 % en SkillCorner.
+
+  Si en el partido llegamos 2 s tarde, los datos abiertos no lo reproducen [inferencia]. Puede ser cosa del
+  partido o de un puñado de casos en 5 minutos.
+- **H2 (llevar cada cambio al primer acercamiento del equipo nuevo):**
+  - su techo es el de los «cambios reales desplazados» de la fase 2: +0,051 con el control, +0,088 con el flag
+    y +0,084 en SkillCorner, con un oráculo [medido];
+  - un desplazamiento fijo no ayuda, porque no hay un sesgo de retraso;
+  - haría falta mover cada cambio por su cuenta, con la proximidad en el instante del cambio. Con el balón
+    suavizado, esa proximidad acierta en el 56–63 % (anexo A.4 de la revisión externa, sin repetir por el
+    equipo).
+- **H3 (el portero coge el balón y deja de verse):** el harness no lo puede medir tal cual. En la DFL el balón
+  se ve mientras el portero lo tiene, y los huecos «como el ATD» caen al azar. Haría falta otra degradación,
+  que tape el balón tras cada parada del portero en los eventos de la DFL [sin medir].
+
+## 13. Fase 4: una pista que marque dónde cambia la posesión (regla fijada antes de ejecutar)
+
+Lo pide la sesión principal, a raíz de §11. Las fases del Smart Tagging que más prometen marcan un cambio: una
+«Attacking Transition» empieza justo después de recuperar el balón (`OVERVIEW.md`). En el partido hay 24, con
+sus 24 «Defensive Transition» espejo. La DFL tiene unos 147 cambios directos por partido con el control: 24 son
+en torno al 16 %. Script: `python validation/posesiones_cortas/pista_transiciones.py`. **No decide nada:** es
+una cota superior que le dice a Antonio qué tiene que cumplir su recuento de transiciones, y a Ismael si
+compensa darle a esa pista un alcance mayor que el del plan.
+
+**La pista** (DFL «como el ATD» y «sin bloques», `D` de las etiquetas, `main` con el pliegue que no vio cada
+partido):
+- **una marca buena** empieza en un cambio directo real de equipo según el control, desplazado al azar un
+  número entero de frames entre −j y +j, y dice el equipo nuevo. Dura lo que la posesión real que empieza en
+  ese cambio, con un tope de 125 frames (5 s), y sin salir del tramo;
+- **una marca falsa** empieza en un frame de juego al azar, sin ningún cambio directo real a 125 frames o
+  menos, y dice el equipo que no tiene el balón según el control (es la falsa que hace daño: pide un cambio).
+  Dura 125 frames;
+- **cada marca** suma w por frame a la columna de su equipo, en todos los frames que cubre.
+
+**Rejilla fija:**
+- r, la fracción de cambios directos reales que se marcan: 0,10, 0,16 y 0,30;
+- j, el error en el instante: 0, 12, 25 y 50 frames;
+- q, la precisión: 0,7, 0,9 y 1. Con n marcas buenas hay n·(1 − q)/q falsas, redondeado;
+- w: 1, 2, 4 y 8;
+- **dos formas de elegir qué cambios se marcan:**
+  - **al azar** entre todos los cambios directos;
+  - **solo entre los que `main` no encuentra:** sin un cambio de `main` al mismo equipo a 25 frames o menos.
+    Es la cota optimista: las transiciones son recuperaciones, justo lo que B5 pierde;
+- **números aleatorios comunes,** semilla fija por partido y condición. El orden de los cambios, el
+  desplazamiento de cada uno (u·j, con u fijo) y las posiciones falsas son los mismos en toda la rejilla. Al
+  subir r se añaden marcas, y al subir j el mismo cambio se desplaza más.
+
+**Qué se mide:**
+- el spellF1 frente a `main` sin pista, con las dos convenciones y en las dos condiciones, con el intervalo del 5
+  al 95 % por bootstrap pareado;
+- la fracción de cambios directos reales con un cambio nuestro al mismo equipo a 25 frames o menos.
+
+**Lectura** (descriptiva):
+- **«llega»:** +0,03 o más con el intervalo por encima de cero en las dos condiciones. Se dice por separado con
+  cada convención;
+- **«hace daño»:** −0,01 o menos con el intervalo por debajo de cero en las dos condiciones, con alguna
+  convención;
+- se dice, por forma de elegir y por convención, la menor r que llega con algún j, q y w, y qué combinaciones
+  hacen daño.
+
+**Es una cota superior:**
+- las marcas buenas salen de los cambios reales y las falsas, del azar, no de los fallos de un detector real;
+- no se sabe si las transiciones del Smart Tagging corresponden a cambios del control, ni con qué retraso.
+
+### 13.1 Resultado
+
+[medido, descriptivo, cota superior; `salidas/2026-11-15_pista_transiciones.md`; regla en `92b4771`]
+- **Instrumento:** `main` sin pista repite 0,498 / 0,728 / 0,512 / 0,748.
+- **Contexto:** hay 2.052 cambios directos reales con el control, con las dos condiciones juntas. El 61 % no
+  tiene un cambio de `main` al mismo equipo a 1 s o menos.
+- **Lectura con la regla:**
+  - **eligiendo los cambios al azar, ninguna combinación llega a +0,03,** con ninguna convención;
+  - **eligiendo solo los que `main` no encuentra,** llega con r = 0,30 y w = 8: con el control, si j ≤ 25 y
+    q ≥ 0,7–0,9 (de +0,031 a +0,049); con el flag, solo con j = 0 y q = 1 (+0,038 / +0,031);
+  - **ninguna combinación hace daño.**
+- **Con r = 0,16** (las 24 transiciones del partido son en torno al 16 % de los cambios), «como el ATD» /
+  «sin bloques»:
+
+  | cómo se eligen | marcas | w = 4, control | w = 8, control | w = 8, flag |
+  |---|---|---|---|---|
+  | al azar | perfectas (j = 0, q = 1) | +0,010 / +0,009 | +0,016 / +0,013 | +0,013 / +0,010 |
+  | al azar | j = 25, q = 0,9 | +0,007 / +0,006 | +0,009 / +0,008 | +0,009 / +0,006 |
+  | solo las que `main` no encuentra | perfectas | +0,016 / +0,012 | +0,027 / +0,021 | +0,021 / +0,015 |
+  | solo las que `main` no encuentra | j = 25, q = 0,9 | +0,012 / +0,009 | +0,019 / +0,015 | +0,016 / +0,012 |
+
+  Los cambios reales con uno nuestro a 1 s o menos pasan del 37 al 42–46 % con el control.
+- **Para Antonio y para Ismael** [inferencia]:
+  - con unas 24 transiciones, la pista daría como mucho de +0,01 a +0,03, y solo si cumple tres cosas:
+    - marca recuperaciones que `main` no ve;
+    - las fecha a 1 s o menos;
+    - se usa en todos los frames con un peso fuerte (w = 8 por frame, hasta 5 s). Eso va más allá del alcance
+      del plan (solo sin balón) y lo decide Ismael;
+  - para el recuento de Antonio, eso son tres preguntas: cuántas transiciones caen a 1 s o menos de un cambio
+    de nuestras etiquetas de control, cuántas de esas `main` no encuentra y con qué retraso;
+  - es una cota superior: las marcas buenas salen de los cambios reales.
+
+## 14. H3 y H5: ¿caen los huecos del balón del ATD en los cambios más que al azar? (regla fijada antes de ejecutar)
+
+Lo decide la sesión principal: H2 no se abre (con el control llegamos pronto tan a menudo como tarde, y en
+SkillCorner, pronto). H3 se mira con una sola medida del partido, sin candidato. La H5 de la sesión del vídeo
+(el balón se pierde en el vuelo de un despeje y cambiamos al recibir) entra en la misma medida. **Nada más hasta
+que Ismael pegue los números:** ni una degradación nueva ni un candidato.
+
+**Por qué:** en el harness, los huecos del balón caen al azar. En el partido pueden caer justo en los cambios:
+el portero lo coge y deja de verse, o un balón por el aire.
+
+**Qué se mide, sin etiquetas** (definiciones en `validation/posesiones_cortas/huecos.py`):
+- **script del partido:** `validation/partido/huecos_y_cambios.py <entrega>`, que lee el ATD y una entrega
+  nuestra y lo ejecuta Ismael;
+- **referencia:** `validation/posesiones_cortas/huecos_dfl.py`, con `main` y nuestro `D` en la DFL «como el
+  ATD», donde los huecos caen al azar. El script del partido la calcula también y la pone al lado;
+- **por duración del hueco en juego:** cuántos hay, en cuántos decimos otro equipo después, y si nuestro
+  cambio cae dentro o al reaparecer (≤ 0,5 s);
+- **R:** el % de nuestros cambios que caen dentro de un hueco en juego de 0,5 s o más, o en los 0,5 s tras
+  reaparecer, dividido por el % de frames de juego que caen ahí. R > 1 es que nuestros cambios se juntan con
+  los huecos más que unos cambios al azar. En la DFL, R > 1 solo puede venir del decodificador, que cambia
+  cuando la evidencia vuelve;
+- **F:** el % de los huecos en juego de 0,5 a 15 s tras los que decimos otro equipo. Ve lo que R no ve: si el
+  balón desaparece justo en los cambios reales y nosotros no cambiamos durante el hueco, sino al volver el
+  balón.
+
+**Regla de lectura,** con los cocientes partido / DFL de R y de F:
+- **se cierra** («en el partido los huecos no caen en los cambios más que al azar») si los dos cocientes son
+  de 1,25 o menos;
+- **queda abierta** si alguno es de 1,5 o más, con al menos 20 cambios junto a un hueco y 20 huecos de 0,5 a
+  15 s en el partido. Entonces habría que pensar una degradación, calibrada con este agregado del partido
+  entero y nunca para reproducir el retraso visto en la ventana;
+- **no concluye** en los demás casos, o con menos casos: no se abre nada antes de la entrega;
+- **descriptivo:** la tabla por duración. La franja de 0,5 a 5 s es la de la H5.
+
+**Límites:**
+- son nuestros cambios, no los reales, porque en el partido no hay etiquetas;
+- la DFL tapa además el balón en sus `D` y bordes. Los huecos pegados a un `D` nuestro no cuentan, ni en el
+  partido ni en la DFL;
+- un R o una F más altos en el partido pueden venir también de que su balón sea distinto, no solo de que los
+  huecos caigan en los cambios [inferencia].
+
+`python validation/scripts/prueba_huecos.py` prueba la medida y la regla con datos inventados.
+
+**Referencia de la DFL** [medido; `salidas/2026-11-15_huecos_dfl.md`, código `41c3c23`; solo se cambió después el
+formato de dos frases]: R = 1,20 y F = 28,1 % de 167 huecos en juego de 0,5 a 15 s. En la DFL «como el ATD» no
+hay huecos de 0,5 a 2 s, igual que en el ATD, que casi no los tiene: la franja de la H5 se apoya en los de 2 a
+15 s. Falta el partido: lo ejecuta Ismael.
+
+**Resultado del partido** (Ismael lo ejecutó en local el 15/11 con `equipo_v3`; salida en
+`validation/resultados/2026-11-15_huecos_y_cambios.md`) [medido]:
+- R: 1,19 en el partido frente a 1,20 en la DFL (cociente 0,99). F: en el partido, por debajo de la DFL; el
+  cociente no pasa de 1,25.
+- **Con la regla, no concluye:** los dos cocientes apuntan a «se cierra», pero solo 6 de nuestros cambios caen
+  junto a un hueco, y se pedían 20. No se abre nada antes de la entrega.
+- En pleno juego, el ATD casi no pierde el balón: 37 huecos. La mayor parte (113) va pegada a nuestras paradas.
+- **Un fallo del script, corregido:** la frase de F dejaba deducir una celda de 1 a 4 casos que la tabla
+  ocultaba. Ahora F no se imprime en ese caso, y la prueba lo cubre.

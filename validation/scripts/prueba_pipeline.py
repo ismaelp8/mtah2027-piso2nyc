@@ -508,9 +508,20 @@ def check_main(codes, folder):
     reason = pm.validate_submission(pm.read_label_csv(path), len(codes)) if os.path.exists(path) else "no está"
     check("sin conflictos: escribe el CSV, que pasa la validación oficial", status == 0 and reason is None,
           reason or "")
-    check("e imprime las versiones de Python y numpy, las líneas del ATD, el resumen y el sha256",
-          "python " in shown and "numpy " + np.__version__ in shown and "líneas del ATD: " in shown
-          and "tramo 2, rachas cortas" in shown and "sha256: " + pipeline.sha256(path) in shown)
+    check("e imprime las versiones de Python y numpy, el código, las líneas del ATD, el resumen y el sha256",
+          "python " in shown and "numpy " + np.__version__ in shown and "código: " in shown
+          and "líneas del ATD: " in shown and "tramo 2, rachas cortas" in shown
+          and "sha256: " + pipeline.sha256(path) in shown)
+    real_root = pipeline.ROOT
+    pipeline.ROOT = folder  # una carpeta que no es un repositorio de git
+    try:
+        outside = pipeline.code_version()
+    finally:
+        pipeline.ROOT = real_root
+    inside = pipeline.code_version()
+    check("el código: el commit en el repo, y «sin git» fuera de un repositorio",
+          outside == "código: sin git" and (inside.startswith("código: commit ") or inside == "código: sin git"),
+          "{} | {}".format(inside, outside))
     status, shown = run_main("con_conflictos", 3)
     check("con conflictos: sale con error y no escribe nada", status == 1 and not any(
         name.startswith("con_conflictos") for name in os.listdir(folder)))
