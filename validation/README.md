@@ -95,6 +95,7 @@ que faltan, los scripts y los resultados. El porqué está en
 | `scripts/peso_balon_fuera.py` | D7: el peso de la capa «balón fuera» con la fórmula fijada antes (`W = 1 − P95` de la puntuación de `dead_state` en el juego vivo); sale 0 | DFL |
 | `partido/balon_fuera.py` | **lee el partido** (ATD) y una entrega nuestra: D7, cuántas veces se ve el balón a más de 1 m fuera y llegamos tarde con el `D`, con la regla de `docs/decisiones.md` (15/11). Lo ejecuta una persona | **datos del partido: solo una persona** |
 | `scripts/prueba_balon_fuera.py` | prueba `partido/balon_fuera.py` y su regla con un balón y unas etiquetas inventados | ninguno del partido |
+| `scripts/balon_fuera_abiertos.py` | D7 en datos abiertos: cuántos frames con el balón visto a más de 1 m fuera son `D` en SkillCorner (mitad de entrenamiento) y en Metrica, y cuántas rachas caen enteras en juego. Descriptivo | SkillCorner y Metrica |
 | `posesiones_cortas/puerta_no_lineal.py` | fase 3, puerta: una red de una capa con los rasgos de B9 y de los jugadores, fuera de muestra | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:

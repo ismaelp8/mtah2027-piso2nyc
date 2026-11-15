@@ -2818,6 +2818,24 @@ Si queda abierta, la decisión nueva tendría que contar con dos cosas, medidas 
   banda se sigue viendo fuera unos frames con el juego ya en marcha. Una capa con peso retrasaría el final del
   `D`, que ya llega tarde a veces (D5 del visionado).
 
+Añadido el mismo día, antes del recuento del partido [medido en datos abiertos, descriptivo;
+`validation/scripts/balon_fuera_abiertos.py`]: **«fuera es `D`» en SkillCorner y en Metrica.** Es el único
+número que no es circular: allí el `D` sale de las fases de juego o de los eventos, no de dónde está el balón.
+- **SkillCorner,** mitad de entrenamiento (el examen no se toca):
+  - de los frames con el balón visto a más de 1 m fuera, el 93,0 % son `D` con el balón detectado, y el 94,3 %
+    con el balón suavizado como el ATD;
+  - de las rachas de 5 frames o más (596 y 465), caen enteras en juego 45 y 26. De ellas duran 2 s o más 3
+    y 3, y 5 s o más, ninguna;
+  - 44 y 38 rachas empiezan en juego y acaban en `D`: allí la parada de la etiqueta empieza después de que se
+    vea el balón fuera.
+- **Metrica** (3 partidos):
+  - el 69,8 % de esos frames son `D` con el balón tal cual, y el 74,6 % suavizado;
+  - de las rachas (47 y 22), caen enteras en juego 17 y 7. De ellas duran 2 s o más 2 y 2.
+  - Sus etiquetas salen de eventos con su propia hora, así que el borde de la parada es más impreciso.
+- **Lectura:** un balón visto fuera durante 2 s o más con el juego vivo es raro en los dos. Una capa que solo
+  pudiera crear una parada nueva con 2 s seguidos de balón fuera inventaría pocas. Esto no cambia el peso
+  fijado (W = 0): sirve para la decisión nueva sobre el peso, si el recuento del partido la abre.
+
 ### 2026-11-15 · validación · la GT pública no dice si cuenta los toques sin control; B9, listo para decidir
 
 Quién: Claude, por el encargo de «dos hipótesis del visionado se prueban» (más arriba). Regla en `validation/posesiones_cortas/BITACORA.md` §15,
