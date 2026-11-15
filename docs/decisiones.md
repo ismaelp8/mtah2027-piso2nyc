@@ -2609,3 +2609,51 @@ Descartado:
 - **No volver a redondear:** con una escala que no sea potencia de 2, las sumas del decodificador dejarían
   de ser exactas y la pieza podría deshacer empates entre `H` y `A`. El coste es que la escala 0,5 mueve la
   puntuación 1/2048 como mucho.
+
+### 2026-11-15 · candidatos · fases del Smart Tagging: pasan la regla del plan por poco y la tabla hay que revisarla
+
+Quién: Antonio Azuero. Un uso más amplio que el del plan lo decide Ismael.
+
+Qué se probó: la tarea 2 de Antonio (`docs/PLAN_ENTREGA.md` §3, P7 de la revisión externa), con el sí de
+Ismael (entrada «Antonio empieza su tarea 2»). Se probó si el equipo de las fases del Smart Tagging sirve de
+pista en los frames sin balón.
+- **La tabla de cada código al equipo con el balón,** de `OVERVIEW.md`: en las fases de ataque lo tiene el
+  equipo de la fase y en las de defensa, el otro. Quedan fuera `SET PIECES`, `GOALS` y `Team = N/A`.
+- **La regla** se escribió y se subió antes de ejecutar (`7d8a2ca`, `validation/fases_smart_tagging/BITACORA.md`).
+  «Dobla al placebo» se lee como «el desacuerdo es, como mucho, la mitad del del placebo»; lo aceptó Ismael
+  a través de Antonio.
+
+Cómo se midió: `validation/partido/fases_smart_tagging.py`, ejecutado por Antonio en local con `equipo_v3`
+(sha256 comprobado). Solo agregados del partido entero.
+- **Control claro:** el mismo equipo a 1 m durante 1 s.
+- **Placebo:** las fases desplazadas ±240, ±360 y ±480 s.
+
+Resultado [medido; la salida entera está en `validation/resultados/2026-11-15_fases_smart_tagging.md`]:
+- **Acuerdo en control claro: 81,8 %** (10.256 frames). El desacuerdo es del 18,2 %, frente al 44,2 % del
+  placebo. **La regla del plan se cumple, por poco.**
+- **Solapados con equipos distintos: 13,5 %** de los frames con fase. Pasa del 10 % de §3.2, así que hay que
+  revisar la tabla antes de usar nada.
+  - El sentido de ataque y defensa está bien: las fases salen a pares idénticos (cada ataque de un equipo con
+    la defensa del otro).
+  - Los solapes vendrían de las fases largas «de zona», como `PLAYERS IN THE BOX` o `BALL IN FINAL THIRD`
+    [inferencia, sin verificar]. Esas, junto con `BALL IN THE BOX` y `CREATING CHANCES`, son las que menos
+    aciertan (del 72 al 75 %). Las transiciones aciertan el 93 %, y la progresión, el 92 %.
+- **Transiciones:** en 19 de los 24 inicios de `ATTACKING TRANSITION` (79 %), nuestra entrega sigue en el
+  otro equipo y no cambia en ±2 s. En el placebo pasa en el 28 %. Los pocos cambios que hay llegan de +1 a
+  +2 s.
+- **Alcance del empujón del plan:** como mucho 1.455 frames sin balón (menos del 1 % de los evaluados) tienen
+  nuestra etiqueta del otro equipo y una fase.
+
+Decisión y por qué:
+- **Según la regla, entra, pero no se enciende nada todavía.** §3.2 pide revisar la tabla antes. La revisión
+  que falta es un agregado: los solapes por pareja de códigos.
+- **Con el alcance del plan, la pista vale poco:** no más de 1.455 frames. Cuadra con la medida en la
+  Bundesliga, según la cual «este equipo tiene el balón» apenas ayuda con ese alcance.
+- **Lo que más promete son los contraataques,** porque llegamos tarde o no llegamos a casi 4 de cada 5. Un
+  empujón al inicio de las `ATTACKING TRANSITION` se sale del plan: **lo decide Ismael**. Antes convendría
+  medir cuánto tarda nuestro cambio después de esos inicios.
+- La entrega no cambia.
+
+Descartado, de momento:
+- elegir solo los códigos que más aciertan: sería decidirlo después de ver los números;
+- copiar las fases como etiquetas (decisión del 15/11).

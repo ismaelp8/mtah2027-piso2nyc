@@ -114,3 +114,67 @@ nuestra: lo ejecuta Antonio, en local, nunca Claude** (regla nº 1).
   coinciden, no que acierten la posesión.
 - **Con 24 `ATTACKING TRANSITION`** (`DATA.md`), las clases de 3.3 tienen pocos casos: muchas celdas saldrán
   como «< 5».
+
+## 6. Resultado (15/11, después de ejecutar)
+
+- **La regla:** el commit `7d8a2ca`, en la rama `exp/fases-smart-tagging-equipo`, subido antes de ejecutar.
+  A la pregunta «¿confirma Ismael la lectura de "dobla al placebo"?» de §3.1, Antonio contestó que sí antes
+  de subirla.
+- **La entrega:** `equipo_v3`, generada por Antonio con `python -m possession.pipeline --name equipo_v3`. El
+  sha256 coincide (`9539ce42…cc17a`), también con Python 3.11 y numpy 2.4.6.
+- **La ejecución:** Antonio ejecutó `python validation/partido/fases_smart_tagging.py --entrega …` en local
+  (4 s). La salida entera, tal cual, está en `validation/resultados/2026-11-15_fases_smart_tagging.md`.
+
+**Controles:** 158.857 frames evaluados, 94.214 con balón. De las 638 fases, 571 entran en la tabla.
+
+| | resultado | regla | lectura |
+|---|---|---|---|
+| acuerdo en control claro (§3.1) | **81,8 %** (10.256 frames de 16.560 con fase) | 80 % o más | se cumple, por poco |
+| desacuerdo frente al placebo (§3.1) | 18,2 % frente a 44,2 % de media (de 39,1 a 50,9 %) | como mucho la mitad: 22,1 % | se cumple |
+| **regla del plan** | | | **entra** |
+| solapados con equipos distintos (§3.2) | **13,5 %** de los 108.185 frames con fase | por encima del 10 %, sospechoso | **hay que revisar la tabla antes de usar nada** |
+
+**Qué dice cada parte:**
+
+- **La tabla, por parejas** [medido]: las fases salen a pares idénticos, con las mismas instancias, frames y
+  acuerdo:
+  - `ATTACKING TRANSITION` y `DEFENSIVE TRANSITION` (24, 3.850 frames, 93,1 %);
+  - `BUILD UP` y `DEFENDING IN ATTACKING THIRD` (22, 5.491, 87,8 %);
+  - `PROGRESSION` y `DEFENDING IN MIDDLE THIRD` (66, 28.472, 92,0 %);
+  - `CREATING CHANCES` y `DEFENDING IN DEFENSIVE THIRD` (30, 19.164, 72,5 %).
+
+  El Smart Tagging marca a la vez la fase de ataque de un equipo y la de defensa del otro. Con la tabla de §2,
+  cada pareja da el mismo equipo con el balón. **El sentido de ataque y defensa está bien:** si estuviera al
+  revés, cada pareja sería un solape con equipos distintos.
+- **De dónde pueden venir los solapes** [inferencia, sin verificar]: de las fases largas «de zona», que siguen
+  abiertas aunque cambie la posesión. `PLAYERS IN THE BOX` suma 61.044 frames con 97 instancias, y `BALL IN
+  FINAL THIRD`, 49.561 con 93. Esas, junto con `BALL IN THE BOX` y `CREATING CHANCES`, son las que menos
+  aciertan (del 72 al 75 %). Las de ataque y transición aciertan del 88 al 93 %.
+- **Las transiciones (§3.3)** [medido]: hay 24 inicios.
+
+  | clase | reales | placebo |
+  |---|---|---|
+  | cambio nuestro a ese equipo a ±2 s | < 5 | 6,8 % |
+  | ya era ese equipo | < 5 | 22,6 % |
+  | **era el otro equipo** | **19 (79,2 %)** | 27,8 % |
+  | era `D` o `X` | < 5 | 42,9 % |
+
+  Los pocos cambios que hay llegan **tarde**, de +1 a +2 s, y vienen del otro equipo.
+
+  [inferencia] En casi 4 de cada 5 contraataques marcados, nuestra entrega sigue en el otro equipo al
+  empezar y no cambia en 2 s. Y es la fase más fiable: acierta el 93,1 % donde se ve el balón. Cuadra con lo
+  que ya se sabía: B5 pierde recuperaciones y llegamos tarde a los cambios. **No dice** si cambiamos después de
+  los 2 s ni cuánto después.
+- **El alcance del empujón (§3.4)** [medido]: hay 9.941 frames evaluados sin balón que no son `D`. De ellos,
+  6.525 (65,6 %) tienen equipo de fase, y en 1.455 (22,3 %) nuestra etiqueta es del otro equipo. **Lo más que
+  podría cambiar el empujón del plan son 1.455 frames, menos del 1 % de los evaluados.**
+
+**Qué se hace:**
+
+- **Según la regla, entra, pero no se usa todavía:** §3.2 pide revisar la tabla antes. La revisión que falta
+  es un agregado del partido: los frames solapados con equipos distintos, por pareja de códigos.
+- **Lo que vale la pista con el alcance del plan es poco:** como mucho, 1.455 frames.
+- **Lo que más promete se sale del plan:** las transiciones. Un uso más amplio, como un empujón al inicio de
+  las `ATTACKING TRANSITION`, lo decide Ismael. Antes haría falta saber cuánto tarda nuestro cambio después de
+  esos inicios.
+- **Nada de esto se ha encendido,** y la entrega no cambia.
