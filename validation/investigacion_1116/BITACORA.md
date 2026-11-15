@@ -440,3 +440,25 @@ Encoger nuestras paradas no gana nada: de +0,001 a −0,007 en todas las celdas,
 regla: no hay candidato.** [inferencia] El error de los bordes de la pieza de estado no es un sesgo fijo que se pueda
 restar: es ancho (del p10 al p90 va de −127 a +116 frames en el inicio), y adelantar un final que ya llegaba a tiempo
 cuesta lo que gana con los que llegaban tarde. Se cierra.
+
+## S7b. Las señales de la lista de Ismael que S7 no cribó (regla, antes de medir)
+
+**Por qué.** S7 concluye que las señales de forma son lentas. Lo que podría contradecirlo es **cómo cambia** la forma,
+que no se midió. Tampoco se midieron si el receptor frena ni dónde está el balón respecto a cada bloque.
+
+**Señales** (`cribado_senales_2.py`; mismas zonas, mismos números y misma regla que S7; R1 y R3 de referencia):
+
+- S22 el que se abre: la anchura (desviación típica en y, sin el más retrasado) sube en los últimos 2 s más que la del
+  otro, con 1 m de margen;
+- S23 el que se alarga: lo mismo con la profundidad (en x);
+- S24 el que gana área: el área crece en 2 s un 20 % más que la del otro (razón de razones);
+- S25 el receptor frena: un jugador a menos de 3 m del balón, que se acerca a él, y cuya velocidad ha bajado más de
+  2 m/s en los últimos 12 frames: su equipo;
+- S26 el balón dentro de un solo bloque: el balón dentro del rectángulo del p10 al p90 de x e y de los jugadores de
+  campo de un equipo y fuera del del otro: el otro equipo tiene el balón.
+
+**No se criban, y por qué:** el balón quieto o junto a un córner, el área pequeña o una línea, y el balón fuera, como
+señales de `D`. En la DFL el balón va tapado en los `D` y en SkillCorner las paradas casi no tienen tracking (S4). El
+balón fuera ya se probó en el partido (D7, dos versiones apagadas).
+
+**Regla de lectura:** la de S7.
