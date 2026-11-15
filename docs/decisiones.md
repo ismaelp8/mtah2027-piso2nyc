@@ -2211,3 +2211,26 @@ combinaciones.
 Descartado: B6, B7 y B8. Y arreglar el slot duplicado de los núcleos: sería un cuarto candidato.
 `validation/partido/slots_duplicados.py` dice cuánto pasa en el partido, si Ismael lo ejecuta.
 
+
+
+### 2026-11-15 · candidatos · se reabre la evidencia de equipo tras la ronda de B5
+
+Quién: Ismael, el mismo 15/11, después de que la ronda única de reentrenamiento de B5 empatara y la regla de
+parada cerrara la evidencia de equipo (entrada anterior). Sus palabras: «si, claramente vamos a reabrirla
+dejate de decisiones tomadas de tiempo. Es claro que tenemos un problema en que predecimos muchas menos
+posesiones de las que hay, sobretodo cuando son posesiones cortas.»
+
+Por qué [medido, `validation/resultados/2026-11-15_diagnostico_errores.md`]:
+- **Cambiamos de equipo de menos.** Con el flag, `main` hace 1.661 cambios de equipo en la DFL y hay 3.061;
+  en la mitad de SkillCorner para diagnosticar, 2.270 frente a 3.228.
+- **Llegamos tarde o no llegamos.** Solo entre el 16 y el 37 % de los cambios reales tiene uno nuestro a
+  menos de 1 s (en el placebo, el 2 %).
+- **Casi nunca partimos una posesión en dos.** El problema está en las que faltan, no en las que sobran.
+
+Qué cambia:
+- **La regla de parada del 15/11 deja de valer.** La evidencia de equipo vuelve a admitir candidatos.
+- **Lo demás sigue igual:** cada candidato se escribe antes de medir, y para entrar tiene que ganar a `main`
+  con §5.8 en el harness de la DFL. SkillCorner tiene 10 partidos de examen que no se tocan hasta el final.
+- **B5 sigue en la entrega** (`equipo_v3`) hasta que algo gane.
+- **El estudio lo hace la sesión «Posesiones cortas»,** en su rama. Sus resultados se apuntan aquí cuando
+  entren en `main`.
