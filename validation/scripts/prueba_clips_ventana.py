@@ -52,10 +52,13 @@ def etiquetas(rachas):
 
 
 GT = etiquetas([(30, 50, "D"), (50, 800, "H"), (800, 1500, "A"), (1200, 1230, "H"), (1260, 1270, "H"),
-                (1500, 2000, "H"), (2000, 2100, "D"), (2100, 2950, "A"), (2940, 2950, "H")])
-# Fuera de la ventana la entrega dice H: no debe contar como diferencia.
+                (1500, 2000, "H"), (2000, 2100, "D"), (2100, 2950, "A"), (2400, 2430, "H"),
+                (2940, 2950, "H")])
+# Fuera de la ventana la entrega dice H: no debe contar como diferencia. La posesión corta de 2400 la ponemos
+# 2 s después, sin pisarse con la real: mismas rachas, pero no es un borde.
 PRED = etiquetas([(0, 30, "H"), (30, 50, "H"), (50, 810, "H"), (810, 1500, "A"), (1500, 1700, "H"),
-                  (1700, 1740, "A"), (1740, 2030, "H"), (2030, 2100, "D"), (2100, 2950, "A"), (2950, N, "H")])
+                  (1700, 1740, "A"), (1740, 2030, "H"), (2030, 2100, "D"), (2100, 2950, "A"), (2480, 2510, "H"),
+                  (2950, N, "H")])
 
 
 def escribir(ruta, labels):
@@ -102,12 +105,15 @@ try:
     comprobar(pm.valid_runs(gt) == [VENTANA], "la ventana inventada es la esperada")
     lista = cv.tramos(gt, pred, 3.0)
     comprobar([(t["a"], t["b"]) for t in lista]
-              == [(0, 125), (725, 885), (1125, 1345), (1625, 1815), (1925, 2105), (2865, 3000)],
-              "seis tramos, en orden, con 3 s de margen y recortados en los extremos del vídeo")
+              == [(0, 125), (725, 885), (1125, 1345), (1625, 1815), (1925, 2105), (2325, 2585), (2865, 3000)],
+              "siete tramos, en orden, con 3 s de margen y recortados en los extremos del vídeo")
     comprobar(lista[2]["dif"] == [[1200, 1230], [1260, 1270]], "las dos posesiones cortas se funden en un tramo")
-    comprobar([t["borde"] for t in lista] == [False, True, False, False, True, False],
-              "«borde» solo donde las posesiones y paradas son las mismas")
-    comprobar([t["tipos"] for t in lista] == [["D"], ["equipo"], ["equipo"], ["equipo"], ["D"], ["equipo"]],
+    comprobar([t["borde"] for t in lista] == [False, True, False, False, True, False, False],
+              "«borde» solo donde las posesiones y paradas son las mismas y cada una pisa a la suya")
+    comprobar(lista[5]["gt_txt"] == lista[5]["pred_txt"] and not lista[5]["borde"],
+              "una posesión corta desplazada sin pisarse no es un borde")
+    comprobar([t["tipos"] for t in lista]
+              == [["D"], ["equipo"], ["equipo"], ["equipo"], ["D"], ["equipo"], ["equipo"]],
               "tipos «equipo» y «D»")
     comprobar(lista[1]["nota"] == "cambio de equipo H→A: nosotros 0,40 s tarde (10 frames)",
               "nota del borde de equipo")
@@ -117,7 +123,7 @@ try:
               "secuencias del tramo con posesiones que faltan")
     comprobar(lista[0]["gt_txt"] == "D 0,80 s → H…" or lista[0]["gt_txt"] == "…D → H…",
               "el tramo del extremo solo mira los frames evaluados")
-    comprobar(len(cv.tramos(gt, pred, 0.5)) == 7, "con 0,5 s de margen las dos posesiones cortas van por separado")
+    comprobar(len(cv.tramos(gt, pred, 0.5)) == 9, "con 0,5 s de margen las posesiones cortas van por separado")
     comprobar(cv.tramos(gt, gt.copy()) == [], "sin diferencias no hay tramos")
 
     # -- línea de comandos --
@@ -125,7 +131,7 @@ try:
     rc, out, err = ejecutar(pred_csv, "--gt", gt_csv, "--salida", html1)
     comprobar(rc == 0 and not err, "se ejecuta sin errores")
     lineas = out.strip().splitlines()
-    comprobar(lineas == ["tramos: 6 (2 solo de borde, 4 con posesiones o paradas distintas)",
+    comprobar(lineas == ["tramos: 7 (2 solo de borde, 5 con posesiones o paradas distintas)",
                          "aviso: no encuentro el vídeo táctico (MTAH_DATA_DIR o --video); la página te dejará elegirlo",
                          "página escrita en {}".format(html1),
                          "ábrela con doble clic, o arrastrándola a la ventana del navegador"],
@@ -133,7 +139,7 @@ try:
     datos, html = datos_de(html1)
     comprobar(np.array_equal(desde_rle(datos["gt"]), gt) and np.array_equal(desde_rle(datos["pred"]), pred),
               "la página reconstruye las dos etiquetas")
-    comprobar(datos["video"] == "" and datos["runs"] == [list(VENTANA)] and len(datos["tramos"]) == 6,
+    comprobar(datos["video"] == "" and datos["runs"] == [list(VENTANA)] and len(datos["tramos"]) == 7,
               "sin vídeo, la página lo pedirá a mano")
     comprobar(datos["saque"] == 11186, "el saque inicial sale de games.py")
     comprobar("__DATOS__" not in html and "__NOMBRE__" not in html, "la plantilla queda rellena")
@@ -153,7 +159,7 @@ try:
               "con vídeo, la página lo enlaza (ruta con espacios y acentos)")
 
     rc, out, _ = ejecutar(pred_csv, "--gt", gt_csv, "--salida", html1, "--margen", "0.5")
-    comprobar(rc == 0 and out.startswith("tramos: 7 "), "--margen cambia cómo se funden")
+    comprobar(rc == 0 and out.startswith("tramos: 9 "), "--margen cambia cómo se funden")
 
     dentro = os.path.join(ROOT, "pagina_prueba.html")
     rc, out, err = ejecutar(pred_csv, "--gt", gt_csv, "--salida", dentro)

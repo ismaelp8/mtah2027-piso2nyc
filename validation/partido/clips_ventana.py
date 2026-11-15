@@ -135,7 +135,10 @@ def describir(gt, pred, tramo, runs):
         sg, sp = pm.segments(gt, [(s, e)]), pm.segments(pred, [(s, e)])
         gt_txt.append(secuencia(sg, s, e))
         pred_txt.append(secuencia(sp, s, e))
-        if [c for _, _, c in sg] != [c for _, _, c in sp]:
+        # «Borde» solo si las rachas son las mismas y cada una pisa a la suya: una posesión corta que
+        # ponemos 2 s más allá, sin pisarse con la real, no es un borde movido.
+        if [c for _, _, c in sg] != [c for _, _, c in sp] or any(
+                max(g[0], p[0]) >= min(g[1], p[1]) for g, p in zip(sg, sp)):
             borde = False
             continue
         for i in range(1, len(sg)):

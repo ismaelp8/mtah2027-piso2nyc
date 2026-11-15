@@ -22,7 +22,9 @@ python validation/partido/clips_ventana.py equipo_v3
 
 - Imprime cuántos tramos hay y la ruta de la página, en `~/mtah2027-salidas/`. Ábrela con doble clic.
 - Si la página no abre el vídeo sola, te deja elegir `BAR-ATH_tactical.mp4` a mano.
-- `--margen 5` da más contexto alrededor de cada tramo (por defecto, 3 s).
+- `--margen` cambia los segundos de contexto alrededor de cada tramo (por defecto, 3). Dos tramos que se
+  pisan se funden: si salen tramos largos con varias cosas dentro, vuelve a generarla con `--margen 1.5`.
+  Dentro de un tramo, un clic en lo rojo de la tira te lleva a ese momento.
 
 ## 2. Antes de nada: comprobar la alineación (1 minuto)
 
