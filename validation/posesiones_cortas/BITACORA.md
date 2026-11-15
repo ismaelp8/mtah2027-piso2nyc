@@ -160,3 +160,68 @@ Lectura [inferencia]:
 - **Lo que añade nuestro `D`** (bordes y paradas falsas) es de las piezas de `D` (Manuel y Ana), y el harness
   no puede medirlo bien.
 - **No sale ningún candidato de esta fase.**
+
+## 9. Fase 2: las que sobran, cuánto vale cada fallo y el balón con retraso
+
+Lo pidió la sesión principal (orquestadora, por encargo de Ismael). `python validation/posesiones_cortas/fase2.py`
+y `python validation/posesiones_cortas/inventadas.py`; salidas en `salidas/2026-11-15_fase2.md` y
+`salidas/2026-11-15_inventadas.md`. Descriptivo, sin regla. DFL «como el ATD» y SkillCorner (mitad de
+entrenamiento).
+
+**Las que sobran** (con el `D` de las etiquetas) [medido]:
+
+| clase | flag | control | SkillCorner |
+|---|---|---|---|
+| inventada (otro equipo, sin ninguna real de su equipo a ≤ 2 s) | 63 | 143 | 251 |
+| cambio real desplazado | 140 | 76 | 188 |
+| trozo de una real partida | 86 | 150 | 246 |
+| fundida | 174 | 33 | 135 |
+| **total** | 463 | 402 | 820 |
+
+- Las inventadas son cortas (el 82 % de las del control dura menos de 5 s). El 60 % está pegada a un `D`
+  real. Lo que más empuja a su favor es la posición en el campo: +3,3 por frame con el control y +4,5 con
+  el flag.
+- **De las inventadas con el control, solo 60 lo son también con el flag.** 38 de esas 60 acaban justo antes
+  de una parada; tras un reinicio solo hay 6. Las demás inventadas del control son, con el flag, posesiones
+  reales (40) o cambios desplazados (32). Quitarlas sería una apuesta de convención.
+
+**Cuánto vale cada tipo de fallo:** sus frames como en las etiquetas, uno cada vez; «como el ATD» y «sin
+bloques» [medido]:
+
+| arreglo, `D` oráculo | flag | control | SkillCorner |
+|---|---|---|---|
+| faltan, decimos el otro equipo, < 2 s | +0,254 / +0,252 | +0,045 / +0,041 | +0,200 |
+| faltan, decimos el otro equipo, 2–10 s | +0,240 / +0,230 | +0,123 / +0,114 | +0,191 |
+| faltan, decimos el otro equipo, ≥ 10 s | +0,011 / +0,019 | +0,007 / +0,007 | +0,035 |
+| sobran, inventadas | +0,016 / +0,014 | +0,074 / +0,070 | +0,065 |
+| sobran, cambio real desplazado | +0,088 / +0,082 | +0,051 / +0,046 | +0,084 |
+| sobran, solo las inventadas con las dos convenciones | +0,015 | +0,027 | – |
+
+Con el `D` propio, además: los bordes de las paradas que vemos valen +0,048 / +0,073 (flag / control,
+«como el ATD»); las paradas falsas, +0,012 / +0,016; y las que no vemos, +0,014 / +0,019.
+
+**`main` con el balón tarde** (`D` oráculo; descriptivo; no es la medida de Antonio):
+
+| balón | etiquetas | 0 frames | 6 | 12 | 25 |
+|---|---|---|---|---|---|
+| como el ATD | flag | 0,498 | −0,001 | −0,027 | −0,057 |
+| como el ATD | control | 0,728 | −0,019 | −0,088 | −0,184 |
+| sin bloques | flag | 0,512 | −0,000 | −0,030 | −0,067 |
+| sin bloques | control | 0,748 | −0,017 | −0,097 | −0,207 |
+
+Lectura [inferencia]:
+- **Lo que más vale, con cualquier convención, son las posesiones de 2 a 10 s que no encontramos porque
+  decimos el otro equipo** (+0,12 con el control). Es el signo de la evidencia, lo de la fase 1, y B9 ya lo
+  intentó.
+- **Las inventadas son lo segundo con el control** (+0,07), pero:
+  - solo 60 lo son con las dos convenciones;
+  - quitar esas 60 con un oráculo perfecto da +0,015 y +0,027. No llega a +0,03 con ninguna convención.
+
+  No hay una palanca clara que pase §5.8. Su patrón (antes de una parada, empujadas por la posición en el
+  campo) queda apuntado. El harness tapa el balón 5 frames alrededor de cada `D`, así que puede ser en parte
+  cosa del harness.
+- **Los bordes de las paradas valen tanto como las inventadas** (+0,05 a +0,07 con el `D` propio). Son de
+  las piezas de `D`.
+- **El retraso del balón:** con 6 frames casi no cuesta; con 12 cuesta más que cualquier mejora medida; con 25
+  se hunde el control.
+- **No se escribe ningún candidato en la fase 2.**

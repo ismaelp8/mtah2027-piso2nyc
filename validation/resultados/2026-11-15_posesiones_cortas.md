@@ -78,6 +78,26 @@
     - Ninguna se pierde por cómo el decodificador coloca los cambios.
     - Con nuestro `D` (descriptivo) se suman los bordes con un `D` y las paradas falsas dentro de las largas.
     - Detalle: `validation/posesiones_cortas/BITACORA.md` §8.
+11. **Lo que vale cada tipo de fallo** [medido, con un oráculo que arregla solo ese tipo, `D` de las
+    etiquetas, «como el ATD»]:
+
+    | arreglo | flag | control | SkillCorner |
+    |---|---|---|---|
+    | faltan, decimos el otro equipo, 2–10 s | +0,240 | +0,123 | +0,191 |
+    | faltan, decimos el otro equipo, < 2 s | +0,254 | +0,045 | +0,200 |
+    | sobran, cambio real desplazado | +0,088 | +0,051 | +0,084 |
+    | sobran, inventadas | +0,016 | +0,074 | +0,065 |
+    | sobran, solo las inventadas con las dos convenciones | +0,015 | +0,027 | – |
+    | faltan, decimos el otro equipo, ≥ 10 s | +0,011 | +0,007 | +0,035 |
+
+    - De las 402 que sobran con el control, 143 son inventadas, 76 son un cambio real desplazado, 150 son
+      trozos de una posesión real partida y 33 están fundidas.
+    - Las inventadas con las dos convenciones son 60, y 38 acaban justo antes de una parada. Ni con un
+      oráculo llegan a +0,03 [medido].
+    - Detalle: `validation/posesiones_cortas/BITACORA.md` §9.
+12. **`main` con el balón tarde** [medido, descriptivo, `D` de las etiquetas, «como el ATD»]: con 6, 12 y 25
+    frames de retraso cae −0,001, −0,027 y −0,057 con el flag, y −0,019, −0,088 y −0,184 con el control. La
+    medida del retraso del ATD la hace Antonio (rama `exp/retraso-balon-atd`).
 
 ## Estado de cada idea
 
@@ -90,7 +110,7 @@
 | la dirección en que se mueve el balón (B9) | medido con regla: empate |
 | deshacer el suavizado del balón | no se puede validar en el harness (allí es una media exacta sin ruido) |
 | señales de los jugadores alrededor de un cambio (quién acelera, cambio de forma) | sin medir |
-| las 402 posesiones que sobran con el control | sin estudiar: se miraron las 477 que faltan |
+| quitar las posesiones inventadas (fase 2) | ni con un oráculo llega a +0,03 en las que lo son con las dos convenciones [medido] |
 | un arreglo del decodificador para las posesiones largas (fase 2) | no hay de dónde: ninguna se pierde por cómo se colocan los cambios [medido] |
 
 ## Qué se recomienda
