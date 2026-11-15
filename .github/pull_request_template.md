@@ -35,6 +35,6 @@ entre versiones. Diferencias de spellF1 de menos de ~0,04 son ruido.
 - [ ] Los commits son míos, con mi identidad de git y sin `Co-Authored-By`
 
 <!--
-Reviewers: si abre Ismael, revisa David (ortegafer); si abre David, revisa Ismael (ismaelp8);
-si abre otra persona, los dos. Basta una aprobación y nadie aprueba su propia PR.
+Revisión: la revisa otra persona del equipo, la que esté disponible. Basta una aprobación y nadie aprueba
+su propia PR.
 -->

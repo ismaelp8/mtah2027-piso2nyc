@@ -2661,3 +2661,32 @@ antes de que Ismael ejecutara `validation/partido/huecos_y_cambios.py`):
 
 Decisión: ninguna. No se abre ni una degradación nueva ni un candidato antes de la entrega.
 
+
+### 2026-11-15 · infraestructura · cualquiera del equipo puede contestar, decidir y revisar
+
+Quién: Ismael. Sus palabras (15/11): «No puede ser todo tan restrictivo lo que te dije yo de que me utilizaran
+de revisor era orientativo pero todo el mundo puede responder, decidir y revisar. Por eso si eliminar eso
+mejor».
+
+Qué pasaba: las normas decían que las PR las revisaban Ismael y David, y el plan y las bitácoras reservaban
+muchas decisiones a Ismael («lo decide Ismael», «se le pasa a Ismael», «pendiente de permiso de Ismael»). El
+Claude de una compañera se negó a que contestara una duda que otro compañero tenía para Ismael.
+
+Decisión y por qué: Ismael no es una puerta.
+- Cualquiera del equipo puede contestar una duda, tomar una decisión y revisar, aprobar o mergear la PR de
+  otra persona.
+- Donde un texto del repo reserve algo a Ismael, se lee como «lo decide el equipo». Quien decide lo apunta
+  aquí, con su nombre y el porqué.
+- Cambiado en `CLAUDE.md`, `CONTRIBUTING.md`, `docs/PLAN_ENTREGA.md`, `docs/GUIA_EQUIPO.md`, las skills
+  `/subir` y `/revisar-pr` y la plantilla de PR. Las menciones de decisiones ya tomadas («decisión de
+  Ismael, 14/11») se quedan: dicen quién decidió.
+
+Lo que no cambia:
+- cada PR la mira otra persona: nadie aprueba su propia PR;
+- lo que viene después de una decisión: si toca `pipeline.PIECES`, un valor por defecto o código que usa la
+  entrega, alguien regenera la entrega y la valida;
+- la regla nº 1 de los datos, la ventana pública, las reglas escritas antes de medir, que solo Ismael sube
+  directo a `main` y el resto de las normas de git.
+
+Descartado: buscar y cambiar cada frase de las bitácoras, los resultados y los comentarios del código. Basta
+con la regla general de `CLAUDE.md`, que todas las sesiones leen al empezar.

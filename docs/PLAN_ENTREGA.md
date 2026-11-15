@@ -14,7 +14,10 @@
 - **Un solo pipeline con cinco piezas y una persona por pieza.** Todas avanzan a la vez.
 - **El pipeline ya corre de punta a punta,** con la versión más simple de cada pieza (`possession/`). Tu
   trabajo es sustituir la tuya por una mejor, sin tocar las de los demás.
-- **Las piezas se enchufan con una interfaz común** (sección 2). No se cambia sin avisar a Ismael.
+- **Las piezas se enchufan con una interfaz común** (sección 2). No se cambia sin avisar al equipo.
+- **Cualquiera del equipo puede contestar, decidir y revisar** (decisión de Ismael, 15/11). Donde este plan
+  diga «lo decide Ismael» o «se le pasa a Ismael», léelo como «lo decide el equipo». Quien decide lo apunta
+  en `docs/decisiones.md`, con su nombre.
 - **Qué versión entra lo decide el harness de la DFL** (sección 4): los 7 partidos abiertos de la
   Bundesliga. Nunca la ventana pública de 5 minutos.
 - **Corte: martes 17** (decisión de Ismael del 15/11; antes era el lunes 16 a las 14:00). La hora es
@@ -193,7 +196,7 @@ degradación estén comprobados. Se abandona en el corte si no ha ganado. Medida
      vista en los `D`. Los dos modos acotan lo que no se puede medir.
    - Cuando Ana añada la opción de escala a su pieza (su tarea 2), repetirlo con la escala a 0,5.
    - **Es descriptivo:** un número con el `D` propio no decide (§4), y la escala de B5 se eligió con coste
-     25. Si algo gana en los dos modos y con las dos convenciones, se le pasa a Ismael, que decide.
+     25. Si algo gana en los dos modos y con las dos convenciones, se lleva al equipo, que decide.
 3. **No hace falta más:** el coste de cambio, las duraciones mínimas y la poda ya empatan.
 
 Los textos de la PR 9 que había que corregir ya están corregidos en `main` (`05b6d98`).
@@ -380,11 +383,11 @@ entrenamiento y su origen, las reglas de posesión, las limitaciones y cómo rep
      estos candidatos escritos antes:
      1. si el desfase es de 3 frames o menos en valor absoluto, no se toca nada;
      2. si es de 4 o más, una variante en `possession/ball.py` que desplaza el balón ese desfase. `clean` no
-        cambia hasta que lo decida Ismael;
+        cambia hasta que lo decida el equipo;
      3. si los jugadores también pudieran venir con retraso y no se puede separar, no se toca y se apunta.
    - **La latencia de la ventana pública no sirve de puerta:** en nuestras entregas ha salido −6,0
      (`equipo_v1`) y +2,4 (`equipo_v3`) frames, con 5 parejas cada vez. No dice nada.
-2. **Lo último, y solo si lo decide Ismael: las fases del Smart Tagging como pista de equipo** en los
+2. **Lo último, en marcha desde el 15/11: las fases del Smart Tagging como pista de equipo** en los
    frames sin balón. Necesita el Smart Tagging, así que no va en `candidates.py`: sería un módulo aparte
    que enchufa Ismael. Antes, un agregado del partido con regla previa: en los frames de control claro,
    con qué frecuencia coincide el equipo de la fase con el del más cercano, frente a las fases desplazadas.

@@ -1,6 +1,6 @@
 ---
 name: revisar-pr
-description: Para los reviewers (Ismael y David). Revisa una PR del repo con el agente revisor, propone aprobar, pedir cambios o comentar, y la mergea si se pide (squash, o merge commit si es sync/*). Úsala con "/revisar-pr 12", "revisa la PR de Manuel" o "¿qué PR tengo pendientes?".
+description: Para quien revise la PR de otra persona (cualquiera del equipo). Revisa una PR del repo con el agente revisor, propone aprobar, pedir cambios o comentar, y la mergea si se pide (squash, o merge commit si es sync/*). Úsala con "/revisar-pr 12", "revisa la PR de Manuel" o "¿qué PR tengo pendientes?".
 argument-hint: "[número de PR]"
 ---
 

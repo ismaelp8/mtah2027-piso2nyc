@@ -80,8 +80,8 @@ La protección de verdad es esta regla, no la configuración.
 
 | persona | GitHub | papel |
 |---|---|---|
-| Ismael Pintor | `ismaelp8` | infraestructura y entrega (esqueleto, harness, integración), reviewer, dueño del documento técnico |
-| David Ortega | `ortegafer` | decodificador (`possession/temporal.py`), reviewer |
+| Ismael Pintor | `ismaelp8` | infraestructura y entrega (esqueleto, harness, integración), dueño del documento técnico |
+| David Ortega | `ortegafer` | decodificador (`possession/temporal.py`) |
 | Antonio Azuer | `antonioazuero11-wq` | evidencia de equipo y limpieza del balón (`possession/candidates.py`, `possession/ball.py`) |
 | Manuel Herrero | `manuelherrero` | `D`: fronteras y anclas (`possession/dead_ball.py`) |
 | Ana Aparicio | — | `D`: estado (`possession/dead_state.py`) y documento técnico |
@@ -91,7 +91,15 @@ Qué tiene que hacer cada uno hasta la entrega: [`docs/PLAN_ENTREGA.md`](docs/PL
 - **Si alguien delega el git en Claude** (lo dice en su `CLAUDE.local.md` o lo pide en la
   conversación), hazlo tú con las skills. Explica cada paso en una frase sencilla, sin jerga, y pide
   confirmación antes de subir nada.
-- **Ismael y David revisan las PR.** Nadie aprueba su propia PR.
+- **Cualquiera del equipo puede contestar una duda, tomar una decisión y revisar, aprobar o mergear la PR
+  de otra persona** (decisión de Ismael, 15/11). Ismael no es una puerta: Claude no frena a nadie por no ser
+  él.
+  - Donde este brief, el plan, una bitácora o un comentario del código digan «lo decide Ismael», «se le
+    pasa a Ismael» o «pendiente de permiso de Ismael», léelo como «lo decide el equipo».
+  - Quien decide lo apunta en `docs/decisiones.md` (`/decision`), con su nombre y el porqué.
+  - Lo que viene después de una decisión no cambia: si toca `pipeline.PIECES`, un valor por defecto o código
+    que usa la entrega, alguien regenera la entrega y la valida.
+- **Cada PR la mira otra persona del equipo,** la que esté disponible. Nadie aprueba su propia PR.
 - **Nombre de equipo para la entrega: por confirmar.** Tiene que coincidir exactamente con el que puso
   cada uno al inscribirse. Hasta entonces, `<NOMBRE_EQUIPO>`.
 
@@ -393,7 +401,7 @@ Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal par
 **Si quien abre la sesión no sabe cuál es su pieza,** enséñale su parte de la sección 3 del plan antes de
 proponer nada.
 
-**Pendiente de permiso de Ismael:**
+**Pendiente de que el equipo lo decida:**
 
 - descargar los tiempos humanos de ELASTIC, en 3 partidos de la DFL;
 - instalar `databallpy`.
@@ -692,15 +700,9 @@ Las normas completas están en `CONTRIBUTING.md`. Esto es lo que Claude no se sa
 - **Mensaje de commit:** una frase en español que diga qué cambia y por qué (`CONTRIBUTING.md` §3).
 - **Pide confirmación** antes de cada push, de abrir una PR, de aprobarla y de mergearla. Que alguien
   pida `/subir` es pedir que se suba, pero antes enséñale el resumen.
-- **Reviewers de cada PR:**
-
-  | abre la PR | revisa |
-  |---|---|
-  | Ismael | `ortegafer` |
-  | David | `ismaelp8` |
-  | cualquier otra persona | los dos |
-
-  Basta con **una aprobación**, y nadie aprueba su propia PR.
+- **Revisión de cada PR:** la revisa, la aprueba y la mergea cualquier persona del equipo que no sea quien
+  la abre. Basta con **una aprobación**, y nadie aprueba su propia PR. `/subir` pide la revisión a Ismael
+  (`ismaelp8`) y a David (`ortegafer`) para que alguien se entere, pero no hace falta que sean ellos.
 - **Merge:** lo hace quien aprueba.
   - Por defecto con squash.
   - Las PR `sync/*` (cambios de `upstream`) con merge commit.
@@ -718,7 +720,7 @@ Las normas completas están en `CONTRIBUTING.md`. Esto es lo que Claude no se sa
 | `/empezar <tarea>` | actualiza `main` y crea la rama con nombre convencional |
 | `/subir` | limpia notebooks, revisa, hace el commit con tu autoría, push y PR con plantilla y reviewers; Ismael puede subir directo a `main` |
 | `/actualizar` | trae lo último de `main` a tu rama; si tu PR ya está mergeada, vuelve a `main` y borra la rama |
-| `/revisar-pr <n>` | para Ismael y David: revisa una PR con el agente `revisor`, aprueba o pide cambios, y mergea |
+| `/revisar-pr <n>` | para quien revise la PR de otra persona: revisa una PR con el agente `revisor`, aprueba o pide cambios, y mergea |
 | `/sincronizar-upstream` | trae las correcciones de Metrica en una rama `sync/` con su PR |
 | `/evaluar [csv]` | valida y puntúa una entrega, solo agregados |
 | `/decision <título>` | apunta una decisión de método en `docs/decisiones.md` |
