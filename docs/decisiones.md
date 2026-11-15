@@ -2061,11 +2061,17 @@ entrega.**
   ninguno de los dos tramos. En la entrega se cumple la condición del criterio del 13/11 de que no haya
   rachas de `D` ni de juego de menos de 25 frames.
 
+Añadido (15/11, `main` en `4305576`) [medido por Ismael]: **con numpy 2.3.4 también sale `9539ce42…cc17a`.**
+- Se regeneró, sin querer, en otro entorno de Ismael: Python 3.13.9 con numpy 2.3.4, en vez del entorno limpio.
+- Salen los mismos recuentos y el validador da `Valid`.
+- Es la primera prueba de que la huella aguanta un cambio de versión de numpy. No cambia lo fijado: la entrega
+  se regenera con `requirements-entrega.txt`.
+
 Falta:
-- **Repetir la huella en el ensayo del lunes por la noche,** con lo que haya entrado en `main` hasta
+- **Repetir la huella en el ensayo del lunes por la noche,** en el entorno limpio
+  (`C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe`), con lo que haya entrado en `main` hasta
   entonces.
-- **La versión de numpy de la máquina Linux** que reprodujo `equipo_v2` [sin verificar]. Si era otra, la
-  huella ya aguanta un cambio de versión.
+- **La versión de numpy de la máquina Linux** que reprodujo `equipo_v2` [sin verificar].
 - **El nombre del CSV:** `<NOMBRE_EQUIPO>` sigue sin confirmar. Hasta entonces, el comando lo recibe con
   `--name` y el nombre por defecto sigue siendo `equipo_v0`.
 

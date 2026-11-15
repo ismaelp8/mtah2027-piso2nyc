@@ -312,7 +312,10 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
   - **El entorno limpio** (`C:\Users\34656\.venvs\mtah2027-entrega`) **reproduce `equipo_v3` byte a byte:**
     mismo sha256 `9539ce42…cc17a`, con `main` en `988ce88` y validado.
-  - En el ensayo del lunes por la noche se repite con lo que haya en `main`.
+  - **Con `main` en `4305576`** (después de la PR 11 y del estudio de posesiones cortas), Ismael sacó la misma
+    huella. Lo hizo en otro entorno, con numpy 2.3.4, así que la huella también aguanta ese cambio de versión.
+  - **En el ensayo del lunes por la noche** se repite con lo que haya en `main`, y esta vez con el python del
+    entorno limpio: `C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline`.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
   `validation/resultados/2026-11-14_harness_dfl.md`): puntúa el pipeline en los 7 partidos abiertos con
   el scorer oficial, en medio minuto. Lo puede ejecutar Claude.
