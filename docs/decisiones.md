@@ -4141,3 +4141,21 @@ media). Su sha256 es `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf3
 
 **Se enciende:** `pipeline.DELIVERY_LAYERS = (transiciones.evidence_equipo, dead_ball.ball_out)`. `build` da error si
 `--capa` repite una capa de la entrega. La entrega nueva será `equipo_v8`, y tiene que dar el sha256 de `prueba_d7_v5`.
+
+**Resultado (16/11) [medido]: `equipo_v8`, la entrega vigente.**
+- Ismael la regeneró en el entorno limpio con `python -m possession.pipeline --name equipo_v8` y `main` en `44678d1`, sin
+  cambios locales en el código de la entrega y sin capas añadidas. La línea de las versiones no se pegó, pero la huella
+  es la de `prueba_d7_v5`, generada con Python 3.13.9 y numpy 2.5.4 en ese mismo entorno.
+- **Sale byte a byte igual que `prueba_d7_v5`:** sha256 `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`.
+- 0 frames en conflicto y ninguna racha corta; 219 posesiones (103 y 116) y 116 paradas (54 y 62).
+- El validador oficial la da por válida: 199.319 filas, 219 posesiones de 15,8 s de media.
+- Frente a `equipo_v5`: 574 frames de un equipo a `D`, ningún otro cambio.
+
+**En la ventana pública** (lo pidió Ismael; comprobación, no elige) [medido con `evaluation/run_evaluation.py
+--bootstrap 1000`, sobre `prueba_d7_v5`, que es el mismo fichero]:
+- spellF1 igual: 0,658 en `equipo_v5` y en la nueva. El scorer dice que, con 17 posesiones, una diferencia de hasta
+  0,39 es ruido.
+- macroF1 de 0,851 a 0,865, y transF1 (±25 frames) de 0,263 a 0,308. Los frames que pasan a `D` dentro de la ventana
+  coinciden con `D` en la GT más de lo que no coinciden [inferencia, por el macroF1].
+- Lectura: no rompe nada en la ventana. Si mejora el `spellF1` del partido no se puede saber: ni la ventana ni la DFL lo
+  miden.
