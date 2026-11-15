@@ -2775,3 +2775,45 @@ Qué no se abre, y por qué:
 
 Cómo termina cada una: como una opción apagada con su evidencia. Encenderla es una decisión aparte, y obliga a
 regenerar la entrega y validarla.
+
+
+### 2026-11-15 · `D` · D7, el balón fuera del campo: peso y regla del recuento, antes de ejecutarlo
+
+Quién: lo prueba la sesión de integración, por encargo de Ismael pasado por la sesión principal (entrada
+anterior). Es la tarea 2 de Manuel en el plan, sin hacer. Si sale una capa, será una función nueva en
+`possession/dead_ball.py`, sin tocar sus líneas, y apagada.
+
+**El peso, con una fórmula fijada antes de calcularlo** (`validation/scripts/peso_balon_fuera.py`, commit
+`ec3c1ce`):
+- La capa sumaría `W` en la columna `D` en cada frame con el balón visto a más de 1 m fuera. En ese frame, el
+  equipo más cercano lleva el +1 de N1 dentro de B5 y el `D` lleva la puntuación de `dead_state` (`ds`). El
+  frame empuja hacia `D` si `W + ds > 1`.
+- Fórmula: `W = 1 − P95`, con `P95` el percentil 95 de `ds` en el juego vivo a 5 s o más de cualquier parada,
+  en la DFL, redondeado hacia abajo. Así, un balón visto fuera por error en pleno juego (un balón de repuesto,
+  el temblor junto a la línea) empujaría hacia `D` como mucho en el 5 % de esos frames.
+- **Resultado [medido en la DFL]: `W = 0`.** En el juego vivo, `ds` tiene una mediana de −3,42 y un P95 de
+  0,25. En el primer segundo de las paradas reales, la mediana es −0,31.
+- **Lectura:** con esa seguridad, la capa no aporta nada. Cualquier peso de 1 o más empujaría hacia `D` en más
+  del 5 % del juego vivo si el ATD viera fuera un balón que no lo está. La fórmula no se cambia después de ver
+  el resultado.
+
+**El recuento del partido, igualmente** (`validation/partido/balon_fuera.py`; lo ejecuta Ismael, solo
+agregados; prueba con datos inventados en `validation/scripts/prueba_balon_fuera.py`). Sirve para saber cuánto
+premio hay y decidir si merece la pena una decisión nueva sobre el peso.
+- **Balón fuera:** visto a más de 1 m fuera de las líneas, con el balón como lo ve el pipeline, en los tramos
+  evaluados y sin el tramo antes del saque de la 2ª parte.
+- **Racha:** frames seguidos con el balón fuera, de 5 o más.
+- **Llegamos tarde** a una racha si empieza con `H` o `A` en `equipo_v3` y nuestro `D` empieza más de 12
+  frames (0,5 s) después, o no llega en 10 s.
+- **Regla:**
+  - **se cierra** si las rachas en que llegamos tarde son menos de 10 o menos del 15 % de las rachas;
+  - **queda abierta** si son 10 o más y el 25 % o más. Abierta no enciende nada: hará falta una decisión
+    nueva sobre el peso, con su riesgo escrito antes;
+  - en medio, no concluye y no se abre nada.
+
+Si queda abierta, la decisión nueva tendría que contar con dos cosas, medidas antes de elegir el peso:
+- **Lo que no se sabe:** cuántas veces el ATD ve el balón fuera mientras el juego sigue. Lo mejor que hay son
+  SkillCorner y Metrica, si su balón sale alguna vez del campo con el juego vivo.
+- **Un riesgo al final de las paradas:** el balón del ATD va suavizado unos 25 frames, así que tras un saque de
+  banda se sigue viendo fuera unos frames con el juego ya en marcha. Una capa con peso retrasaría el final del
+  `D`, que ya llega tarde a veces (D5 del visionado).
