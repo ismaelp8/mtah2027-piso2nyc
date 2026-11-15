@@ -334,7 +334,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Primera versión, `ball_out`: se queda apagada.** Con ella llegamos tarde en 12 de 47 (25,5 %), y el
     criterio pedía menos del 15 %. No hace daño: los 574 frames que cambia pasan todos de `H` o `A` a `D`.
   - **Segunda versión, `ball_out_hold`** (`0043a3c`): mantiene la parada hasta que el balón vuelve a verse
-    dentro, con los mismos criterios. Falta la entrega de prueba. Es el último intento con estos criterios.
+    dentro. Su entrega de prueba sale byte a byte igual que la de la primera, así que tampoco cumple el
+    criterio 1. **D7 se cierra:** las dos capas quedan apagadas.
 - **Entregas de prueba sin tocar `PIECES`:**
   - `python -m possession.pipeline --name <prueba> --pieza nombre=modulo.funcion --capa modulo.funcion`. Con
     el nombre de la entrega da error, y la salida dice qué se ha cambiado.

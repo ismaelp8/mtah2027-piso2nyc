@@ -3164,3 +3164,16 @@ entorno limpio, se valida y se apunta la huella. Si no, se queda apagada y D7 se
 
 En la DFL [medido, con el `D` propio en las dos condiciones que votan]: cambian 23 frames de 2.012.288, los mismos que con la primera versión. Con el balón tapado en
 los `D`, como se esperaba. No es una ganancia.
+
+**Resultado de `prueba_d7b`** (15/11; la generó Ismael con `validation/partido/probar_entrega.py` y el código de
+`0043a3c`, sin cambios locales) [medido, solo agregados]: **sale byte a byte igual que `prueba_d7`** (sha256
+`eb244885…4f7f`). Mantener la parada en el hueco no cambia ninguna etiqueta del partido.
+1. Llegamos tarde en 12 de 47 rachas (25,5 %), y en 7 nuestro `D` sigue sin llegar en 10 s: **no se cumple.**
+2. Se cumple: 116 paradas, 3 más, y el `D` en el 45,4 %.
+3. Se cumple: los 574 frames que cambian frente a `equipo_v3` pasan de `H` o `A` a `D`.
+
+**Decisión, con la regla fijada antes: la segunda versión se queda apagada y D7 se cierra aquí.** Las dos capas
+siguen en `possession/dead_ball.py`, apagadas, con su evidencia.
+
+[inferencia, sin medir] En las 7 rachas que quedan, o el balón se ve fuera menos de 1 s antes de perderse, o
+no vuelve a verse dentro en 60 s. No se mide, porque D7 está cerrada.
