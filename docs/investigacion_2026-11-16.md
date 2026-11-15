@@ -21,9 +21,10 @@
 
 1. **La mayoría de lo que se podía probar barato ya está probado, y ahora también lo nuevo.** He medido once ideas
    distintas. Ninguna gana a `main` con la regla de §5.8 (+0,03, con las dos convenciones) [medido].
-2. **La única mejora que sale limpia es pequeña:** pasar a `D` las posesiones de menos de 5 s que acaban en una parada
-   nuestra. Da de +0,007 a +0,019 con el control, +0,009 / +0,010 en SkillCorner (gana en los 10 partidos) y entre
-   −0,002 y +0,004 con el flag [medido, S5 y S9].
+2. **La única mejora medida a favor es pequeña y no pasa sus reglas:** pasar a `D` las posesiones de menos de 5 s
+   que acaban en una parada nuestra. Con el balón tapado en los `D`, que es lo más parecido al ATD, da +0,007 / +0,009
+   con el control, +0,009 / +0,010 en SkillCorner (gana en los 10 partidos) y −0,002 con el flag [medido, S5 y S9].
+   Las dos reglas que escribí antes de medirla dicen «no hay candidato».
 3. **Las señales «nuevas» del tracking no añaden nada a B5** [medido, S7]. Probé 21 señales (distancias, velocidades,
    formación, el momento del toque, los huecos del balón, el balón muerto). Las que más aciertan en general, como la
    anchura de los equipos (87–91 %), son justo las que fallan donde fallamos (12–27 %): dicen el equipo que llevaba
@@ -39,33 +40,22 @@
 
 ## 1. Las tres que haría primero
 
-### 1.1 Pasar a `D` las posesiones cortas que acaban en una parada nuestra
+### 1.1 Los cambios de equipo entre fases del Smart Tagging (ficha 2.2)
 
 - **Qué hacer hoy, lunes:**
-  1. **Ismael decide si se apuesta por esto,** aunque no pase §5.8 (sección 2.1). Son cinco minutos.
-  2. **Si sí, David lo programa como opción del decodificador:** una función de unas 20 líneas (`temporal.py`,
-     después del Viterbi) y una versión del harness. Con el `D` propio, como en `validation/investigacion_1116/
-     cambio_antes_de_parada.py`. Una o dos horas.
-  3. **Ismael genera la entrega de prueba,** la compara con `equipo_v5` (`comparar_entregas.py`) y la valida. Con los
-     criterios escritos antes, como se hizo con los contraataques: casi todo lo que cambia pasa de `H` o `A` a `D`, las
-     paradas no se mueven, las posesiones bajan.
-- **Cuánto puede dar:** +0,01 a +0,02 si la GT se parece al control o a SkillCorner; ±0,003 si se parece al flag.
-
-### 1.2 Los cambios de equipo entre fases del Smart Tagging
-
-- **Qué hacer hoy:**
   1. **Claude escribe un agregado del partido** (`validation/partido/`), copiando la estructura de
      `fases_smart_tagging.py` §4, con su regla subida antes. Media hora.
   2. **Ismael lo ejecuta.** Cinco minutos; solo imprime recuentos.
   3. **Si pasa su regla, Antonio** (o quien esté) **programa la capa** copiando `transiciones.evidence_equipo`, con el
      mismo peso y tope, y la prueba con los cuatro criterios de los contraataques. Dos horas.
 - **Cuánto puede dar:** de 0 a +0,03. Es la única pista nueva sobre el instante de los cambios, que es lo que más
-  falla.
+  falla, y se apoya en la única capa que entró de la revisión anterior.
 
-### 1.3 Comprobar en el partido dos supuestos que nadie ha mirado
+### 1.2 Comprobar en el partido dos supuestos que nadie ha mirado (ficha 2.3)
 
 - **Qué hacer hoy:**
-  1. **Ismael ejecuta `validation/partido/slots_duplicados.py`.** Ya existe y nunca se ha ejecutado. Un minuto.
+  1. **Ismael ejecuta `validation/partido/slots_duplicados.py`.** Ya existe, y no consta en el repo que se haya
+     ejecutado [sin verificar]. Un minuto.
   2. **Claude escribe un agregado** que compare la distribución de los rasgos de B5 en el partido con la de la DFL y
      SkillCorner (solo cuantiles), con su regla. Ismael lo ejecuta.
   3. **Si algún rasgo de peso está fuera de rango,** se mide en datos abiertos una estandarización por partido, sin
@@ -73,9 +63,21 @@
 - **Cuánto puede dar:** no sube la nota si todo está bien, pero es lo único que puede descubrir una pérdida grande que
   el harness no ve.
 
-**Por qué este orden.** La 1.1 es la única con un número medido a favor en SkillCorner, que es el tracking abierto más
-parecido al partido. La 1.2 es la apuesta con más techo que se puede hacer en un día, y se apoya en la única capa que
-ha entrado de la revisión anterior. La 1.3 es barata y protege la base.
+### 1.3 Pasar a `D` las posesiones cortas que acaban en una parada nuestra (ficha 2.1)
+
+- **Qué hacer hoy:**
+  1. **Ismael decide si quiere apostar por esto.** Falló las dos reglas que escribí antes de medirla; el número que hay
+     es pequeño y a favor del control (ficha 2.1).
+  2. **Si quiere, una sola prueba de verdad:** la regla fija (5 s, a `D`) en el examen de SkillCorner
+     (`lector.EXAMEN`), que nadie ha tocado, con el umbral escrito antes (propongo: +0,005 o más y ganar en 7 de 10).
+     **El examen solo se abre con el permiso de Ismael.** Media hora.
+  3. **Si pasa, David lo programa** como opción del decodificador (unas 20 líneas después del Viterbi) y Ismael genera
+     la entrega de prueba y la compara con `equipo_v5`, con criterios escritos antes (el de más abajo incluido).
+- **Cuánto puede dar:** de +0,005 a +0,01 si la GT se parece al control o a SkillCorner; −0,002 si se parece al flag.
+
+**Por qué este orden.** La 1.1 tiene el techo más alto de lo que cabe en un día, y no cuesta nada mirar si hay
+algo. La 1.2 es barata y protege la base. La 1.3 es la única con un número medido a favor, pero es pequeño, depende de
+la convención y no pasó sus reglas.
 
 ---
 
@@ -102,21 +104,30 @@ ha entrado de la revisión anterior. La 1.3 es barata y protege la base.
   | flag | tapado | −0,002 | −0,002 |
   | SkillCorner | – | +0,010 (10 de 10, «detectado») | +0,009 (10 de 10, «suavizado») |
 
-  - «A la vista» (el balón de la DFL visible en los `D`) es lo más parecido al ATD, que ve el balón en el 68 % de los
-    frames de las ventanas `SET PIECES` [medido por el equipo, 14/11].
+  - **El modo que más se parece al ATD es «tapado».** El ATD pierde el balón en bloques largos, como la DFL con los `D`
+    tapados, y en los 10 s antes de cada `SET PIECES` lo ve solo en el 27,6 % de los frames [medido,
+    `2026-11-14_perfil_atd.md`]. Las cifras que cuentan son, por tanto, las de «tapado» y SkillCorner: de +0,007 a
+    +0,010 con el control y en SkillCorner, y −0,002 con el flag.
   - En el partido espero menos que en el harness, porque el harness sobrestima el nivel [inferencia].
 - **Horas:** 1–2 de David, más la entrega de prueba de Ismael.
 - **Qué puede salir mal:**
   - Que en el partido estas posesiones sean de verdad: una recuperación justo antes de que el balón salga. Entonces
     quitarlas resta. En la DFL lo son entre el 8 y el 26 % [medido, S5].
   - Que la GT se parezca al flag. Entonces da ±0,003.
-- **Cómo se valida sin el partido:** ya está medido (S5 y S9). En el partido, solo para ver que no se rompe nada: la
-  comparación con `equipo_v5` y el número de posesiones que quita.
-- **Por qué no pasa §5.8:** no llega a +0,03 y no gana con el flag. La regla le da al flag un veto. Pero el equipo
-  decidió el 12/11 «exigir control», y SkillCorner, que también exige control, dice lo mismo que el control
-  (`docs/decisiones.md`).
-- **Veredicto: hacerla ya,** si Ismael acepta que una mejora pequeña, que gana con el control y en SkillCorner y no
-  pierde con el flag, puede entrar sin el +0,03. Si no, no.
+  - Que borre lo que crea la capa de los contraataques: una posesión que esa capa adelanta y que acaba en una parada
+    nuestra puede caer en la regla.
+- **Cómo se valida sin el partido:**
+  - ya está medido en datos abiertos (S5 y S9), pero se diseñó y se midió en los mismos partidos;
+  - la prueba limpia es una sola ejecución en el examen de SkillCorner, con la regla fija y el umbral escrito antes, si
+    Ismael lo permite;
+  - en el partido, solo para ver que no se rompe nada, con criterios escritos antes de generar: cuántas posesiones
+    quita, que casi todo lo que cambia pase de `H` o `A` a `D`, y **cuántas de las que quita caen en los 5 s de un
+    empujón de los contraataques** (si son más de un par, se mira antes de seguir).
+- **No pasó sus reglas.** Con la de S5 no hay candidato (con el flag y el balón tapado no gana), y con la de S9 tampoco
+  es «una apuesta razonable». Tampoco pasa §5.8: no llega a +0,03 y no gana con el flag. Lo único a su favor es que el
+  equipo decidió el 12/11 «exigir control», y SkillCorner, que también exige control, dice lo mismo que el control.
+- **Veredicto: quizá; lo decide Ismael.** Si quiere apostar por la convención de control con algo pequeño, que pase
+  antes por el examen de SkillCorner.
 - **Lo que no haría:** juntarla con subir el coste de cambio a 40. El coste 40 gana algo con el control y en
   SkillCorner (de +0,006 a +0,010), pero pierde con el flag (de −0,002 a −0,005), y el paquete de los dos pierde hasta
   −0,008 con el flag [medido, S1 y S9].
@@ -144,6 +155,9 @@ ha entrado de la revisión anterior. La 1.3 es barata y protege la base.
   - **Las fases no son posesiones** (`DATA.md`). Un `BUILD UP` puede empezar a mitad de una posesión, cuando el portero
     ya llevaba un rato con el balón. Por eso solo cuentan los inicios que **cambian** de equipo respecto a la fase de
     ataque anterior.
+  - **Que mida reinicios en vez de cambios.** Tras una parada, la fase nueva puede ser del otro equipo sin que haya
+    ningún cambio en juego. Solo cuentan los cambios sin un `SET PIECES` entre las dos fases y sin un hueco del balón de
+    5 s o más (el de la capa del hueco).
   - Las fases «de zona» (`BALL IN FINAL THIRD`, `PLAYERS IN THE BOX`, `BALL IN THE BOX`) se solapan con equipos distintos
     [medido]: no entran.
   - Si el inicio de la fase cae varios segundos después del cambio real, la marca empuja tarde. El agregado lo dice.
@@ -161,14 +175,16 @@ ha entrado de la revisión anterior. La 1.3 es barata y protege la base.
 - **Qué es.** Dos agregados del partido, sin etiquetas:
   1. **Slots duplicados.** Un slot duplicado cuenta doble en los núcleos de B5 (`possession/aprendida.py`,
      `_rasgos_balon`) y en las mayorías. `DATA.md` dice que el ATD duplica a veces a alguien.
-     `validation/partido/slots_duplicados.py` lo cuenta y nunca se ha ejecutado [medido, `docs/decisiones.md`].
+     `validation/partido/slots_duplicados.py` lo cuenta; no consta en el repo ningún resultado [sin verificar si se ha
+     ejecutado].
   2. **Los rasgos de B5 en el partido frente a la DFL y SkillCorner.** Los de forma (centroides, dispersión, velocidad
      hacia la portería) no están comprobados en el ATD: la regla de traslado del 14/11 era de la pieza de estado
      (revisión externa, punto 10).
 - **Qué fallo arregla.** Ninguno medido: es lo que el harness no puede ver. Si un rasgo de peso estuviera desplazado
   en el partido, B5 empujaría hacia un equipo sin motivo, y ningún sondeo de datos abiertos lo diría.
 - **En qué me apoyo:**
-  - [fuente] PathCRF pierde de 8 a 25 puntos de F1 al cambiar de proveedor (apéndice B).
+  - [fuente] PathCRF pierde de 8 a 25 puntos de F1 al cambiar de proveedor (apéndice B,
+    https://arxiv.org/html/2602.12080).
   - [medido, S7] B5 acierta el 86–90 % de los frames de juego en la DFL y el 84 % en SkillCorner: aguanta un cambio de
     proveedor. La pregunta es si también aguanta el del ATD.
 - **Qué hacer si sale desplazado.** Las reglas lo permiten: «Learning without human labels — unsupervised or
@@ -194,7 +210,7 @@ ha entrado de la revisión anterior. La 1.3 es barata y protege la base.
 - **En qué me apoyo:**
   - [fuente] Lang et al. (2022), solo con jugadores, en 102 partidos de la Bundesliga: F1 de las paradas de 61,2 con
     regresión logística, 67,9 con *random forest* y 79,8 con AdaBoost. Error mediano de 1,00 s al inicio y de 0,84 s al
-    final.
+    final (https://pmc.ncbi.nlm.nih.gov/articles/PMC9522646/).
   - En contra [medido, `2026-11-14_d_estado.md`]: E3, con ventanas antes y después, empató con E2. Y la logística de
     Lang recibía coordenadas ordenadas por puesto, que una recta aprovecha mal; la nuestra recibe agregados, que ya son
     no lineales [inferencia]. El salto de Lang no tiene por qué repetirse aquí.
@@ -214,9 +230,10 @@ ha entrado de la revisión anterior. La 1.3 es barata y protege la base.
   de la DFL, el equipo nuevo está a 1,5 m del balón en el 94 % de los cambios reales; con el suavizado, en el 56–63 %
   [medido, revisión externa, anexo A.4].
 - **En qué me apoyo:**
-  - [fuente] FootAndBall (licencia MIT, pesos públicos) saca un AP de 0,909 en ISSIA-CNR, con balones de 8 a 20 píxeles.
-    WASB saca un F1 de 88,3 en fútbol a 1080p. Ninguno publica el acierto con balones de 4 píxeles, que es lo que
-    mide el balón en el táctico (revisión externa).
+  - [fuente] FootAndBall (licencia MIT, pesos públicos; https://github.com/jac99/FootAndBall) saca un AP de 0,909 en
+    ISSIA-CNR, con balones de 8 a 20 píxeles. WASB (https://github.com/nttcom/WASB-SBDT) saca un F1 de 88,3 en fútbol a
+    1080p. Ninguno publica el acierto con balones de 4 píxeles, que es lo que mide el balón en el táctico (revisión
+    externa).
   - [fuente] No he encontrado ningún método publicado para sincronizar dos trackings del mismo partido sin tiempo
     común. Y la homografía de la retransmisión no vale justo en repeticiones y primeros planos, que es donde están las
     paradas (`DATA.md`).
@@ -267,14 +284,18 @@ rescata y lo que estropea, está en `validation/investigacion_1116/salidas/`)
 - **Ninguna señal añade.** La que más se acerca, «dos contactos seguidos», se queda en +0,98 con el flag y es circular
   con el control.
 - **Lo que más acierta en general falla donde fallamos.** La anchura y el área de los equipos aciertan el 84–91 % de los
-  frames, más que el más cercano, pero en las posesiones que perdemos aciertan el 12–27 %. Son señales lentas: un equipo
-  tarda en abrirse más de lo que duran esas posesiones.
+  frames, más que el más cercano, pero en las posesiones que perdemos aciertan el 12–27 % [medido]. Mi lectura es que
+  son señales lentas: un equipo tarda en abrirse más de lo que duran esas posesiones [inferencia].
+- **Cuidado con la columna de Z1:** Z1 son las posesiones en que B5 falla, así que cualquier señal parecida a B5 sale
+  baja ahí por construcción (el propio signo de B5 acierta el 11–19 %). Por eso decide la regresión con B5 dentro, no
+  esa columna.
 - **Las señales del toque** (balón lento, que se mueve con un jugador, que frena) aciertan mucho cuando opinan (83–93 %),
   pero opinan poco, y casi siempre donde B5 ya acierta.
 - **La dirección del balón** es la única que rescata, y solo en la DFL. En SkillCorner no hace nada. Es lo que ya dijo
   B9.
-- **La cota** (todas a la vez) es de +2 a +4 puntos de acierto por frame con el control y en SkillCorner. Es lo que ya
-  dio la red de una capa de las posesiones cortas, que no movió el `spellF1`.
+- **La cota** (todas a la vez) es de +2 a +4 puntos de acierto por frame con el control y en SkillCorner [medido].
+  Parece del orden de lo que dio la red de una capa de las posesiones cortas, que no movió el `spellF1` [inferencia:
+  son medidas distintas].
 - **El retraso de 4 frames** no cambia nada.
 - **Balón muerto** (D1 a D5, solo jugadores): ninguna pasa. Los jugadores lentos rescatan el 15 % de lo que falla la
   pieza de estado y estropean el 13 %; el frenazo y el arranque colectivos opinan en el 5–7 % de los bordes y aciertan
