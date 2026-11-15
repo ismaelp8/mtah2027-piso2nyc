@@ -3270,6 +3270,8 @@ Resultado (15/11) [medido por Ismael]: **`equipo_v5`, la entrega vigente.**
 - Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro. Las paradas siguen en 113, y las
   posesiones pasan de 215 a 219.
 - El validador oficial la da por válida.
+- Con `main` en `b027409` (PR 15 y PR 10 de David y PR 16 de Manuel y Ana), `equipo_v7` sale con el mismo
+  sha256, en el entorno limpio y validada [medido por Ismael].
 - Falta reproducirla en otra máquina.
 
 ### 2026-11-15 · `D` · el instante del reinicio: regla escrita antes de medir

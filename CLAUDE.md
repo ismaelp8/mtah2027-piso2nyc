@@ -239,6 +239,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   paradas, el mismo `D` que `equipo_v3` y sha256 `27dc8aa8…efb7`.
   - Sale byte a byte igual que `prueba_transiciones2`, que se generó con numpy 2.3.4.
   - Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro.
+  - Con `main` en `b027409` (después de las PR 15, 10 y 16), `equipo_v7` sale igual.
   - Falta reproducirla en otra máquina.
 - **Entrega anterior: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
@@ -377,8 +378,10 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **El instante del reinicio:** no entra ninguna capa, porque ningún tipo de reinicio tiene un instante fijo.
   - **El juego vivo en el saque de cada parte:** entra en `dead_ball.evidence`. En ese frame no se permite
     `D`. No cambia ningún frame: `equipo_v6` sale con el mismo sha256 que `equipo_v5`.
-- **Falta regenerar la entrega con `main` en `1ffa7db`** (PR 15 y PR 10). Tiene que salir otra vez
-  `27dc8aa8…efb7`.
+- **Ninguna de las tres PR cambia la entrega** [medido por Ismael]:
+  - `equipo_v7` se regeneró en el entorno limpio con `main` en `b027409` y sale con el sha256 de `equipo_v5`,
+    `27dc8aa8…efb7`;
+  - el validador la da por válida.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
