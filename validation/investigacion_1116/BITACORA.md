@@ -99,3 +99,42 @@ frames, y en cuántas se ve el balón en su último segundo y en el primero desp
 
 **Regla de lectura, antes de contar.** «Sirve para validar bordes» si hay 150 paradas o más con tracking en el
 80 % de sus frames en los 10 partidos, y al menos 30 de cada uno de tres tipos de reinicio. Con menos, no.
+
+## S5. Cambios de equipo falsos justo antes de una parada
+
+**La idea** (hipótesis D2 del visionado, que no se abrió): si nuestro `D` llega tarde, el equipo que va a sacar
+se acerca al balón y le damos una posesión corta que no existe. Con un F1 sobre posesiones, cada una de esas
+resta dos veces: sobra ella y estropea el borde de la anterior.
+
+**Qué se mide** (`cambio_antes_de_parada.py`; DFL, `D` propio, las dos condiciones que votan y dos modos del
+balón en los `D`: tapado, como el harness, y a la vista, como `validation/apuesta_b/d_propio.py`):
+
+- las posesiones predichas de menos de 5 s (125 frames) que acaban en un `D` nuestro y vienen de un cambio
+  directo desde el otro equipo: cuántas son, cuántas se emparejan con una real (IoU ≥ 0,5) y qué hay de verdad
+  en sus frames;
+- el `spellF1` de `main` y de dos variantes: (a) esos frames pasan a `D`; (b) pasan al equipo de antes. También
+  con 3 s y con 10 s, como sensibilidad.
+
+**Regla de lectura, antes de medir.** «Hay candidato» si una misma variante, con el corte de 5 s, gana a `main`
+por +0,010 o más con las dos convenciones, en las dos condiciones que votan y en los dos modos del balón. Si
+gana solo en un modo, queda como observación: la DFL no sabe cuál de los dos se parece al ATD.
+
+## S6. ¿Fecha el arranque del balón el final de una parada? (Metrica sample-data)
+
+**La idea** (hipótesis D5 del visionado y descarte R1 del 14/11, que quedó sin medir): la parada acaba en el
+golpeo del saque. Si antes del saque el balón se ve quieto, el instante en que arranca fecha el final del `D`.
+No se puede medir en la DFL (el balón va congelado y tapado) ni en SkillCorner (sondeo S4). Los 3 partidos de
+Metrica sample-data traen el frame de cada `SET PIECE`, anotado por una persona, y el balón.
+
+**Qué se mide** (`arranque_balon_metrica.py`; los 3 partidos; el balón tal cual y suavizado 25 frames):
+
+- en qué fracción de los frames `D` se ve el balón;
+- en cada saque (paso de `D` a juego): si el balón se ve en el segundo anterior (80 % de los frames) y si está
+  quieto (mediana de la velocidad por debajo de 1 m/s);
+- el arranque: en ±3 s alrededor del saque, el primer frame con el balón a 3 m/s o más después de un segundo
+  quieto. Con el balón suavizado se corrige la rampa de la media móvil. El error es arranque menos saque.
+
+**Regla de lectura, antes de medir.** «Sirve» si el balón se ve en el segundo anterior en el 50 % o más de los
+saques y, en esos, el arranque cae a ±12 frames del saque en el 50 % o más, con el balón tal cual y con el
+suavizado. (La pieza de estado da el final a ±25 frames en el 40 % en la DFL.) Si el balón no se ve en los `D`
+de estos datos, el sondeo se cierra sin medir nada más.

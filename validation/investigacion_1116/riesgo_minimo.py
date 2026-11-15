@@ -24,6 +24,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(AQUI))
 sys.path.insert(0, os.path.join(ROOT, "validation", "harness"))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.join(ROOT, "evaluation"))
 import dfl  # noqa: E402
 import possession_metrics as pm  # noqa: E402
 import puntuar  # noqa: E402
