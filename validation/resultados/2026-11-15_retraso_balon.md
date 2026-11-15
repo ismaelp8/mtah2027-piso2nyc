@@ -26,7 +26,7 @@
    explica: en la DFL da como mucho +2 (bitácora §11).
 2. **En la DFL, ese retraso cuesta entre −0,007 y +0,002 de `spellF1` frente a `main`:** es un empate. La
    variante `ball.advance_ball` queda escrita y apagada, y la propuesta es no encenderla.
-3. **El riesgo de la revisión externa,** unos 12 frames, **queda descartado.**
+3. **El riesgo de la revisión externa,** unos 12 frames, **queda descartado respecto a los jugadores.**
 
 ## Calibración de la v2 en la DFL (salida tal cual, sin las líneas de progreso)
 

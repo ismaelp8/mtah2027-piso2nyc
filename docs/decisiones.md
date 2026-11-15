@@ -2316,3 +2316,12 @@ Descartado:
 Límites:
 - La medida es relativa: si los jugadores del ATD también llegaran tarde, no se vería.
 - `d̂` está en el corte: el intervalo incluye +2 y +3, que habrían sido el candidato 1.
+
+Nota de la revisión (Ismael, 15/11), al mergear la PR 11 (`acec765`):
+- «El riesgo de unos 12 frames queda descartado» se lee con el primer límite: descartado **respecto a los
+  jugadores**. Un retraso que el balón y los jugadores compartan respecto al vídeo no se puede ver con esta
+  medida.
+- El cambio del lado negativo de la lectura (con −4 o menos se apunta y no se toca) lo pidió la revisión y
+  entró después de ejecutar en el partido. No cambia el resultado, que es positivo.
+- `ball.advance_ball` entra apagada, como propone la PR. La entrega no cambia. Encenderla sigue siendo
+  decisión de Ismael.

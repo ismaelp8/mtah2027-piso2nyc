@@ -331,7 +331,7 @@ de la versión 1 da +5 (por parte, +5 y −6: sigue saltando de joroba) y +6 con
 
 **Propuesta para Ismael: no encenderla.** Encenderla obliga a reentrenar o medir B5 y a repetir la medida de
 Manuel, por menos de una centésima. El riesgo de la revisión externa (unos 12 frames, que costarían más que
-cualquier mejora) **queda descartado**. La tarea se cierra.
+cualquier mejora) **queda descartado respecto a los jugadores**. La tarea se cierra.
 
 - **Si algún día se enciende,** también hay que cambiar el harness: su degradación «como el ATD» tendría que
   retrasar el balón 4 frames. Hoy llega a su hora (media centrada), así que con la pieza encendida el harness
