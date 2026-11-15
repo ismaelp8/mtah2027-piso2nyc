@@ -240,7 +240,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - Sale byte a byte igual que `prueba_transiciones2`, que se generó con numpy 2.3.4.
   - Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro.
   - Con `main` en `b027409` (después de las PR 15, 10 y 16), `equipo_v7` sale igual.
-  - Falta reproducirla en otra máquina.
+  - **Reproducida en otra máquina:** sale lo mismo (Ismael, 16/11).
 - **Entrega anterior: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
