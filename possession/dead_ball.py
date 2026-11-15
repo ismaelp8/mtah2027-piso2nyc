@@ -255,3 +255,42 @@ def evidence(trk, paths=None, game=games.GAME):
             if span is not None and any(first <= window["start"] < stop for first, stop in trk.blocks):
                 score[span[0]:span[1], D] += GAP_SCORE
     return score, allowed
+
+
+# -- D7: el balón visto fuera del campo (15/11). Capa APAGADA: no la llama `evidence` ni la entrega. -------
+# Se prueba con `python -m possession.pipeline --name prueba_d7 --capa dead_ball.ball_out`. Reglas, peso y
+# criterios para encenderla, fijados antes de generar esa entrega: docs/decisiones.md, 15/11, «D7».
+
+BALL_OUT_MARGIN = 1.0  # m fuera de las líneas (docs/PLAN_ENTREGA.md §3, tarea 2 de Manuel)
+BALL_OUT_MIN_RUN = 5  # frames: una racha más corta es temblor (como validation/partido/balon_fuera.py)
+# Frames del final de cada racha que no se puntúan: el balón del ATD va suavizado unos 25 frames (la mitad,
+# 12) y llega unos 4 tarde respecto a los jugadores (PR 11), así que tras un saque de banda se sigue viendo
+# fuera unos 16 frames con el juego ya en marcha.
+BALL_OUT_TAIL = 16
+# Puntuación de `D` por frame. El entero más grande con el que, en el juego vivo típico (mediana de
+# dead_state en la DFL, −3,42), un balón visto fuera tiene que durar 3 s o más para crear una parada él solo:
+# cada frame gana W + ds − 1 (el −1 es el +1 de N1) y una parada nueva cuesta to_dead + from_dead = 50.
+BALL_OUT_SCORE = 5.0
+
+
+def ball_out(trk):
+    """`(score, allowed)` de la capa D7: BALL_OUT_SCORE en la columna `D` donde el balón se ve fuera.
+
+    Solo en las rachas de BALL_OUT_MIN_RUN frames o más con el balón visto a más de BALL_OUT_MARGIN m fuera
+    de las líneas, sin sus últimos BALL_OUT_TAIL frames y dentro de los tramos evaluados. No prohíbe nada.
+    Solo usa el tracking (con el balón ya limpio), así que también corre en la DFL.
+    """
+    n = len(trk.bx)
+    score, allowed = no_evidence(n)
+    length, width = trk.pitch
+    bx, by = np.asarray(trk.bx, dtype=np.float64), np.asarray(trk.by, dtype=np.float64)
+    with np.errstate(invalid="ignore"):
+        out = ((bx < -BALL_OUT_MARGIN) | (bx > length + BALL_OUT_MARGIN)
+               | (by < -BALL_OUT_MARGIN) | (by > width + BALL_OUT_MARGIN))
+    out &= np.isfinite(bx) & np.isfinite(by)
+    for first, stop in trk.blocks:
+        edges = np.diff(np.concatenate(([0], out[first:stop].astype(np.int8), [0])))
+        for start, end in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)):
+            if end - start >= BALL_OUT_MIN_RUN and end - start > BALL_OUT_TAIL:
+                score[first + start:first + end - BALL_OUT_TAIL, D] = BALL_OUT_SCORE
+    return score, allowed

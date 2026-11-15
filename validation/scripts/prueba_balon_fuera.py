@@ -90,11 +90,38 @@ def main():
               "10 de 50 tarde (20 %): no concluye")
     pocas = dict(res, rachas=20, sin_d=9, tarde=sin_tarde)
     comprobar(bf.lectura(pocas) == "se cierra", "9 tarde, aunque sean el 45 %: se cierra (menos de 10)")
+    comprobar_capa()
     print()
     if fallos:
         print("FALLAN {} comprobaciones".format(len(fallos)))
         sys.exit(1)
     print("TODO BIEN")
+
+
+def comprobar_capa():
+    """La capa apagada `dead_ball.ball_out` con el mismo partido inventado."""
+    print("D7: la capa apagada (dead_ball.ball_out) con un tracking inventado")
+    from possession import dead_ball, pipeline, tracking
+    bx, by, _, blocks, _ = partido_inventado()
+    vacio = np.full((len(bx), 2), np.nan, dtype=np.float32)
+    trk = tracking.Tracking(bx, by, vacio, vacio, np.array([0, 1], dtype=np.int8), PITCH, ((0, 3000),), 25)
+    score, allowed = dead_ball.ball_out(trk)
+    puntuados = np.flatnonzero(score[:, tracking.D])
+    cola = dead_ball.BALL_OUT_TAIL
+    esperados = np.concatenate([np.arange(a, b - cola) for a, b in
+                                ((100, 130), (400, 440), (700, 760), (1000, 1020), (2200, 2230)) if b - a > cola])
+    comprobar(np.array_equal(puntuados, esperados),
+              "puntúa las rachas de 5 frames o más sin sus últimos {} frames, y nada más".format(cola),
+              "{} frames".format(len(puntuados)))
+    comprobar(bool(np.all(score[puntuados, tracking.D] == dead_ball.BALL_OUT_SCORE))
+              and not score[:, :2].any() and bool(allowed.all()),
+              "solo la columna D, con su peso, y no prohíbe nada")
+    comprobar(not score[3000:, tracking.D].any(), "fuera de los tramos evaluados no puntúa (la racha de 3200)")
+    comprobar(pipeline.PIECES["candidates"] == "aprendida.evidence_b5" and "ball_out" not in str(pipeline.PIECES),
+              "está apagada: no es una pieza de la entrega")
+    import inspect
+    comprobar("ball_out" not in inspect.getsource(dead_ball.evidence),
+              "dead_ball.evidence (la de la entrega) no la llama")
 
 
 if __name__ == "__main__":
