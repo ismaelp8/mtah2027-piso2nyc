@@ -15,8 +15,9 @@ ejecutarlo:
    duran lo mismo, así que desde el fin es restar esa duración.
 2. La regla: qué tipos tienen un sitio fijo con poca dispersión, y su ancla.
 3. Con esas anclas, la capa en el pipeline: sin ella y con ella, y su condición de daño.
-4. Para la capa del hueco (PR #8), el agregado que pidió el revisor: de los frames que cambian de
-   etiqueta con ella, cuántos caen en los primeros 5 s de cada hueco.
+4. Para la capa del hueco (PR #8), los agregados de la tarea 3 del plan: de los frames que cambian de
+   etiqueta con ella, cuántos caen en los primeros 5 s de cada hueco, y un histograma grueso de la
+   distancia entre el inicio de cada hueco y el inicio del D que sale del decodificador.
 
 `measure_instant` y las funciones de la regla no abren ningún fichero; los importa
 validation/scripts/comprobar_balon_muerto.py (sección 11), que ejecuta Claude con un partido inventado y
@@ -34,7 +35,7 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 import games  # noqa: E402
-from comun import MIN_CASES_PER_TYPE, graded_mask, utf8_stdout  # noqa: E402
+from comun import MIN_CASES_PER_TYPE, bins_s, graded_mask, utf8_stdout  # noqa: E402
 from possession import dead_ball, dead_state, pipeline, temporal, tracking  # noqa: E402
 
 H, A, D = tracking.H, tracking.A, tracking.D
@@ -48,6 +49,13 @@ MAX_AGREE_S = 1.0  # si la mediana de esa reaparición queda a 1 s o menos de la
 NEAR_S = 1.0  # descriptivo: salidas del D a 1 s o menos del instante anclado
 FIRST_SECONDS_S = 5  # sección 4: los primeros 5 s de cada hueco
 OFF_DURATION_S = 1.0  # descriptivo: ventanas cuya duración se aparta más de 1 s de la mediana
+# El placebo: las mismas ventanas desplazadas 4, 6 y 8 minutos, como el de la capa del hueco
+# (agregados_dead_ball.PLACEBO_SHIFTS_S), lejos de cualquier reinicio real.
+PLACEBO_SHIFTS_S = (-480, -360, -240, 240, 360, 480)
+# La banda de la entrega (docs/PLAN_ENTREGA.md §3, 15/11): del 15 al 60 % de D y 250 paradas como mucho.
+BAND_D = (0.15, 0.60)
+MAX_STOPS = 250
+GAP_D_EDGES_S = (0, 1, 3, 5)  # sección 4: intervalos del inicio del D desde el inicio del hueco
 BACK, SEEN_AT_START, NOT_BACK = "vuelve a verse", "visto al empezar", "no vuelve"
 
 
@@ -81,6 +89,51 @@ def harm_stop(window, cut, layer_stop, fps):
     """Fin, sin incluir, del tramo en que se cuentan los D de una ventana con ancla: SEARCH_AFTER_S después del
     fin de la ventana o del de la capa (`layer_stop`), lo que llegue más tarde, sin pasar de `cut`."""
     return int(min(cut, max(window["end"], layer_stop) + SEARCH_AFTER_S * fps))
+
+
+def placebo_windows(events, blocks, fps):
+    """Las ventanas de restart_windows(events) que empiezan en un tramo evaluado, desplazadas PLACEBO_SHIFTS_S,
+    con su tipo y su duración. Solo las que empiezan en un tramo evaluado y no tienen ningún `GOALS` ni
+    `SET PIECES` real (de cualquier tipo) a menos de su duración más SEARCH_AFTER_S, antes o después: así
+    su búsqueda no ve ningún reinicio de verdad."""
+    restarts = [e["start"] for e in events if e["code"] in (dead_ball.GOALS_CODE, dead_ball.SET_PIECES_CODE)]
+    out = []
+    for w in dead_ball.restart_windows(events):
+        if not any(first <= w["start"] < stop for first, stop in blocks):
+            continue
+        clear = (w["end"] - w["start"]) + SEARCH_AFTER_S * fps
+        for shift in PLACEBO_SHIFTS_S:
+            start = w["start"] + shift * fps
+            if (any(first <= start < stop for first, stop in blocks)
+                    and not any(abs(r - start) < clear for r in restarts)):
+                out.append(dict(w, start=start, end=w["end"] + shift * fps))
+    return out
+
+
+def tight(transitions, fps):
+    """10 transiciones o más con recorrido intercuartílico de 2 s o menos (en frames)."""
+    return bool(len(transitions) >= MIN_WINDOWS and spread(transitions)[5] <= MAX_IQR_S * fps)
+
+
+def band_ok(dead_share, stops):
+    """La entrega dentro de la banda del plan: del 15 al 60 % de D en lo evaluado y 250 paradas como mucho."""
+    return BAND_D[0] <= dead_share <= BAND_D[1] and stops <= MAX_STOPS
+
+
+def gap_d_offsets(codes, spans):
+    """Para cada hueco [g0, g1): frames desde g0 hasta el inicio del tramo de D de `codes` que lo toca
+    primero (negativo si ese D ya venía de antes del hueco); None si ningún D toca el hueco."""
+    out = []
+    for g0, g1 in spans:
+        dead = np.flatnonzero(codes[g0:g1] == D)
+        if dead.size == 0:
+            out.append(None)
+            continue
+        first = g0 + int(dead[0])
+        while first > 0 and codes[first - 1] == D:
+            first -= 1
+        out.append(first - g0)
+    return out
 
 
 def play_transition(odds, start, stop, sustain):
@@ -224,7 +277,17 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
         rule = anchor_rule(transitions, ball, pairs, fps) if kind != "otros" else (False,) * 5
         by_type[kind] = {"n": len(group), "transitions": transitions, "ball": ball, "pairs": pairs,
                          "states": states, "rule": rule}
-    anchors = {kind: anchor_of(t["transitions"]) for kind, t in by_type.items() if t["rule"][4]}
+    placebo = {}
+    for w in placebo_windows(events, trk.blocks, fps):
+        t = play_transition(odds, w["start"], search_stop(w, np.inf, fps), SUSTAIN_S * fps)
+        if t is not None:
+            placebo.setdefault(w["type"], []).append(t - w["start"])
+    m["placebo_windows"] = len(placebo_windows(events, trk.blocks, fps))
+    for kind, t in by_type.items():
+        t["placebo"] = placebo.get(kind, []) if kind != "otros" else []
+        t["placebo_ok"] = not tight(t["placebo"], fps)
+    anchors = {kind: anchor_of(t["transitions"]) for kind, t in by_type.items()
+               if t["rule"][4] and t["placebo_ok"]}
     m.update(by_type=by_type, anchors=anchors)
 
     # 3. La capa en el pipeline
@@ -247,7 +310,10 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
                  runs=(runs(without, trk.blocks), runs(with_layer, trk.blocks)), split=split, near=tuple(near),
                  changed_inside=changes(without, with_layer, graded & inside),
                  changed_outside=changes(without, with_layer, graded & ~inside))
-        m["harm_ok"] = harm_rule(m["runs"][0], m["runs"][1], split) and m["conflicts"] == (0, 0)
+        m["dead_share"] = (float(np.mean(without[graded] == D)), float(np.mean(with_layer[graded] == D)))
+        m["band_ok"] = band_ok(m["dead_share"][1], m["runs"][1][1])
+        m["harm_ok"] = (harm_rule(m["runs"][0], m["runs"][1], split) and m["conflicts"] == (0, 0)
+                        and m["band_ok"])
     else:
         report = {}
         without = pipeline.run(trk, extra=[delivery_fn], report=report, pieces=pieces)
@@ -259,9 +325,12 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
     no_gap = pipeline.run(trk, extra=[no_gap_fn], report=report, pieces=pieces)
     m["gap_conflicts"] = report["conflictos"]
     first = np.zeros(n, dtype=bool)
+    gap_spans = []
     for window, _, span in dead_ball.gaps_before_restarts(clean.bx, clean.by, events, fps):
         if span is not None and any(a <= window["start"] < b for a, b in trk.blocks):
             first[span[0]:min(span[0] + FIRST_SECONDS_S * fps, span[1])] = True
+            gap_spans.append(span)
+    m["gap_d_offsets"] = gap_d_offsets(without, gap_spans)
     changed = graded & (no_gap != without)
     m.update(gap_changed=int(changed.sum()), gap_changed_first=int((changed & first).sum()))
     return m
@@ -323,12 +392,18 @@ def main():
     print("\n2. La regla, por tipo (≥ {} con transición, recorrido ≤ {:g} s, ≥ {} con balón y medianas a ≤ {:g} s,"
           " y el ancla fija más cerca del balón que la transición de cada ventana)".format(
               MIN_WINDOWS, MAX_IQR_S, MIN_BALL, MAX_AGREE_S))
+    print("   placebo: las ventanas desplazadas {} min, lejos de reinicios reales: {}; un tipo no tiene ancla si"
+          " su placebo también tiene poca dispersión".format(
+              "/".join("{:+g}".format(s / 60) for s in PLACEBO_SHIFTS_S), cases(m["placebo_windows"])))
     for kind, t in m["by_type"].items():
-        enough, tight, agree, beats, ok = t["rule"]
+        enough, narrow, agree, beats, _ = t["rule"]
+        ok = kind in m["anchors"]
         anchor = "   ancla a {:+.2f} s ({} frames) del inicio".format(
             m["anchors"][kind] / fps, m["anchors"][kind]) if ok else ""
-        print("   {:<22} suficientes {}   poca dispersión {}   el balón coincide {}   el ancla gana {}   -> ancla:"
-              " {}{}".format(kind, yes(enough), yes(tight), yes(agree), yes(beats), yes(ok), anchor))
+        print("   {:<22} suficientes {}   poca dispersión {}   el balón coincide {}   el ancla gana {}   el placebo"
+              " no se concentra {} (n={})   -> ancla: {}{}".format(
+                  kind, yes(enough), yes(narrow), yes(agree), yes(beats), yes(t["placebo_ok"]),
+                  cases(len(t["placebo"])), yes(ok), anchor))
 
     print("\n3. La capa con esas anclas")
     if m["anchors"]:
@@ -336,6 +411,9 @@ def main():
             cases(m["spans"]), *m["conflicts"]))
         print("   posesiones y paradas: sin la capa {} y {}   con ella {} y {}".format(
             *m["runs"][0], *m["runs"][1]))
+        print("   D en lo evaluado: sin la capa {:.1f} %   con ella {:.1f} %   dentro de la banda ({:g}–{:g} % y ≤ {}"
+              " paradas): {}".format(100 * m["dead_share"][0], 100 * m["dead_share"][1], 100 * BAND_D[0],
+                                     100 * BAND_D[1], MAX_STOPS, yes(m["band_ok"])))
         print("   ventanas con ancla partidas por la capa (2 tramos de D o más, y más que sin ella): {}   ninguna: {}"
               .format(cases(m["split"]), yes(m["split"] == 0)))
         print("   salidas del D a ≤ {:g} s del instante anclado: sin la capa {}   con ella {}".format(
@@ -344,8 +422,8 @@ def main():
               "   de juego a D {}   de D a juego {}".format(*m["changed_inside"]))
         print("   y fuera de ellas: de un equipo al otro {}   de juego a D {}   de D a juego {}".format(
             *m["changed_outside"]))
-        print("   regla: sin conflictos, ninguna ventana partida y las posesiones no suben más que las paradas"
-              " -> se cumple: {}".format(yes(m["harm_ok"])))
+        print("   regla: sin conflictos, ninguna ventana partida, las posesiones no suben más que las paradas y"
+              " dentro de la banda -> se cumple: {}".format(yes(m["harm_ok"])))
     else:
         print("   ningún tipo tiene ancla: la capa no se prueba")
     print("\n-> la capa del instante entra: {}".format(yes(m["entra"])))
@@ -356,6 +434,12 @@ def main():
     print("\n4. La capa del hueco (PR #8): frames evaluados que cambian de etiqueta con ella: {}   de ellos, en los"
           " primeros {} s de cada hueco: {}".format(m["gap_changed"], FIRST_SECONDS_S, m["gap_changed_first"]))
     print("   frames con piezas en conflicto sin la capa del hueco: {}".format(m["gap_conflicts"]))
+    offsets = [o / fps for o in m["gap_d_offsets"] if o is not None]
+    print("   inicio del D de la entrega desde el inicio de cada hueco (huecos: {}; negativo si el D ya venía de"
+          " antes):".format(cases(len(m["gap_d_offsets"]))))
+    for name, k in bins_s(offsets, GAP_D_EDGES_S):
+        print("      {:<14} {}".format(name, cases(k)))
+    print("      {:<14} {}".format("sin D", cases(sum(o is None for o in m["gap_d_offsets"]))))
     print("\n   tiempo {:.0f} s".format(time.time() - started))
 
 

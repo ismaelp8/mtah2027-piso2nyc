@@ -2044,7 +2044,7 @@ ejecución mide las señales, aplica la regla y prueba la capa.
   por la coma flotante, como pasaría al restar segundos (55/25 − 30/25 da algo más de 1).
 
 Regla de lectura, fijada antes de ejecutarlo:
-- **Un tipo de reinicio tiene ancla si se cumplen las cuatro cosas:**
+- **Un tipo de reinicio tiene ancla si se cumplen las cinco cosas:**
   - hay 10 ventanas o más con la transición del modelo de Ana;
   - su recorrido intercuartílico es de 2 s (50 frames) o menos, así que la mitad de las ventanas cae en 2 s;
   - hay 5 ventanas o más en las que vuelve a verse el balón, y la mediana de esa reaparición queda a 1 s
@@ -2054,9 +2054,17 @@ Regla de lectura, fijada antes de ejecutarlo:
     distancia mediana del balón al ancla es menor que la distancia mediana del balón a la transición de su
     propia ventana. Si la dispersión de la transición fuera real (saques rápidos y lentos), una constante
     movería la mitad de las salidas un segundo o más; esta condición exige que, por lo menos, no se aleje de
-    la otra señal. Un empate no basta.
+    la otra señal. Un empate no basta;
+  - **el placebo no se concentra** (lo pide el plan del 15/11 para cada capa):
+    - son las mismas ventanas desplazadas ±4, 6 y 8 minutos, como el placebo de la capa del hueco;
+    - solo cuentan las que empiezan en un tramo evaluado y lejos de cualquier `GOALS` o `SET PIECES` real
+      (a más de su duración más 10 s, antes o después);
+    - si la transición del modelo de Ana en el placebo también tiene 10 casos o más con recorrido de 2 s o
+      menos, la concentración de las ventanas reales no dice nada, y el tipo se queda sin ancla.
 
   Los tipos con menos de 5 ventanas van juntos en «otros», sin ancla.
+- **El juez.** El plan pide el modelo de Ana como juez, pero aquí da una de las dos señales; la que confirma es
+  la otra, el balón. No hay un juez aparte.
 - **El ancla** es la mediana de la transición, en frames desde el inicio de la ventana.
 - **La capa (blanda):** en cada ventana de un tipo con ancla, +1 en `D` desde el inicio de la ventana hasta
   el instante anclado, y −1 en `D` durante los 5 s siguientes. Se corta en el siguiente `GOALS` o
@@ -2074,11 +2082,12 @@ Regla de lectura, fijada antes de ejecutarlo:
     - Pasar de ningún tramo a uno no cuenta: es lo que hace la capa cuando alarga hasta el instante un `D`
       que acababa en el inicio de la ventana (por ejemplo, el de la capa del hueco);
   - las posesiones no suben más que las paradas (cada posesión nueva tiene que venir de una parada nueva
-    que la parte).
+    que la parte);
+  - **la entrega con la capa queda dentro de la banda del plan** (§3, 15/11): del 15 al 60 % de `D` en lo
+    evaluado y 250 paradas como mucho.
 - **La capa entra** si algún tipo tiene ancla, alguna ventana recibe la capa y se cumple la condición de
-  daño. Si no, se queda fuera, y con
-  esta salida no se reajusta nada: ni los 2 s, ni las 10 y 5 ventanas, ni el 1 s, ni los 2 s de sostén, ni
-  los 10 s de búsqueda, ni las puntuaciones.
+  daño. Si no, se queda fuera, y con esta salida no se reajusta nada: ni los 2 s, ni las 10 y 5 ventanas,
+  ni el 1 s, ni los 2 s de sostén, ni los 10 s de búsqueda, ni el placebo, ni la banda, ni las puntuaciones.
 - **Si entra,** y solo entonces, el script imprime los desfases en frames, listos para copiar. Cómo se
   conectan en `evidence` lo decide Ismael:
   - copiando la constante en `possession/dead_ball.py`, que es la excepción a §2;
@@ -2143,9 +2152,12 @@ Regla de lectura, fijada antes de ejecutarlo:
     - con conflictos: no entra;
     - con el reinicio disperso: sin ancla;
     - con tres tipos de 4 ventanas: todo va a «otros», sin ancla;
+    - con la entrega fuera de la banda, y justo en su borde (dentro sin la capa, fuera con ella): no entra;
+    - con 10 ventanas separadas 10 minutos: sin transiciones en el placebo hay ancla; con el placebo tan
+      concentrado como las reales, no;
     - con el siguiente reinicio cortando la búsqueda: sin señales.
 
-  Romper la capa y el script a propósito (58 cambios, uno a uno, entre ellos los 8 que el revisor vio
+  Romper la capa y el script a propósito (70 cambios, uno a uno, entre ellos los 8 que el revisor vio
   pasar sin que fallara nada) hace fallar alguna prueba.
 
 **Revisión antes de subirla (15/11).** El revisor encontró en la primera versión seis agujeros, y se
@@ -2159,6 +2171,10 @@ arreglaron antes de ejecutar nada:
   los bordes de los cortes y las posesiones con y sin la capa al revés.
 
 También pidió nombrar el choque con §2 del plan y el retraso que hereda el ancla, que van arriba.
+
+**El plan nuevo de Ismael (15/11, tras la revisión externa)** pide para cada capa de esta pieza un placebo
+desplazado y la entrega dentro de la banda. Las dos cosas se añadieron a la regla antes de ejecutar nada, igual
+que el histograma de la tarea 3.
 
 **Segunda revisión (15/11), también antes de subirla y de ejecutar nada:**
 - **La condición de daño contaba como parada partida el paso de 0 a 1 tramos de `D`.** Es justo lo que hace la
@@ -2174,8 +2190,14 @@ Lo que pidió el revisor de la PR #8:
   (`05b6d98`), y esta rama se queda con su texto.
 - **Los recuentos de casos de menos de 5** (goles, tramos, ventanas, reinicios) se tapan con «< 5» en todas
   las secciones de `validation/partido/agregados_dead_ball.py`; los frames, no.
-- **El agregado que faltaba** (de los frames que cambian de etiqueta con la capa del hueco, cuántos caen en
-  los primeros 5 s de cada hueco) va como sección 4 de este script. Es descriptivo.
+- **Los agregados que faltaban** (tarea 3 del plan del 15/11) van como sección 4 de este script, y los dos
+  son descriptivos:
+  - de los frames que cambian de etiqueta con la capa del hueco, cuántos caen en los primeros 5 s de cada
+    hueco;
+  - un histograma grueso de la distancia entre el inicio de cada hueco y el inicio del `D` de la entrega: por
+    debajo de 0 (el `D` ya venía de antes), de 0 a 1 s, de 1 a 3, de 3 a 5, 5 s o más, y sin `D`.
+
+  Dar más peso al principio del hueco necesitaría su propia regla, escrita antes de medir.
 - **Si se enciende la limpieza de Antonio** (`clean_v1`), se repiten `agregados_dead_ball.py` y este script con
   la misma regla. Los dos imprimen con qué limpieza se midió.
 
