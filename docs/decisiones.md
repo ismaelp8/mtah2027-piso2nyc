@@ -2183,4 +2183,31 @@ De paso, solo para mirar: **un slot duplicado cuenta doble en los núcleos de B5
   deja. No entra en esta ronda.
 - Cuánto pasa en el partido solo lo dice un agregado de `validation/partido/` que ejecute una persona.
 
-Resultado: pendiente.
+Resultado (15/11; `validation/resultados/2026-11-14_apuesta_b.md` §11, código `1142773`) [medido]:
+- **Instrumento:**
+  - los coeficientes de B1 a B5 no cambian;
+  - el detector repite el anexo A.4 (24,2 / 27,6 / 31,8 eventos por minuto);
+  - la fila de `main` de `d_propio.py` repite 629 / 628 y 545.
+- **1. Harness con §5.8 frente a `main`: empatan los tres.** El que más se acerca es B7: +0,012 y +0,015
+  con el flag (6 de 7), y −0,005 y +0,001 con el control. B6 pierde con el control (−0,017 y −0,013), y B8
+  da +0,000 con el flag.
+- **2. Eventos:**
+  - B7 sube las recuperaciones +2,6 y los duelos con cambio +5,2 / +4,4, con −2,8 en los duelos sin
+    cambio. Cumple.
+  - B8 cumple por poco: +1,0 / +1,5 en las recuperaciones.
+  - B6 no cumple: bajan las recuperaciones.
+- **3. `D` propio: no lo cumple ninguno.**
+  - B6: `spellF1` con el control 0,605 y 0,634, frente a 0,616 y 0,642.
+  - B7: 627 paradas frente a 628 «sin bloques».
+  - B8: `spellF1` con el flag 0,415 y 0,431, frente a 0,416 y 0,433.
+
+Decisión y por qué: **ninguno cumple los tres criterios: es un empate, y por la regla de parada se cierra
+la evidencia de equipo.** B5 sigue en la entrega, y `pipeline.PIECES` no cambia. No hay segunda vuelta ni
+combinaciones.
+- B7 aprende algo del instante del cambio: mejora los eventos y gana un poco con el flag. Pero no llega al
+  +0,03 y no se mueve con el control.
+- Esto confirma lo que esperaba la revisión (de −0,01 a +0,02).
+
+Descartado: B6, B7 y B8. Y arreglar el slot duplicado de los núcleos: sería un cuarto candidato.
+`validation/partido/slots_duplicados.py` dice cuánto pasa en el partido, si Ismael lo ejecuta.
+
