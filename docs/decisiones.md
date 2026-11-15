@@ -1603,3 +1603,45 @@ Abierto:
   van en la misma PR, cada una con sus agregados. Una capa que no pasa no entra en `evidence`.
 - **Aviso para Ismael:** `possession/pipeline.py` no pide el Smart Tagging en `games.require`. Si falta,
   el error sale de `ET.parse` y se entiende peor.
+
+Resultado de `validation/partido/agregados_dead_ball.py` (ejecutado por Manuel el 15/11, con la regla ya en
+GitHub en `e677893`; la salida, tal cual, en `validation/resultados/2026-11-15_agregados_dead_ball.md`):
+- **[medido] De gol a saque:** 4 goles y 4 saques tras gol, pero no ancla ninguno. Las ventanas `GOALS`
+  duran 169 s de mediana.
+- **[medido] El control de la prueba del balón falla:** en el tramo antes del saque de la 2ª parte, que es
+  `D`, el balón visto va deprisa el 46,7 % del tiempo, frente al 50,5 % del partido entero.
+- **[medido] El hueco antes de cada reinicio:**
+  - 53 ventanas: hueco 28 (52,8 %), balón visto 23, hueco largo 0 y reinicio dentro 2;
+  - por tipo, con hueco: banda 13 de 26, córner 11 de 12, saque de puerta 2 de 10 y falta 2 de 5;
+  - placebo: 65 de 279 inicios (23,3 %);
+  - modelo de Ana: `D` en el 47,4 % del partido, el 94,6 % del control (solo el tramo antes del saque,
+    porque gol a saque no entra) y el 84,5 % de los huecos; punto medio, 71,0 %.
+- **[medido] El `Team` de los `SET PIECES`:** 27 lo traen, y los 27 coinciden con un nombre de los
+  metadatos del ATD (16 el local y 11 el visitante).
+
+Decisión según la regla, sin cambiarla:
+- **De gol a saque no entra:** no ancla ningún gol, y además el control no pasa. Queda programada y probada
+  (`goal_to_kickoff` y `goal_to_kickoff_mask`), fuera de `dead_mask`.
+- **El hueco antes de cada reinicio entra en `evidence`:** `GAP_SCORE` de 1 por frame en la columna `D`,
+  sin ajustar. La escala la ajusta David con los costes del decodificador.
+
+Lo que la regla no preveía (no cambia la decisión):
+- **[inferencia] Las ventanas `GOALS` parecen cubrir la parada entera hasta el saque,** no acabar con el
+  balón en la portería. La suposición (a) falla, pero de la forma que deja la capa sin tramos, no de la
+  que fuerza `D` en juego. Usar la propia ventana `GOALS` como `D` sería un candidato nuevo: se escribiría
+  y se mediría antes de entrar. Con esta salida no se hace.
+- **[medido] La prueba del balón deprisa no separa `D` de juego en este partido** (46,7 % frente a
+  50,5 %). [inferencia] El balón del ATD no está quieto durante el `D`, o tiene ruido: cualquier capa que
+  feche el `D` con la velocidad del balón tiene que contar con ello.
+- **Los márgenes de la capa 4 son justos:** con 2 huecos menos, la cobertura bajaría al 49,1 %.
+- **[medido, descriptivo] En los primeros 5 s de los huecos el modelo de Ana solo ve `D` en el 60,9 %,**
+  por debajo del punto medio, frente al 84,5 % del hueco entero. [inferencia] O algunos huecos empiezan
+  antes de la parada, o el modelo llega tarde al instante (entrada de Ismael). El inicio de la capa sigue
+  **[sin verificar]**. Si la entrega muestra paradas que empiezan antes de tiempo, lo primero es bajar
+  `GAP_SCORE`, con los costes.
+- **Por tipo, el hueco aparece sobre todo antes de los córners** (11 de 12) y casi nunca antes de los
+  saques de puerta (2 de 10).
+- **El `Team` coincide siempre con los nombres del ATD:** la capa del equipo que reanuda (27 reinicios:
+  córner, saque de puerta y falta) se puede escribir. Queda pendiente.
+- **Falta comprobar la entrega regenerada:** que no haya conflictos entre piezas y que la ventana pública
+  no esté rota. Se hace antes de mergear.

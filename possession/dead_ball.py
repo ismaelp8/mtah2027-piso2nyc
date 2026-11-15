@@ -18,9 +18,11 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
 - **El hueco sin balón antes de cada reinicio** (idea de Ismael): puntuación blanda de `D` desde que se
   pierde el balón hasta el inicio de la ventana `SET PIECES`.
 
-**Solo la primera está en `evidence`** (un ancla dura: en esos frames solo se permite `D`). Las otras dos
-están programadas y probadas, pero entran solo si pasan la regla apuntada en docs/decisiones.md antes de
-medirlas (`validation/partido/agregados_dead_ball.py`). Mientras tanto, la entrega no cambia.
+**En `evidence` van la primera** (un ancla dura: en esos frames solo se permite `D`) **y la tercera**
+(GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla apuntada en docs/decisiones.md antes de
+medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por Manuel el 15/11). De gol a saque está
+programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol, porque las
+ventanas `GOALS` llegan hasta el saque.
 
 Lo que se probó y lo que se midió está en docs/decisiones.md y en validation/resultados/
 (2026-11-12_balon_muerto_atd.md y 2026-11-13_revision_balon_muerto.md).
@@ -31,7 +33,7 @@ import xml.etree.ElementTree as ET
 import numpy as np
 
 import games
-from possession.tracking import A, H, no_evidence
+from possession.tracking import A, D, H, no_evidence
 from starter.load_smart_tagging import KICKOFF_VIDEO_FRAMES
 
 HALF_NAMES = {1: "1st Half", 2: "2nd Half"}
@@ -64,8 +66,7 @@ def dead_mask(paths=None, game=games.GAME):
     """Máscara de `D` de 199.319 posiciones, indexada por frame de vídeo.
 
     Recibe las rutas de games.asset_paths() por la interfaz común del pipeline, aunque esta versión no
-    lee ningún fichero. Si de gol a saque pasa su regla, entra aquí: `mask |= goal_to_kickoff_mask(paths,
-    game)` cuando `paths` no es `None`.
+    lee ningún fichero. De gol a saque no entra aquí: no pasó su regla el 15/11 (docs/decisiones.md).
     """
     return pre_kickoff(game)
 
@@ -82,8 +83,8 @@ def spans_mask(spans, n):
 def goal_to_kickoff_mask(paths, game=games.GAME):
     """Máscara de los tramos de cada gol a su saque, que salen del Smart Tagging de `paths`.
 
-    Medida, pero todavía fuera de dead_mask y de `evidence`. validation/partido/agregados_dead_ball.py mide
-    los mismos tramos con spans_mask(goal_to_kickoff(...)), a partir de los eventos ya leídos.
+    Medida y fuera de dead_mask y de `evidence`: en este partido no ancla ningún gol (15/11).
+    validation/partido/agregados_dead_ball.py mide los mismos tramos con spans_mask(goal_to_kickoff(...)).
     """
     fps = games.GAMES[game]["fps"]
     events = smart_tagging_events(paths["smart_tagging"], fps)
@@ -147,7 +148,7 @@ def goal_to_kickoff(events, fps):
     return spans
 
 
-# -- El hueco sin balón antes de cada reinicio (idea de Ismael, 14/11). Medido, todavía fuera de `evidence`.
+# -- El hueco sin balón antes de cada reinicio (idea de Ismael, 14/11). En `evidence` desde el 15/11.
 
 # Sin balón en los LONG_GAP_S segundos antes del inicio de la ventana: es el umbral de los huecos largos del
 # perfil del ATD (validation/resultados/2026-11-14_perfil_atd.md). Un hueco de más de
@@ -155,6 +156,9 @@ def goal_to_kickoff(events, fps):
 # sabe distinguirlos. Los dos, fijados antes de medir (docs/decisiones.md, 14/11).
 LONG_GAP_S = 5
 MAX_GAP_BEFORE_RESTART_S = 60
+# Puntuación de `D` por frame de hueco. Sin ajustar: la misma escala que el +1 del jugador más cercano
+# (candidates.NEAREST_SCORE); la escala la decide David con los costes del decodificador.
+GAP_SCORE = 1.0
 # Estado de cada ventana frente a la capa.
 GAP = "hueco"                       # hay hueco y se puntúa
 BALL_SEEN = "balón visto"           # se ve el balón en los LONG_GAP_S segundos previos
@@ -217,8 +221,10 @@ def gaps_before_restarts(bx, by, events, fps):
 def evidence(trk, paths=None, game=games.GAME):
     """Lo que este módulo aporta al pipeline, con la interfaz común: `(score, allowed)`, de forma (n, 3).
 
-    Columnas en el orden `H`, `A`, `D` (possession/tracking.py). Versión 0: en los frames de `dead_mask`
-    solo se permite `D`, y no se puntúa nada más.
+    Columnas en el orden `H`, `A`, `D` (possession/tracking.py). En los frames de `dead_mask` solo se
+    permite `D`. Con `paths`, además, suma GAP_SCORE en la columna `D` en el hueco sin balón antes de cada
+    reinicio (gaps_before_restarts), con el balón de `trk`, que el pipeline ya ha limpiado. No prohíbe nada
+    más.
 
     Es la pieza del partido: usa las constantes de saque y, cuando los necesite, los ficheros de `paths`
     (Smart Tagging), así que no corre en la DFL. Lo que solo necesita el tracking va en
@@ -235,4 +241,10 @@ def evidence(trk, paths=None, game=games.GAME):
         raise ValueError("la máscara de D tiene {} frames y el tracking {}".format(len(mask), n))
     allowed[mask, H] = False
     allowed[mask, A] = False  # ni H ni A: solo D
+    if paths is not None:
+        fps = games.GAMES[game]["fps"]
+        events = smart_tagging_events(paths["smart_tagging"], fps)
+        for _, _, span in gaps_before_restarts(trk.bx, trk.by, events, fps):
+            if span is not None:
+                score[span[0]:span[1], D] += GAP_SCORE
     return score, allowed
