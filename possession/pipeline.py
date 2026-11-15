@@ -2,9 +2,11 @@
 
     python -m possession.pipeline                    # escribe evaluation/results/equipo_v0.csv
     python -m possession.pipeline --name mi_prueba
+    python -m possession.pipeline --name prueba_b9 --pieza candidates=aprendida.evidence_b9   # de prueba
 
 Lee el ATD y el Smart Tagging del partido, así que **solo lo ejecuta una persona**. Imprime solo agregados:
-las versiones de Python y numpy, el commit del código, las líneas del ATD leídas y saltadas, posesiones, paradas y rachas cortas
+las versiones de Python y numpy, el commit del código, las líneas del ATD leídas y saltadas, posesiones,
+paradas y rachas cortas
 por tramo, los conflictos entre piezas y el sha256. Si hay conflictos, no escribe el CSV.
 
     tracking -> limpieza del balón -> evidencias (equipo, estado de D, anclas de D) -> decodificador -> CSV
@@ -44,6 +46,35 @@ def default_piece(name):
     spec = PIECES[name]
     module, function = spec.split(".", 1) if "." in spec else (name, spec)
     return getattr(MODULES[module], function)
+
+
+# Los módulos de los que `--capa` puede tomar una evidencia extra (ver `resolve`).
+LAYER_MODULES = dict(MODULES, dead_ball=dead_ball)
+
+
+def resolve(spec, modules=MODULES):
+    """La función «modulo.funcion» de `modules`. Error claro si no existe."""
+    module, _, function = spec.partition(".")
+    if module not in modules or not function or not callable(getattr(modules[module], function, None)):
+        raise ValueError("no encuentro «{}»: tiene que ser modulo.funcion, con modulo uno de {}".format(
+            spec, sorted(modules)))
+    return getattr(modules[module], function)
+
+
+def overrides(piece_specs=(), layer_specs=()):
+    """Las piezas cambiadas (`--pieza nombre=modulo.funcion`) y las capas añadidas (`--capa modulo.funcion`).
+
+    Devuelve `(pieces, layers)`: el diccionario para `run(pieces=...)` y la lista de evidencias extra, que
+    reciben el tracking con el balón ya limpio. Sirve para escribir una entrega de prueba con otra pieza o
+    con una capa encendida sin tocar `PIECES`.
+    """
+    pieces = {}
+    for spec in piece_specs:
+        name, _, function = spec.partition("=")
+        if name not in PIECES:
+            raise ValueError("pieza desconocida en --pieza: «{}» (valen: {})".format(name, sorted(PIECES)))
+        pieces[name] = resolve(function)
+    return pieces, [resolve(spec, LAYER_MODULES) for spec in layer_specs]
 
 
 def combine(pieces, n):
@@ -208,8 +239,9 @@ def code_version():
         return "código: sin git"
     if head.returncode or local.returncode:
         return "código: sin git"
-    return "código: commit {}, {}".format(head.stdout.strip(), "CON CAMBIOS SIN COMMITEAR en el código de la entrega"
-                                          if local.stdout.strip() else "sin cambios locales en el código de la entrega")
+    estado = ("CON CAMBIOS SIN COMMITEAR en el código de la entrega" if local.stdout.strip()
+              else "sin cambios locales en el código de la entrega")
+    return "código: commit {}, {}".format(head.stdout.strip(), estado)
 
 
 def versions():
@@ -225,12 +257,14 @@ def sha256(path):
     return digest.hexdigest()
 
 
-def build(game=games.GAME, data_dir=None, params=None):
+def build(game=games.GAME, data_dir=None, params=None, pieces=None, layers=()):
     """Las etiquetas del partido. Lee el ATD y el Smart Tagging: solo lo ejecuta una persona.
 
     Pide los ficheros antes de leer nada. El Smart Tagging lo usa dead_ball.evidence desde el 15/11, y sin
     él no hay entrega: el error dice qué falta y dónde se esperaba. Si el ATD tiene alguna línea saltada o
     repetida, o algún frame sin línea, también da error (`check_atd`).
+
+    `pieces` y `layers` son para entregas de prueba (`overrides`): sin ellos, la entrega.
     """
     games.require(["atd_meta", "atd_raw", "smart_tagging"], game, data_dir)
     paths = games.asset_paths(game, data_dir)
@@ -238,7 +272,7 @@ def build(game=games.GAME, data_dir=None, params=None):
     trk = tracking.from_atd(paths, game, report=report)
     check_atd(report["atd"])
     anchors = lambda clean: dead_ball.evidence(clean, paths, game)  # noqa: E731
-    codes = run(trk, extra=[anchors], params=params, report=report)
+    codes = run(trk, extra=[anchors] + list(layers), params=params, report=report, pieces=pieces)
     return codes, trk.blocks, report
 
 
@@ -254,12 +288,24 @@ def main():
     parser = argparse.ArgumentParser(description="Genera la entrega a partir del ATD del partido.")
     parser.add_argument("--name", default=DEFAULT_NAME, help="nombre del CSV, sin extensión")
     parser.add_argument("--out", default=RESULTS_DIR, help="carpeta de salida")
+    parser.add_argument("--pieza", action="append", default=[], metavar="NOMBRE=MODULO.FUNCION",
+                        help="entrega de prueba: cambia una pieza de PIECES (candidates=aprendida.evidence_b9)")
+    parser.add_argument("--capa", action="append", default=[], metavar="MODULO.FUNCION",
+                        help="entrega de prueba: suma una evidencia, que recibe el tracking con el balón limpio")
     args = parser.parse_args()
 
-    codes, blocks, report = build()
+    pieces, layers = overrides(args.pieza, args.capa)
+    if (pieces or layers) and args.name == DEFAULT_NAME:
+        print("Una entrega de prueba (--pieza o --capa) necesita su propio --name: así no se confunde con la "
+              "entrega.")
+        sys.exit(2)
+    codes, blocks, report = build(pieces=pieces, layers=layers)
     path = os.path.join(args.out, args.name + ".csv")
     print(versions())
     print(code_version())
+    print("piezas: {}".format("; ".join(["{} cambiada por {}".format(*spec.split("=", 1)) for spec in args.pieza]
+                                        + ["capa añadida {}".format(spec) for spec in args.capa])
+                              or "las de la entrega (PIECES), sin capas añadidas"))
     print(atd_lines(report["atd"]))
     for line in summary(codes, blocks):
         print(line)

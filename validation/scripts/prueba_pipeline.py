@@ -348,6 +348,34 @@ def check_build_requires(folder):
           not bad and not raises(ValueError, lambda: pipeline.check_atd(counts)),
           "no da error: {}".format(bad) if bad else "")
 
+    # Con un ATD sin nada raro, build pasa a run la pieza cambiada y la capa añadida, detrás de las anclas.
+    seen = {}
+    trk_without_blocks = tracking.Tracking(*([None] * 6), (), 25)
+
+    def clean_from_atd(paths, game, report=None):
+        report["atd"] = dict(counts)
+        return trk_without_blocks
+
+    def record(trk, extra=(), params=None, report=None, pieces=None):
+        seen.update(extra=list(extra), pieces=pieces)
+        return None
+
+    def layer(trk):
+        return None
+
+    real = games.require, games.asset_paths, tracking.from_atd, pipeline.run
+    games.require = lambda *args, **kwargs: None
+    games.asset_paths = lambda *args, **kwargs: {}
+    tracking.from_atd, pipeline.run = clean_from_atd, record
+    try:
+        with no_files():
+            pipeline.build(data_dir=folder, pieces={"candidates": candidates.evidence}, layers=[layer])
+    finally:
+        games.require, games.asset_paths, tracking.from_atd, pipeline.run = real
+    check("build pasa a run la pieza cambiada y la capa, además de las anclas de dead_ball",
+          seen.get("pieces") == {"candidates": candidates.evidence} and len(seen.get("extra", [])) == 2
+          and seen["extra"][1] is layer)
+
 
 def check_csv(codes, folder):
     print("CSV de la entrega")
@@ -486,12 +514,22 @@ def check_main(codes, folder):
     def refuse(*args, **kwargs):
         raise AssertionError("pipeline.main ha intentado buscar los ficheros del partido")
 
-    def run_main(name, conflicts):
+    asked = {}
+
+    def fake_build(**kwargs):
+        asked.clear()
+        asked.update(kwargs)
+        return codes, blocks, {"atd": counts, "conflictos": conflicts_now[0]}
+
+    conflicts_now = [0]
+
+    def run_main(name, conflicts, extra_args=()):
         # build cambiado por uno inventado, y games.require y games.asset_paths por uno que da error: aunque
         # alguien añada a main una lectura del partido, esta prueba no la haría.
         real = pipeline.build, sys.argv, games.require, games.asset_paths
-        pipeline.build = lambda: (codes, blocks, {"atd": counts, "conflictos": conflicts})
-        sys.argv = ["pipeline", "--out", folder, "--name", name]
+        conflicts_now[0] = conflicts
+        pipeline.build = fake_build
+        sys.argv = ["pipeline", "--out", folder, "--name", name] + list(extra_args)
         games.require = games.asset_paths = refuse
         shown, status = io.StringIO(), 0
         try:
@@ -512,6 +550,26 @@ def check_main(codes, folder):
           "python " in shown and "numpy " + np.__version__ in shown and "código: " in shown
           and "líneas del ATD: " in shown and "tramo 2, rachas cortas" in shown
           and "sha256: " + pipeline.sha256(path) in shown)
+    check("sin --pieza ni --capa, build recibe las piezas de la entrega y lo dice",
+          not asked.get("pieces") and not asked.get("layers") and "piezas: las de la entrega (PIECES)" in shown)
+
+    # Entregas de prueba: otra pieza o una capa más, sin tocar PIECES.
+    trial = ["--pieza", "candidates=aprendida.evidence_b9", "--capa", "dead_state.evidence"]
+    status, shown = run_main(pipeline.DEFAULT_NAME, 0, trial)
+    check("una entrega de prueba con el nombre de la entrega: no se escribe",
+          status == 2 and not os.path.exists(os.path.join(folder, pipeline.DEFAULT_NAME + ".csv")))
+    status, shown = run_main("prueba_b9", 0, trial)
+    check("con su propio nombre: build recibe la pieza cambiada y la capa, y la salida lo dice",
+          status == 0 and asked.get("pieces") == {"candidates": aprendida.evidence_b9}
+          and asked.get("layers") == [dead_state.evidence]
+          and "candidates cambiada por aprendida.evidence_b9" in shown
+          and "capa añadida dead_state.evidence" in shown
+          and os.path.exists(os.path.join(folder, "prueba_b9.csv")))
+    check("una pieza o una función que no existen dan error claro",
+          raises(ValueError, lambda: pipeline.overrides(["decoder=temporal.decode"]))
+          and raises(ValueError, lambda: pipeline.overrides(["candidates=aprendida.no_existe"]))
+          and raises(ValueError, lambda: pipeline.overrides((), ["os.remove"]))
+          and pipeline.PIECES["candidates"] == "aprendida.evidence_b5")
     real_root = pipeline.ROOT
     pipeline.ROOT = folder  # una carpeta que no es un repositorio de git
     try:

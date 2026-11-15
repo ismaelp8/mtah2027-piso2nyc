@@ -92,6 +92,9 @@ que faltan, los scripts y los resultados. El porqué está en
 | `partido/huecos_y_cambios.py` | **lee el partido** (ATD) y una entrega nuestra: dónde caen nuestros cambios respecto a los huecos del balón, frente a la DFL, con la regla de `posesiones_cortas/BITACORA.md` §14. Lo ejecuta una persona | **datos del partido: solo una persona** |
 | `scripts/prueba_huecos.py` | prueba `posesiones_cortas/huecos.py` y la regla de `partido/huecos_y_cambios.py` con datos inventados | ninguno del partido |
 | `posesiones_cortas/sandwiches.py` | ¿cuenta la GT los toques sin control? Posesiones cortas entre dos del otro equipo, por convención; con `--gt-publica`, también en la GT pública | DFL, SkillCorner (`lector.ENTRENAMIENTO`) y la GT pública |
+| `scripts/peso_balon_fuera.py` | D7: el peso de la capa «balón fuera» con la fórmula fijada antes (`W = 1 − P95` de la puntuación de `dead_state` en el juego vivo); sale 0 | DFL |
+| `partido/balon_fuera.py` | **lee el partido** (ATD) y una entrega nuestra: D7, cuántas veces se ve el balón a más de 1 m fuera y llegamos tarde con el `D`, con la regla de `docs/decisiones.md` (15/11). Lo ejecuta una persona | **datos del partido: solo una persona** |
+| `scripts/prueba_balon_fuera.py` | prueba `partido/balon_fuera.py` y su regla con un balón y unas etiquetas inventados | ninguno del partido |
 | `posesiones_cortas/puerta_no_lineal.py` | fase 3, puerta: una red de una capa con los rasgos de B9 y de los jugadores, fuera de muestra | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
