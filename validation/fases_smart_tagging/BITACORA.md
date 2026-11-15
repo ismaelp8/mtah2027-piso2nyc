@@ -178,3 +178,54 @@ nuestra: lo ejecuta Antonio, en local, nunca Claude** (regla nº 1).
   las `ATTACKING TRANSITION`, lo decide Ismael. Antes haría falta saber cuánto tarda nuestro cambio después de
   esos inicios.
 - **Nada de esto se ha encendido,** y la entrega no cambia.
+
+## 7. Recuento de revisión (Antonio, con Claude · 15/11, antes de ejecutarlo)
+
+Todo lo de esta sección está escrito antes de ejecutar nada. Sirve para dos cosas: cerrar la revisión de la
+tabla que pide §3.2 y medir lo que falta de las transiciones para que Ismael decida.
+
+`python validation/partido/fases_smart_tagging_revision.py --entrega evaluation/results/equipo_v3.csv`.
+- Usa las mismas funciones, tabla, control claro, entrega y desplazamientos del placebo que §3 (importa
+  `validation/partido/fases_smart_tagging.py`).
+- **Lo ejecuta Antonio** e imprime solo agregados, con las celdas de 1 a 4 como «< 5».
+
+### 7.1 Los solapes, por código y por pareja (decide si la tabla vale)
+
+- **Por código:** en cuántos frames solapados con equipos distintos interviene cada código, por cualquiera de
+  los dos lados.
+- **Por pareja:** las 10 parejas de códigos (uno de cada lado) con más frames solapados.
+- **Fases «de zona»:** `PLAYERS IN THE BOX`, `BALL IN FINAL THIRD` y `BALL IN THE BOX` (las que marcan dónde
+  está el balón, no una acción). Se cuenta en cuántos solapados interviene al menos una.
+- **Cómo se lee:**
+  - si en el **70 % o más** de los frames solapados interviene una fase de zona, los solapes vienen de esas
+    fases, que siguen abiertas aunque cambie la posesión. Como el sentido de ataque y defensa ya está
+    comprobado (§6, las parejas idénticas), **la tabla vale tal cual, excluyendo los solapados**, y se cierra
+    la revisión de §3.2;
+  - si no, **la tabla sigue sospechosa y no se usa.**
+- **Lo que no se hace:** quitar de la tabla las fases de zona, o cualquier otro código, después de ver los
+  números. Sería otra tabla elegida con el partido. Si hiciera falta, lo decide Ismael.
+
+### 7.2 Cuánto tardamos en los contraataques (descriptivo, para Ismael)
+
+Para cada inicio de `ATTACKING TRANSITION` con `Team` `H` o `A` en un tramo evaluado (y, en el placebo, los
+mismos inicios desplazados), se calcula la **espera**: cuánto tarda nuestra etiqueta en ser la de ese equipo,
+contando desde el inicio.
+
+- **Intervalos:** ya lo era en el inicio · hasta 2 s · de 2 a 5 s · de 5 a 10 s · de 10 a 15 s · no lo es en
+  15 s.
+- **Dentro de las fases de transición,** frame a frame, con los frames evaluados de esas fases juntos:
+  - con qué etiqueta nuestra: ese equipo, el otro o `D`/`X`;
+  - lo mismo solo en los frames de control claro del equipo de la transición, donde se ve el balón en sus
+    pies.
+- **Cómo se lee** (descriptivo: no decide nada; lo decide Ismael). Se le propone medir un empujón al inicio de
+  las transiciones si se cumplen las dos:
+  - la mitad o más de los inicios esperan más de 2 s (o no llegan en 15 s), más que en el placebo;
+  - el 20 % o más de los frames de las fases de transición tienen nuestra etiqueta del otro equipo.
+
+  Si no, se le pasan los números y nada más.
+
+### 7.3 Límites
+
+- **Son 24 transiciones:** muchas celdas saldrán «< 5», y una diferencia de pocos casos no dice nada.
+- **El control claro no es la GT:** que nuestra etiqueta no coincida con el equipo que tiene el balón en los
+  pies dice dónde discrepamos de la proximidad, no dónde fallamos.

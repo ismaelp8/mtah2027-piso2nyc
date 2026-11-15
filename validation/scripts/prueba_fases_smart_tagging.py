@@ -22,6 +22,7 @@ ROOT = os.path.dirname(os.path.dirname(AQUI))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "validation", "partido"))
 import fases_smart_tagging as fst  # noqa: E402  (validation/partido/fases_smart_tagging.py)
+import fases_smart_tagging_revision as fsr  # noqa: E402  (validation/partido/fases_smart_tagging_revision.py)
 from possession.tracking import A, D, H, X, Tracking  # noqa: E402
 
 FALLOS = []
@@ -221,10 +222,80 @@ def salida_y_ficheros(r, inicios):
               codigo == 1 and "possession.pipeline --name equipo_v3" in salida.getvalue())
 
 
+def revision(trk, eventos, verdad, tramos):
+    print("Recuento de revisión (validation/partido/fases_smart_tagging_revision.py)")
+    nombre = {H: "Barcelona", A: "Atletic Club"}
+    largos = [(e, a, b) for e, a, b in tramos if b - a > 800]
+    (e1, a1, _), (e2, a2, _) = largos[0], largos[1]
+    # un solape con fase de zona (300 frames) y otro sin ella (100 frames), en tramos distintos
+    zona = evento("PLAYERS IN THE BOX", nombre[1 - e1], a1 + 100, a1 + 400)
+    otra = evento("PROGRESSION", nombre[1 - e2], a2 + 100, a2 + 200)
+    with sin_ficheros():
+        r = fsr.revision(trk, eventos + [zona, otra], verdad)
+    s = r["solapes"]
+    check("400 frames solapados, 300 con fase de zona", s["solapados"] == 400 and s["con_zona"] == 300,
+          (s["solapados"], s["con_zona"]))
+    check("por código: players in the box en 300, progression en 100",
+          s["por_codigo"]["players in the box"] == 300 and s["por_codigo"]["progression"] == 100)
+    check("las parejas cuentan cada frame una vez, con un código de cada lado",
+          sum(k for k, _, _ in s["parejas"]) == 400 and all(c1 <= c2 for _, c1, c2 in s["parejas"]), s["parejas"])
+    check("75 % con zona: la tabla vale", fsr.lectura_solapes(r)[0], fsr.lectura_solapes(r)[1])
+    zona2 = evento("PLAYERS IN THE BOX", nombre[1 - e1], a1 + 100, a1 + 200)
+    otra2 = evento("PROGRESSION", nombre[1 - e2], a2 + 100, a2 + 400)
+    r2 = fsr.revision(trk, eventos + [zona2, otra2], verdad)
+    check("25 % con zona: la tabla sigue sospechosa", not fsr.lectura_solapes(r2)[0], fsr.lectura_solapes(r2)[1])
+
+    # cuatro contraataques en inicios de tramo, con la entrega retocada: ya lo era, +1,2 s, +3 s y nunca en 15 s
+    etiquetas = verdad.copy()
+    cambios = [(e, a) for (e, a, b), (e0, _, _) in zip(tramos[1:], tramos[:-1]) if e != e0 and b - a > 500]
+    (c1, s1), (c2, s2), (c3, s3), (c4, s4) = cambios[:4]
+    etiquetas[s2:s2 + 30] = 1 - c2
+    etiquetas[s3:s3 + 75] = 1 - c3
+    etiquetas[s4:s4 + 400] = 1 - c4
+    trans = [evento("ATTACKING TRANSITION", nombre[c], s, s + 100) for c, s in ((c1, s1), (c2, s2), (c3, s3), (c4, s4))]
+    with sin_ficheros():
+        r = fsr.revision(trk, eventos + trans, etiquetas)
+    c = r["contraataques"]
+    check("esperas: 1 ya lo era, 1 hasta 2 s, 1 de 2 a 5 s, 1 que no llega en 15 s",
+          c["esperas"] == [1, 1, 1, 0, 0, 1], c["esperas"])
+    check("dentro de las transiciones: 195 frames con ese equipo y 205 con el otro",
+          c["frames"] == {"ese equipo": 195, "el otro": 205, "D o X": 0}, c["frames"])
+    check("con control claro del equipo de la transición, lo mismo (el balón está en sus pies)",
+          c["en_control"] == c["frames"], c["en_control"])
+    check("el placebo desplaza las 4 transiciones con los 6 desplazamientos",
+          len(r["placebo"]) == 6 and all(p["inicios"] <= 4 for p in r["placebo"]))
+
+    def r_de(esperas, otro, placebo_esperas):
+        return {"contraataques": {"inicios": sum(esperas), "esperas": esperas,
+                                  "frames": {"ese equipo": 100 - otro, "el otro": otro, "D o X": 0}},
+                "placebo": [{"inicios": sum(placebo_esperas), "esperas": placebo_esperas}] * 6}
+
+    check("la mitad tarde, más que el placebo, y el 20 % con el otro: se le propone a Ismael",
+          fsr.lectura_contraataques(r_de([2, 0, 1, 0, 0, 1], 20, [3, 1, 0, 0, 0, 0]))[0])
+    check("tarde pero solo el 19 % con el otro: solo los números",
+          not fsr.lectura_contraataques(r_de([2, 0, 1, 0, 0, 1], 19, [3, 1, 0, 0, 0, 0]))[0])
+    check("tarde, pero no más que el placebo: solo los números",
+          not fsr.lectura_contraataques(r_de([2, 0, 1, 0, 0, 1], 50, [1, 1, 1, 0, 0, 1]))[0])
+    check("sin transiciones: solo los números",
+          not fsr.lectura_contraataques(r_de([0] * 6, 0, [0] * 6) | {"contraataques": {
+              "inicios": 0, "esperas": [0] * 6, "frames": {"ese equipo": 0, "el otro": 0, "D o X": 0}}})[0])
+    lineas = fsr.para_imprimir(r, sha="9539ce42" + "0" * 51 + "cc17a")
+    texto = "\n".join(lineas)
+    check("la salida trae las dos partes y sus lecturas, sin ningún frame concreto",
+          "1. Solapados" in texto and "2. Contraataques" in texto and "→ la tabla" in texto and
+          not any(str(s) in texto for s in (s1, s2, s3, s4)) and len(lineas) < 60, "{} líneas".format(len(lineas)))
+    with tempfile.TemporaryDirectory() as carpeta:
+        salida = io.StringIO()
+        with contextlib.redirect_stdout(salida):
+            codigo = fsr.main(["--entrega", os.path.join(carpeta, "x.csv"), "--data-dir", os.path.join(carpeta, "no")])
+        check("sin los datos del partido avisa y sale con 1", codigo == 1 and "No encuentro el ATD" in salida.getvalue())
+
+
 def main():
     trk, eventos, etiquetas, tramos = tabla_y_regla()
     r, inicios = transiciones_y_alcance(trk, eventos, etiquetas, tramos)
     salida_y_ficheros(r, inicios)
+    revision(trk, eventos, etiquetas, tramos)
     print()
     if FALLOS:
         print("FALLAN {}: {}".format(len(FALLOS), "; ".join(FALLOS)))
