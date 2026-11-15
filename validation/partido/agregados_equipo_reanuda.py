@@ -120,24 +120,45 @@ def exit_team(codes, start, end, block_stop):
 
 
 def exit_state(codes, start, end, team, block_stop):
-    """(estado frente al `Team`, ¿se sale con el del `Team` y después, dentro del tramo, aparece el otro?)."""
-    dead = np.flatnonzero(codes[start:end] == D)
-    if dead.size == 0:
-        return NO_STOP, False
+    """(estado frente al `Team`, (cambio, muertos)) del tramo [start, end).
+
+    `cambio` es el primer frame, dentro del tramo, en que aparece el otro equipo después de salir con el
+    del `Team`; None si no aparece o si no se sale con el del `Team`. `muertos` es la máscara de los frames
+    `D` del tramo, para contar las paradas borradas (erased)."""
+    dead = codes[start:end] == D
+    if not dead.any():
+        return NO_STOP, (None, dead)
     exit_code, frame = exit_team(codes, start, end, block_stop)
     if exit_code is None:
-        return NO_EXIT, False
-    later = exit_code == team and bool(np.any(codes[frame:end] == other(team)))
-    return (SAME if exit_code == team else OTHER), later
+        return NO_EXIT, (None, dead)
+    if exit_code != team:
+        return OTHER, (None, dead)
+    later = np.flatnonzero(codes[frame:end] == other(team))
+    return SAME, ((frame + int(later[0]) if later.size else None), dead)
+
+
+def erased(dead_before, dead_after):
+    """Cuántos tramos seguidos de `D` de `dead_before` no tienen ningún frame `D` en `dead_after` (las dos,
+    máscaras del mismo tramo). Si dos se juntan en uno, ninguno cuenta como borrado."""
+    edges = np.flatnonzero(np.diff(np.concatenate(([0], dead_before.astype(np.int8), [0]))))
+    return sum(not dead_after[a:b].any() for a, b in zip(edges[::2], edges[1::2]))
 
 
 def paired(before, after):
-    """Ventana a ventana, de [(estado, ¿cambio dentro?)] sin la capa a con ella: (arregladas, rotas,
-    paradas borradas, cambios retrasados)."""
-    fixed = sum(a == OTHER and b == SAME for (a, _), (b, _) in zip(before, after))
-    broken = sum(a == SAME and b == OTHER for (a, _), (b, _) in zip(before, after))
-    lost = sum(a != NO_STOP and b == NO_STOP for (a, _), (b, _) in zip(before, after))
-    delayed = sum(a == SAME and la and b == SAME and not lb for (a, la), (b, lb) in zip(before, after))
+    """Ventana a ventana, de [(estado, (cambio, muertos))] sin la capa a con ella: (arregladas, rotas,
+    paradas borradas, cambios retrasados).
+
+    - arregladas: del otro al del `Team`; rotas: del del `Team` al otro;
+    - paradas borradas: tramos de `D` de sin la capa que con ella no tienen ningún frame `D`;
+    - cambios retrasados: sin la capa se sale con el del `Team` y después cambia al otro dentro del tramo;
+      con ella se sigue saliendo con el del `Team` (o no hay salida) y el cambio llega más tarde o no llega.
+    """
+    pairs = list(zip(before, after))
+    fixed = sum(a == OTHER and b == SAME for (a, _), (b, _) in pairs)
+    broken = sum(a == SAME and b == OTHER for (a, _), (b, _) in pairs)
+    lost = sum(erased(xa[1], xb[1]) for (_, xa), (_, xb) in pairs)
+    delayed = sum(a == SAME and xa[0] is not None and b in (SAME, NO_EXIT) and (xb[0] is None or xb[0] > xa[0])
+                  for (a, xa), (b, xb) in pairs)
     return fixed, broken, lost, delayed
 
 

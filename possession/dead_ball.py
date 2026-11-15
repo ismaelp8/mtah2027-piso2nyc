@@ -302,8 +302,9 @@ def team_restart_evidence(trk, events, home, away):
 
     Frame a frame no cambia la comparación entre `D` y el equipo que saca, pero sí entre `D` y el otro. El
     decodificador decide sobre tramos enteros, así que la capa puede mover las fronteras del `D`, borrar una
-    parada (si el que saca ya tenía el balón) y retrasar un cambio al otro equipo dentro del tramo. Por eso
-    su regla no la deja entrar si hace cualquiera de esas cosas en el partido (docs/decisiones.md, 15/11)."""
+    parada (si el que saca ya tenía el balón) y retrasar un cambio al otro equipo dentro del tramo. Su regla
+    no la deja entrar si borra una parada o retrasa un cambio en el partido; cuánto mueve las fronteras del
+    `D` se ve en su medida, y no decide (docs/decisiones.md, 15/11)."""
     n = len(trk.bx)
     score, allowed = no_evidence(n)
     for _, team, start, stop in restart_team_spans(events, home, away, trk.blocks):

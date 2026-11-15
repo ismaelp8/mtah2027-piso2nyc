@@ -608,15 +608,42 @@ def check_team_restart(game, folder):
           aer.exit_team(codes, 0, 4, 10) == (H, 3) and aer.exit_team(codes, 4, 8, 10) == (None, None)
           and aer.exit_team(codes, 0, 1, 10) == (None, None) and aer.exit_team(codes, 1, 2, 10) == (H, 3)
           and aer.exit_team(np.array([D, H, D, A], dtype=np.int8), 0, 4, 4) == (A, 3))
-    check("exit_state: el del Team, el otro, sin parada, sin salida, y si el otro aparece después",
-          aer.exit_state(codes, 0, 6, H, 10) == (aer.SAME, True)
-          and aer.exit_state(codes, 0, 6, A, 10) == (aer.OTHER, False)
-          and aer.exit_state(codes, 3, 6, H, 10) == (aer.NO_STOP, False)
-          and aer.exit_state(codes, 6, 9, H, 10) == (aer.NO_EXIT, False))
-    before = [(aer.OTHER, False), (aer.SAME, True), (aer.SAME, False), (aer.OTHER, False), (aer.SAME, False)]
-    after = [(aer.SAME, False), (aer.SAME, False), (aer.OTHER, False), (aer.NO_STOP, False), (aer.SAME, False)]
-    check("paired: arregladas, rotas, paradas borradas y cambios retrasados, ventana a ventana",
-          aer.paired(before, after) == (1, 1, 1, 1), str(aer.paired(before, after)))
+    def state(*args):
+        name, (change, dead) = aer.exit_state(codes, *args)
+        return name, change, dead.astype(int).tolist()
+
+    check("exit_state: el del Team (y cuándo aparece el otro), el otro, sin parada y sin salida, con los D",
+          state(0, 6, H, 10) == (aer.SAME, 4, [0, 1, 1, 0, 0, 0])
+          and state(0, 6, A, 10) == (aer.OTHER, None, [0, 1, 1, 0, 0, 0])
+          and state(3, 6, H, 10) == (aer.NO_STOP, None, [0, 0, 0])
+          and state(6, 9, H, 10) == (aer.NO_EXIT, None, [1, 1, 1]))
+    mask = lambda *bits: np.array(bits, dtype=bool)  # noqa: E731
+    check("erased: cuenta los tramos de D sin ningún frame D después; si se juntan o se acortan, no",
+          aer.erased(mask(0, 1, 1, 0, 1, 1, 0), mask(0, 0, 0, 0, 1, 0, 0)) == 1
+          and aer.erased(mask(1, 1, 0, 1), mask(0, 0, 0, 0)) == 2
+          and aer.erased(mask(1, 0, 1), mask(1, 1, 1)) == 0
+          and aer.erased(mask(1, 1, 1), mask(0, 1, 0)) == 0 and aer.erased(mask(0, 0), mask(0, 0)) == 0)
+    states = (aer.SAME, aer.OTHER, aer.NO_STOP, aer.NO_EXIT)
+    no_dead = (None, mask(0))
+    table = {(a, b): aer.paired([(a, no_dead)], [(b, no_dead)]) for a in states for b in states}
+    expected = {(a, b): ((1 if (a, b) == (aer.OTHER, aer.SAME) else 0),
+                         (1 if (a, b) == (aer.SAME, aer.OTHER) else 0), 0, 0) for a in states for b in states}
+    check("paired, las 16 combinaciones: solo del otro al del Team arregla y solo al revés rompe",
+          table == expected, str({k: v for k, v in table.items() if v != expected[k]}))
+    dead = (None, mask(1, 1, 0))
+    check("paired: una parada borrada cuenta sea cual sea el estado; acortada, no",
+          aer.paired([(aer.OTHER, dead)], [(aer.NO_STOP, (None, mask(0, 0, 0)))]) == (0, 0, 1, 0)
+          and aer.paired([(aer.SAME, dead)], [(aer.SAME, (None, mask(0, 0, 0)))]) == (0, 0, 1, 0)
+          and aer.paired([(aer.SAME, dead)], [(aer.SAME, (None, mask(0, 1, 0)))]) == (0, 0, 0, 0))
+
+    def delay(after_state, after_change, before_change=10):
+        empty = mask(0)
+        return aer.paired([(aer.SAME, (before_change, empty))], [(after_state, (after_change, empty))])[3]
+
+    check("paired: un cambio al otro retrasado cuenta si desaparece o llega más tarde, también sin salida",
+          delay(aer.SAME, None) == 1 and delay(aer.SAME, 12) == 1 and delay(aer.NO_EXIT, None) == 1
+          and delay(aer.SAME, 10) == 0 and delay(aer.SAME, 8) == 0 and delay(aer.OTHER, None) == 0
+          and delay(aer.SAME, None, before_change=None) == 0)
     check("runs: posesiones y paradas dentro de los tramos",
           aer.runs(codes, ((0, 6), (6, 10))) == (3, 2), str(aer.runs(codes, ((0, 6), (6, 10)))))
     old, new = np.array([H, H, D, D, A, A], dtype=np.int8), np.array([A, H, H, D, D, A], dtype=np.int8)
@@ -715,6 +742,61 @@ def check_team_restart(game, folder):
           erased["exits"][0][aer.OTHER] == 1 and erased["exits"][1][aer.NO_STOP] == 1
           and (erased["fixed"], erased["lost"]) == (0, 1) and not erased["contributes"]
           and not erased["harm_ok"], "{} {}".format(erased["exits"], erased["lost"]))
+
+    # Dos huecos que encontró la tercera revisión, con el decodificador real:
+    # 1. dos paradas en el tramo, la primera floja: la capa la borra y deja la segunda;
+    # 2. un cambio al otro equipo que la capa retrasa, pero que sigue dentro del tramo;
+    # 3. el 1 más otra ventana que la capa sí arregla: no puede entrar.
+    def toy(cand, dead, windows):
+        with pp.no_files():
+            return aer.measure_teams(match, windows, "Local", "Visitante", anchors, game,
+                                     pieces={"candidates": cand, "dead_state": dead})
+
+    def cand1(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[:, H] = 0.3
+        score[w1 + 10 * fps:w1 + 18 * fps, A] = 0.6
+        return score, allowed
+
+    def dead1(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[w1:w1 + 10 * fps, D] = 0.45
+        score[w1 + 20 * fps:w1 + 25 * fps, D] = 2.0
+        return score, allowed
+
+    def cand2(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[:, H] = 0.3
+        score[w1 + 15 * fps:w1 + 20 * fps, A] = 0.6
+        score[w1 + 20 * fps:w1 + 60 * fps, A] = 2.0
+        return score, allowed
+
+    def dead2(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[w1:w1 + 10 * fps, D] = 2.0
+        return score, allowed
+
+    def cand3(trk):
+        score, allowed = cand1(trk)
+        score[w2 + 10 * fps:w2 + 20 * fps, A] = 0.6
+        return score, allowed
+
+    def dead3(trk):
+        score, allowed = dead1(trk)
+        score[w2:w2 + 10 * fps, D] = 2.0
+        return score, allowed
+
+    corner_w1 = {"code": "set pieces", "type": "corner kick", "team": "local", "start": w1, "end": w1 + 35 * fps}
+    corner_w2 = dict(corner_w1, start=w2, end=w2 + 35 * fps)
+    first, second = toy(cand1, dead1, [corner_w1]), toy(cand2, dead2, [corner_w1])
+    third = toy(cand3, dead3, [corner_w1, corner_w2])
+    check("dos paradas en el tramo y la capa borra la primera: cuenta como borrada y no entra",
+          first["lost"] == 1 and not first["harm_ok"], str((first["fixed"], first["broken"], first["lost"])))
+    check("un cambio al otro retrasado dentro del tramo: cuenta como retrasado y no entra",
+          second["delayed"] == 1 and not second["harm_ok"], str(second["delayed"]))
+    check("una parada borrada no se compensa con una salida arreglada en otra ventana",
+          third["fixed"] == 1 and third["contributes"] and third["lost"] == 1 and not third["harm_ok"]
+          and not third["entra"])
 
     # La salida se mide en el tramo cortado, no en la ventana entera: un saque de banda sin equipo corta el
     # córner a los 15 s; la parada del córner sale con el visitante y la del saque de banda, con el local.

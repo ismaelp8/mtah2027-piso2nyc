@@ -1697,7 +1697,8 @@ parte de la capa 2 de la entrada «fronteras y anclas» (14/11).
   - **retrasar un cambio real al otro equipo** dentro del tramo.
 
   Lo enseñó la revisión con casos de juguete y el decodificador real. La regla no deja entrar la capa si
-  hace cualquiera de esas cosas en el partido.
+  borra una parada o retrasa un cambio en el partido. Cuánto mueve las fronteras del `D` se ve en los
+  frames que cambian, y no decide.
 - **La escala no se puede ajustar en el harness,** porque la DFL no tiene Smart Tagging. `TEAM_SCORE` es la
   escala del +1 del jugador más cercano. Puede pesar mucho: hasta 875 puntos por ventana, frente a un coste
   de cambio de 25.
@@ -1720,7 +1721,8 @@ Regla de lectura, fijada antes de ejecutarlo:
     entrada del 14/11]. Si en un saque de puerta la ventana empezara después del golpeo, el punto sería el
     balón en vuelo: casi siempre caería fuera del cuarto final (no decide, conservador) y rara vez en el
     cuarto contrario. Por eso el script imprime, de las que deciden, cuántas tienen el punto con menos de
-    1 s de antigüedad.
+    1 s de antigüedad. Ese dato no separa los dos casos (el balón ya colocado para sacar, que está bien, o
+    el balón ya golpeado), así que no prueba ni desmiente la suposición.
   - **Qué lado defiende cada equipo en cada parte:** el de menor media de la x de sus jugadores, en los
     frames evaluados de esa parte (la x = 0,5 separa a los equipos, medido el 12/11). El script imprime la
     separación entre las dos medias, porque ese dato decide todas las ventanas de la parte.
@@ -1737,9 +1739,12 @@ Regla de lectura, fijada antes de ejecutarlo:
   - **Arreglada:** sin la capa sale con el otro, y con ella con el del `Team`. **Rota:** al revés.
   - **Condición:** la capa arregla al menos una, y más de las que rompe.
 - **3. La capa no hace daño.** Con ella, en los tramos evaluados:
-  - **no borra ninguna parada:** ningún tramo que sin la capa tenía `D` se queda sin él;
-  - **no retrasa ningún cambio:** ningún tramo que sin la capa salía con el del `Team` y después cambiaba
-    al otro dentro del tramo deja de cambiar;
+  - **no borra ninguna parada:** ningún tramo seguido de `D` de sin la capa, dentro del tramo de la
+    ventana, se queda con la capa sin ningún frame `D`. Si dos se juntan en uno, ninguno cuenta como
+    borrado;
+  - **no retrasa ningún cambio:** en ningún tramo que sin la capa sale con el del `Team` y después cambia
+    al otro dentro del tramo, con la capa se sigue saliendo con el del `Team` (o no hay salida) y el cambio
+    llega más tarde o no llega;
   - **no hay más posesiones ni más paradas.**
 
   Es conservadora a propósito: puede dejar fuera una capa que, sin que lo sepamos, acertara al retrasar un
@@ -1765,13 +1770,16 @@ Regla de lectura, fijada antes de ejecutarlo:
     retrasado (la condición 3 no se cumple), una parada borrada (no cuenta como arreglada y la condición 3
     no se cumple), y 13 córners en el límite del 90 %.
 
-  Romper la capa y el script a propósito (45 cambios, uno a uno) hace fallar alguna prueba, salvo uno
-  equivalente: contar los cambios fuera de lo evaluado, donde el decodificador siempre escribe `X`.
+  Romper la capa y el script a propósito (54 cambios, uno a uno) hace fallar alguna prueba, salvo uno
+  equivalente: contar los cambios fuera de lo evaluado, donde el decodificador siempre escribe `X`. Las
+  pruebas incluyen las 16 combinaciones de estado sin la capa y con ella, y los tres casos de juguete de
+  la tercera revisión (dos paradas con la primera borrada, un cambio retrasado dentro del tramo y una
+  parada borrada junto a otra ventana arreglada).
 - **De dónde sale cada número:** ninguno de la GT ni de la salida de este script. `TEAM_SCORE` es la escala
   del +1 del jugador más cercano. Los 60 s son el tope de la capa del hueco. El 90 %, las 10 ventanas, el
   cuarto del largo y el segundo de la antigüedad se fijan aquí.
 
-Cambios antes de medir, tras dos revisiones del agente `revisor` (el texto de arriba ya los lleva):
+Cambios antes de medir, tras tres revisiones del agente `revisor` (el texto de arriba ya los lleva):
 - **Primera revisión:**
   - **el fondo del reinicio** salía de `find_strike` (el balón quieto que empieza a moverse). El repo no lo
     acepta como el reinicio: el 12/11 «lo que encuentra no son los reinicios», y R1 no pasó su regla el
@@ -1792,10 +1800,21 @@ Cambios antes de medir, tras dos revisiones del agente `revisor` (el texto de ar
     como dato;
   - **cinco roturas no las veía ninguna prueba** (la 2ª parte, un `GOALS` que corta, la salida después del
     tramo, el primer frame de la ventana, una ventana fuera de lo evaluado): ahora sí.
+- **Tercera revisión:**
+  - **una parada borrada pasaba si el tramo tenía dos:** solo se miraba la última. Ahora se cuenta cada
+    tramo seguido de `D`;
+  - **un cambio retrasado que seguía dentro del tramo no contaba:** ahora cuenta si llega más tarde;
+  - **el texto decía que la regla bloqueaba también mover las fronteras del `D`:** no lo hace; se ve en
+    los frames que cambian, y no decide;
+  - **la prueba del emparejamiento solo cubría 5 de las 16 combinaciones de estado:** ahora las cubre
+    todas.
 
 Abierto:
 - **Los saques de banda** (26, con `Team = N/A`) quedan para otra capa: el jugador que saca está fuera de
   la banda (agregado 6, entrada del 14/11).
+- **Un límite de la condición 3:** no cuenta las ventanas que pasan de «el otro», o de «el del `Team`» sin
+  cambio, a «sin salida» (el `D` llega hasta el fin de la parte). Solo puede pasar con una ventana en los
+  últimos 35 s de una parte.
 - **Una versión que de verdad solo decidiera la salida** sería un coste del paso de `D` al otro equipo
   dentro de `possession/temporal.py`. Es la pieza de David y cambiaría la interfaz (`docs/PLAN_ENTREGA.md`
   §2): no se hace aquí.
