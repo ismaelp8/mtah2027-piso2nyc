@@ -1,0 +1,14 @@
+{
+  "main: B5 y coste 25 en todo": {},
+  "to_dead 12, from_dead 12": {
+    "nota": "tarea 2 de David (plan §3): solo medir con el D propio; descriptivo, no decide (§4)",
+    "params": {"to_dead": 12.0, "from_dead": 12.0}
+  },
+  "to_dead 12, from_dead 25": {"params": {"to_dead": 12.0, "from_dead": 25.0}},
+  "to_dead 12, from_dead 50": {"params": {"to_dead": 12.0, "from_dead": 50.0}},
+  "to_dead 25, from_dead 12": {"params": {"to_dead": 25.0, "from_dead": 12.0}},
+  "to_dead 25, from_dead 50": {"params": {"to_dead": 25.0, "from_dead": 50.0}},
+  "to_dead 50, from_dead 12": {"params": {"to_dead": 50.0, "from_dead": 12.0}},
+  "to_dead 50, from_dead 25": {"params": {"to_dead": 50.0, "from_dead": 25.0}},
+  "to_dead 50, from_dead 50": {"params": {"to_dead": 50.0, "from_dead": 50.0}}
+}
