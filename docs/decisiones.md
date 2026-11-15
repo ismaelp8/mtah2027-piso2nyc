@@ -1012,14 +1012,15 @@ Cambios antes de volver a medir (14/11 por la noche, escritos antes de la segund
     Ismael.
   - **La sensibilidad con costes 12 y 50 no se repite:** no decidía y ya se midió.
 - **Mensaje de Ismael (14/11 por la noche):**
-  - hay que priorizar `ball.py`, porque quitar los saltos imposibles del ATD ayuda a cualquier evidencia.
-    El perfil cuenta 216 **pares** de frames seguidos a más de 40 m/s, no puntos que la regla quite
-    (corregido el 14/11 por la noche, tras la revisión de Ismael);
+  - hay que priorizar `ball.py`, porque quitar los ~200 saltos imposibles del ATD ayuda a cualquier
+    evidencia;
   - N2 y Ret tendrían que ganar también a la apuesta B (B2), que ya gana a `main`.
   - Lo que sabemos del ATD (perfil del 14/11, agregados): 216 pares de frames seguidos a más de 40 m/s,
     149 rachas con balón, menos de 5 rachas de 1 o 2 frames y 15 huecos de hasta 0,5 s que suman 51
     frames. [medido, por Ismael] **En el partido, el paso 1 es el único que puede hacer algo.** En la DFL
     no hay saltos que quitar, así que el harness no lo puede ver. [inferencia]
+- **Nota de la PR 7 (Antonio, 15/11), fuera del mensaje:** el perfil cuenta 216 **pares** de frames
+  seguidos a más de 40 m/s, no puntos que la regla quite. El mensaje de arriba queda como se escribió.
 
 Segunda medida (14/11 por la noche, harness «como el ATD»; la que decide):
 
@@ -1058,7 +1059,8 @@ Decisión y por qué:
   - Lo que puede aportar está en los saltos del ATD, y el harness no lo ve. [inferencia] El perfil cuenta
     216 pares de frames seguidos a más de 40 m/s, no puntos que la regla quite: en un salto que se queda o
     en una excursión de varios frames, como mucho quita el tránsito, y el salto queda. Cuánto quita en el
-    partido: **sin medir**. (Corregido el 14/11 por la noche, tras la revisión de Ismael.)
+    partido: medido el 15/11, en la entrada «balón · corrección del paso 2 de la limpieza» de más abajo.
+    (Corregido el 15/11, en la PR 7, tras la revisión de la PR 6.)
   - Hace falta saber qué hace con el ATD antes de decidir, con un script de `validation/partido/` que
     ejecuta una persona.
   - Si entra con una prueba que no es el harness, lo decide Ismael, porque su regla dice que un empate con
@@ -1772,6 +1774,10 @@ candidato empata con `main`, se queda `main`. La entrega no cambia.
 - `decode_min` y `decode_prune` se quedan en `possession/temporal.py` como opciones, fuera de la entrega
   (`pipeline.PIECES` sigue con `decode`). `decode_min` es la garantía de duración mínima del `D` que pide el
   criterio del 13/11, por si se usa con un `D` propio que parpadee. Eso no se puede medir en el harness.
+  **Nota de la revisión (Ismael, 15/11):** no es una garantía completa. `decode_min` deja pasar la primera
+  y la última racha de cada tramo y las que corta lo prohibido, y una racha corta la alarga hasta el mínimo
+  en vez de quitarla. No está medida ni va en la entrega: el «ninguna racha por debajo del mínimo» del
+  criterio del 13/11 sigue sin cumplirse en lo que se entrega.
 - **Lo que queda abierto, para Ismael:** el decodificador solo podría mover más la nota en `to_dead` y
   `from_dead`, es decir, con el `D` propio, que el harness hoy no puede usar para decidir (plan §4).
 
@@ -1824,9 +1830,14 @@ Lectura [inferencia]:
 - **La evidencia de equipo con el balón a la vista es la mayor pérdida:** 0,40 con el flag y 0,22 con el
   control. Sobre todo, cambios reales que no se ven (recuperaciones, posesiones de 2 a 5 s).
 - **El `D` propio es la segunda:** entre 0,08 y 0,11, y en el harness va regalado.
+  **Nota de la revisión (Ismael, 15/11):** ese número sale de `--d propio`, que no decide: el balón tapado
+  en los `D` delata la etiqueta, así que la pérdida real puede ser mayor [inferencia].
 - **Con el flag, casi todo lo que se pierde son posesiones de menos de 2 s** (919 reales, el 30 %). Si la
   GT del reto se parece al flag, ahí hay mucha nota. Ir a por ellas es cambiar la convención «exigir
   control» (decisión de Ismael del 12/11), no el código del decodificador.
+  **Corrección de la revisión (Ismael, 15/11):** «casi todo» no sale de la tabla. Con sus porcentajes, las
+  de menos de 2 s son alrededor del 46 % de las que no se encuentran (unas 858 de 1.868) y las de 2 a 5 s,
+  el 36 % (unas 682). Lo que sí dice la tabla es que casi todas las de menos de 2 s se pierden (el 93 %).
 
 Decisión: ninguna. Se pasa a Ismael para el reparto hasta el corte del lunes a las 14:00.
 
@@ -1838,6 +1849,10 @@ Qué se probó: **escrito antes de ejecutar el recuento en el partido y antes de
 harness.** Sale de la revisión de Ismael de la PR 6: la limpieza entra fija, sin competir, si no empeora
 (plan, §3 y §8). El harness no puede juzgarla, porque la DFL no tiene saltos falsos; la juzga el recuento
 del partido.
+
+> **Nota de la revisión (Ismael, 15/11):** lo de «entra fija, sin competir, si no empeora» sale del mensaje
+> que se le pasó a Antonio tras revisar la PR 6. No estaba apuntado como decisión. Con el recuento ya
+> hecho, encender la limpieza sigue sin decidir: `ball.clean` devuelve el balón tal cual.
 
 - **Corrección de un fallo de `clean_v1`, no una variante nueva.** La limpieza sigue siendo una sola
   versión, con los mismos pasos y valores.
@@ -1934,7 +1949,8 @@ Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado):
   avisaba «Lo que espero». [inferencia, cuadra exacto con los recuentos] El detalle:
   - **Los 216 pares no son picos.** Son 15 tramos largos de pares seguidos, de unos 14 pares de media: 6
     tramos que forman 3 excursiones de menos de 1 s y 9 saltos que se quedan. Parece un salto grande del
-    balón (más de 40 m) suavizado en unos 25 frames.
+    balón (más de 40 m) suavizado en unos 25 frames. [Nota de la revisión, 15/11: «más de 40 m» está sin
+    verificar; del recuento solo salen más de unos 23 m, y los 25 frames son del perfil.]
   - **El paso 1 quita el interior de los 15 tramos:** 201 = 216 − 15 puntos, los del tránsito a más de
     40 m/s.
   - **Los 15 saltos siguen ahí,** entre los dos extremos de cada tramo: 26 = 15 + los 11 saltos a través de
@@ -1947,6 +1963,9 @@ Resultado (añadido después de ejecutarlo; lo de arriba no ha cambiado):
     tiene dos pares o más: también les quita el tránsito, aunque el salto queda.
   - Los 215 frames con otro equipo como el más cercano son casi todos frames que se quedan sin balón: esa
     línea no informa.
+- **Nota de la revisión (Ismael, 15/11):** (a) no falló (227 → 26). Estaba mal definida: antes cada tramo
+  cuenta unas 14 veces y después una. La regla se cumple a la letra, y su consecuencia no se aplica por eso.
+  Si la limpieza se enciende, será por decisión de Ismael, no porque haya pasado la regla.
 - **Las pruebas** (después de la revisión de esta PR): `prueba_limpieza.py` tiene 65 comprobaciones. Además
   de las 62 de arriba, prueba un salto y una excursión en la frontera entre dos tramos evaluados. Arriba
   dice «los 36 casos de la PR 6»: eran 38, con los que se añadieron al pasarlos al repo. [medido, sintético]
@@ -1965,6 +1984,10 @@ Decisión y por qué:
 - **Si se cambia, no va en esta PR.** B5 se entrenó con `ball.clean` tal cual, y
   `validation/scripts/prueba_aprendida.py` lo comprueba. Cambiar `clean` obliga a reentrenarla con
   `validation/apuesta_b/entrenar.py`, que escribe en `possession/aprendida.py`, la pieza de Ismael.
+  **Nota de la revisión (Ismael, 15/11):** encenderla obliga además a volver a ejecutar
+  `validation/partido/agregados_dead_ball.py` (la capa del hueco de `dead_ball`, PR 8, se midió con
+  `ball.clean` tal cual), a repetir la medida de B5 en el harness una vez reentrenada (sus criterios y los
+  costes van en su escala) y a regenerar y reproducir la entrega.
 - **Una regla para los 15 saltos** sería una variante nueva, con su propia entrada antes de medir. Afecta a
   muy pocos frames del partido, así que solo merece la pena si sobra tiempo antes del corte. [inferencia]
 

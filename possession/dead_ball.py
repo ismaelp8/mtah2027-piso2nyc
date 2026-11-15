@@ -152,13 +152,16 @@ def goal_to_kickoff(events, fps):
 # -- El hueco sin balón antes de cada reinicio (idea de Ismael, 14/11). En `evidence` desde el 15/11.
 
 # Sin balón en los LONG_GAP_S segundos antes del inicio de la ventana: es el umbral de los huecos largos del
-# perfil del ATD (validation/resultados/2026-11-14_perfil_atd.md). Un hueco de más de
-# MAX_GAP_BEFORE_RESTART_S no cuenta: sería una parada larga (una lesión) o juego sin balón, y la capa no
-# sabe distinguirlos. Los dos, fijados antes de medir (docs/decisiones.md, 14/11).
+# perfil del ATD (validation/resultados/2026-11-14_perfil_atd.md), que es de este partido pero sin
+# etiquetas. Un hueco de más de MAX_GAP_BEFORE_RESTART_S no cuenta: sería una parada larga (una lesión) o
+# juego sin balón, y la capa no sabe distinguirlos; ese valor es a priori. Los dos, sin ajustar y fijados
+# antes de medir (docs/decisiones.md, 14/11).
 LONG_GAP_S = 5
 MAX_GAP_BEFORE_RESTART_S = 60
 # Puntuación de `D` por frame de hueco. Sin ajustar: la misma escala que el +1 del jugador más cercano
-# (candidates.NEAREST_SCORE); la escala la decide David con los costes del decodificador.
+# (candidates.NEAREST_SCORE). Queda fija por la regla del 15/11: nadie puede medirla, porque la capa no
+# corre en la DFL y el harness usa el `D` oráculo. Si cambian `to_dead` o `from_dead` cambia su efecto: hay
+# que regenerar la entrega y mirar el % de `D` y las paradas.
 GAP_SCORE = 1.0
 # Estado de cada ventana frente a la capa.
 GAP = "hueco"                       # hay hueco y se puntúa
@@ -229,7 +232,7 @@ def evidence(trk, paths=None, game=games.GAME):
     validation/partido/agregados_dead_ball.py), con el balón de `trk`, que el pipeline ya ha limpiado. No
     prohíbe nada más.
 
-    Es la pieza del partido: usa las constantes de saque y, cuando los necesite, los ficheros de `paths`
+    Es la pieza del partido: usa las constantes de saque y los ficheros de `paths`
     (Smart Tagging), así que no corre en la DFL. Lo que solo necesita el tracking va en
     possession/dead_state.py.
 

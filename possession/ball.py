@@ -1,11 +1,12 @@
 """Limpieza del balón. Recibe un `Tracking` y devuelve otro con el balón limpio.
 
-`clean` es la que usa el pipeline: hoy, la versión 0, que devuelve el balón tal cual. Pasa a ser `clean_v1`
-con el recuento del partido (validation/partido/limpieza_balon.py), y no por ganar en el harness: en la DFL
-no hay saltos falsos que quitar, así que el harness no los ve. Ahí solo tiene que no empeorar frente a
-main. La limpieza entra fija, sin competir (docs/PLAN_ENTREGA.md §3 y §8; docs/decisiones.md, 14/11). El
-cambio lo decide Ismael con el recuento, y exige reentrenar la evidencia B5, que se entrenó con `clean` tal
-cual (validation/apuesta_b/entrenar.py).
+`clean` es la que usa el pipeline: hoy, la versión 0, que devuelve el balón tal cual. Si pasa a ser
+`clean_v1` lo decide Ismael (docs/decisiones.md, 14 y 15/11), no el harness: en la DFL no hay saltos falsos
+que quitar, así que ahí la limpieza solo puede no empeorar frente a main, y empata. El recuento del partido
+(validation/partido/limpieza_balon.py) dice que cambiaría el 0,23 % de los frames con balón. Encenderla
+exige reentrenar la evidencia B5, que se entrenó con `clean` tal cual (validation/apuesta_b/entrenar.py),
+volver a medirla en el harness, repetir validation/partido/agregados_dead_ball.py (la capa del hueco de
+dead_ball se midió con el balón sin limpiar) y regenerar y reproducir la entrega.
 
 `clean_v1` (docs/investigacion_metodos.md §2.1, A1 + A2) es una sola versión, sin variantes. Los pasos 1 y 2
 se calculan los dos sobre el balón de entrada y se quitan juntos; después va el 3:

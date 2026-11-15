@@ -20,7 +20,7 @@ del paso 2 de la limpieza y recuento en el partido»). Después de ver los núme
 - Imprime solo recuentos y porcentajes del partido entero. Una celda de 1 a 4 casos sale como "< 5", como
   en el perfil del ATD. Nada por parte, por minuto ni por frame: la salida se puede pegar a Claude.
 - Si falla, imprime solo el tipo de error y las líneas del código, sin valores de datos.
-- No escribe ningún fichero. Tarda alrededor de un minuto, casi todo leyendo el ATD.
+- No escribe ningún fichero. Tarda unos segundos (4 s el 15/11), casi todo leyendo el ATD.
 
 `recuento(trk)` es una función pura sobre un `Tracking`: la prueba (`validation/scripts/prueba_limpieza.py`)
 la ejecuta con un tracking inventado de resultado conocido.
