@@ -271,7 +271,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     si quiere; arreglarlo sería un cuarto candidato.
 - **La evidencia de equipo está reabierta** (Ismael, 15/11): «Es claro que tenemos un problema en que
   predecimos muchas menos posesiones de las que hay, sobretodo cuando son posesiones cortas.»
-  - **B5 sigue en la entrega** y `equipo_v3` sigue vigente hasta que algo gane.
+  - **B5 sigue en la entrega** como evidencia de equipo; la entrega vigente es la de arriba.
   - **El estudio de las posesiones cortas está en `main`** (`4305576`;
     `validation/resultados/2026-11-15_posesiones_cortas.md` y `validation/posesiones_cortas/BITACORA.md`).
     La rama `claude/posesiones-cortas-5e84f8` se conserva en GitHub, porque sus commits prueban que las reglas
@@ -338,9 +338,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - las paradas no se mueven y hay 4 posesiones más.
   - **Encendida desde el 15/11** (Ismael: «Sí, enciéndela»): `pipeline.DELIVERY_LAYERS`. Es una excepción a la
     regla del harness, porque la DFL no tiene Smart Tagging.
-  - **La entrega cambia:** es `equipo_v5` (arriba), igual byte a byte que `prueba_transiciones2`.
-  - Si se enciende, hay que añadir en `possession/tracking.py` y en el plan (§2) la excepción de que abre
-    ficheros del partido, como `dead_ball.py`.
+  - **La entrega cambia:** es `equipo_v5` (arriba), igual byte a byte que `prueba_transiciones2`. La excepción
+    de que abre ficheros del partido está en `possession/tracking.py` y en el plan (§2).
 - **D7, el balón fuera del campo como señal de `D`** (`docs/decisiones.md`; capas apagadas en
   `possession/dead_ball.py`):
   - **El recuento del partido la deja abierta:** con `equipo_v3` llegamos tarde en 23 de 47 rachas en que el
@@ -367,7 +366,19 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - `equipo_v4` se regeneró en el entorno limpio con `main` en `8f90dea` y sale byte a byte igual que
       `equipo_v3` (`9539ce42…cc17a`);
     - `validation/partido/comparar_entregas.py` da 0 frames distintos, y el validador da `Valid`.
-- **Sin entrar todavía en `main`:** la PR 10 de David. Ismael le ha pedido que antes termine su tarea 1.
+- **El decodificador de David, al día** (15/11; ya no tiene PR abiertas):
+  - **PR 15** (`8cc59e3`): los tramos pasan a tupla al entrar en `temporal._prepare`. Con un generador salía
+    todo `X` sin error. Tiene prueba propia, `validation/scripts/prueba_decodificador.py`. La entrega ya
+    pasaba los tramos como tupla.
+  - **PR 10** (`1ffa7db`): los costes de `D` medidos con el `D` propio. Todo empata, así que se quedan los 25 y
+    25 de `main`.
+  - Le queda, si quiere, repetir la medida con la escala de Ana a 0,5.
+- **El `D` de Manuel y Ana, PR 16** (`5176355`):
+  - **El instante del reinicio:** no entra ninguna capa, porque ningún tipo de reinicio tiene un instante fijo.
+  - **El juego vivo en el saque de cada parte:** entra en `dead_ball.evidence`. En ese frame no se permite
+    `D`. No cambia ningún frame: `equipo_v6` sale con el mismo sha256 que `equipo_v5`.
+- **Falta regenerar la entrega con `main` en `1ffa7db`** (PR 15 y PR 10). Tiene que salir otra vez
+  `27dc8aa8…efb7`.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.
