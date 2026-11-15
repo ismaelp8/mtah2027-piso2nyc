@@ -1,16 +1,21 @@
 """Limpieza del balón. Recibe un `Tracking` y devuelve otro con el balón limpio.
 
 `clean` es la que usa el pipeline: hoy, la versión 0, que devuelve el balón tal cual. Pasa a ser `clean_v1`
-cuando esta gane en el harness de la DFL al control y a la versión de main (docs/PLAN_ENTREGA.md §4).
+con el recuento del partido (validation/partido/limpieza_balon.py), y no por ganar en el harness: en la DFL
+no hay saltos falsos que quitar, así que el harness no los ve. Ahí solo tiene que no empeorar frente a
+main. La limpieza entra fija, sin competir (docs/PLAN_ENTREGA.md §3 y §8; docs/decisiones.md, 14/11). El
+cambio lo decide Ismael con el recuento, y exige reentrenar la evidencia B5, que se entrenó con `clean` tal
+cual (validation/apuesta_b/entrenar.py).
 
-`clean_v1` (docs/investigacion_metodos.md §2.1, A1 + A2) es una sola versión, sin variantes
-(docs/PLAN_ENTREGA.md §3 y §8; docs/decisiones.md, 14/11). Tres pasos, en este orden:
+`clean_v1` (docs/investigacion_metodos.md §2.1, A1 + A2) es una sola versión, sin variantes. Los pasos 1 y 2
+se calculan los dos sobre el balón de entrada y se quitan juntos; después va el 3:
 
 1. Salto imposible: se quita un punto si, para llegar a él desde el punto visto anterior y para ir de él al
    siguiente, el balón tendría que ir a más de MAX_SPEED. Se exigen los dos lados para no borrar el primer
    punto bueno después de un salto.
 2. Detección aislada: se quita una racha de ISOLATED_MAX frames con balón o menos que tiene huecos a los
-   dos lados.
+   dos lados en el balón de entrada. Corrección del 14/11: antes se calculaba después del paso 1, y el
+   agujero que abre un pico convertía en «aislada» la racha buena pegada a él.
 3. Hueco corto: se interpola en línea recta un hueco de MAX_GAP frames o menos entre dos puntos vistos,
    salvo si el hueco obliga a ir a más de MAX_SPEED (el balón no reaparece donde se le espera) o si el
    balón reaparece junto a un jugador del otro equipo: en el primer frame tras el hueco el más cercano es
@@ -20,8 +25,12 @@ cuando esta gane en el harness de la DFL al control y a la versión de main (doc
 Solo cambia el balón; los jugadores no se tocan. Lo de fuera de los límites del campo no se toca aquí: es
 señal para el `D` (possession/dead_ball.py).
 
-Límite conocido: una detección falsa de 2 frames pegada a balón bueno sobrevive a los pasos 1 y 2, porque
-el paso 1 exige el salto a los dos lados de cada punto.
+Límites conocidos:
+- una detección falsa de 2 frames pegada a balón bueno sobrevive a los pasos 1 y 2, porque el paso 1 exige
+  el salto a los dos lados de cada punto;
+- en un salto grande suavizado (varios frames seguidos a más de MAX_SPEED), el paso 1 quita el tránsito,
+  pero el salto queda: el balón sigue en el sitio de llegada. En el ATD del partido hay 15 así, y ningún
+  pico de un frame (recuento del 14/11 en docs/decisiones.md).
 """
 
 import numpy as np
@@ -99,9 +108,8 @@ def clean_v1(trk):
     cortos interpolados. `trk` no cambia."""
     bx = np.array(trk.bx, dtype=np.float64)
     by = np.array(trk.by, dtype=np.float64)
-    bad = drop_jumps(bx, by, trk.fps)
-    bx[bad], by[bad] = np.nan, np.nan
-    bad = drop_isolated(~np.isnan(bx) & ~np.isnan(by))
+    # Los pasos 1 y 2, sobre el balón de entrada: así el agujero de un pico no aísla al balón bueno de al lado.
+    bad = drop_jumps(bx, by, trk.fps) | drop_isolated(~np.isnan(bx) & ~np.isnan(by))
     bx[bad], by[bad] = np.nan, np.nan
     bx, by = fill_short_gaps(trk, bx, by)
     # De solo lectura, como el tracking que reparte el harness: una pieza posterior no puede cambiarlo.

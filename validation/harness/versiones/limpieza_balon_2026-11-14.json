@@ -1,0 +1,9 @@
+{
+  "main (B5, sin limpieza)": {
+    "nota": "lo que hay en main: el balón tal cual y la evidencia de equipo B5"
+  },
+  "limpieza v1 corregida": {
+    "nota": "ball.clean_v1 con el paso 2 sobre el balón de entrada (corrección del 14/11); tiene que empatar o mejorar, no perder (docs/decisiones.md, 14/11)",
+    "piezas": {"ball": "clean_v1"}
+  }
+}
