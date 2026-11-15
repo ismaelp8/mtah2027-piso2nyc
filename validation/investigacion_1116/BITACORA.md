@@ -138,3 +138,72 @@ Metrica sample-data traen el frame de cada `SET PIECE`, anotado por una persona,
 saques y, en esos, el arranque cae a ±12 frames del saque en el 50 % o más, con el balón tal cual y con el
 suavizado. (La pieza de estado da el final a ±25 frames en el 40 % en la DFL.) Si el balón no se ve en los `D`
 de estos datos, el sondeo se cierra sin medir nada más.
+
+## S7. Cribado de señales del propio tracking (lo pidió Ismael el 16/11, a través de la sesión principal)
+
+**Qué es.** Un cribado, no un candidato. Muchas señales sencillas del tracking, medidas todas igual, para ver
+cuáles dicen algo **donde fallamos** que B5 no diga ya. Lo que ya está dentro de B5, B9 o E2 va como
+referencia o no se repite: la velocidad de cada equipo hacia su portería, la dispersión, el juego en la
+dirección de ataque (B2), la dirección del balón (B9), el evento de toque (B8 y anexo A.4), la velocidad media,
+los lentos, los jugadores fuera y los del área (E2).
+
+**Señales** (`cribado_senales.py`; todas con el tracking degradado, sin etiquetas; cada una opina `H`, `A` o
+nada, con umbrales fijados aquí antes de medir):
+
+- **Referencias:** R1 el más cercano (N1, ya en B5); R2 la dirección del balón (B9); R3 el signo de B5 frame a
+  frame.
+- **Distancias al balón:** S1 diferencia entre el más cercano de cada equipo, de más de 1 m, con alguno a menos
+  de 10 m; S2 los dos más cercanos son del mismo equipo y están a menos de 5 m; S3, S4 y S5 mayoría de jugadores
+  a 3, 5 y 10 m; S6 quién llega antes (0,7 s de reacción y carrera a 5 m/s desde la posición prevista, como el
+  control del campo de Spearman), con 0,5 s de margen; S7 el que más rápido se acerca (más de 2 m/s, a menos de
+  10 m).
+- **Velocidades y el momento del toque:** S8 el mismo equipo a menos de 2 m durante los 12 frames anteriores;
+  S9 balón lento (menos de 3 m/s) con un jugador a menos de 3 m; S10 el jugador que se mueve con el balón (a menos
+  de 5 m, diferencia de velocidad de menos de 1,5 m/s, balón a más de 2 m/s, velocidades en ±12 frames); S11 el
+  balón frena más de 3 m/s junto a un jugador (a menos de 3 m): su equipo durante 1 s; S12 el más cercano con dos
+  rivales o más a 5 m (presionado); S13 el más cercano sin rivales a 5 m (libre); S14 dos contactos seguidos del
+  mismo equipo a menos de 2 m del balón, separados por 2 s o menos: ese equipo durante 2 s.
+- **Formación** (sin el jugador más retrasado de cada equipo, que suele ser el portero): S15 el equipo más ancho
+  (desviación típica en y, 2 m de margen); S16 el más largo (en x, 2 m); S17 el de más área (razón de 1,3); S18 el
+  de la línea defensiva más alta (5 m); S19 el equipo con tres jugadores o más por detrás del balón que el otro
+  defiende.
+- **Huecos del balón:** S20 el último más cercano visto se queda durante el hueco; S21 el balón desaparece a
+  menos de 3 m del más retrasado de un equipo, dentro de su área (el portero lo coge): ese equipo durante el hueco.
+- **Balón muerto, solo con los jugadores** (en la DFL el balón va tapado en los `D`): D1 velocidad media en 1 s
+  de menos de 1,5 m/s (`D`) o de más de 2,5 (juego); D2 frenazo colectivo (la media del segundo siguiente baja
+  más de 1 m/s): `D` durante 2 s; D3 arranque colectivo (sube más de 1 m/s): juego durante 1 s; D4 un jugador
+  entre 0,5 y 3 m fuera de las líneas: `D`; D5 ocho jugadores o más en un área y velocidad media de menos de
+  1,5 m/s: `D`.
+
+**Dónde:** la DFL con el balón «como el ATD», con el flag y con el control, con el balón a su hora y 4 frames
+tarde (lo medido en el partido); y la mitad `lector.ENTRENAMIENTO` de SkillCorner, «detectado». El examen no se
+toca. La referencia es `main` con el `D` de las etiquetas (B5 con los coeficientes que no vieron cada partido de
+la DFL; los de la entrega en SkillCorner).
+
+**En qué frames** (los de juego, con las etiquetas de cada convención):
+
+- Z1: dentro de las posesiones reales de 2 a 10 s en que `main` dice el otro equipo en la mayoría de sus frames;
+- Z2: a ±1 s de los cambios directos de equipo reales;
+- Z3: el primer y el último segundo de cada parada real y el segundo de juego de antes y de después, frente a
+  `main` con su `D` propio (solo la DFL; solo las señales D);
+- Z4: los frames de juego sin balón.
+
+**Qué números:** en qué parte de los frames opina y cuánto acierta cuando opina; en Z2, cuántos frames que `main`
+falla arregla («rescata») y cuántos que acierta estropea («estropea»); y el valor añadido sobre B5: una regresión
+logística sin término independiente con la diferencia `H` − `A` de B5 y la señal, entrenada en todos los frames de
+juego de los demás partidos (uno de cada 5) y medida en el que queda fuera (en SkillCorner, en dos mitades de 5
+partidos), frente al signo de B5 solo. Es acierto por frame, no `spellF1`: el que decide es el harness.
+
+**Regla de lectura, antes de medir:**
+
+- **Una señal de equipo «añade»** si, con la regresión, sube el acierto en Z1 ∪ Z2 en 1,0 punto o más sin bajar el
+  acierto en todos los frames de juego más de 0,2 puntos, en las cuatro medidas: DFL flag, DFL control, DFL control
+  con el balón 4 frames tarde y SkillCorner.
+- **«Apuesta de convención»** si lo cumple con el flag pero no con el control o en SkillCorner.
+- **S8 y S14 son circulares con las etiquetas de control** (salen de la misma regla de «12 frames o dos toques»):
+  con ellas solo cuentan el flag y SkillCorner.
+- **Una señal de `D` «añade»** si en Z3 rescata al menos el 20 % de lo que `main` falla, el doble o más de lo que
+  estropea, y dice `D` en el 5 % o menos de los frames de juego.
+- **Si alguna señal añade,** se propone un candidato (B5 reentrenado con ella) para que lo construya otra sesión, con
+  su regla de §5.8, la mitad de entrenamiento de SkillCorner y los eventos. Si ninguna añade, se dice y se cierra.
+- Además, una fila con B5 más todas las señales de equipo a la vez: la cota de lo que este cribado puede dar.
