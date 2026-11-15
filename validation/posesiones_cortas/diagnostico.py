@@ -50,15 +50,41 @@ FPS = 25
 COSTE = temporal.DEFAULTS["switch"]
 TRAMOS = de.TRAMOS
 CONDICION_SK = "detectado"
-GRUPOS = ("N1", "balón v1", "balón v13", "balón v51", "balón v151", "jugadores")
+GRUPOS = ("N1", "balón v1", "balón v13", "balón v51", "balón v151", "posición en el campo",
+          "velocidad de los equipos", "dispersión")
 
 
 def grupo_de_rasgo(j):
-    """Grupo de la columna j de los rasgos de B2 (B5): 5 rasgos base del balón × 4 ventanas, y 10 de forma."""
+    """Grupo de la columna j de los rasgos de B2 (B5): 5 rasgos base del balón × 4 ventanas, y 10 de forma.
+
+    Los de forma se parten en tres por su nombre: la posición en el campo («juego…» y «balón en la dirección
+    de ataque…»), la velocidad de los equipos y la dispersión.
+    """
     n_balon = len(aprendida.BASE_BALON) * len(aprendida.VENTANAS_BALON)
     if j < n_balon:
         return "balón v{}".format(aprendida.VENTANAS_BALON[j % len(aprendida.VENTANAS_BALON)])
-    return "jugadores"
+    nombre = aprendida.NOMBRES["b5"][j]
+    if nombre.startswith("velocidad"):
+        return "velocidad de los equipos"
+    if nombre.startswith("dispersión"):
+        return "dispersión"
+    if nombre.startswith(("juego", "balón")):
+        return "posición en el campo"
+    raise ValueError("rasgo sin grupo: {}".format(nombre))
+
+
+def rachas_de_signo(m, gt):
+    """Posesiones del «decodificador» más simple: el signo de `m` frame a frame (un 0 sigue con el anterior),
+    con el `D` de las etiquetas. Si salen tantas como con el Viterbi, el decodificador casi solo sigue el signo."""
+    codigos = np.full(len(gt), X, dtype=np.int8)
+    for a, b in pm.valid_runs(gt):
+        signo = np.sign(m[a:b])
+        ultimo = np.maximum.accumulate(np.where(signo != 0, np.arange(b - a), -1))
+        lleno = np.where(ultimo >= 0, signo[np.maximum(ultimo, 0)], 1.0)
+        tramo_ = np.where(lleno > 0, H, A).astype(np.int8)
+        tramo_[gt[a:b] == D] = D
+        codigos[a:b] = tramo_
+    return len(pm.possession_spells(codigos, pm.valid_runs(gt)))
 
 
 def desglose_b5(trk, fuera):
@@ -213,8 +239,14 @@ def convencion_o_modelo(partidos_dfl, preds):
         en_control, _ = de.emparejar(flag, control)
         nuestras = pm.possession_spells(pm.fill_abstentions(pred, runs), runs)
         encontrada, _ = de.emparejar(flag, nuestras)
-        for (a, b, _), ctl, ok in zip(flag, en_control, encontrada):
-            tabla[(de.tramo(b - a), bool(ctl), bool(ok))] += 1
+        for (a, b, equipo), ctl, ok in zip(flag, en_control, encontrada):
+            if ctl:
+                tipo = "también en control"
+            elif np.mean(gt["control"][a:b] == equipo) >= 0.5:
+                tipo = "trozo del que retiene"  # el control da el mismo equipo: es un trozo partido por un toque
+            else:
+                tipo = "toque del rival"  # el control da el otro equipo: el toque sin control
+            tabla[(de.tramo(b - a), tipo, bool(ok))] += 1
     print("Posesiones por minuto vivo: flag {:.2f}, control {:.2f}, `main` {:.2f}.\n".format(
         por_minuto["flag"] / por_minuto["minutos vivos"], por_minuto["control"] / por_minuto["minutos vivos"],
         por_minuto["main"] / por_minuto["minutos vivos"]).replace(".", ","))
@@ -225,20 +257,26 @@ def convencion_o_modelo(partidos_dfl, preds):
         print("| {} | {} | {:.3f} | {} / {} |".format(
             "etiquetas «{}»".format(p) if p != "main" else "`main`", g, puntuar.spell_f1(flags, n_pred), n_pred,
             flags.shape[1]).replace(".", ","))
-    print("\nLas posesiones del flag, partidas en dos: las que también son una posesión del control (IoU ≥ 0,5) y "
-          "las que solo existen en el flag. «encontrada»: `main` la encuentra con IoU ≥ 0,5.\n")
-    print("| duración (flag) | también en control | encontradas | solo en el flag | encontradas |")
-    print("|---|---|---|---|---|")
+    tipos = ("también en control", "toque del rival", "trozo del que retiene")
+    print("\nLas posesiones del flag, en tres: las que también son una posesión del control (IoU ≥ 0,5); las que "
+          "no, y en la mayor parte de sus frames el control da el otro equipo (el toque del rival sin control); y "
+          "las que no, y el control da el mismo equipo (un trozo del equipo que retiene, partido por un toque). "
+          "«encontradas»: `main` las encuentra con IoU ≥ 0,5.\n")
+    print("| duración (flag) | " + " | ".join("{} | encontradas".format(t) for t in tipos) + " |")
+    print("|---|" + "---|---|" * len(tipos))
     total = collections.Counter()
-    for _, _, nombre in TRAMOS:
-        ctl = tabla[(nombre, True, True)] + tabla[(nombre, True, False)]
-        solo = tabla[(nombre, False, True)] + tabla[(nombre, False, False)]
-        total.update({"ctl": ctl, "ctl_ok": tabla[(nombre, True, True)], "solo": solo,
-                      "solo_ok": tabla[(nombre, False, True)]})
-        print("| {} | {} | {} | {} | {} |".format(nombre, ctl, de.pct(tabla[(nombre, True, True)], ctl), solo,
-                                                 de.pct(tabla[(nombre, False, True)], solo)))
-    print("| **todas** | {} | {} | {} | {} |".format(total["ctl"], de.pct(total["ctl_ok"], total["ctl"]), total["solo"],
-                                                    de.pct(total["solo_ok"], total["solo"])))
+    for _, _, nombre in TRAMOS + ((0, 0, "**todas**"),):
+        celdas = []
+        for t in tipos:
+            if nombre == "**todas**":
+                n, ok = total[(t, "n")], total[(t, "ok")]
+            else:
+                ok = tabla[(nombre, t, True)]
+                n = ok + tabla[(nombre, t, False)]
+                total[(t, "n")] += n
+                total[(t, "ok")] += ok
+            celdas.append("{} | {}".format(n, de.pct(ok, n)))
+        print("| {} | {} |".format(nombre, " | ".join(celdas)))
 
 
 def main():
@@ -261,6 +299,11 @@ def main():
     convencion_o_modelo(partidos_dfl, preds)
 
     print("\n## 2. Margen de B5 dentro de cada posesión real")
+    signo = sum(rachas_de_signo(desgloses[c["partido"]][0], c["gt"]["flag"]) for c, _ in partidos_dfl)
+    viterbi = sum(len(pm.possession_spells(pm.fill_abstentions(preds[c["partido"]], pm.valid_runs(c["gt"]["flag"])),
+                                           pm.valid_runs(c["gt"]["flag"]))) for c, _ in partidos_dfl)
+    print("\nDFL: posesiones si se sigue el signo de `m` frame a frame: {}; con el Viterbi de `main`: {}.".format(
+        signo, viterbi))
     for conv in dfl.CONVENCIONES:
         acc = nuevo_margen()
         for cargado, _ in partidos_dfl:
@@ -273,13 +316,23 @@ def main():
         ids = [i for i in lc.partidos() if i in lc.ENTRENAMIENTO]
         lc.exigir_solo_entrenamiento(ids)
         acc = nuevo_margen()
+        cuenta = collections.Counter()
         for id_ in ids:
             trk, gt = lc.tracking_de(lc.leer_crudo(id_), CONDICION_SK, id_)
             trk = puntuar.solo_lectura(trk)
             pred = pipeline.run(trk, extra=[puntuar.d_oraculo(gt)])
             m, partes, visible = desglose_b5(trk, None)
             margen_de_un_partido(gt, pred, m, partes, visible, acc)
+            runs = pm.valid_runs(gt)
+            cuenta["reales"] += len(pm.possession_spells(gt, runs))
+            cuenta["main"] += len(pm.possession_spells(pm.fill_abstentions(pred, runs), runs))
+            cuenta["signo"] += rachas_de_signo(m, gt)
+            cuenta["minutos"] += float(np.sum(np.isin(gt, (H, A)))) / FPS / 60.0
             print("hecho {}".format(id_), file=sys.stderr, flush=True)
+        print("\nSkillCorner (`lector.ENTRENAMIENTO`, «{}»): posesiones por minuto vivo, reales {:.2f} y `main` {:.2f} "
+              "({} y {}); si se sigue el signo de `m`: {}.".format(
+                  CONDICION_SK, cuenta["reales"] / cuenta["minutos"], cuenta["main"] / cuenta["minutos"],
+                  cuenta["reales"], cuenta["main"], cuenta["signo"]).replace(".", ","))
         imprimir_margen("SkillCorner, `lector.ENTRENAMIENTO` ({} partidos), «{}»".format(len(ids), CONDICION_SK), acc)
 
 
