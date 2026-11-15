@@ -4001,3 +4001,8 @@ rama en `03fe7e8` y sin cambios locales en el código de la entrega. La salida e
 - **Lo que sigue, según la regla:** regenerar la entrega con `python -m possession.pipeline --name equipo_v6` y
   validarla. Su sha256 tiene que ser `27dc8aa8…efb7`, el mismo que `equipo_v5`: la entrega vigente no cambia de
   contenido. Después la rama ya se puede mergear.
+
+**Entrega regenerada (15/11)** [medido por Ana, en su máquina, con la rama en `f6a8880`]: `python -m possession.pipeline
+--name equipo_v6` da 0 conflictos, ninguna racha corta y el sha256 `27dc8aa8…efb7`, el mismo que el «con el ancla» del
+script y que `equipo_v5`. El validador oficial la da por válida (199.319 filas). La entrega vigente no cambia de
+contenido: `equipo_v6` es `equipo_v5` byte a byte. La rama ya se puede mergear.
