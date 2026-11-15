@@ -2517,3 +2517,95 @@ es una apuesta de convención que no se traslada a SkillCorner.
 
 Descartado: la red, en sus dos brazos, y las señales de los jugadores alrededor de un cambio.
 
+### 2026-11-15 · `D` · el estado con jugadores no mira fuera de los tramos evaluados
+
+Quién: Ana. Es la tarea 1 de su bloque (`docs/PLAN_ENTREGA.md` §3), que Ismael repartió a partir del punto
+14 y de P3 de la revisión externa (`docs/revision_externa_2026-11-15.md`).
+
+Qué pasaba:
+- **Las ventanas de `possession/dead_state.py` cruzaban el borde de cada tramo evaluado.** Los rasgos
+  promedian hasta ±2 s alrededor de cada frame, y la velocidad de un jugador usa los frames t − 2 y t + 2.
+- **En la DFL del harness, fuera de cada parte no hay datos,** y la media los ignora. En el partido sí los
+  hay: los jugadores están parados antes del saque. Los primeros segundos de cada parte recibían una
+  evidencia de `D` que el harness nunca ve [inferencia de la revisión; no se ha medido en el partido].
+
+Qué se cambió:
+- **`dead_state.segments`** corta el tracking por los bordes de `trk.blocks`. Ni la ventana de un rasgo ni
+  la velocidad de un jugador usan frames de fuera del segmento de su frame.
+- **No se reentrena:** el modelo E2 y sus coeficientes son los mismos.
+- **Las sumas acumuladas siguen siendo las de todo el partido.** Solo se recortan los límites de cada
+  ventana. Donde fuera de los tramos no hay datos (la DFL del harness), el resultado es idéntico, bit a
+  bit, al de antes.
+
+Cómo se midió (7 partidos de la DFL, sin datos del partido) [medido]:
+- **Los 19 rasgos y la puntuación, bit a bit iguales a los de antes** en los frames evaluados de los 7
+  partidos (entre 137.214 y 146.810 por partido). Comparado con el código de `main` en `fb9e921`.
+- **`validation/scripts/d_estado/medir.py`:** la misma salida que antes, salvo los tiempos.
+- **`entrenar.py --comprobar`:** `MODEL` coincide con el recalculado (diferencia máxima 0).
+- **`validation/scripts/d_estado/prueba_d_estado.py`** (nuevo, con un partido inventado): lo que haya fuera
+  de los tramos no cambia la puntuación de dentro. Sin recortar, sí la cambia: 96 de los 100 primeros
+  frames de los dos tramos.
+- **`prueba_pipeline.py` y `prueba_harness.py`:** en verde.
+
+Decisión y por qué: **entra, porque quita una diferencia entre lo que valida el harness y lo que se
+entrega,** y en la DFL no cambia nada.
+- **En el partido solo pueden cambiar los rasgos de los 52 primeros y los 52 últimos frames de cada tramo
+  evaluado:** los 50 frames (2 s) de la ventana más larga del modelo E2, más los 2 del desfase de la
+  velocidad (`SPEED_LAG`). Lo que cambien las etiquetas ahí está [sin verificar]: lo dirá la entrega que
+  regenere Ismael.
+- **Más lejos de los bordes, los rasgos de velocidad pueden cambiar en el último bit.** La velocidad pierde
+  2 valores en cada borde, y eso mueve el redondeo de la suma acumulada de ahí en adelante. El redondeo de
+  la puntuación a 1/1024 lo absorbe. Con un partido inventado de 60.000 frames con datos fuera de los
+  tramos [medido]: los rasgos de velocidad cambian menos de 1e-12 en términos relativos hasta a unos
+  11.000 frames de un borde, y la puntuación cambia en 52 de 48.000 frames evaluados, todos a 51 frames o
+  menos de un borde.
+- **Para la regeneración:** conviene contar cuántas etiquetas cambian respecto a `equipo_v3` y cuántas caen
+  lejos de los cuatro bordes, porque el decodificador puede mover un cambio más allá de esos 52 frames. Los
+  frames afectados incluyen el principio de la 1ª parte, que previsiblemente cae en la ventana pública
+  [sin verificar]: lo que salga ahí no decide si el cambio se queda.
+- **Fuera de los tramos,** un frame pegado a un tramo ya no ve los datos de dentro. Ahí se escribe `X` y
+  no se evalúa.
+
+Descartado: calcular los rasgos tramo a tramo, con una suma acumulada por tramo. Haría que lo de fuera no
+moviera ni el último bit, pero cambiaría el último bit de las sumas en la 2ª parte de la DFL, y lo medido
+en el harness dejaría de ser idéntico bit a bit a lo de antes. En el partido no hay diferencia práctica
+entre las dos opciones: con las dos el último bit puede moverse lejos de los bordes.
+
+### 2026-11-15 · `D` · el estado con jugadores: opción de escala y versión de `scikit-learn`
+
+Quién: Ana. Son las tareas 2 y 3 de su bloque (`docs/PLAN_ENTREGA.md` §3; P6 de la revisión externa y lo
+que quedó pendiente de la PR 5).
+
+Qué se cambió:
+- **`dead_state.evidence(trk, scale=1.0)`:** la escala multiplica la puntuación de la columna `D`. Se
+  aplica a la puntuación ya recortada a ±8, como en la sensibilidad de
+  `validation/scripts/d_estado/medir.py`, y además se vuelve a redondear a múltiplos de 1/1024. Con 0,5 la
+  pieza puntúa entre −4 y +4.
+- **No es idéntica a esa sensibilidad:** `medir.py` no redondea, así que con 0,5 las dos difieren en 1/2048
+  como mucho. `medir.py` se queda como está, para que siga dando las cifras del 14/11: con el redondeo,
+  cuatro de ellas cambian en el último decimal (E1 y E3 con la escala 0,5; E2, ninguna) [medido, DFL].
+- **El valor por defecto es 1 y la entrega no cambia:** con la escala 1 la puntuación es la misma bit a
+  bit [medido, con un partido inventado].
+- **Para el harness:** `"piezas": {"dead_state": {"funcion": "evidence", "opciones": {"scale": 0.5}}}` en
+  un fichero de `validation/harness/versiones/`. Es lo que necesita David para su tarea 2.
+- **La versión de `scikit-learn` del entrenamiento del 14/11 es la 1.7.2,** con numpy 2.2.4, scipy 1.15.3
+  y Python 3.10.12. Queda apuntada en `possession/dead_state.py`, en `entrenar.py` (que ahora imprime las
+  versiones que usa) y en el README de `validation/scripts/d_estado/`.
+  - Es la que hay instalada en la máquina de Ana desde antes del entrenamiento [medido: fecha de
+    instalación]. Con ella, `entrenar.py --comprobar` da hoy los mismos coeficientes (diferencia máxima 0)
+    [medido].
+
+Cómo se midió: `validation/scripts/d_estado/prueba_d_estado.py`, con un partido inventado. Comprueba la
+escala 1, 0,5, 2 y 0, las escalas que dan error, que el harness acepta la opción y que el pipeline da las
+mismas etiquetas con la escala 1.
+
+Decisión y por qué: **la opción entra, apagada.** No se ha medido ninguna escala distinta de 1 con ella:
+eso es la tarea 2 de David, que es descriptiva, y lo que gane en sus dos modos y con las dos convenciones
+lo decide Ismael.
+
+Descartado:
+- **Aplicar la escala antes de recortar:** con 0,5 la pieza seguiría llegando a ±8 en los frames más
+  claros. No sería la escala que midió `medir.py` el 14/11 (a la mitad, algo mejor; al doble, peor).
+- **No volver a redondear:** con una escala que no sea potencia de 2, las sumas del decodificador dejarían
+  de ser exactas y la pieza podría deshacer empates entre `H` y `A`. El coste es que la escala 0,5 mueve la
+  puntuación 1/2048 como mucho.

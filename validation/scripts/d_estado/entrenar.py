@@ -15,6 +15,10 @@ para escribirlos en `dead_state.MODEL`. Es el único sitio donde se usa scikit-l
 Sin azar: los frames de entrenamiento son uno de cada `PASO`, y el ajuste (Newton, hasta el óptimo) es
 determinista. Dos ejecuciones dan los mismos coeficientes.
 
+Versiones con las que se entrenó el `MODEL` del módulo (14/11): scikit-learn 1.7.2, numpy 2.2.4, scipy
+1.15.3 y Python 3.10.12. El script imprime las que usa cada vez. Con otras, los coeficientes pueden cambiar
+en las últimas cifras: `--comprobar` dice si siguen dentro de la tolerancia.
+
 Para medir un candidato sin trampa, validation/scripts/d_estado/medir.py llama a `ajustar` dejando un
 partido fuera cada vez.
 """
@@ -24,6 +28,8 @@ import os
 import sys
 
 import numpy as np
+import scipy
+import sklearn
 from sklearn.linear_model import LogisticRegression
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -124,6 +130,8 @@ def main():
     modelo = ajustar(cargados, CANDIDATOS[args.candidato])
     print("# candidato {} · {} partidos · {} frames de entrenamiento ({:.1f} % D)".format(
         args.candidato, len(cargados), modelo["frames"], 100.0 * modelo["frames_D"] / modelo["frames"]))
+    print("# scikit-learn {} · numpy {} · scipy {} · Python {}".format(
+        sklearn.__version__, np.__version__, scipy.__version__, sys.version.split()[0]))
     if args.comprobar:
         dif = diferencia_con_el_modulo(modelo)
         igual = dif <= TOLERANCIA
