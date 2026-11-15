@@ -30,7 +30,7 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import games  # noqa: E402
 import prueba_pipeline as pp  # noqa: E402  (no_files: la guarda de la regla nº 1)
-from possession import dead_ball, tracking  # noqa: E402
+from possession import dead_ball, pipeline, tracking  # noqa: E402
 from starter.load_smart_tagging import KICKOFF_VIDEO_FRAMES  # noqa: E402
 
 GT_PATH = os.path.join(ROOT, "evaluation", "gt", "BAR-ATH_possession_gt_public.csv")
@@ -1212,20 +1212,44 @@ def check_restart_instant(game, folder):
     # Lo impreso: el `main` del script con el partido de los 12 saques de banda y el modelo de Ana que llega tarde,
     # sin datos (las funciones que leen el partido, sustituidas) y con la apertura de ficheros prohibida.
     shown_m = measured(pieces, late_odds, delays=air.DFL_DELAY)
+    passed = {}
+
+    def spy(*args, **kwargs):
+        passed.update(kwargs)
+        return shown_m
+
     text = run_main(air, [(games, "require", lambda *a, **k: None),
                           (games, "asset_paths", lambda *a, **k: {"atd_raw": "-", "atd_meta": "-", "smart_tagging": "-"}),
                           (tracking, "from_atd", lambda *a, **k: match),
                           (dead_ball, "smart_tagging_events", lambda *a, **k: events),
                           (air, "code_fingerprint", lambda folder: "(prueba)"),
-                          (air, "measure_instant", lambda *a, **k: shown_m)])
+                          (air, "measure_instant", spy)])
     copy_line = [line for line in text.splitlines() if "para copiar" in line]
-    ok = ("cambios a la regla después del 15/11" in text and "decidido después de ver la salida" in text
+    ok = (len(passed.get("layers", ())) == len(pipeline.DELIVERY_LAYERS) >= 1
+          and "capas de la entrega, además de dead_ball.evidence: " + ", ".join(air.layer_names()) in text
+          and "cambios a la regla después del 15/11" in text and "decidido después de ver la salida" in text
           and "la mediana (200 frames) menos el retraso de la DFL (20 frames)" in text
           and "la mediana gana" in text and "el ancla gana" not in text and "del balón a la mediana fija" in text
           and "hacen falta 7943 (el 5 %)" in text and "-> entra: el candidato A" in text
           and len(copy_line) == 1 and '{"throw-in": 180}' in copy_line[0])
-    check("main imprime los cambios a la regla, la mediana y el ancla corregida, «la mediana gana», el control de "
-          "juego con su mínimo en frames y, para copiar, el ancla corregida", ok, "" if ok else text)
+    check("main pasa las capas de la entrega e imprime los cambios a la regla, la mediana y el ancla corregida, «la "
+          "mediana gana», el control de juego con su mínimo en frames y, para copiar, el ancla corregida", ok,
+          "" if ok else text)
+
+    # Las demás capas de la entrega van en las tres ejecuciones del pipeline (sin la capa, con cada candidato y sin la
+    # capa del hueco): una capa que deja 10 frames sin ningún estado permitido da 10 conflictos en las tres.
+    def blocking_layer(c):
+        score, allowed = tracking.no_evidence(n)
+        allowed[50000:50010, :] = False
+        return score, allowed
+
+    with pp.no_files():
+        m = air.measure_instant(match, events, with_gap, no_gap, game, pieces=pieces, odds_fn=lambda c: instrument,
+                                delays=no_delay, layers=[blocking_layer])
+    check("measure_instant: las demás capas de la entrega van en las tres ejecuciones del pipeline",
+          m["conflicts_without"] == 10 and m["gap_conflicts"] == 10 and list(m["tested"]) == ["A", "B"]
+          and all(r["conflicts"] == (10, 10) for r in m["tested"].values()) and m["chosen"] is None,
+          "{} {} {}".format(m["conflicts_without"], m["gap_conflicts"], {k: r["conflicts"] for k, r in m["tested"].items()}))
 
 
 def run_main(module, replacements):
@@ -1250,7 +1274,6 @@ def check_kickoff_anchor(game, folder):
     y llama a `measure_kickoff` con la apertura de ficheros prohibida."""
     sys.path.insert(0, os.path.join(ROOT, "validation", "partido"))
     import agregados_saque_juego_vivo as sjv  # solo sus cuentas
-    from possession import pipeline
 
     fps = games.GAMES[game]["fps"]
     n = games.GAMES[game]["n_video_frames"]
@@ -1304,10 +1327,17 @@ def check_kickoff_anchor(game, folder):
     check("csv_sha256: el mismo sha256 que el CSV que escribe pipeline.write_submission",
           sjv.csv_sha256(codes) == pipeline.sha256(written) and sjv.csv_sha256(codes) != sjv.csv_sha256(np.roll(codes, 1)))
 
-    check("la regla está congelada: lo que cambia, antes de 60 s después del saque; los intervalos descriptivos, y la "
-          "banda del plan (del 15 al 60 % de D y 250 paradas)",
-          (sjv.FAR_S, sjv.DISTANCE_EDGES_S, sjv.BAND_D, sjv.MAX_STOPS) == (60, (1, 5, 30, 60), (0.15, 0.60), 250)
-          and len(sjv.RULE) == 5)
+    good_sha = sjv.VIGENTE[1] + "0" * 52 + sjv.VIGENTE[2]
+    check("la regla está congelada: la entrega vigente (equipo_v5, 27dc8aa8…efb7); lo que cambia, antes de 60 s después "
+          "del saque; los intervalos descriptivos, y la banda del plan (del 15 al 60 % de D y 250 paradas)",
+          (sjv.VIGENTE, sjv.FAR_S, sjv.DISTANCE_EDGES_S, sjv.BAND_D, sjv.MAX_STOPS)
+          == (("equipo_v5", "27dc8aa8", "efb7"), 60, (1, 5, 30, 60), (0.15, 0.60), 250) and len(sjv.RULE) == 6)
+    check("is_current: reconoce el sha256 de la entrega vigente por su principio y su final, y no otro",
+          sjv.is_current(good_sha) and len(good_sha) == 64 and not sjv.is_current("0" * 64)
+          and not sjv.is_current(sjv.VIGENTE[1] + "0" * 56) and not sjv.is_current("0" * 60 + sjv.VIGENTE[2]))
+    check("change_kinds: de D a juego, de juego a D y de un equipo al otro, sin decir qué equipo",
+          sjv.change_kinds({(D, H): 3, (D, A): 2, (H, D): 4, (H, A): 1, (A, H): 5}) == (5, 4, 6)
+          and sjv.change_kinds({}) == (0, 0, 0))
 
     # Las cuentas de la regla con etiquetas a mano, con fps 1: dos tramos, [0, 100) y [120, 300), con el saque en el 0
     # y en el 150; antes del saque de la 2ª parte, D. Sin el ancla, el D sigue 5 frames después del saque.
@@ -1326,75 +1356,100 @@ def check_kickoff_anchor(game, folder):
             out[a:b] = code
         return out
 
-    def rule(without, with_layer, conflicts=0, kick_mask=small_kick):
+    def rule(without, with_layer, conflicts=0, kick_mask=small_kick, sha=good_sha):
         counts = sjv.kickoff_counts(without, with_layer, small_blocks, kick_mask, small_graded, 1)
-        return counts, sjv.kickoff_rule(counts, conflicts)
+        return counts, sjv.kickoff_rule(counts, conflicts, sha)
 
     base = labels((120, 155, D))
     shorter = labels((120, 150, D))
     counts, (checks, ok) = rule(base, shorter)
     check("kickoff_counts y kickoff_rule: el D que seguía 5 frames tras el saque acaba en él; cambian 5 frames, de D a "
           "A, a 0–4 s del saque; no sube nada y entra",
-          ok and list(checks) == list(sjv.RULE) and all(checks.values()) and counts["changed"] == 5 and counts["pairs"] == {(D, A): 5} and counts["distances_s"] == [0, 1, 2, 3, 4]
+          ok and list(checks) == list(sjv.RULE) and all(checks.values()) and counts["changed"] == 5
+          and counts["pairs"] == {(D, A): 5} and counts["distances_s"] == [0, 1, 2, 3, 4]
           and counts["before"] == counts["far"] == 0 and counts["kick_frames"] == [1, 1] and counts["kick_dead"] == 0
           and counts["blocks"][1]["runs"] == ((1, 1), (1, 1)) and counts["stops"] == (2, 2)
+          and [b["rises"] for b in counts["blocks"]] == [[], []]
           and abs(counts["dead_share"][0] - 65 / 280) < 1e-12 and abs(counts["dead_share"][1] - 60 / 280) < 1e-12,
           "{} {}".format(counts["changed"], counts["pairs"]))
+    stale = rule(base, shorter, sha="0" * 64)
+    check("kickoff_rule: si sin el ancla no sale la entrega vigente, no entra aunque se cumpla todo lo demás",
+          not stale[1][1] and not stale[1][0][sjv.RULE[0]] and all(v for k, v in stale[1][0].items() if k != sjv.RULE[0]))
     same = rule(shorter, shorter)
     check("kickoff_rule: si no cambia nada (la entrega ya salía del D en el saque), entra",
           same[1][1] and same[0]["changed"] == 0)
     bounce = rule(base, labels((120, 150, D), (151, 155, D)))
     check("kickoff_rule: si la entrega vuelve a D justo después del saque (una posesión de 1 frame), suben las "
           "posesiones, las paradas y las rachas cortas, y no entra",
-          not bounce[1][1] and not bounce[1][0][sjv.RULE[3]] and bounce[0]["blocks"][1]["runs"] == ((1, 1), (2, 2))
-          and all(v for k, v in bounce[1][0].items() if k != sjv.RULE[3]))
+          not bounce[1][1] and not bounce[1][0][sjv.RULE[4]] and bounce[0]["blocks"][1]["runs"] == ((1, 1), (2, 2))
+          and bounce[0]["blocks"][1]["rises"][:2] == ["posesiones", "paradas"]
+          and "rachas de posesiones de < 12 frames" in bounce[0]["blocks"][1]["rises"]
+          and all(v for k, v in bounce[1][0].items() if k != sjv.RULE[4]))
     shorter_run = rule(labels((120, 150, D), (150, 175, H)), labels((120, 150, D), (150, 160, H)))
     check("kickoff_rule: si solo sube una racha corta (una posesión que pasa de 25 a 10 frames), no entra",
           not shorter_run[1][1] and shorter_run[0]["blocks"][1]["runs"][0] == shorter_run[0]["blocks"][1]["runs"][1]
-          and not shorter_run[1][0][sjv.RULE[3]])
+          and shorter_run[0]["blocks"][1]["rises"] == ["rachas de posesiones de < 12 frames",
+                                                      "rachas de posesiones de < 25 frames"]
+          and not shorter_run[1][0][sjv.RULE[4]])
     near = rule(base, labels((120, 155, D), (209, 210, H)))
     far = rule(base, labels((120, 155, D), (210, 211, H)))
     check("kickoff_rule: lo que cambia a 59 s del saque vale; a 60 s, no",
-          near[1][0][sjv.RULE[4]] and near[0]["far"] == 0 and 59 in near[0]["distances_s"]
-          and far[0]["far"] == 1 and not far[1][0][sjv.RULE[4]] and not far[1][1])
+          near[1][0][sjv.RULE[5]] and near[0]["far"] == 0 and 59 in near[0]["distances_s"]
+          and far[0]["far"] == 1 and not far[1][0][sjv.RULE[5]] and not far[1][1])
     early = rule(labels((120, 155, D)), labels((120, 140, D), (140, 150, A)))
     check("kickoff_rule: un cambio antes del saque de su parte cuenta como «antes» y no entra",
-          early[0]["before"] == 10 and not early[1][0][sjv.RULE[4]] and not early[1][1])
+          early[0]["before"] == 10 and not early[1][0][sjv.RULE[5]] and not early[1][1])
     dead_kick = rule(base, labels((120, 151, D)))
     no_kick = np.zeros(300, dtype=bool)
     no_kick[0] = True
     missing = rule(base, shorter, kick_mask=no_kick)
     check("kickoff_rule: no entra con D en el frame del saque, ni si una parte no tiene su saque (y lo que cambia ahí "
           "cuenta como lejos)",
-          dead_kick[0]["kick_dead"] == 1 and not dead_kick[1][0][sjv.RULE[1]] and not dead_kick[1][1]
+          dead_kick[0]["kick_dead"] == 1 and not dead_kick[1][0][sjv.RULE[2]] and not dead_kick[1][1]
           and missing[0]["kick_frames"] == [1, 0] and missing[0]["far"] == 5 and not missing[1][1])
     lone = rule(shorter, shorter, kick_mask=no_kick)
     twice = small_kick.copy()
     twice[160] = True
     doubled = rule(shorter, shorter, kick_mask=twice)
     check("kickoff_rule: no entra si una parte no tiene su saque o tiene dos, aunque no cambie nada",
-          not lone[1][1] and not lone[1][0][sjv.RULE[1]] and lone[0]["changed"] == 0 and lone[1][0][sjv.RULE[4]]
-          and not doubled[1][1] and doubled[0]["kick_frames"] == [1, 2] and not doubled[1][0][sjv.RULE[1]])
+          not lone[1][1] and not lone[1][0][sjv.RULE[2]] and lone[0]["changed"] == 0 and lone[1][0][sjv.RULE[5]]
+          and not doubled[1][1] and doubled[0]["kick_frames"] == [1, 2] and not doubled[1][0][sjv.RULE[2]])
     new_possession = rule(labels((120, 150, D)), labels((120, 150, D), (150, 180, H)))
     check("kickoff_rule: si sube solo el número de posesiones (una nueva de 30 frames, sin parada nueva ni racha "
           "corta), no entra",
           not new_possession[1][1] and new_possession[0]["blocks"][1]["runs"] == ((1, 1), (2, 1))
-          and new_possession[0]["blocks"][1]["short"][0] == new_possession[0]["blocks"][1]["short"][1]
-          and not new_possession[1][0][sjv.RULE[3]] and new_possession[1][0][sjv.RULE[4]])
+          and new_possession[0]["blocks"][1]["rises"] == ["posesiones"]
+          and not new_possession[1][0][sjv.RULE[4]] and new_possession[1][0][sjv.RULE[5]])
+    stop_only = rule(labels((120, 150, D), (180, 300, H)), labels((120, 150, D), (180, 210, D), (210, 300, H)))
+    check("kickoff_rule: si sube solo el número de paradas (una nueva de 30 frames entre dos posesiones, sin posesión "
+          "nueva ni racha corta), no entra",
+          not stop_only[1][1] and stop_only[0]["blocks"][1]["runs"] == ((2, 1), (2, 2))
+          and stop_only[0]["blocks"][1]["rises"] == ["paradas"]
+          and not stop_only[1][0][sjv.RULE[4]] and stop_only[1][0][sjv.RULE[5]] and stop_only[1][0][sjv.RULE[3]])
+    opens = rule(labels((0, 10, D), (120, 150, D)), labels((120, 150, D)))
+    opens_bounce = rule(labels((0, 10, D), (120, 150, D)), labels((0, 1, H), (1, 10, D), (120, 150, D)))
+    check("kickoff_rule: en el primer frame de la 1ª parte, si el D del principio desaparece entra (una parada menos); "
+          "si sale 1 frame y vuelve a D, no",
+          opens[1][1] and opens[0]["changed"] == 10 and opens[0]["blocks"][0]["runs"] == ((2, 2), (2, 1))
+          and not opens_bounce[1][1] and opens_bounce[0]["blocks"][0]["rises"][:1] == ["posesiones"])
     leaves_band = rule(labels((0, 100, H), (120, 165, D)), labels((0, 100, H), (120, 150, D)))  # 45 y 30 de 280
     check("kickoff_rule: la banda se mira en la entrega con el ancla (sin ella, dentro; con ella, fuera)",
           leaves_band[0]["dead_share"][0] >= 0.15 > leaves_band[0]["dead_share"][1]
-          and not leaves_band[1][0][sjv.RULE[2]] and not leaves_band[1][1])
+          and not leaves_band[1][0][sjv.RULE[3]] and not leaves_band[1][1])
+    check("kickoff_rule: con más de 250 paradas con el ancla no entra (y con 250, aunque sin el ancla hubiera 251, sí)",
+          not sjv.kickoff_rule(dict(counts, stops=(2, 251)), 0, good_sha)[0][sjv.RULE[3]]
+          and sjv.kickoff_rule(dict(counts, stops=(251, 250)), 0, good_sha)[0][sjv.RULE[3]])
     conflicted = rule(base, shorter, conflicts=1)
     out_of_band = rule(labels((0, 100, H), (120, 150, D)), labels((0, 100, H), (120, 150, D)))
     check("kickoff_rule: no entra con conflictos ni fuera de la banda",
-          not conflicted[1][1] and not conflicted[1][0][sjv.RULE[0]]
-          and not out_of_band[1][1] and not out_of_band[1][0][sjv.RULE[2]] and out_of_band[0]["dead_share"][1] < 0.15)
+          not conflicted[1][1] and not conflicted[1][0][sjv.RULE[1]]
+          and not out_of_band[1][1] and not out_of_band[1][0][sjv.RULE[3]] and out_of_band[0]["dead_share"][1] < 0.15)
 
     # measure_kickoff de punta a punta, sin abrir ficheros y con piezas controladas, en un partido del tamaño del real.
     # El equipo empuja a H (0,3) siempre, y una parada larga en la 2ª parte deja la entrega dentro de la banda. Tras el
     # saque de la 2ª parte, 3 s de evidencia de D: sin el ancla el D sigue esos 3 s; con el ancla, si esa evidencia
-    # suma menos de lo que cuesta volver a D y salir otra vez (50), sale en el saque; si suma más, vuelve a D.
+    # suma menos de lo que cuesta volver a D y salir otra vez (50), sale en el saque; si suma más, vuelve a D. La
+    # «entrega vigente» de estas pruebas es la que sale sin el ancla.
     def dead_after_kickoff(strength):
         def piece(c):
             score, allowed = tracking.no_evidence(n)
@@ -1408,21 +1463,32 @@ def check_kickoff_anchor(game, folder):
         score[:, H] = 0.3
         return score, allowed
 
-    def measured(strength, team=team_piece):
+    def evidence_none(c):
+        return dead_ball.evidence(c, None, game)
+
+    def runs_of(strength, anchor, layers=()):
+        with pp.no_files():
+            ev = evidence_none if anchor else sjv.without_anchor(evidence_none, game)
+            return pipeline.run(trk, extra=[ev] + list(layers),
+                                pieces={"candidates": team_piece, "dead_state": dead_after_kickoff(strength)})
+
+    def as_current(codes):
+        sha = sjv.csv_sha256(codes)
+        return ("inventada", sha[:8], sha[-4:])
+
+    def measured(strength, team=team_piece, layers=(), current=None):
         try:
             with pp.no_files():
-                return sjv.measure_kickoff(trk, lambda c: dead_ball.evidence(c, None, game), game,
-                                           pieces={"candidates": team, "dead_state": dead_after_kickoff(strength)})
+                return sjv.measure_kickoff(trk, evidence_none, game, layers=layers,
+                                           pieces={"candidates": team, "dead_state": dead_after_kickoff(strength)},
+                                           current=current or sjv.VIGENTE)
         except AssertionError:
             check("measure_kickoff no abre ningún fichero", False)
             raise
 
-    weak = measured(0.5)  # 0,2 más que H durante 75 frames: 15 < 50
-    with pp.no_files():
-        weak_pieces = {"candidates": team_piece, "dead_state": dead_after_kickoff(0.5)}
-        delivered = pipeline.run(trk, extra=[lambda c: dead_ball.evidence(c, None, game)], pieces=weak_pieces)
-        before_task = pipeline.run(trk, extra=[sjv.without_anchor(lambda c: dead_ball.evidence(c, None, game), game)],
-                                   pieces=weak_pieces)
+    before_task, delivered = runs_of(0.5, False), runs_of(0.5, True)
+    current = as_current(before_task)
+    weak = measured(0.5, current=current)  # 0,2 más que H durante 75 frames: 15 < 50
     check("measure_kickoff: el primer sha256 es el de la entrega sin el ancla y el segundo, el de la entrega con ella",
           weak["sha256"] == (sjv.csv_sha256(before_task), sjv.csv_sha256(delivered))
           and before_task[second_kick] == D and delivered[second_kick] == H)
@@ -1432,12 +1498,17 @@ def check_kickoff_anchor(game, folder):
           and weak["conflicts"] == (0, 0) and weak["far"] == weak["before"] == 0
           and max(weak["distances_s"]) < 3 and weak["kick_dead"] == 0 and weak["sha256"][0] != weak["sha256"][1]
           and all(weak["checks"].values()), "{} {} {}".format(weak["changed"], weak["pairs"], weak["conflicts"]))
-    strong = measured(2.0)  # 1,7 más que H durante 75 frames: 127,5 > 50
+    other = measured(0.5)
+    check("measure_kickoff: si la entrega sin el ancla no es la vigente (aquí, la de verdad), no entra",
+          not other["entra"] and not other["checks"][sjv.RULE[0]]
+          and all(v for k, v in other["checks"].items() if k != sjv.RULE[0]))
+    strong = measured(2.0, current=current)  # 1,7 más que H durante 75 frames: 127,5 > 50
     check("measure_kickoff: con mucha evidencia de D tras el saque, la entrega sale a H 1 frame y vuelve a D: suben las "
           "posesiones y las paradas, y no entra",
-          not strong["entra"] and strong["changed"] == 1 and strong["pairs"] == {(D, H): 1}
+          strong["checks"][sjv.RULE[0]] and not strong["entra"] and strong["changed"] == 1
+          and strong["pairs"] == {(D, H): 1}
           and strong["blocks"][1]["runs"][1] == (strong["blocks"][1]["runs"][0][0] + 1, strong["blocks"][1]["runs"][0][1] + 1)
-          and not strong["checks"][sjv.RULE[3]], "{} {} {}".format(strong["changed"], strong["pairs"],
+          and not strong["checks"][sjv.RULE[4]], "{} {} {}".format(strong["changed"], strong["pairs"],
                                                                    strong["blocks"][1]["runs"]))
 
     def team_conflict(c):
@@ -1445,23 +1516,101 @@ def check_kickoff_anchor(game, folder):
         allowed[second_kick, :2] = False
         return score, allowed
 
-    conflict = measured(0.5, team_conflict)
+    conflict = measured(0.5, team_conflict, current=current)
     check("measure_kickoff: si otra pieza solo permite D en el frame del saque, hay conflicto con el ancla y no entra",
-          conflict["conflicts"] == (0, 1) and not conflict["entra"] and not conflict["checks"][sjv.RULE[0]])
+          conflict["conflicts"] == (0, 1) and not conflict["entra"] and not conflict["checks"][sjv.RULE[1]])
 
-    # Lo impreso: el `main` del script con el caso de poca evidencia de D tras el saque, sin datos y con la apertura
-    # de ficheros prohibida.
-    text = run_main(sjv, [(games, "require", lambda *a, **k: None),
-                          (games, "asset_paths", lambda *a, **k: {"atd_raw": "-", "atd_meta": "-", "smart_tagging": "-"}),
-                          (tracking, "from_atd", lambda *a, **k: trk),
-                          (sjv, "code_fingerprint", lambda folder: "(prueba)"),
-                          (sjv, "measure_kickoff", lambda *a, **k: weak)])
-    ok = ("sha256 sin el ancla " + weak["sha256"][0] in text and "sha256 con el ancla " + weak["sha256"][1] in text
+    def far_layer(c):  # otra capa de la entrega: el equipo A, fuerte, lejos de los saques
+        score, allowed = tracking.no_evidence(n)
+        score[50000:50100, A] = 10.0
+        return score, allowed
+
+    layered = measured(0.5, layers=[far_layer], current=as_current(runs_of(0.5, False, [far_layer])))
+    check("measure_kickoff: las demás capas de la entrega van en las dos ejecuciones (sin el ancla y con ella)",
+          layered["sha256"] == (sjv.csv_sha256(runs_of(0.5, False, [far_layer])),
+                                sjv.csv_sha256(runs_of(0.5, True, [far_layer])))
+          and layered["sha256"][0] != weak["sha256"][0] and layered["sha256"][1] != weak["sha256"][1]
+          and layered["changed"] == 3 * fps and layered["entra"])
+    check("delivery_layers: las capas de pipeline.DELIVERY_LAYERS, con las rutas, como en pipeline.build; sin rutas no "
+          "opinan",
+          len(sjv.delivery_layers(None, game)) == len(pipeline.DELIVERY_LAYERS) >= 1
+          and all(not layer(trk)[0].any() and layer(trk)[1].all() for layer in sjv.delivery_layers(None, game))
+          and sjv.layer_names() == [f.__module__.split(".")[-1] + "." + f.__name__ for f in pipeline.DELIVERY_LAYERS])
+    received = []
+
+    def fake_layer(trk_, paths=None, game=None):  # una capa de la entrega que lee el Smart Tagging, inventada
+        received.append((paths, game))
+        return tracking.no_evidence(len(trk_.bx))
+
+    real_layers = pipeline.DELIVERY_LAYERS
+    pipeline.DELIVERY_LAYERS = (fake_layer,)
+    try:
+        sjv.delivery_layers({"smart_tagging": "-"}, game)[0](trk)
+    finally:
+        pipeline.DELIVERY_LAYERS = real_layers
+    check("delivery_layers: cada capa recibe las rutas del partido y el partido, como en pipeline.build",
+          received == [({"smart_tagging": "-"}, game)], str(received))
+
+    # Lo impreso: el `main` del script, sin datos (las funciones que leen el partido, sustituidas) y con la apertura de
+    # ficheros prohibida.
+    def fake_atd(paths, game_, report=None):
+        report["atd"] = {}
+        return trk
+
+    passed = {}
+
+    def spy(*args, **kwargs):
+        passed.update(kwargs)
+        return weak
+
+    common = [(games, "require", lambda *a, **k: None),
+              (games, "asset_paths", lambda *a, **k: {"atd_raw": "-", "atd_meta": "-", "smart_tagging": "-"}),
+              (tracking, "from_atd", fake_atd), (pipeline, "check_atd", lambda counts: None),
+              (pipeline, "code_version", lambda: "código: (prueba)"), (sjv, "code_fingerprint", lambda folder: "(prueba)")]
+    replaced = [(owner, name) for owner, name, _ in common] + [(sjv, "measure_kickoff")]
+    originals = [getattr(owner, name) for owner, name in replaced]
+    shown = dict(weak, checks=dict(weak["checks"]))
+    shown["checks"][sjv.RULE[0]] = True
+    text = run_main(sjv, common + [(sjv, "measure_kickoff", lambda *a, **k: spy(*a, **k) and shown)])
+    ok = ("sha256 sin el ancla " + weak["sha256"][0] + "   ¿es la vigente (equipo_v5)? sí" in text
+          and "sha256 con el ancla " + weak["sha256"][1] in text and "OJO" not in text
+          and "de D a juego 75   de juego a D 0   de un equipo al otro 0" in text
           and "0 a 1 s        25" in text and "1 a 5 s        50" in text and "≥ 60 s         0" in text
-          and "D → H 75" in text and "-> entra el ancla del saque: sí" in text
-          and all(condition in text for condition in sjv.RULE) and "sube algo (también las rachas cortas): no" in text)
-    check("main imprime los dos sha256 en su orden, la regla, los frames que cambian por distancia al saque, de qué "
-          "etiqueta a cuál, y si entra", ok, "" if ok else text)
+          and "-> entra el ancla del saque: sí" in text and "sube con el ancla: nada" in text
+          and all(condition in text for condition in sjv.RULE) and "capas de la entrega" in text
+          and len(passed.get("layers", ())) == len(pipeline.DELIVERY_LAYERS))
+    check("main pasa las capas de la entrega e imprime los dos sha256 en su orden, si es la vigente, la regla, de qué "
+          "clase son los frames que cambian (sin equipos) y a qué distancia del saque, y si entra", ok,
+          "" if ok else text)
+    keys = list(weak["blocks"][0]["short"][0])
+    blocks = [({"runs": ((50, 40), (60, 40)), "short": ({k: 5 for k in keys}, {k: 5 for k in keys})}),
+              ({"runs": ((70, 30), (70, 35)), "short": ({k: 6 for k in keys}, {k: 6 for k in keys})}),
+              ({"runs": ((80, 20), (80, 20)), "short": ({k: 6 for k in keys}, {k: 9 for k in keys})})]
+    for b in blocks:
+        b["rises"] = sjv.rising(b["runs"], b["short"])
+    fake = dict(weak, conflicts=(5, 7), kick_dead=6, before=8, far=9, dead_share=(0.3012, 0.4056), stops=(120, 260),
+                blocks=blocks, pairs={(D, H): 3, (H, D): 4, (H, A): 2}, sha256=("0" * 64, "1" * 64))
+    fake["checks"], fake["entra"] = sjv.kickoff_rule(fake, fake["conflicts"][1], fake["sha256"][0])
+    text = run_main(sjv, common + [(sjv, "measure_kickoff", lambda *a, **k: fake)])
+    ok = ("piezas en conflicto: sin el ancla 5   con ella 7" in text and "frames del saque con D, con el ancla: 6" in text
+          and "sin el ancla 30.12 %   con ella 40.56 %   paradas: 120 y 260" in text
+          and "≤ 250 paradas): no" in text and "antes del saque de su parte: 8" in text
+          and "60 s o más después: 9" in text and "¿es la vigente (equipo_v5)? no" in text
+          and "OJO: sin el ancla no sale la entrega vigente" in text
+          and "tramo 1: posesiones 50 y 60   paradas 40 y 40   sube con el ancla: posesiones\n" in text
+          and "tramo 2: posesiones 70 y 70   paradas 30 y 35   sube con el ancla: paradas\n" in text
+          and "tramo 3: posesiones 80 y 80   paradas 20 y 20   sube con el ancla: rachas de" in text
+          and "de D a juego 3   de juego a D 4   de un equipo al otro 2" in text
+          and "-> entra el ancla del saque: no" in text)
+    check("main imprime cada número en su sitio (sin el ancla, con ella) y lo que sube en cada tramo", ok,
+          "" if ok else text)
+    text = run_main(sjv, common + [(sjv, "measure_kickoff", lambda *a, **k: strong)])
+    ok = ("≤ 250 paradas): sí" in text and "sube con el ancla: posesiones, paradas" in text
+          and "-> entra el ancla del saque: no" in text)
+    check("main: la línea de la banda dice la condición de la banda (en el rebote, dentro de la banda aunque suba algo)",
+          ok, "" if ok else text)
+    check("run_main devuelve a su sitio las funciones que sustituye",
+          all(getattr(owner, name) is f for (owner, name), f in zip(replaced, originals)))
 
 
 def main():

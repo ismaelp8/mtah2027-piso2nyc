@@ -25,6 +25,9 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
 - **El juego vivo en el saque de cada parte** (tarea 4 del plan, 15/11): en el frame del saque no se permite
   `D`, porque desde ese frame el balón está en juego. Son los mismos frames de saque que el tramo antes del
   saque, así que las dos anclas se tocan sin pisarse: el tramo acaba en el frame anterior.
+- **D7, el balón visto fuera del campo** (Ismael, 15/11; la tarea 2 del plan): `ball_out` y `ball_out_hold`,
+  dos capas apagadas que `evidence` no llama. Se probaron con sus reglas y se quedaron apagadas
+  (docs/decisiones.md, 15/11, «D7»).
 
 **En `evidence` van la primera y la última** (anclas duras: en el tramo antes del saque solo se permite `D`, y
 en el frame del saque, `D` no) **y la tercera** (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla

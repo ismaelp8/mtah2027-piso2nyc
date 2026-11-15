@@ -3749,7 +3749,8 @@ añadidos que Ana pidió para antes de ejecutar; el tercero lo decidió después
      coincidencia con el balón no se tocan. «El ancla fija gana» se calcula con la mediana sin corregir,
      comparada con las transiciones sin corregir; en lo impreso se llama ahora «la mediana gana».
    - **Dos efectos de aplicarlo así** [inferencia]. Es como lo describía el traspaso de Manuel (el ancla corregida
-     para la capa, los lados de A y el placebo de A). Queda por decidir si se cambia antes de cualquier repetición:
+     para la capa, los lados de A y el placebo de A). Si se cambia lo decide Ana, como dueña de la pieza y del modelo
+     de estado, antes de cualquier repetición, y lo apunta aquí:
      - la coincidencia con el balón se mira con la mediana sin corregir, así que ya no avala del todo el instante
        que se usa. Con el balón 0,9 s después de la mediana la condición se cumple, y el ancla de los saques de
        banda quedaría a 1,7 s del balón. El 15/11, en los córners, el balón caía 1,8 s después de la transición:
@@ -3792,6 +3793,12 @@ añadidos que Ana pidió para antes de ejecutar; el tercero lo decidió después
 
 Lo que no cambia: el resto de la regla y todos sus números.
 
+**El pipeline de la entrega, con sus capas** (15/11, por la noche). `main` encendió ese día la capa de los
+contraataques (`pipeline.DELIVERY_LAYERS`), que `pipeline.build` suma a `dead_ball.evidence`. El script corre ahora el
+pipeline con esas capas en sus tres ejecuciones (sin la capa, con cada candidato y sin la capa del hueco); si no, sus
+secciones 3 y 4 no medirían la entrega. No es un cambio de la regla, que ya decía «el pipeline de la entrega», y la
+ejecución del 15/11 no se ve afectada: entonces la entrega no tenía esa capa.
+
 Cómo se comprobó:
 - **Pruebas** (sección 11 de `validation/scripts/comprobar_balon_muerto.py`, con partidos inventados y la apertura de
   ficheros prohibida):
@@ -3814,6 +3821,8 @@ Cómo se comprobó:
   - lo impreso: el `main` del script, con las funciones que leen el partido sustituidas y la apertura de ficheros
     prohibida, imprime los cambios a la regla, la mediana y el ancla corregida, «la mediana gana», el control de
     juego con su mínimo en frames y, en la línea para copiar, el ancla corregida;
+  - las capas de la entrega: van en las tres ejecuciones del pipeline (una capa que bloquea 10 frames da 10 conflictos
+    en las tres) y `main` se las pasa;
   - las pruebas de antes de los cambios siguen, con el ancla igual a la mediana (`no_delay`), salvo la de los 10
     saques de banda separados 10 minutos, que va con los retrasos por defecto. Dos cambian por el tercer cambio:
     - en el partido base, el control de juego pasa a tener un 0 % de `D`. Antes tenía algo porque llevaba el tramo
@@ -3862,34 +3871,47 @@ que no haga daño. Tampoco se puede medir en la DFL: la pieza usa constantes de 
 
 Cómo se mide: `validation/partido/agregados_saque_juego_vivo.py`, que ejecuta una persona.
 - Corre el pipeline de la entrega dos veces, sin escribir ningún fichero: con `dead_ball.evidence` tal cual y con el
-  ancla quitada (`D` permitido otra vez en esos dos frames).
-- Imprime los dos sha256. El de «sin el ancla» tendría que ser el de la entrega vigente (`equipo_v3` y `equipo_v4`,
-  `9539ce42…cc17a`), porque desde entonces nada de `main` ha cambiado una etiqueta. Si sale otro, ha cambiado algo
-  más (el código o el entorno) y se mira antes de leer lo demás.
+  ancla quitada (`D` permitido otra vez en esos dos frames). Las dos veces suma las demás capas de la entrega
+  (`pipeline.DELIVERY_LAYERS`, desde el 15/11 la de los contraataques), como `pipeline.build`, y lee el ATD como él.
+- Imprime las versiones de Python y numpy, el commit y los dos sha256. El de «sin el ancla» tiene que ser el de la
+  entrega vigente, `equipo_v5` (`27dc8aa8…efb7`).
 
-Regla de lectura, fijada antes de ejecutarlo. **Entra si se cumplen las cinco:**
-1. ningún frame con piezas en conflicto con el ancla;
+Regla de lectura, fijada antes de ejecutarlo. **Entra si se cumplen las seis:**
+0. sin el ancla sale la entrega vigente: el sha256 empieza por `27dc8aa8` y acaba en `efb7` (`equipo_v5`). Si no,
+   ha cambiado algo más (el código de `main` o el entorno, por ejemplo la versión de numpy). Entonces la regla no se
+   aplica: no entra hasta explicarlo y volver a ejecutar, en un entorno que reproduzca `equipo_v5` o con esta
+   condición puesta al día antes de mirar nada más;
+1. con el ancla, ningún frame evaluado con piezas en conflicto (lo mismo que exige `pipeline` para escribir el CSV);
 2. cada parte tiene su saque en su tramo evaluado, y en ese frame la entrega con el ancla no tiene `D`;
 3. la entrega con el ancla queda dentro de la banda del plan: del 15 al 60 % de `D` en lo evaluado y 250 paradas
    como mucho;
 4. en cada tramo, con el ancla no suben las posesiones, ni las paradas, ni las rachas cortas (de posesión, de juego y
    de parada, de menos de 12 y de menos de 25 frames, como las cuenta `pipeline.short_runs`);
-5. todo lo que cambia cae en los 60 s después del saque de su parte: nada antes del saque ni más tarde. Lo esperado es
-   que solo cambien frames justo después de los saques; si cambia algo más lejos, no entra hasta entender por qué.
+5. todo lo que cambia cae en los 60 s después del saque de su parte: nada antes del saque ni más tarde. Los 60 s son a
+   priori, el mismo horizonte que `dead_ball.MAX_GAP_BEFORE_RESTART_S`. Lo esperado es que solo cambien frames justo
+   después de los saques; si cambia algo más lejos, no entra hasta entender por qué.
 - Si no cambia ningún frame, entra igual: en este partido no hace nada, pero deja fijada la frontera.
+- **La condición 4 también rechaza un caso bueno** [inferencia]: un saque seguido de una parada real en los primeros
+  segundos. Sin el ancla, el `D` puede seguir de largo por esa jugada; con ella, la salida ya está pagada y la entrega
+  se queda en juego hasta la parada: sale una posesión más y una parada más, aunque las etiquetas fueran mejores. Se
+  acepta perderlo: sin juez no se distingue de un rebote.
 - Con esta salida no se reajusta nada: ni los 60 s, ni la banda, ni el frame del saque.
-- Descriptivo: cuántos frames cambian, de qué etiqueta a cuál y a qué distancia después del saque (de 0 a 1 s, de 1 a
-  5, de 5 a 30, de 30 a 60 y 60 s o más).
+- Descriptivo: cuántos frames cambian, de qué clase (de `D` a juego, de juego a `D` o de un equipo al otro) y a qué
+  distancia después del saque (de 0 a 1 s, de 1 a 5, de 5 a 30, de 30 a 60 y 60 s o más), y qué sube en cada tramo.
+- **Lo que imprime y la regla nº 1:** como solo hay dos saques, lo que cambia describe como mucho dos tramos de nuestra
+  propia entrega, junto a ellos. Por eso junta las dos partes y no dice de qué equipo a cuál; tampoco da ningún número
+  de frame.
 
-Lo que espero [inferencia]: que cambien pocos frames, de `D` a `H` o `A`, en los primeros segundos tras el saque de la
-2ª parte, porque el modelo de Ana acaba las paradas tarde (sesgo mediano de +17 frames en la DFL, entrada del 14/11), y
+Lo que espero [inferencia]: que cambien pocos frames, de `D` a juego, en los primeros segundos tras el saque de la 2ª
+parte, porque el modelo de Ana acaba las paradas tarde (sesgo mediano de +17 frames en la DFL, entrada del 14/11), y
 que en la 1ª parte cambie poco o nada. El riesgo es el rebote de arriba.
 
 Si entra:
-- una persona regenera la entrega (`python -m possession.pipeline --name equipo_v5`) y la valida
-  (`python evaluation/validate_submission.py evaluation/results/equipo_v5.csv`, o `/evaluar`). El sha256 que imprime
-  el comando tiene que ser el «con el ancla» del script;
-- la entrega deja de ser `equipo_v3`: hay que avisar al equipo para que el ensayo del lunes la reproduzca con esta
+- una persona regenera la entrega (`python -m possession.pipeline --name equipo_v6`) y la valida
+  (`python evaluation/validate_submission.py evaluation/results/equipo_v6.csv`, o `/evaluar`);
+- el sha256 que imprime el comando tiene que ser el «con el ancla» del script. Si no lo es, esa entrega no se usa y se
+  investiga;
+- la entrega deja de ser `equipo_v5`: hay que avisar al equipo para que el ensayo del lunes la reproduzca con esta
   rama ya en `main`.
 
 Si no entra: se quita de `evidence` la línea del ancla (la función se queda, probada) y se apunta aquí por qué.
@@ -3899,9 +3921,10 @@ Lo que no comprueba [sin verificar]:
   `Kick Off (Start)` del Smart Tagging lo contienen;
 - qué equipo saca: lo decide el decodificador con la evidencia de equipo, como antes.
 
-Relación con las otras medidas de la pieza: las de la capa del hueco y del instante del reinicio usan
-`dead_ball.evidence` como entrega, así que, si se repiten, ya llevan el ancla del saque. Como el instante no entró, no
-hay que repetir su sección 3 (el daño).
+Relación con las otras medidas de la pieza: `validation/partido/agregados_instante_reinicio.py` corre el pipeline con
+`dead_ball.evidence` como entrega (secciones 3 y 4), así que, si se repite, ya lleva el ancla del saque y las demás
+capas de la entrega. Como el instante no entró, no hay que repetir su sección 3 (el daño).
+`validation/partido/agregados_dead_ball.py` no corre el pipeline.
 
 Cómo se comprobó, antes de ejecutar nada:
 - **Pruebas** (sección 12 de `validation/scripts/comprobar_balon_muerto.py`, con datos inventados y la apertura de
@@ -3909,23 +3932,30 @@ Cómo se comprobó, antes de ejecutar nada:
   - `kickoff_mask`: los dos frames de FAQ.md y ninguno más; con otro partido, error; un saque fuera de su tramo no se
     ancla;
   - `evidence`, con rutas y sin ellas: `D` prohibido justo en esos dos frames, con `H` y `A` permitidos ahí; ningún
-    frame se queda sin estado permitido (la prueba de la sección 8 que decía que `evidence` nunca prohibía `D` ahora
+    frame se queda sin estado permitido (la prueba de la sección 7 que decía que `evidence` nunca prohibía `D` ahora
     dice esto);
   - quitar el ancla devuelve la evidencia de antes de la tarea 4, sin tocar la que recibe; el sha256 del script es el
     mismo que el del CSV que escribe `pipeline.write_submission`;
   - la regla con etiquetas puestas a mano: entra si el `D` que seguía tras el saque acaba en él, o si no cambia nada;
-    no entra si vuelve a `D` justo después, si solo sube una racha corta o solo el número de posesiones, si cambia algo
-    a 60 s o más o antes del saque, con `D` en el saque, si una parte no tiene su saque o tiene dos, con conflictos o
-    fuera de la banda (mirada con el ancla puesta);
+    no entra si sin el ancla no sale la entrega vigente, si vuelve a `D` justo después, si solo sube una racha corta,
+    solo el número de posesiones o solo el de paradas, si cambia algo a 60 s o más o antes del saque, con `D` en el
+    saque, si una parte no tiene su saque o tiene dos, con conflictos o fuera de la banda (mirada con el ancla puesta,
+    también por las 250 paradas). En el primer frame de la 1ª parte: entra si desaparece el `D` del principio y no si
+    sale un frame y vuelve a `D`;
   - de punta a punta, con el pipeline y piezas controladas: con poca evidencia de `D` tras el saque de la 2ª parte,
     cambian 75 frames de `D` a `H` y entra; con mucha, rebota (1 frame de `H`), suben las posesiones y las paradas y
-    no entra; con otra pieza que solo permite `D` en el saque, hay conflicto y no entra; los dos sha256 salen en su
+    no entra; si la entrega sin el ancla no es la vigente, no entra; con otra pieza que solo permite `D` en el saque,
+    hay conflicto y no entra; las demás capas de la entrega van en las dos ejecuciones; los dos sha256 salen en su
     orden;
-  - lo impreso: el `main` del script, con las funciones que leen el partido sustituidas.
-- **Sabotajes** (en memoria, fuera del repo): 42 roturas, una a una. En el ancla: quitarla, prohibir `H` en vez de
-  `D`, ponerla un frame tarde o un frame antes (choca con el tramo), alargarla 25 frames, quitar la guarda del tramo,
-  aplicarla a cualquier partido o solo con rutas. En el script: quitar el ancla mal, el sha256, las rachas, las
-  distancias, cada condición de la regla y lo impreso. Las pruebas detectan las 42. En la primera tanda sobrevivían
-  6 (la guarda del tramo, la copia en `without_anchor`, la banda mirada sin el ancla, que suban solo las
-  posesiones, que una parte no tenga su saque y los sha256 al revés); se añadió una prueba para cada una.
+  - lo impreso: el `main` del script, con las funciones que leen el partido sustituidas: pasa las capas de la
+    entrega, y cada número sale en su sitio (sin el ancla y con ella), sin equipos.
+- **Sabotajes** (en memoria, fuera del repo): 65 roturas, una a una. En el ancla: quitarla, prohibir `H` en vez de
+  `D`, ponerla un frame tarde o un frame antes, alargarla 25 frames, quitar la guarda del tramo, aplicarla a cualquier
+  partido o solo con rutas. En el script: la entrega vigente, las capas de la entrega, quitar el ancla mal, el sha256,
+  las rachas, lo que sube, las distancias, las clases de cambio, cada condición de la regla y cada número de lo
+  impreso; y que `run_main` no devuelva las funciones a su sitio. Las pruebas detectan 64. La que no, no cambia nada:
+  contar como «de `D` a juego» también de `D` a `D`, que no puede pasar en un frame que cambia.
 - **Lo impreso, a mano:** el `main` con un partido inventado, en un caso en que entra y en otro en que rebota.
+- **Tres revisiones** del agente `revisor` antes de subirla. La tercera vio que `main` había cambiado la entrega
+  (`equipo_v5`, con la capa de los contraataques) y que la regla no decía qué hacer si el sha256 no cuadraba: de ahí la
+  condición 0, las capas de la entrega en el script y lo de no decir equipos.

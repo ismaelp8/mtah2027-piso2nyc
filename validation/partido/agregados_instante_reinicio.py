@@ -364,12 +364,23 @@ def candidates_for(anchors, a_ok):
     return out
 
 
-def try_layer(trk, clean, events, anchors, modes, without, conflicts_without, delivery_fn, pieces, graded):
+def delivery_layers(paths, game):
+    """Las capas que la entrega suma además de dead_ball.evidence (pipeline.DELIVERY_LAYERS), con las rutas del
+    partido, como en pipeline.build. Así el pipeline de estas medidas es el de la entrega. No abre nada al crearlas."""
+    return [pipeline.with_paths(layer, paths, game) for layer in pipeline.DELIVERY_LAYERS]
+
+
+def layer_names():
+    """Los nombres de pipeline.DELIVERY_LAYERS («modulo.funcion»), para imprimir con qué se midió."""
+    return [layer.__module__.split(".")[-1] + "." + layer.__name__ for layer in pipeline.DELIVERY_LAYERS]
+
+
+def try_layer(trk, clean, events, anchors, modes, without, conflicts_without, delivery_fn, pieces, graded, layers):
     """Un candidato en el pipeline: las cuentas de la sección 3 y si cumple su condición de daño («ok»)."""
     n, fps = len(trk.bx), trk.fps
     layer = lambda c: dead_ball.restart_anchor_evidence(c, events, anchors, modes)  # noqa: E731
     report = {}
-    with_layer = pipeline.run(trk, extra=[delivery_fn, layer], report=report, pieces=pieces)
+    with_layer = pipeline.run(trk, extra=[delivery_fn, layer] + list(layers), report=report, pieces=pieces)
     pushes = dead_ball.restart_anchor_pushes(clean.bx, clean.by, events, anchors, modes, trk.blocks, fps)
     before, after = np.zeros(n, dtype=bool), np.zeros(n, dtype=bool)
     near, split = [0, 0], 0
@@ -397,7 +408,8 @@ def try_layer(trk, clean, events, anchors, modes, without, conflicts_without, de
     return r
 
 
-def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces=None, odds_fn=None, delays=None):
+def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces=None, odds_fn=None, delays=None,
+                    layers=()):
     """Las cuentas de las cuatro secciones y la regla aplicada. No abre ningún fichero por sí misma.
 
     `trk` es el tracking sin limpiar; `events`, los de dead_ball.smart_tagging_events. `delivery_fn` es la
@@ -405,7 +417,8 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
     las dos son funciones del tracking limpio. `pieces` cambia piezas del pipeline (en el partido, None) y
     `odds_fn` el instrumento (por defecto, dead_state.log_odds, el modelo de Ana). `delays` son los retrasos que
     se restan a la mediana para el ancla de la capa (por defecto, DFL_DELAY; las pruebas de antes de los
-    añadidos pasan {}).
+    añadidos pasan {}). `layers` son las demás capas de la entrega (delivery_layers), que van en todas las
+    ejecuciones del pipeline, como en pipeline.build.
     """
     n, fps = len(trk.bx), trk.fps
     graded = graded_mask(game, n)
@@ -480,12 +493,12 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
     # 3b. Los candidatos en el pipeline: A (con A en los tipos que lo cumplen y B en los demás) si algún tipo
     # cumple A; si no entra, B en todos los tipos con ancla; si no, ninguno.
     report = {}
-    without = pipeline.run(trk, extra=[delivery_fn], report=report, pieces=pieces)
+    without = pipeline.run(trk, extra=[delivery_fn] + list(layers), report=report, pieces=pieces)
     candidates = candidates_for(anchors, {kind: by_type[kind]["a"]["ok"] for kind in anchors})
     m.update(conflicts_without=report["conflictos"], tested={}, chosen=None, modes={})
     for name, modes in candidates:
         result = try_layer(trk, clean, events, anchors, modes, without, report["conflictos"], delivery_fn,
-                           pieces, graded)
+                           pieces, graded, layers)
         m["tested"][name] = dict(result, modes=modes)
         if result["ok"]:
             m.update(chosen=name, modes=modes)
@@ -494,7 +507,7 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
 
     # 4. La capa del hueco (lo que pidió el revisor)
     report = {}
-    no_gap = pipeline.run(trk, extra=[no_gap_fn], report=report, pieces=pieces)
+    no_gap = pipeline.run(trk, extra=[no_gap_fn] + list(layers), report=report, pieces=pieces)
     m["gap_conflicts"] = report["conflictos"]
     first = np.zeros(n, dtype=bool)
     gap_spans = []
@@ -533,11 +546,12 @@ def main():
     events = dead_ball.smart_tagging_events(paths["smart_tagging"], games.GAMES[game]["fps"])
     delivery_fn = lambda clean: dead_ball.evidence(clean, paths, game)  # noqa: E731
     no_gap_fn = lambda clean: dead_ball.evidence(clean, None, game)  # noqa: E731
-    m = measure_instant(trk, events, delivery_fn, no_gap_fn, game)
+    m = measure_instant(trk, events, delivery_fn, no_gap_fn, game, layers=delivery_layers(paths, game))
     fps = trk.fps
 
     print("pipeline: piezas {}   costes {}".format(json.dumps(pipeline.PIECES, sort_keys=True),
                                                    json.dumps(temporal.DEFAULTS, sort_keys=True)))
+    print("capas de la entrega, además de dead_ball.evidence: {}".format(", ".join(layer_names()) or "ninguna"))
     print("huellas: modelo de Ana {}   código de possession/ {}".format(
         model_fingerprint(dead_state.MODEL), code_fingerprint(os.path.join(ROOT, "possession"))))
     print("regla: sostén {} s   búsqueda hasta {} s tras el fin de la ventana   capa ±{:g} en D: {} s antes del"
