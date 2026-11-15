@@ -18,14 +18,14 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
 - **El hueco sin balón antes de cada reinicio** (idea de Ismael): puntuación blanda de `D` desde que se
   pierde el balón hasta el inicio de la ventana `SET PIECES`.
 - **El equipo que reanuda** (15/11): en cada ventana `SET PIECES` con el `Team` de uno de los dos equipos,
-  resta en la columna del otro. Medida con su regla (docs/decisiones.md, 15/11), todavía fuera de
-  `evidence`.
+  resta en la columna del otro. Todavía sin medir y fuera de `evidence`: entra solo si pasa su regla
+  (docs/decisiones.md, 15/11, «el equipo que reanuda»).
 
-**En `evidence` van la primera** (un ancla dura: en esos frames solo se permite `D`) **y la tercera**
-(GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla apuntada en docs/decisiones.md antes de
-medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por Manuel el 15/11). De gol a saque está
-programada y probada, pero no entra: con el Smart Tagging de este partido no ancla ningún gol (las ventanas
-`GOALS` parecen llegar hasta el saque [inferencia]).
+**En `evidence` van el tramo antes del saque** (un ancla dura: en esos frames solo se permite `D`) **y el
+hueco antes de cada reinicio** (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla apuntada en
+docs/decisiones.md antes de medirla (`validation/partido/agregados_dead_ball.py`, ejecutado por Manuel el
+15/11). De gol a saque está programada y probada, pero no entra: con el Smart Tagging de este partido no
+ancla ningún gol (las ventanas `GOALS` parecen llegar hasta el saque [inferencia]).
 
 Lo que se probó y lo que se midió está en docs/decisiones.md y en validation/resultados/
 (2026-11-12_balon_muerto_atd.md, 2026-11-13_revision_balon_muerto.md, 2026-11-14_agregados_balon_muerto.md
@@ -104,8 +104,8 @@ def smart_tagging_events(path, fps):
     minúsculas.
 
     Mismo criterio que starter/load_smart_tagging.load(): segundos × fps redondeado es el frame de vídeo, y
-    `end` es el primer frame después del intervalo. Ordenadas por (start, end, code, type), para que el
-    resultado no dependa del orden del fichero.
+    `end` es el primer frame después del intervalo. Ordenadas por (start, end, code, type, team), para que
+    el resultado no dependa del orden del fichero.
     """
     events = []
     for instance in ET.parse(path).iter("instance"):
@@ -117,7 +117,7 @@ def smart_tagging_events(path, fps):
             "start": int(round(float(instance.findtext("start")) * fps)),
             "end": int(round(float(instance.findtext("end")) * fps)),
         })
-    return sorted(events, key=lambda e: (e["start"], e["end"], e["code"], e["type"]))
+    return sorted(events, key=lambda e: (e["start"], e["end"], e["code"], e["type"], e["team"]))
 
 
 def goal_to_kickoff(events, fps):
@@ -259,10 +259,11 @@ def evidence(trk, paths=None, game=games.GAME):
     return score, allowed
 
 
-# -- El equipo que reanuda (capa 5, 15/11). Medida con su regla, todavía fuera de `evidence`.
+# -- El equipo que reanuda (15/11; la capa 2 de la entrada del 14/11). Sin medir, fuera de `evidence`.
 
 # Lo que se resta por frame en la columna del equipo que no saca. Sin ajustar: la escala del +1 del jugador
-# más cercano (candidates.NEAREST_SCORE); la ajusta David con los costes del decodificador.
+# más cercano (candidates.NEAREST_SCORE). No se puede ajustar en el harness, porque la DFL no tiene Smart
+# Tagging; la protege la condición de daño de su regla (docs/decisiones.md, 15/11).
 TEAM_SCORE = 1.0
 
 
@@ -278,13 +279,23 @@ def restart_teams(events, home, away):
 
 
 def team_restart_evidence(trk, events, home, away):
-    """`(score, allowed)` de la capa: resta TEAM_SCORE en la columna del equipo que no saca, en toda la
-    ventana, para las ventanas de restart_teams que empiezan en un tramo evaluado. No toca `D` ni prohíbe
-    nada: solo decide con qué equipo se sale de la parada."""
+    """`(score, allowed)` de la capa: resta TEAM_SCORE en la columna del equipo que no saca, para las
+    ventanas de restart_teams que empiezan en un tramo evaluado. Cada ventana se corta en el inicio del
+    siguiente `GOALS` o `SET PIECES` (de cualquier tipo), así que las restas nunca se acumulan; si otro
+    empieza en el mismo frame, esa ventana no puntúa. No prohíbe nada.
+
+    Frame a frame no cambia la comparación entre `D` y el equipo que saca, pero sí entre `D` y el otro. El
+    decodificador decide sobre tramos enteros, así que la capa puede mover las fronteras del `D` (adelantar
+    o retrasar su fin) y retrasar un cambio al otro equipo dentro de la ventana. Por eso su regla tiene una
+    condición de daño."""
     n = len(trk.bx)
     score, allowed = no_evidence(n)
+    restarts = [e for e in events if e["code"] in (GOALS_CODE, SET_PIECES_CODE)]
     for window, team in restart_teams(events, home, away):
-        if any(first <= window["start"] < stop for first, stop in trk.blocks):
-            other = A if team == H else H
-            score[max(window["start"], 0):max(min(window["end"], n), 0), other] -= TEAM_SCORE
+        start = window["start"]
+        if not any(first <= start < stop for first, stop in trk.blocks):
+            continue
+        stop = min([window["end"]] + [e["start"] for e in restarts if e is not window and e["start"] >= start])
+        other = A if team == H else H
+        score[max(start, 0):max(min(stop, n), 0), other] -= TEAM_SCORE
     return score, allowed

@@ -1676,72 +1676,101 @@ Abierto:
 
 Quién: Manuel
 
-Qué se va a probar: la capa 5 de `possession/dead_ball.py`, el equipo que reanuda (`docs/PLAN_ENTREGA.md`
-§3, Manuel, punto 5). Sale de la entrada «fronteras y anclas» (14/11), capa 2.
+Qué se va a probar: el equipo que reanuda (`docs/PLAN_ENTREGA.md` §3, Manuel, punto 5). Es la segunda
+parte de la capa 2 de la entrada «fronteras y anclas» (14/11).
 - **Qué hace:** en cada ventana `SET PIECES` que no es un saque inicial y cuyo `Team` es uno de los dos
-  equipos, **resta** `TEAM_SCORE` (1 por frame, sin ajustar) en la columna del **otro** equipo, en toda la
-  ventana. En este partido son 27 ventanas: córners, saques de puerta y faltas. Los saques de banda y los
-  iniciales vienen con `N/A` [medido, 14/11].
-- **Por qué restar al otro y no sumar al que saca:** así no cambia la comparación entre `D` y el equipo
-  que saca, y la capa no puede adelantar el fin del `D`. Solo decide con qué equipo se sale de la parada.
+  equipos, **resta** `TEAM_SCORE` (1 por frame, sin ajustar) en la columna del **otro** equipo. En este
+  partido son 27 ventanas: córners, saques de puerta y faltas. Los saques de banda y los iniciales vienen
+  con `N/A` [medido, 14/11].
+- **Hasta dónde:** la ventana se corta en el inicio del siguiente `GOALS` o `SET PIECES`, de cualquier
+  tipo, así que las restas nunca se acumulan. Si otro empieza en el mismo frame, esa ventana no puntúa.
+  Solo cuentan las ventanas que empiezan en un tramo evaluado, como en la capa del hueco.
 - **El `Team` se pasa a `H` o `A`** comparándolo, sin mayúsculas, con los nombres de los metadatos del
   ATD. Los 27 coinciden [medido, 15/11]; uno que no coincidiera no puntuaría.
-- **Solo las ventanas que empiezan en un tramo evaluado,** como la capa 4.
-- **El riesgo [sin verificar]:** si dentro de la ventana, después del reinicio, el otro equipo consigue el
-  control, la capa retrasa ese cambio. La ventana sigue entre 5 y 35 s después del golpeo [medido: el
-  golpeo cae más de 5 s antes del fin en las 53 ventanas, y duran 35 s].
+- **Qué hace en el decodificador:** frame a frame, restar al otro no cambia la comparación entre `D` y el
+  equipo que saca, pero sí entre `D` y el otro. El decodificador decide sobre tramos enteros, así que la
+  capa **puede mover las fronteras del `D`** (adelantar o retrasar su fin) y retrasar un cambio al otro
+  equipo dentro de la ventana. Lo enseñó la revisión con casos de juguete. Por eso la regla tiene una
+  condición de daño.
+- **La escala no se puede ajustar en el harness,** porque la DFL no tiene Smart Tagging. `TEAM_SCORE` es la
+  escala del +1 del jugador más cercano. Puede pesar mucho: hasta 875 puntos por ventana, frente a un coste
+  de cambio de 25. La protege la condición de daño.
 - **Código:** `restart_teams` y `team_restart_evidence` en `possession/dead_ball.py`, fuera de `evidence`
   hasta que pase la regla.
 
 Cómo se medirá: `validation/partido/agregados_equipo_reanuda.py`, que ejecuta Manuel. Solo agregados.
-Ejecuta el pipeline de esta rama sin la capa y con ella, sobre el mismo tracking. No hay etiquetas del
-partido y la DFL no tiene Smart Tagging, así que no se mide el `spellF1`.
+Ejecuta el pipeline de la rama sin la capa y con ella, sobre el mismo tracking. No hay etiquetas del
+partido y la DFL no tiene Smart Tagging, así que no se mide el `spellF1`: se mide contra la física y contra
+el `Team`.
 
 Regla de lectura, fijada antes de ejecutarlo:
 - **1. El `Team` es el equipo que saca (física, sin etiquetas).**
-  - **Dónde se reanuda:** el último punto visto del balón antes del golpeo (`find_strike` de
-    `validation/partido/diagnostico_balon_muerto.py`, buscado dentro de la ventana). Decide solo si el
-    golpeo aparece y el punto cae en el cuarto final de un lado del campo (a 26 m o más de la línea de
-    medio campo).
-  - **Qué lado defiende cada equipo en cada parte:** el de la media de la x de sus jugadores en los frames
-    evaluados de esa parte (la x = 0,5 separa a los equipos, medido el 12/11).
-  - **El que saca:** en un córner, el equipo que ataca ese lado; en un saque de puerta, el que lo defiende.
+  - **En qué fondo se reanuda:** el último punto visto del balón antes del inicio de la ventana, con 60 s
+    de antigüedad como mucho (el tope de la capa del hueco). Los córners y los saques de puerta se sacan
+    en el fondo por donde salió el balón. Decide solo si ese punto cae a un cuarto del largo (26,3 m) o
+    más de la línea de medio campo.
+  - **Qué lado defiende cada equipo en cada parte:** el de menor media de la x de sus jugadores, en los
+    frames evaluados de esa parte (la x = 0,5 separa a los equipos, medido el 12/11). El script imprime la
+    separación entre las dos medias, porque ese dato decide todas las ventanas de la parte.
+  - **El que saca:** en un córner, el equipo que ataca ese lado; en un saque de puerta, el que lo defiende
+    (reglas 17 y 16).
   - **Condición:** en córners y saques de puerta juntos, coinciden con el `Team` el 90 % o más de las
-    ventanas que deciden, y deciden 10 o más. Si no, la capa no entra.
+    ventanas que deciden, y deciden 10 o más.
   - **Las faltas no se pueden comprobar así.** Entran con las demás si pasa la condición [inferencia: el
     mismo etiquetador].
-- **2. La capa aporta algo, medido contra el `Team` y no contra una GT que no hay.**
+- **2. La capa aporta algo,** medido contra el `Team` y no contra una GT que no hay.
   - **El equipo de salida:** en cada ventana con `Team`, el primer `H` o `A` del pipeline después del
-    último `D` de la ventana (buscado hasta el fin del tramo). Si la ventana no tiene ningún `D`, no hay
-    parada y no cuenta.
-  - **Condición:** sin la capa, el equipo de salida es el otro en al menos 1 ventana con parada; y con la
-    capa, en menos ventanas que sin ella. Si sin la capa ya coincide en todas, la capa no aporta nada y no
-    entra.
-- **Las dos condiciones tienen que cumplirse.** Si no, la capa se queda fuera, y con esta salida no se
-  reajusta nada: ni `TEAM_SCORE`, ni el 90 %, ni las 10 ventanas, ni el cuarto final.
+    último `D` de la ventana, buscado hasta el fin del tramo. Si la ventana no tiene ningún `D`, no hay
+    parada; si el `D` llega hasta el fin del tramo, no hay salida. Ninguno de los dos cuenta.
+  - **Condición:** sin la capa, el equipo de salida es el otro en al menos 1 ventana; y con la capa, en
+    menos ventanas que sin ella.
+- **3. La capa no hace daño:** con ella, en los tramos evaluados, no hay más posesiones ni más paradas que
+  sin ella. Fragmentar es lo peor para el `spellF1`.
+- **La capa entra solo si se cumplen las tres.** Si no, se queda fuera, y con esta salida no se reajusta
+  nada: ni `TEAM_SCORE`, ni el 90 %, ni las 10 ventanas, ni el cuarto del largo, ni los 60 s.
 - **Descriptivo, no decide:**
-  - recuentos por tipo;
-  - cuántos frames evaluados cambian;
-  - posesiones y paradas sin la capa y con ella;
-  - cuántas ventanas tienen un cambio al otro equipo dentro de la ventana, después de la salida, sin la
-    capa y no con ella. Eso mide el tamaño del riesgo de arriba.
+  - recuentos por tipo, con 5 casos o más;
+  - los frames evaluados que cambian, separados en: de un equipo al otro, de juego a `D` y de `D` a juego;
+  - cuántas ventanas salen con el del `Team` y cambian al otro dentro de la ventana, sin la capa y con
+    ella, y cuántos de esos cambios quita la capa. Es el tamaño del riesgo de retrasar un cambio de
+    posesión.
 - **El script imprime la regla aplicada.** Si lo impreso y este texto no cuadran, manda este texto.
 - **Que el código aplica este texto se comprueba en el repo:** sección 10 de
   `validation/scripts/comprobar_balon_muerto.py`, con datos inventados y la apertura de ficheros
   prohibida. Comprueba:
-  - las dos condiciones en sus límites;
-  - la física de córners y saques de puerta;
+  - las tres condiciones en sus límites;
+  - la física de córners y saques de puerta, y el punto y su antigüedad;
   - con qué equipo se sale de cada parada;
-  - la capa (resta solo en el otro equipo, dentro de la ventana, y nunca en `D`);
-  - el script de punta a punta.
+  - la capa, que resta solo en el otro equipo y se corta en el siguiente reinicio;
+  - el script de punta a punta con piezas controladas, comparando con valores exactos. Hay un caso con
+    las dos ventanas decidiendo y la capa cambiando una salida, y otro con 13 córners, en el límite del
+    90 %.
 
-  Romper la capa y el script a propósito (21 cambios, uno a uno) hace fallar alguna prueba, salvo uno
-  equivalente: quitar «al menos 1 ventana» de la condición 2 no cambia nada, porque «con la capa, en menos»
-  ya lo exige.
+  Romper la capa y el script a propósito (35 cambios, uno a uno) hace fallar alguna prueba, salvo dos
+  equivalentes:
+  - quitar «al menos 1 ventana» de la condición 2, porque «con la capa, en menos» ya lo exige;
+  - contar los cambios fuera de lo evaluado, donde el decodificador siempre escribe `X`.
 - **De dónde sale cada número:** ninguno de la GT ni de la salida de este script. `TEAM_SCORE` es la escala
-  del +1 del jugador más cercano y se ajusta con los costes (David). El 90 %, las 10 ventanas y el cuarto
-  final se fijan aquí.
+  del +1 del jugador más cercano. Los 60 s son el tope de la capa del hueco. El 90 %, las 10 ventanas y el
+  cuarto del largo se fijan aquí.
+
+Cambios antes de medir, tras la revisión del agente `revisor` (el texto de arriba ya los lleva):
+- **El fondo del reinicio** salía de `find_strike` (el balón quieto que empieza a moverse). El repo no lo
+  acepta como el reinicio: el 12/11 «lo que encuentra no son los reinicios», y R1 no pasó su regla el
+  14/11. En un saque de puerta largo habría dado el fondo contrario. Ahora es el último balón visto antes
+  de la ventana.
+- **Decía que la capa no podía adelantar el fin del `D`:** era falso con un decodificador que decide sobre
+  tramos enteros. Se corrige el texto y se añade la condición 3.
+- **Las ventanas que se pisaban acumulaban la resta:** ahora se cortan en el siguiente reinicio.
+- **Lo de que «la ventana sigue entre 5 y 35 s después del golpeo»** dependía de que el golpeo fuera el
+  reinicio: es [inferencia], no [medido], y ya no se usa.
+- **La prueba de punta a punta no decidía nada:** se rehízo con piezas controladas y valores exactos.
 
 Abierto:
-- **Los saques de banda** (26, con `Team = N/A`) quedan para otra capa: el jugador que saca está fuera
-  de la banda (agregado 6, entrada del 14/11).
+- **Los saques de banda** (26, con `Team = N/A`) quedan para otra capa: el jugador que saca está fuera de
+  la banda (agregado 6, entrada del 14/11).
+- **Una versión que de verdad solo decidiera la salida** sería un coste del paso de `D` al otro equipo
+  dentro de `possession/temporal.py`. Es la pieza de David y cambiaría la interfaz (`docs/PLAN_ENTREGA.md`
+  §2): no se hace aquí.
+- **Esta rama sale de `feat/d-fronteras` (PR #8).** Cuando esa PR entre con squash, hay que pasar esta rama
+  a `main` con `git rebase --onto origin/main feat/d-fronteras feat/d-equipo-reanuda`, antes de abrir su PR.

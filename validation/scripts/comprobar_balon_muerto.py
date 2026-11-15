@@ -506,6 +506,7 @@ def check_team_restart(game, folder):
     fps = games.GAMES[game]["fps"]
     n = games.GAMES[game]["n_video_frames"]
     length, width = games.GAMES[game]["pitch"]
+    blocks = tracking.evaluated_blocks(game)
     H, A, D = tracking.H, tracking.A, tracking.D
 
     # La capa: equipos y evidencia.
@@ -526,56 +527,66 @@ def check_team_restart(game, folder):
               for h, a in (("", "x"), ("x", None), ("FC Local", "fc local"))))
     bx = np.zeros(n)
     trk = tracking.Tracking(bx, bx.copy(), np.empty((n, 0)), np.empty((n, 0)), np.empty(0, dtype=np.int8),
-                            (length, width), tracking.evaluated_blocks(game), fps)
+                            (length, width), blocks, fps)
     score, allowed = dead_ball.team_restart_evidence(trk, events, "FC Local", "Visitante CF")
     expected = np.zeros((n, 3))
     expected[1000 * fps:1035 * fps, A] = -dead_ball.TEAM_SCORE  # córner del local: se resta al visitante
     expected[2000 * fps:2035 * fps, H] = -dead_ball.TEAM_SCORE  # saque de puerta del visitante
     check("team_restart_evidence: resta en el otro equipo justo en la ventana; nada en D; fuera de lo "
           "evaluado, nada", bool(np.array_equal(score, expected)) and bool(allowed.all()))
+    overlap = dead_ball.smart_tagging_events(smart_tagging_xml(folder, "solape.xml", [
+        ("SET PIECES", 1000, 1035, "Corner Kick"), ("SET PIECES", 1020, 1055, "Goal Kick"),
+        ("SET PIECES", 2000, 2035, "Corner Kick"), ("SET PIECES", 2000, 2035, "Free Kick")],
+        teams=["FC Local", "Visitante CF", "FC Local", "Visitante CF"]), fps)
+    score, _ = dead_ball.team_restart_evidence(trk, overlap, "FC Local", "Visitante CF")
+    expected = np.zeros((n, 3))
+    expected[1000 * fps:1020 * fps, A] = -dead_ball.TEAM_SCORE  # el córner se corta donde empieza el otro
+    expected[1020 * fps:1055 * fps, H] = -dead_ball.TEAM_SCORE
+    check("ventanas que se pisan: cada una se corta en el inicio de la siguiente, y dos en el mismo frame no "
+          "puntúan", bool(np.array_equal(score, expected)))
     check("la puntuación del equipo es la de la regla: 1 por frame, sin ajustar", dead_ball.TEAM_SCORE == 1.0)
     check("el equipo que reanuda no entra todavía en evidence",
           not dead_ball.evidence(trk, {"smart_tagging": path}, game)[0][:, :2].any())
 
     # El lado que defiende cada equipo.
-    blocks = tracking.evaluated_blocks(game)
     px = np.full((n, 4), np.nan)
     first_half, second_half = slice(*blocks[0]), slice(*blocks[1])
     px[first_half, :2], px[first_half, 2:] = 20.0, 80.0  # el local (slots 0 y 1) a la izquierda
     px[second_half, :2], px[second_half, 2:] = 80.0, 20.0
     team_of_slot = np.array([0, 0, 1, 1], dtype=np.int8)
     players = tracking.Tracking(bx, bx.copy(), px, px.copy(), team_of_slot, (length, width), blocks, fps)
-    check("lado izquierdo: lo defiende el local en la 1ª parte y el visitante en la 2ª",
-          aer.left_defender(players) == {1: H, 2: A})
+    check("lado izquierdo: lo defiende el local en la 1ª parte y el visitante en la 2ª, a 60 m",
+          aer.left_defender(players) == ({1: H, 2: A}, {1: 60.0, 2: 60.0}))
+    one_team = players._replace(team=np.array([0, 0, 0, 0], dtype=np.int8))
+    check("lado izquierdo: si falta un equipo, da error",
+          pp.raises(ValueError, lambda: aer.left_defender(one_team)))
 
-    # La física de cada ventana: el balón quieto en el punto del reinicio y, después, el golpeo.
-    def ball_at(x, y=1.0, start=1000 * fps):
-        bx, by = np.full(n, np.nan), np.full(n, np.nan)
-        bx[start - 50:start + 50], by[start - 50:start + 50] = x, y
-        bx[start + 50:start + 100] = x + np.arange(1, 51)  # golpeo: se mueve 1 m por frame
-        by[start + 50:start + 100] = y
-        return bx, by
+    # La física de cada ventana: el último balón visto antes del inicio de la ventana.
+    w = 1000 * fps
 
-    corner, goal_kick = {"type": "corner kick", "start": 1000 * fps, "end": 1035 * fps}, \
-        {"type": "goal kick", "start": 1000 * fps, "end": 1035 * fps}
+    def spot(x, age_s=2, start=w):
+        bx = np.full(n, np.nan)
+        bx[100:200] = length - 1.0  # mucho antes, el balón visto en el otro lado
+        bx[start - age_s * fps - 49:start - age_s * fps + 1] = x  # el último, a age_s justos del inicio
+        last = dead_ball.last_seen_before(bx, bx)
+        return aer.restart_spot(last, bx, bx, {"start": start}, fps)
+
     left = {1: H}
+    check("el punto del reinicio es el último balón visto antes de la ventana, no uno anterior",
+          spot(2.0) == (2.0, 2.0))
+    check("un balón visto hace 60 s justos vale; uno más antiguo, no",
+          spot(2.0, age_s=60) is not None and spot(2.0, age_s=61) is None and aer.MAX_AGE_S == 60)
     check("córner en el lado izquierdo, que defiende el local: lo saca el visitante",
-          aer.physics_check(*ball_at(1.0), corner, A, 1, left, length) == aer.AGREE
-          and aer.physics_check(*ball_at(1.0), corner, H, 1, left, length) == aer.DISAGREE)
+          aer.physics_check((1.0, 1.0), "corner kick", A, 1, left, length) == aer.AGREE
+          and aer.physics_check((1.0, 1.0), "corner kick", H, 1, left, length) == aer.DISAGREE)
     check("saque de puerta en el lado izquierdo: lo saca el local, que lo defiende; en el derecho, el otro",
-          aer.physics_check(*ball_at(5.0), goal_kick, H, 1, left, length) == aer.AGREE
-          and aer.physics_check(*ball_at(length - 5.0), goal_kick, A, 1, left, length) == aer.AGREE)
+          aer.physics_check((5.0, 30.0), "goal kick", H, 1, left, length) == aer.AGREE
+          and aer.physics_check((length - 5.0, 30.0), "goal kick", A, 1, left, length) == aer.AGREE)
     check("el punto cerca del medio campo no decide; justo dentro del cuarto final, sí",
-          aer.physics_check(*ball_at(length / 2), corner, A, 1, left, length) == aer.NOT_IN_QUARTER
-          and aer.physics_check(*ball_at(length / 4 + 0.1), corner, A, 1, left, length) == aer.NOT_IN_QUARTER
-          and aer.physics_check(*ball_at(length / 4 - 0.1), corner, A, 1, left, length) == aer.AGREE)
-    early_x = ball_at(1.0)[0]
-    early_x[100:200] = length - 1.0  # mucho antes, el balón visto en el otro lado
-    check("el punto del reinicio es el último visto antes del golpeo, no el primero",
-          aer.physics_check(early_x, np.where(np.isnan(early_x), np.nan, 1.0), corner, A, 1, left, length)
-          == aer.AGREE)
-    check("sin balón no hay golpeo y no decide",
-          aer.physics_check(np.full(n, np.nan), np.full(n, np.nan), corner, A, 1, left, length) == aer.NO_STRIKE)
+          aer.physics_check((length / 2, 1.0), "corner kick", A, 1, left, length) == aer.NOT_IN_QUARTER
+          and aer.physics_check((length / 4 + 0.1, 1.0), "corner kick", A, 1, left, length) == aer.NOT_IN_QUARTER
+          and aer.physics_check((length / 4 - 0.1, 1.0), "corner kick", A, 1, left, length) == aer.AGREE)
+    check("sin balón visto no decide", aer.physics_check(None, "corner kick", A, 1, left, length) == aer.NO_BALL)
 
     # Con qué equipo sale el pipeline de la parada.
     codes = np.array([H, D, D, H, A, A, D, D, D, D], dtype=np.int8)
@@ -591,30 +602,92 @@ def check_team_restart(game, folder):
           and aer.exit_state(codes, {"start": 6, "end": 9}, H, 10) == (aer.NO_EXIT, False))
     check("runs: posesiones y paradas dentro de los tramos",
           aer.runs(codes, ((0, 6), (6, 10))) == (3, 2), str(aer.runs(codes, ((0, 6), (6, 10)))))
+    before = np.array([H, H, D, D, A, A], dtype=np.int8)
+    after = np.array([A, H, H, D, D, A], dtype=np.int8)
+    check("changes: de un equipo al otro, de juego a D y de D a juego, solo en lo evaluado",
+          aer.changes(before, after, np.ones(6, dtype=bool)) == (1, 1, 1)
+          and aer.changes(before, after, np.array([False] * 6)) == (0, 0, 0))
 
-    # Las dos condiciones de la regla, en sus límites.
+    # Las tres condiciones de la regla, en sus límites.
     check("condición 1: 9 de 10 entra; 8 de 10, 8 de 9 y 9 de 9 (menos de 10 que deciden), no",
           aer.physics_rule(9, 10) and not aer.physics_rule(8, 10) and not aer.physics_rule(8, 9)
-          and not aer.physics_rule(9, 9)
-          and not aer.physics_rule(0, 0))
+          and not aer.physics_rule(9, 9) and not aer.physics_rule(0, 0))
     check("condición 2: 1 sin la capa y 0 con ella entra; 0 y 0, o 2 y 2, no",
           aer.contributes_rule(1, 0) and not aer.contributes_rule(0, 0) and not aer.contributes_rule(2, 2))
+    check("condición 3: con la capa, igual o menos posesiones y paradas entra; una más de cualquiera, no",
+          aer.harm_rule((10, 5), (10, 5)) and aer.harm_rule((10, 5), (9, 4))
+          and not aer.harm_rule((10, 5), (11, 5)) and not aer.harm_rule((10, 5), (10, 6)))
 
-    # measure_teams de punta a punta con el partido inventado de la sección 9, sin abrir ficheros.
-    trk, events = synthetic_match(game)
-    for event in events:
-        event["team"] = {"corner kick": "local", "goal kick": "visitante"}.get(event["type"], "n/a")
-    anchors = lambda clean: dead_ball.evidence(clean, None, game)  # noqa: E731
+    # measure_teams de punta a punta, sin abrir ficheros y con piezas controladas, para que todo decida:
+    # - un córner del local (lado izquierdo, que defiende el visitante) y un saque de puerta del visitante
+    #   (lado izquierdo): los dos coinciden con el Team;
+    # - D 10 s al principio de cada ventana; el local va por delante (+0,3) en todo el partido;
+    # - en el córner, el visitante +0,6 de 10 a 20 s: sin la capa sale con el visitante (el otro), con ella
+    #   con el local;
+    # - en el saque de puerta, el visitante +0,6 de 10 a 20 s: sale con el visitante (el del Team); sin la
+    #   capa el local vuelve dentro de la ventana, con ella no.
+    w1, w2 = 1000 * fps, 2000 * fps
+    events = [{"code": "set pieces", "type": "corner kick", "team": "local", "start": w1, "end": w1 + 35 * fps},
+              {"code": "set pieces", "type": "goal kick", "team": "visitante", "start": w2,
+               "end": w2 + 35 * fps}]
+    bx = np.full(n, np.nan)
+    bx[w1 - 100:w1 - 50], bx[w2 - 100:w2 - 50] = 2.0, 5.0
+    px = np.full((n, 4), np.nan)
+    px[:, :2], px[:, 2:] = 80.0, 20.0  # el visitante defiende el lado izquierdo
+    match = tracking.Tracking(bx, bx.copy(), px, px.copy(), team_of_slot, (length, width), blocks, fps)
+
+    def team_piece(trk):
+        score, allowed = tracking.no_evidence(n)
+        score[:, H] = 0.3
+        for start in (w1, w2):
+            score[start + 10 * fps:start + 20 * fps, A] = 0.6
+        return score, allowed
+
+    def dead_piece(trk):
+        score, allowed = tracking.no_evidence(n)
+        for start in (w1, w2):
+            score[start:start + 10 * fps, D] = 2.0
+        return score, allowed
+
+    pieces = {"candidates": team_piece, "dead_state": dead_piece}
+    anchors = lambda clean: tracking.no_evidence(n)  # noqa: E731
     try:
         with pp.no_files():
-            m = aer.measure_teams(trk, events, "Local", "Visitante", anchors, game)
+            m = aer.measure_teams(match, events, "Local", "Visitante", anchors, game, pieces=pieces)
     except AssertionError:
         check("measure_teams no abre ningún fichero", False)
         raise
-    check("measure_teams: corre sin abrir ficheros, sin conflictos y con la regla coherente",
-          m["windows"] == 4 and m["conflicts"] == (0, 0) and m["entra"] == (m["physics_ok"] and m["contributes"])
-          and sum(m["exits"][0].values()) == sum(m["exits"][1].values()) == 4,
-          "ventanas {} conflictos {}".format(m["windows"], m["conflicts"]))
+    corner, goal_kick = m["checks"]["corner kick"], m["checks"]["goal kick"]
+    check("measure_teams: la física decide las dos ventanas y coinciden",
+          corner[aer.AGREE] == 1 and goal_kick[aer.AGREE] == 1 and (m["agree"], m["deciding"]) == (2, 2)
+          and not m["physics_ok"], str(m["checks"]))
+    check("measure_teams: sin la capa sale con el otro en el córner; con ella, con el del Team en las dos",
+          m["exits"][0][aer.OTHER] == 1 and m["exits"][0][aer.SAME] == 1 and m["exits"][1][aer.SAME] == 2
+          and m["contributes"], str(m["exits"]))
+    check("measure_teams: el riesgo, la capa quita el cambio al local dentro del saque de puerta",
+          m["later"] == (1, 0) and m["later_removed"] == 1, "{} {}".format(m["later"], m["later_removed"]))
+    check("measure_teams: cambian 10 s de un equipo al otro en el córner y 15 s en el saque de puerta, y "
+          "ningún frame de D", m["changed"] == (25 * fps, 0, 0), str(m["changed"]))
+    # Y la condición 1 justo en su límite: 13 córners, 9 con el Team bien, 1 mal, 2 sin balón visto y 1 en el
+    # medio campo. Deciden 10 y coinciden 9 (el 90 %): se cumple.
+    starts = [(1000 + 100 * i) * fps for i in range(13)]
+    teams = ["local"] * 9 + ["visitante"] + ["local"] * 3
+    xs = [2.0] * 10 + [None, None, length / 2]
+    events = [{"code": "set pieces", "type": "corner kick", "team": team, "start": start, "end": start + 35 * fps}
+              for start, team in zip(starts, teams)]
+    bx = np.full(n, np.nan)
+    for start, x in zip(starts, xs):
+        if x is not None:
+            bx[start - 100:start - 50] = x
+    corners = tracking.Tracking(bx, bx.copy(), px, px.copy(), team_of_slot, (length, width), blocks, fps)
+    with pp.no_files():
+        m13 = aer.measure_teams(corners, events, "Local", "Visitante", anchors, game, pieces=pieces)
+    check("condición 1 en su límite con el script entero: deciden 10, coinciden 9, y se cumple",
+          m13["checks"]["corner kick"] == {aer.AGREE: 9, aer.DISAGREE: 1, aer.NO_BALL: 2, aer.NOT_IN_QUARTER: 1}
+          and (m13["agree"], m13["deciding"]) == (9, 10) and m13["physics_ok"], str(m13["checks"]))
+    check("measure_teams: la capa quita una posesión y no añade paradas; sin conflictos",
+          m["runs"][1][0] == m["runs"][0][0] - 1 and m["runs"][1][1] == m["runs"][0][1] and m["harm_ok"]
+          and m["conflicts"] == (0, 0), str(m["runs"]))
 
 
 def main():
@@ -699,7 +772,7 @@ def main():
     print("\n9. La regla de validation/partido/agregados_dead_ball.py, con un partido inventado en memoria")
     check_rules(game)
 
-    print("\n10. El equipo que reanuda (medido, todavía fuera de evidence), con datos inventados")
+    print("\n10. El equipo que reanuda (sin medir, todavía fuera de evidence), con datos inventados")
     folder = tempfile.mkdtemp(prefix="comprobar_balon_muerto_")
     try:
         check_team_restart(game, folder)
