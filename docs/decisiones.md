@@ -2861,3 +2861,12 @@ Decisión y por qué:
 
 Límite: el inicio que marca el Smart Tagging no es la GT. Si fuera antes de la recuperación real, parte de la
 espera no sería un retraso.
+
+**Junto con la cota de la DFL** (entrada «posesiones cortas, fase 4»; bitácora §9):
+- Una pista perfecta que marque las 24 transiciones, con peso 8 en todos los frames, daría de +0,021 a +0,027
+  si cae en cambios que `main` no ve [medido allí, cota superior]. Según nuestros recuentos, es justo el caso
+  del partido: 19 de 24 sin cambio a ±2 s, y de 2 a 10 s tarde [medido aquí].
+- **Ni así llega al +0,03 de §5.8,** y el empujón del plan, solo sin balón, se queda en ±0,008 [inferencia, al
+  juntar las dos medidas].
+- **Propuesta: cerrar la tarea 2 sin encender nada.** Con las normas del 15/11, la decisión es del equipo y la
+  puede tomar Antonio.

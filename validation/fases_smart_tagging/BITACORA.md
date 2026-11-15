@@ -296,3 +296,37 @@ el 70 % o más. **La tabla vale tal cual, excluyendo los solapados, y se cierra 
 - **Límite:** el inicio que marca el Smart Tagging no es la GT. Si lo marcara antes que la recuperación real,
   parte de nuestra «espera» no sería un retraso.
 - Nada se ha encendido, y la entrega no cambia.
+
+## 9. Junto con la cota de la DFL (15/11, después de los dos recuentos)
+
+**La cota.** La sesión de posesiones cortas midió, en la DFL y con una pista sintética, cuánto valdría una pista
+de equipo de fuera (`docs/decisiones.md`, «posesiones cortas, fase 4», y `validation/posesiones_cortas/BITACORA.md`
+§11 y §13) [medido por esa sesión; cota superior]:
+
+- **Solo en los frames sin balón** (el alcance del plan): no cambia nada (±0,008).
+- **Una pista que marca dónde cambia la posesión,** como las «Attacking Transition»:
+  - con las 24 del partido perfectas y peso 8 en todos los frames: de +0,013 a +0,016 si caen al azar;
+  - de **+0,021 a +0,027** si caen en cambios que `main` no ve;
+  - para llegar al +0,03 de §5.8 haría falta el 30 % de los cambios, todos de los que `main` no ve y a 1 s o
+    menos.
+- **Lo que preguntaba para esta tarea:** cuántas transiciones no ve `main` y con qué retraso.
+
+**Lo que dicen los recuentos de aquí** [medido]: en 19 de las 24, `main` no tiene un cambio a ±2 s del inicio
+(§6), y cuando llega lo hace de 2 a 10 s tarde (§8.2). Es el caso de «cambios que `main` no ve».
+
+**Juntándolo** [inferencia]:
+
+- **Aun en ese caso, el más favorable, la cota no llega al +0,03:** de +0,021 a +0,027, con una pista perfecta.
+  Las fases no lo son: el 93,1 % de acuerdo de §6 es con la proximidad, no con la GT.
+- **El empujón del plan, solo sin balón,** tiene una cota de ±0,008.
+- **Ninguno de los dos usos llegaría al +0,03,** aunque saliera lo mejor posible. Además no se pueden medir en
+  la DFL, y harían falta las tuberías del Smart Tagging en el pipeline antes del corte del martes.
+
+**Propuesta: cerrar la tarea 2 sin encender nada** y dejar apuntado lo que se ha aprendido, para el documento
+técnico:
+- las fases son fiables en las transiciones y en la progresión (del 92 al 93 %) y menos en las de zona (del 72
+  al 75 %);
+- la entrega llega de 2 a 10 s tarde a la mayoría de los contraataques.
+
+Con las normas del 15/11 («cualquiera del equipo puede contestar, decidir y revisar»), donde esta bitácora dice
+«lo decide Ismael» se lee «lo decide el equipo». Esto lo puede decidir Antonio.
