@@ -124,3 +124,45 @@ Con el `L̂` de las dos partes juntas. El script imprime la lectura que toca:
   1,5 m de él y quedan sobre todo las conducciones lentas. La condición `hacia atrás` mide justo eso.
 - **La DFL tiene más disputas que el ATD** (20 % frente a 14,5 %, plan §4). Aquí pesa poco, porque solo
   cuentan los tramos en que un jugador lleva el balón.
+
+## 7. Resultado de la calibración (15/11, después de medir)
+
+La regla de las secciones 1 a 6 se guardó en el commit `d94addb` antes de ejecutar nada. Calibración con
+`python validation/retraso_balon/calibrar_dfl.py`, 7 partidos, 8 s.
+
+**No pasa. La medida no se ejecuta en el partido** (§3).
+
+| condición | se espera | `L̂` de los 7 juntos | partidos en la banda | ¿pasa? |
+|---|---|---|---|---|
+| `limpio` | descriptiva | −6 | — | — |
+| `centrado` | 0 ± 2 | −7 | 0 de 7 | **no** |
+| `hacia atrás` | +12 ± 2 | +12 | 7 de 7 | sí |
+| `centrado +6` | +6 ± 2 | +6 | 6 de 7 | sí, por poco |
+| `centrado −6` | −6 ± 2 | −11 | 0 de 7 | **no** |
+
+[medido] Por partido, `L̂` de `limpio` va de −7 a −5 y el de `centrado`, de −8 a −6. En `centrado +6`, el
+intervalo de 5 de los 7 partidos va de −7 a +6.
+
+**Por qué falla** (diagnóstico en la DFL, con la curva de los 7 juntos; no cambia la regla):
+
+| L | −20 | −16 | −12 | −8 | −6 | −4 | −2 | 0 | +2 | +4 | +6 | +8 | +12 | +16 | +20 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `limpio` | 0,41 | 0,47 | 0,53 | 0,57 | 0,57 | 0,57 | 0,54 | 0,47 | 0,49 | 0,49 | 0,48 | 0,46 | 0,40 | 0,33 | 0,27 |
+| `centrado` | 0,60 | 0,67 | 0,73 | 0,76 | 0,76 | 0,75 | 0,72 | 0,69 | 0,69 | 0,69 | 0,67 | 0,64 | 0,56 | 0,48 | 0,40 |
+| `hacia atrás` | 0,23 | 0,29 | 0,36 | 0,41 | 0,42 | 0,41 | 0,40 | 0,39 | 0,44 | 0,49 | 0,53 | 0,56 | 0,59 | 0,57 | 0,51 |
+| `centrado +6` | 0,49 | 0,56 | 0,63 | 0,67 | 0,68 | 0,67 | 0,65 | 0,63 | 0,66 | 0,68 | 0,69 | 0,68 | 0,64 | 0,58 | 0,51 |
+| `centrado −6` | 0,57 | 0,64 | 0,67 | 0,66 | 0,64 | 0,62 | 0,58 | 0,54 | 0,51 | 0,48 | 0,43 | 0,39 | 0,30 | 0,22 | 0,17 |
+
+- **La curva tiene dos jorobas** [medido]: una hacia −6 (el balón va por delante del jugador) y otra
+  hacia +3 (va por detrás), con un valle en 0. El máximo salta de una a otra según la condición. Por eso
+  `L̂` no se mueve lo mismo que el desplazamiento: centrado da −7, retrasado 6 da +6 y adelantado 6 da −11.
+- **Lectura física** [inferencia]: en una conducción, el jugador empuja el balón y lo sigue, y el balón se
+  adelanta; al protegerlo o al recibir, el balón va detrás. En la DFL pesan parecido, y el máximo de una
+  mezcla así no es estable.
+- **Lo que sí se mueve con el retraso es la forma entera de la curva** [medido, en la tabla]: cuanto más
+  tarde llega el balón, más peso tiene a la derecha. Con un resumen de la curva entera, en vez de su
+  máximo, quizá saldría una medida que se mueve con el desplazamiento. **No se ha medido**: sería un
+  instrumento nuevo, con su regla escrita y subida antes, y diseñado después de ver estas curvas de la DFL
+  (nunca el partido).
+
+**Qué se hace:** nada en `possession/`. El partido no se ha tocado.
