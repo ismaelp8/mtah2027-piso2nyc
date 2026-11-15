@@ -3,7 +3,7 @@
 **Lee el partido: lo ejecuta una persona, en local, nunca Claude** (regla nº 1 de `CLAUDE.md`). Imprime solo
 agregados: los de los tres scripts que llama, uno detrás de otro, para pegar una sola salida.
 
-    python validation/partido/probar_entrega.py prueba_d7b --capa dead_ball.ball_out_hold
+    python validation/partido/probar_entrega.py prueba_x --capa modulo.funcion
     python validation/partido/probar_entrega.py prueba_b9 --pieza candidates=aprendida.evidence_b9
 
 1. `python -m possession.pipeline --name <nombre> [--pieza ...] [--capa ...]`: escribe la entrega de prueba en

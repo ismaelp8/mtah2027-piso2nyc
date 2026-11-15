@@ -234,15 +234,16 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v8`** (Ismael, 16/11, en el entorno limpio con `main` en `44678d1`): `equipo_v5`
-  más la capa del balón fuera (D7, más abajo). Es válida, con 219 posesiones de 15,8 s de media, 116 paradas, el
+- **Entrega vigente: `equipo_v8`** (Ismael, 16/11, con `main` en `44678d1`): `equipo_v5` más la capa del balón
+  fuera (D7, más abajo). El entorno está [sin verificar], porque no se pegó la línea de versiones, pero la
+  huella es la de `prueba_d7_v5`, que salió con Python 3.13.9 y numpy 2.5.4. Es válida, con 219 posesiones de 15,8 s de media, 116 paradas, el
   45,4 % de `D` en lo evaluado y sha256 `d78c514d…e2b2`.
   - Sale byte a byte igual que `prueba_d7_v5`, la entrega de prueba.
   - Frente a `equipo_v5` cambian 574 frames, todos de un equipo a `D` (331 de `H` y 243 de `A`), con 3 paradas
     más. Los 817 cambios de la capa de los contraataques siguen enteros.
   - En la ventana pública, el spellF1 no cambia (0,658) y el macroF1 sube de 0,851 a 0,865. No elige nada: con 17
     posesiones, una diferencia de hasta 0,39 es ruido.
-  - Falta reproducirla en otra máquina.
+  - Falta reproducirla en otra máquina. El ensayo de esta noche tiene que dar `d78c514d…e2b2`.
 - **Entrega anterior: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
   más la capa de los contraataques (más abajo). Es válida, con 219 posesiones de 15,9 s de media, 113
   paradas, el mismo `D` que `equipo_v3` y sha256 `27dc8aa8…efb7`.

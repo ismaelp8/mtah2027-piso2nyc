@@ -330,7 +330,8 @@ def ball_out(trk):
 
 # -- D7, segunda versión (15/11): mantener la parada hasta que el balón vuelva a verse dentro. APAGADA. -----
 # Diseñada después de ver la primera (prueba_d7: tarde en 12 de 47 rachas, y en 7 nuestro `D` no llega).
-# Se prueba con `--capa dead_ball.ball_out_hold`. Reglas fijadas antes de generar la entrega: docs/decisiones.md,
+# Ojo: con `ball_out` ya en la entrega (16/11), `--capa dead_ball.ball_out_hold` la sumaría dos veces, porque esta
+# la lleva dentro. Para probarla habría que quitar antes `ball_out` de `pipeline.DELIVERY_LAYERS`. Reglas fijadas antes de generar la entrega: docs/decisiones.md,
 # 15/11, «D7, segunda versión».
 
 # Racha visible mínima para mantener la parada en el hueco que la sigue: con 1 s, en SkillCorner (mitad de
