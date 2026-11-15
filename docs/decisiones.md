@@ -4046,9 +4046,10 @@ los contraataques (`transiciones.evidence_equipo`), y nadie ha generado la entre
   suma 8 a un equipo y esta suma 5 a `D`. Ahí el resultado no tiene por qué ser la suma de las dos pruebas.
 - Por eso los umbrales dejan margen sobre lo de ayer.
 
-Lo que espero [inferencia]: casi lo mismo que `prueba_d7`. `equipo_v5` tiene el mismo `D` que `equipo_v3`, y la capa
-de los contraataques no toca la columna `D`. Unos 574 frames de un equipo a `D`, 116 paradas, 219 posesiones y 12 de
-47 rachas en que llegamos tarde.
+Lo que espero: casi lo mismo que `prueba_d7` [inferencia]. `equipo_v5` tiene el mismo `D` que `equipo_v3` en los
+frames evaluados [medido: los 817 frames que cambian son de un equipo al otro y las dos tienen 113 paradas, entrada
+«se enciende la capa de los contraataques»], y la capa de los contraataques no suma a la columna `D`. Unos 574 frames
+de un equipo a `D`, 116 paradas, 219 posesiones y 12 de 47 rachas en que llegamos tarde.
 
 Cómo se genera (lo ejecuta Ismael, desde `C:\dev\mtah2027-piso2nyc`, con `main` al día y el python del entorno
 limpio):
@@ -4057,9 +4058,13 @@ limpio):
 2. `validation/partido/comparar_entregas.py equipo_v3 prueba_d7_v5`: la compara con la de antes de las dos capas.
 
 **Pasa si se cumple todo esto:**
-0. **Procedencia:** la salida del paso 1 dice un commit de `main` que ya tiene esta entrada, «sin cambios locales en el código
-   de la entrega», «capa añadida dead_ball.ball_out», y las versiones de Python y numpy. Si no, esa salida no vale y
-   se repite.
+0. **Procedencia:** la salida del paso 1 dice un commit de `main` desde `f733af5` (el que sube esta entrada) que
+   **todavía no lleva `dead_ball.ball_out` en `pipeline.DELIVERY_LAYERS`**, «sin cambios locales en el código de la
+   entrega», «capa añadida dead_ball.ball_out», y las versiones de Python y numpy. Con la capa ya encendida,
+   `--capa` la sumaría dos veces (peso 10) y la salida no lo diría; por eso el commit que la enciende hace que
+   `build` dé error en ese caso. Además, la columna «antes» de cada comparación tiene que ser la de la entrega
+   apuntada: 219 posesiones y 113 paradas (`equipo_v5`, paso 1) y 215 y 113 (`equipo_v3`, paso 2). Si algo de esto
+   no se cumple, esa salida no vale y se repite.
 1. **Sin conflictos ni rachas cortas:** 0 frames con piezas en conflicto. En los dos tramos, 0 posesiones, 0 rachas
    de juego y 0 paradas de menos de 25 frames.
 2. **La banda del plan:** el `D` no pasa del 60 % de los frames evaluados y las paradas no pasan de 250. El `D` se
@@ -4072,19 +4077,31 @@ limpio):
    - b. el 90 % o más de los frames que cambian pasan de `H` o `A` a `D`. Ayer, el 100 %;
    - c. de `D` a `H` o `A`, 25 frames o menos (1 s). La capa solo suma a `D`: esto solo puede venir del arrastre del
      decodificador;
-   - d. de un equipo al otro (`H → A` más `A → H`), 82 frames o menos: el 10 % de los 817 que arregló la capa de los
-     contraataques. Es lo que esta capa podría deshacerle;
+   - d. de un equipo al otro (`H → A` más `A → H`), 82 frames o menos, el 10 % de 817. Acota el arrastre del
+     decodificador entre equipos: frames de los 817 que vuelven al equipo de `equipo_v3`, más cambios de equipo
+     nuevos. Lo que esta capa puede quitarle a la de los contraataques por la vía principal (de un equipo a `D`) no
+     lo ve este criterio, sino el 4;
    - e. las paradas suben 6 como mucho (de 113 a 119 o menos). Ayer subieron 3, y el doble deja margen al solape.
      Cada parada nueva tendría que salir de una racha en que nuestro `D` no llegaba en 10 s, y eran 10;
    - f. las posesiones no suben más que las paradas: cada posesión nueva tiene que venir de una parada nueva que
      parte una posesión.
-4. **La capa de los contraataques no pierde lo que arregló** (paso 2, frente a `equipo_v3`): `H → A` más `A → H` suman
-   736 o más, el 90 % de los 817 de `equipo_v5` (274 de `H` a `A` y 543 de `A` a `H`). Con la capa del balón fuera
-   sola no cambió ningún frame de un equipo al otro, así que ese cambio frente a `equipo_v3` es el de los
-   contraataques.
+4. **La capa de los contraataques no pierde lo que arregló:** (`H → A` más `A → H` del paso 2, frente a `equipo_v3`)
+   menos (`H → A` más `A → H` del paso 1, frente a `equipo_v5`) da 736 o más, el 90 % de los 817 de `equipo_v5` (274
+   de `H` a `A` y 543 de `A` a `H`).
+   - Por qué la resta: fuera de los 817, `equipo_v3` y `equipo_v5` son iguales. Si de los 817 se conservan C, vuelven
+     al equipo de antes V y pasan a `D` los demás, y hay N cambios de equipo nuevos fuera de ellos, el paso 2 cuenta
+     C + N y el paso 1, V + N. La resta da C − V, una cota inferior de los que se conservan.
+   - Contar solo el paso 2 dejaría pasar cambios nuevos como si fueran arreglos conservados.
 
 Descriptivo, no decide: el recuento del balón fuera (paso 1). Espero unas 12 rachas tarde de 47, como ayer. No es un
 criterio: es el que falló ayer y Ismael ha decidido no exigirlo.
+
+Las celdas «< 5» de las comparaciones (de 1 a 4 frames) cuentan como 4 si van en contra de un criterio y como 1 si
+van a favor.
+
+Corregido el 16/11, antes de generar nada, tras una revisión de esta lectura: el criterio 0 exige un commit sin la
+capa encendida y las bases de cada comparación; el 4 pasa a contarse con la resta (antes contaba solo el paso 2, en
+neto); y el porqué de 3d dice lo que mide. Los umbrales no han cambiado.
 
 **Si falla alguna:** no se enciende nada. No se retocan ni la capa ni los umbrales. Se para, se le cuenta a Ismael con
 la salida y se apunta aquí.
