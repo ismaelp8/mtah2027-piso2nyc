@@ -9,7 +9,7 @@ Con el partido inventado del harness (`puntuar.partido_de_prueba`) comprueba:
 - el determinismo: dos ejecuciones dan lo mismo;
 - la simetría: cambiar los equipos intercambia `H` y `A` exactamente;
 - que no depende del orden de los slots: una permutación fija da la misma puntuación tras redondear;
-- los coeficientes: los 64 juegos (B1 a B8; los 7 partidos y un pliegue sin cada partido), con tantos
+- los coeficientes: los 72 juegos (B1 a B9; los 7 partidos y un pliegue sin cada partido), con tantos
   pesos como rasgos, y el bloque del módulo es el que escribe `validation/apuesta_b/entrenar.py`;
 - B3 y B4 (14/11): con la misma α, B3 con el balón a la vista en todos los frames es B2, B3 no opina sin
   balón, B4 da la misma diferencia `H` − `A` que B2 y su ganador nunca supera a `D`; B5 es B4 más N1;
@@ -129,7 +129,8 @@ def main():
     for nombre, funcion in (("B1", aprendida.evidence_b1), ("B2", aprendida.evidence_b2),
                             ("B3", aprendida.evidence_b3), ("B4", aprendida.evidence_b4),
                             ("B5", aprendida.evidence_b5), ("B6", aprendida.evidence_b6),
-                            ("B7", aprendida.evidence_b7), ("B8", aprendida.evidence_b8)):
+                            ("B7", aprendida.evidence_b7), ("B8", aprendida.evidence_b8),
+                            ("B9", aprendida.evidence_b9)):
         print(nombre)
         score, allowed = funcion(trk)
         comprobar("arrays (n, 3), puntuación finita y todo permitido",

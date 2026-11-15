@@ -2061,11 +2061,17 @@ entrega.**
   ninguno de los dos tramos. En la entrega se cumple la condición del criterio del 13/11 de que no haya
   rachas de `D` ni de juego de menos de 25 frames.
 
+Añadido (15/11, `main` en `4305576`) [medido por Ismael]: **con numpy 2.3.4 también sale `9539ce42…cc17a`.**
+- Se regeneró, sin querer, en otro entorno de Ismael: Python 3.13.9 con numpy 2.3.4, en vez del entorno limpio.
+- Salen los mismos recuentos y el validador da `Valid`.
+- Es la primera prueba de que la huella aguanta un cambio de versión de numpy. No cambia lo fijado: la entrega
+  se regenera con `requirements-entrega.txt`.
+
 Falta:
-- **Repetir la huella en el ensayo del lunes por la noche,** con lo que haya entrado en `main` hasta
+- **Repetir la huella en el ensayo del lunes por la noche,** en el entorno limpio
+  (`C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe`), con lo que haya entrado en `main` hasta
   entonces.
-- **La versión de numpy de la máquina Linux** que reprodujo `equipo_v2` [sin verificar]. Si era otra, la
-  huella ya aguanta un cambio de versión.
+- **La versión de numpy de la máquina Linux** que reprodujo `equipo_v2` [sin verificar].
 - **El nombre del CSV:** `<NOMBRE_EQUIPO>` sigue sin confirmar. Hasta entonces, el comando lo recibe con
   `--name` y el nombre por defecto sigue siendo `equipo_v0`.
 
@@ -2360,6 +2366,156 @@ en los frames sin balón. Un uso más amplio pide otra decisión de Ismael, porq
 
 Descartado: copiar las fases como etiquetas, o darles un peso comparable al coste de cambio
 (`docs/revision_externa_2026-11-15.md`).
+
+### 2026-11-15 · candidatos · posesiones cortas: B9, B5 con la dirección del balón (candidato, antes de medir)
+
+Quién: sale de la reapertura de Ismael («se reabre la evidencia de equipo tras la ronda de B5», más arriba).
+Claude lo escribe, lo entrena y lo mide en la rama
+`claude/posesiones-cortas-5e84f8`. La regla tiene commit antes de entrenar.
+
+Por qué (`validation/resultados/2026-11-15_posesiones_cortas.md` y `validation/posesiones_cortas/BITACORA.md`):
+- en las posesiones que no encontramos, la evidencia de B5 apunta al otro equipo durante casi toda la
+  posesión. Hay que cambiar su signo, no el coste de cambio;
+- el más cercano no trae información por frame en las de menos de 2 s, ni con el balón limpio;
+- la dirección en que se mueve el balón sí la trae: en las de 2 a 5 s acierta el 81 % de los frames en que
+  opina en la DFL (el más cercano, el 57–60 %) y el 66 % en SkillCorner;
+- dos ideas se descartaron antes con su puerta: entrenar con SkillCorner y «proponer y clasificar».
+
+**Cómo se eligió el diseño, para que conste:** la señal, el umbral de 2 m/s y la ventana de 13 frames salen
+de un sondeo y de una puerta hechos en los mismos 7 partidos de la DFL (BITACORA §6). Dejar un partido fuera
+protege los coeficientes, no el diseño. Lo único que no ha visto nada de esto es el examen de SkillCorner
+(`lector.EXAMEN`).
+
+Candidato, uno solo. **B9 es B5 con tres rasgos más,** la dirección del balón
+(`aprendida.direccion_del_balon`):
+- en cada frame, la velocidad del balón en x de t−6 a t+6, con el signo de la dirección de ataque del local
+  (la de B2: el local ataca hacia donde está, en media, el visitante);
+- vale +1 si pasa de 2 m/s y −1 si baja de −2 m/s. Vale 0 si no, si falta el balón en alguno de los dos
+  extremos o si alguno cae fuera del tramo;
+- los rasgos son su media centrada en 1, 13 y 51 frames.
+
+Lo demás, como B6, B7 y B8 (`validation/posesiones_cortas/entrenar_b9.py`):
+- las mismas filas: frames vivos en los que el flag y el control coinciden, uno de cada 5, con el balón
+  «como el ATD» y `ball.clean`;
+- la misma regresión y los mismos pliegues;
+- la misma puntuación que B5;
+- la misma elección de α, con la pieza de `D` de `main` dentro y sin oráculo.
+
+No hay segundo candidato. Reentrenar con peso cerca de los cambios (B7) y con más filas (la puerta de
+SkillCorner) ya salió plano con el control.
+
+Comprobaciones del instrumento, antes de leer nada:
+- los coeficientes de B1 a B8 quedan iguales byte a byte;
+- los rasgos de B9 son los de B5 más las tres columnas de la puerta;
+- la elección de α del script, con los pesos de B2, repite la α de B5 en cada pliegue;
+- la fila de `main` repite 0,498 / 0,512 / 0,728 / 0,748 en el harness y 629 / 628 / 545 en
+  `d_propio.py`;
+- `prueba_aprendida.py` y `prueba_harness.py` en verde.
+
+Cómo se mide, en este orden:
+1. **Harness con el `D` oráculo y `--eventos`,** con `validation/harness/versiones/posesiones_cortas_b9.json`
+   y `dejar_fuera`. Regla de §5.8 frente a `main` y frente al control, en las dos condiciones que votan y con
+   las dos convenciones.
+2. **Eventos humanos,** en la misma ejecución, como en la ronda de B5: la estimación de la diferencia frente
+   a `main`, en las dos condiciones que votan. La de las recuperaciones tiene que ser mayor que cero, y la de
+   los duelos sin cambio no puede bajar de −5 puntos.
+3. **Criterios 2 y 3 de B5,** con `validation/apuesta_b/d_propio.py --versiones` y el mismo fichero, como en
+   la ronda de B5. Quedarse corto por poco cuenta como no cumplir.
+4. **SkillCorner, mitad de entrenamiento (descriptivo, antes del examen):** B9 con los coeficientes de los 7
+   frente a `main`, con el `D` oráculo, en las dos condiciones que votan. Si la diferencia no es mayor que
+   cero en las dos, el examen no se ejecuta.
+5. **SkillCorner, examen (una sola vez):** lo mismo en `lector.EXAMEN`.
+   - **Aguanta:** la diferencia frente a `main` es de 0 o más en las dos condiciones que votan.
+   - **Gana:** la diferencia es de +0,03 o más, con el intervalo por encima de cero y ganando en 8 de los 10
+     partidos o más, en las dos condiciones.
+
+Descriptivo, escrito antes de medir. No decide nada:
+- **placebo:** B9 con sus pesos, pero con las tres columnas de la dirección desplazadas 60 s dentro de cada
+  tramo. Con el flag, la ganancia sobre `main` tiene que desaparecer (+0,01 o menos);
+- **sensibilidad:** el balón retrasado 12 frames, como si el suavizado del ATD fuera hacia atrás, para B9 y
+  para `main`. ¿Se mantiene la ganancia?
+
+Regla de lectura, fijada antes de medir:
+- **Lectura 1, la de siempre: entra** si cumple 1, 2 y 3 y aguanta en el examen (5). Se propone a Ismael
+  cambiar `pipeline.PIECES`, en un commit aparte, y la decisión es suya.
+- **Lectura 2, para que decida Ismael.** Se le presenta, sin entrar sola, si cumple todo esto:
+  - con el flag, gana a `main` con §5.8: +0,03 o más, en 6 de 7 o más y con el intervalo por encima de cero,
+    en las dos condiciones que votan;
+  - con el control, no pierde: la diferencia frente a `main` es de −0,01 o más en las dos condiciones que
+    votan;
+  - cumple 2 y 3;
+  - en el examen de SkillCorner, la diferencia frente a `main` es mayor que cero con el intervalo por encima
+    de cero, en las dos condiciones que votan.
+
+  Es el caso «mejor con el flag y con SkillCorner, igual con el control». Si la GT del reto está entre las
+  dos convenciones, como sugiere SkillCorner, saldría a cuenta. §5.8 tal cual lo llamaría empate.
+- **Si no cumple ni la 1 ni la 2, es un empate.** Se apunta y se cierra con el informe.
+- **Nada de lo medido cambia el candidato:** ni el umbral, ni las ventanas, ni las filas, ni la rejilla de α.
+
+Resultado (15/11; `validation/resultados/2026-11-15_posesiones_cortas.md`, código `4e662ad`; salidas en
+`validation/posesiones_cortas/salidas/`) [medido]:
+- **Instrumento:**
+  - B1 a B8 sin cambios (el diff solo añade B9);
+  - los rasgos de B9 son los de B5 más los de la puerta;
+  - la elección de α repite la de B5 en los 8 pliegues;
+  - `main` repite 0,498 / 0,512 / 0,728 / 0,748 y 629 / 628 / 545;
+  - las dos pruebas, en verde.
+- **1. Harness, frente a `main`:** con el flag gana con §5.8 (+0,039 en 7 de 7 y +0,048 en 6 de 7, los dos
+  intervalos por encima de cero). Con el control empata (−0,006 y −0,005, los dos intervalos cruzan el cero).
+  Frente al control del harness gana en todo.
+- **2. Eventos: no cumple.** Las recuperaciones suben +8,2 y +7,7 puntos, y los duelos con cambio, +4,8 y
+  +5,2. Pero los duelos sin cambio bajan −4,7 («como el ATD») y −5,7 («sin bloques»), y el límite era −5.
+- **3. `D` propio: cumple.**
+  - Con el balón tapado: 630 y 629 paradas vistas, frente a 629 y 628. La precisión del `D` queda a 0,1
+    puntos. El spellF1 con el `D` propio no baja en ninguna celda: 0,456 / 0,618 y 0,480 / 0,643, frente a
+    0,416 / 0,616 y 0,433 / 0,642.
+  - Con el balón a la vista: 543 paradas vistas frente a 545, a 0,3 puntos.
+- **4. SkillCorner, mitad de entrenamiento: no es positivo en las dos condiciones.** «Detectado» da −0,005
+  [−0,009 a +0,000], ganando en 1 de 10. «Detectado, suavizado» da +0,004 [−0,002 a +0,009], en 7 de 10.
+  **El examen no se ejecuta:** `lector.EXAMEN` sigue intacto.
+- **Placebo** (descriptivo): con la dirección desplazada 60 s, la ganancia con el flag desaparece (−0,019 y
+  −0,012). La señal es real en la DFL.
+- **Sensibilidad** (descriptivo): con el balón 12 frames tarde, B9 mantiene la ganancia con el flag (+0,040 y
+  +0,044), pero con el control pierde (−0,022 y −0,026). **De paso:** el propio `main` cae de 0,728 a 0,640
+  con el control y de 0,498 a 0,472 con el flag.
+
+Decisión y por qué: **no cumple ni la lectura 1 ni la 2. Es un empate: B5 sigue en la entrega y
+`pipeline.PIECES` no cambia.**
+- Falla el paso 4 de las dos lecturas, y la lectura 2 también falla el criterio 2.
+- B9 es la primera idea que encuentra posesiones cortas de verdad en la DFL. Las de 2 a 5 s encontradas con
+  el control pasan del 53 al 62 % en la puerta. Las recuperaciones suben 8 puntos.
+- Pero no mejora en SkillCorner, el tracking automático más parecido al ATD que hay abierto. Ahí la dirección
+  del balón ya acertaba menos (el 66 % en las de 2 a 5 s, frente al 81 % en la DFL) [sin explicar].
+- SkillCorner también exige control, y B9 también empata con el control de la DFL. No se puede separar si en
+  SkillCorner falla por el tracking automático o por la convención.
+
+Descartado: B9 tal cual. Queda en `possession/aprendida.py`, con sus coeficientes y fuera de
+`pipeline.PIECES`, como referencia del documento técnico.
+
+### 2026-11-15 · candidatos · posesiones cortas, fase 3: con estos rasgos no hay más, ni con un modelo flexible
+
+Quién: lo pidió la sesión principal (orquestadora, por encargo de Ismael). Claude escribió la puerta con su
+regla (`validation/posesiones_cortas/BITACORA.md` §10, commit `3193b43`) antes de ejecutarla.
+
+Qué se probó: si lo que limita es la forma lineal de B5 y B9 o los rasgos. Una red de una capa de 32, en
+numpy y sin sesgos, con los rasgos de B9, y con ellos más 6 señales de los jugadores alrededor de un cambio.
+Mismas filas, pliegues y elección de α que B9.
+
+Cómo se midió: fuera de muestra, con el `D` de las etiquetas. En la DFL, cada partido con el pliegue que no lo
+vio; en `lector.ENTRENAMIENTO` de SkillCorner, con el modelo de los 7 partidos. El examen no se abrió.
+
+Resultado [medido]:
+- con el control, la red empata con `main` (−0,005 a −0,003) y con su versión lineal;
+- en SkillCorner pierde (−0,019 a −0,025);
+- con el flag gana mucho (+0,061 a +0,092 frente a `main`).
+
+Encuentra más posesiones de 2 a 10 s, pero predice tantas de más que con el control no gana.
+
+Decisión y por qué: **se cierra la pregunta. Con estos rasgos no hay más, ni con un modelo flexible.** No se
+abre ningún candidato, B5 sigue en la entrega y `pipeline.PIECES` no cambia. Lo que la red gana con el flag
+es una apuesta de convención que no se traslada a SkillCorner.
+
+Descartado: la red, en sus dos brazos, y las señales de los jugadores alrededor de un cambio.
 
 ### 2026-11-15 · `D` · el estado con jugadores no mira fuera de los tramos evaluados
 
