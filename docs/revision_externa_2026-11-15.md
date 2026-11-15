@@ -49,6 +49,21 @@
 6. **Tres cosas que dije en el chat han cambiado al medirlas** (sección 2): retiro el prior de reinicio,
    bajo la expectativa de la evidencia de equipo y cambio la lectura de la convención.
 
+> **Añadido después (15/11, tarde): B5 aguanta con un tracking automático.** A petición de Ismael se midió
+> el pipeline en los 20 partidos abiertos de SkillCorner (A-League 2024/25, tracking automático de la
+> retransmisión), con una regla escrita antes (`validation/skillcorner/BITACORA.md`). Resultado en
+> `validation/resultados/2026-11-15_skillcorner.md`:
+> - con el `D` oráculo, `main` gana al baseline por +0,13 en 20 de 20 partidos y a N1 por +0,06 en 19 de 20
+>   [medido]. La ventaja de B5 ya no sale solo de la DFL;
+> - con solo los jugadores que la retransmisión detecta, la ventaja sobre N1 baja a +0,03 [medido, sin voto];
+> - con el `D` propio, el baseline saca 0,249, cerca de su 0,2433 del partido, y `main` 0,381 [medido;
+>   descriptivo, bajo D21]. Apunta al centro del rango de 0,30 a 0,50 del punto 2 [inferencia];
+> - la huella de las etiquetas de SkillCorner (0,678 a 25 frames) es la más cercana a la oficial (0,654) de
+>   todas las medidas, entre el flag y el control de la DFL [medido; descriptivo, bajo D21].
+>
+> Cambia la sección 3.2, punto 10 («los jugadores del harness son perfectos»): con jugadores automáticos, la
+> ventaja de B5 aguanta. Y la tabla de propuestas: la P9 (segundo dataset) ya está hecha como validación.
+
 ---
 
 ## 0. Lo que he entendido del reto y de dónde se partía
