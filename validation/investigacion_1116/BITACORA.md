@@ -286,3 +286,26 @@ una apuesta de convención; lo que sí dice es que, si hubiera que moverlo, ser�
 
 - El balón se ve en el 20 % de los frames `D` y en el segundo anterior al saque solo en 2 de 210 saques (1 %).
 - **Se cierra sin medir nada más,** como decía la regla: en estos datos el balón tampoco se ve antes del saque.
+
+## S8. El final de la parada por la geometría del saque (regla escrita antes de medir)
+
+**La idea.** El final de las paradas vale +0,030 (flag) y +0,042 (control) en la DFL si se pone en su sitio
+(diagnóstico de errores, punto 5), y la pieza de estado lo acierta a ±1 s en el 40 %. En un saque de banda el que
+saca está fuera del campo hasta que lanza; en un córner, junto al banderín. El instante en que deja de haber alguien
+ahí fecha el saque sin el balón. En la DFL se puede medir, porque los jugadores se ven durante las paradas (el
+balón va tapado y no se usa). En el ATD hay jugadores fuera del campo en el 84,6 % de las ventanas de saque de banda
+y en el 91,7 % de las de córner (agregados del 14/11).
+
+**Qué se mide** (`fin_por_geometria.py`; DFL, 7 partidos, «como el ATD», `main` con su `D` propio):
+
+- Para cada parada real de 2 s o más que `main` detecta (una racha nuestra de `D` la toca), el fin predicho Ê es el
+  final de esa racha nuestra.
+- **Tipo, por geometría, sin etiquetas:** «banda» si en [Ê − 5 s, Ê + 2 s] hay algún jugador entre 0,5 y 5 m fuera
+  de una banda; si no, «córner» si hay alguno a menos de 2,5 m de un banderín; si no, «otro».
+- **Ancla:** el frame siguiente al último en [Ê − 5 s, Ê + 2 s] con ese jugador fuera (banda) o junto al banderín
+  (córner).
+- El error con signo frente al final real, de Ê y del ancla, y la parte a ±12 y a ±25 frames.
+
+**Regla de lectura, antes de medir.** «Hay candidato para Manuel y Ana» si, en los tipos «banda» y «córner» juntos,
+el ancla queda a ±12 frames del final real en el 50 % o más de las paradas y en 15 puntos más que Ê, con al menos 60
+paradas. Si solo lo cumple un tipo, se dice cuál. Si no, se cierra.
