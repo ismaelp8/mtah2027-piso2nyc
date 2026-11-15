@@ -1294,3 +1294,380 @@ Consecuencias:
 Descartado: el envoltorio en `candidates.py`. Habría tocado la pieza de Antonio y creaba una importación
 circular.
 
+### 2026-11-14 · `D` · fronteras y anclas: capas, candidatos y regla de lectura, escritos antes de medir
+
+Quién: Manuel
+
+**Estado (15/11), para quien llegue aquí:**
+- **entra en `evidence`:** la capa 4, el hueco sin balón antes de cada reinicio;
+- **no entran:** de gol a saque (no ancla ningún gol), R1 y la capa 3 (la salida del balón);
+- **pendientes:** el final de cada parte y el equipo que reanuda.
+
+Todo lo que sigue se escribió en este orden: las reglas, antes de cada medida. El resultado del 15/11 está
+al final, antes de «Abierto».
+
+Qué se va a probar: la pieza de `possession/dead_ball.py` (función `evidence`), por capas, en este orden.
+Cada capa entra con la PR de la medida que la respalda (ver «Abierto»). Sale de
+`docs/PLAN_ENTREGA.md` §3 y de `validation/resultados/2026-11-13_revision_balon_muerto.md` §6.
+
+1. **Anclas duras,** en `allowed` (solo `D`):
+   - ya en `main`: el tramo antes del saque de cada parte;
+   - **de cada gol a su saque:** desde el fin de cada ventana `GOALS` hasta el inicio de la ventana del
+     siguiente `Kick Off (After Goal)`. Un gol sin saque etiquetado después, o con el saque a más de 3
+     minutos del fin de su ventana `GOALS`, no ancla nada. Cada saque se empareja con un solo gol (el
+     emparejamiento cambió después: ver «Cambio después de ver los agregados»).
+     **[sin verificar]** Que la ventana `GOALS` acabe con el balón ya en la portería;
+   - **el final de cada parte:** solo si lo pide el agregado 4 (regla de abajo). Su candidato se escribe
+     aquí antes de medirlo.
+2. **Fin del `D` (el reinicio) y equipo que reanuda,** dentro de cada ventana `SET PIECES`. Candidatos para
+   el instante del reinicio:
+   - **R1:** el golpeo del balón, es decir, el balón visto quieto que empieza a moverse (`find_strike` de
+     `validation/partido/diagnostico_balon_muerto.py`);
+   - **R2:** sin instante: `D` antes del inicio de la ventana, juego después de su fin, y dentro decide el
+     decodificador.
+
+   **El equipo que reanuda:** el `Team` del `SET PIECE`, puntuado en `H` o `A` desde el reinicio. Los
+   `Team = N/A` no puntúan equipo. Los saques de banda, que son `N/A`, quedan para una capa aparte
+   (jugador fuera de la banda, agregado 6).
+3. **Inicio del `D` (la salida):** el balón que desaparece a 2 m o menos de una línea, con 1 m/s o más
+   hacia fuera y un hueco de 2 s o más. Son los umbrales del agregado 3. Se empareja con el `SET PIECES`
+   que le sigue a 30 s o menos, y da `D` desde la salida hasta el reinicio de la capa 2.
+4. **El hueco sin balón antes de cada reinicio** (idea de Ismael, 14/11; se añadió después de ver los
+   agregados de abajo y antes de medirla). Se apoya en el perfil del ATD
+   (`validation/resultados/2026-11-14_perfil_atd.md`): en los 10 s antes de cada `SET PIECE` el ATD ve el
+   balón en el 27,6 % de los frames, frente al 59,2 % del resto [medido].
+   - **Qué hace:** para cada ventana `SET PIECES` que no es un saque inicial, si no se ve el balón en los
+     5 s anteriores a su inicio, puntúa `D` desde el primer frame sin balón hasta el inicio de la ventana.
+   - **No puntúa** si el hueco pasa de 60 s (sería una parada larga o juego sin balón, y la capa no sabe
+     distinguirlos) ni si otro `GOALS` u otro `SET PIECES` empieza dentro del hueco.
+   - **No es `D` a pelo,** que es lo descartado el 13/11 y lo que `docs/PLAN_ENTREGA.md` §3 prohíbe
+     («usar la falta de balón como `D`»): es una puntuación blanda, solo antes de un reinicio del Smart
+     Tagging, y decide el decodificador. Así lo planteó Ismael en su mensaje a Manuel del 14/11: «como
+     evidencia para el decodificador (no como D a pelo, que es lo que se descartó el 13/11)».
+   - Código: `gaps_before_restarts` en `possession/dead_ball.py`, todavía fuera de `evidence` (entró el
+     15/11: ver «Resultado de `validation/partido/agregados_dead_ball.py`», al final).
+
+**Lo que no entra:**
+- **el silbato:** según el mensaje de Antonio del 14/11, su sondeo no pasa su criterio porque la señal
+  está sucia. Todavía no está apuntado en `validation/silbato/` **[sin verificar en el repo]**; lo apunta
+  él;
+- **lo descartado el 13/11:** suavizar el `D` con un voto, usar la falta de balón como `D` y arrastrar el
+  equipo a través de una parada.
+
+Cómo se medirá (dataset, nº de partidos/posesiones, métrica):
+- **Agregados del partido:** los tres scripts de `validation/partido/` (`agregados_smart_tagging.py`,
+  `agregados_balon_reinicios.py` y `agregados_jugadores.py`), que ejecuta Manuel.
+- **Gol a saque y la capa 4:** `validation/partido/agregados_dead_ball.py`, que también ejecuta Manuel, con
+  su propia regla (abajo).
+- **La capa 3, que solo usa el balón, también en la DFL:** los 7 partidos con el balón tapado «como el
+  ATD» y el criterio del 13/11.
+- **Lo que usa el Smart Tagging no se puede medir en la DFL.** Se comprueba en el partido con agregados:
+  ventanas que reciben un fin de `D`, duración de los `D` en intervalos gruesos, y balón en movimiento
+  dentro de lo anclado.
+- **Siempre:** `validation/scripts/prueba_pipeline.py` en verde después de cada cambio. La ventana pública
+  solo dice si algo está roto.
+
+Regla de lectura (fijada antes de ver los agregados):
+- **De gol a saque entra** si el agregado 1 (punto 3) da los 4 goles con su saque etiquetado después. Si
+  falta alguno, entran los que lo tienen.
+- **El final de parte:** se escribe y se mide una capa para él solo si, en las dos partes, la velocidad
+  media de los jugadores en los 30 s finales tiene un p50 por debajo de 1,2 m/s (como la DFL en `D`;
+  agregado 4). Si no, no se hace nada.
+- **R1 entra** solo en los tipos de reinicio (5 casos o más) en los que se cumplen las dos cosas
+  (agregado 2):
+  - el golpeo aparece en el 70 % o más de las ventanas;
+  - cae a ±1 s de la subida de velocidad de los jugadores en el 70 % o más de las encontradas.
+
+  En los demás tipos va R2.
+- **La capa 3 entra** si se cumplen las dos cosas del agregado 3 y después pasa el criterio del 13/11 en
+  la DFL. Si no, queda fuera:
+  - el 50 % o más de las salidas van seguidas de un `SET PIECES` a 30 s o menos;
+  - el 50 % o más de las ventanas de banda, córner y saque de puerta, los tres tipos juntos, tienen una
+    salida en los 15 s previos. (El script cuenta de 15 s antes a 2 s después del inicio de la ventana;
+    una ventana más estrecha solo puede dar menos, así que la decisión de abajo no cambia.)
+- **Ningún umbral sale del partido:**
+  - los de detección (2 m, 1 m/s, 2 s, 30 s, 15 s, ±1 s) son los de los scripts de la revisión;
+  - el 1,2 m/s es la referencia de la DFL;
+  - los de esta regla (70 %, 50 % y 3 minutos) se fijan aquí, antes de medir;
+  - las puntuaciones de cada capa se marcan «sin ajustar» en el código.
+
+**Cuándo se escribió la regla:** en la sesión de Manuel, antes de que él ejecutara los tres scripts. Pero
+va en el mismo commit que el resultado, así que el historial de git no lo demuestra. Desde aquí, la regla
+de cada medida nueva se sube en un commit antes de ejecutar su script.
+
+Resultado (los tres agregados, ejecutados por Manuel el 14/11; solo agregados del partido entero):
+- **[medido] Las ventanas `SET PIECES` duran 35 s** en banda, córner, saque de puerta y falta (p10, p50 y
+  p90 de 35 s), y 5 s en los saques iniciales.
+- **[medido] El golpeo cae más de 5 s antes del fin de la ventana** en las 53 ventanas de banda, córner,
+  saque de puerta y falta.
+- **[inferencia] El fin de la ventana no es el reinicio.** Se sostiene si el golpeo es el reinicio, y eso
+  no lo ha validado la regla de R1.
+- **[medido] `Team = N/A`** en el 100 % de los saques de banda y de los saques iniciales, y en el 0 % de
+  córners, saques de puerta y faltas.
+- **[medido] Los 4 goles tienen su saque etiquetado después,** con el emparejamiento de
+  `agregados_smart_tagging.py`: desde el **inicio** de `GOALS`, sin emparejar uno a uno y sin tope. Del
+  inicio de cada `GOALS` a su saque suman 16.403 frames (10,3 % de los evaluados), con una mediana de
+  168 s.
+  - Es unas 2,7 veces lo que infería la revisión (§4.2, unos 6.000 frames) y más que las paradas tras gol
+    de la DFL (51 y 93 s). **[sin verificar]** Si es porque la ventana `GOALS` empieza con la jugada del
+    gol o porque hubo revisiones largas.
+- **[medido] Velocidad media de los jugadores en los 30 s finales de cada parte:** p50 de 1,15 m/s en la
+  1ª y de 0,81 en la 2ª.
+- **[medido] Golpeo a ±1 s de la subida de velocidad de los jugadores,** sobre las encontradas:
+  - banda, 0 de 26;
+  - córner, 2 de 12;
+  - saque de puerta, 0 de 10;
+  - saques iniciales, 3 de 5;
+  - faltas, 3 de 5.
+
+  El golpeo aparece en 26 de 26, 12 de 12, 10 de 10, 5 de 6 y 5 de 5.
+- **[medido] Salidas del balón:** 24 de 133 huecos largos. De ellas, 16 (66,7 %) van seguidas de un
+  `SET PIECES` a 30 s o menos. Tienen una salida entre 15 s antes y 2 s después de su inicio 6 de las 48
+  ventanas de banda, córner y saque de puerta (12,5 %).
+- **[medido] La columna de velocidad del balón del ATD** frente al desplazamiento suavizado a 1 s:
+  correlación de 0,08 y cociente de medianas de 0,27.
+- **[medido] Velocidad media de los jugadores en todo el partido:** p10/p50/p90 de 0,70/1,50/2,94 m/s, con
+  el 35,4 % por debajo de 1,2. La fracción de jugadores a menos de 1 m/s da 0,08/0,29/0,74. La DFL sin
+  temblor da 0,71/1,63/3,14, el 31,1 % y 0,03/0,24/0,73 (`validation/resultados/2026-11-14_d_estado.md`).
+- **[medido] Algún jugador fuera de los límites:** en el 84,6 % de las ventanas de banda, el 91,7 % de las
+  de córner, el 70 % de las de saque de puerta, el 80 % de las de falta y ninguna de saque inicial.
+
+Decisión según la regla, sin cambiarla:
+- **De gol a saque pasa esta regla,** pero entra en `main` solo si pasa también la de
+  `validation/partido/agregados_dead_ball.py` (abajo). Cuántos goles anclan con el emparejamiento del
+  código está **[sin verificar]** hasta ejecutarlo.
+- **El final de parte se escribe como capa** (1,15 y 0,81 m/s, por debajo de 1,2). Su candidato se apunta
+  antes de medirlo en la DFL. Ojo: 1,15 está muy cerca de 1,2, el tramo antes del saque de la 2ª parte,
+  que es `D`, va a 1,30, y el 35 % del partido está por debajo de 1,2. Así que 1,2 no separa bien, y el
+  candidato no lo usará como detector.
+- **R1 no entra en ningún tipo.** El golpeo aparece en casi todas las ventanas, pero coincide con la
+  subida de los jugadores como mucho en el 60 %.
+  - En las faltas, contando solo las 4 que tienen subida, saldría el 75 %. La regla dice «de las
+    encontradas», que son 5, así que no se cambia.
+- **La capa 3 no entra:** 12,5 %, frente al 50 % pedido.
+
+Lo que estos agregados enseñan y la regla no preveía:
+- **La columna de velocidad del balón del ATD no se usa** (correlación de 0,08). Se decide sin un criterio
+  escrito antes, porque la regla no tenía uno para el agregado 5.
+- **R2 está mal especificada.** Con ventanas de 35 s fijos y el reinicio dentro, «`D` antes del inicio y
+  juego después del fin» no dice dónde está el reinicio.
+  - No se va a medir dónde cae el golpeo dentro de la ventana para fijarlo: sería circular (el golpeo no
+    se ha validado) y daría una constante sacada del partido.
+  - R2 se escribirá sin desfase sacado del partido: o «`D` hasta el inicio de la ventana, y dentro decide
+    el decodificador», o con un desfase de la DFL o de la documentación de Metrica.
+- **El equipo que reanuda por el `Team`** solo vale para 27 reinicios (córner, saque de puerta y falta).
+- **[inferencia] Lo medido no contradice que el modelo de jugadores de Ana se traslade al ATD:** las dos
+  líneas de su criterio se parecen a la fila sin temblor de la DFL. Un p50 algo más bajo también podría
+  deberse a más tiempo parado.
+- **[medido] En los 30 s iniciales del bloque de la 2ª parte**, que son `D` según el FAQ, los jugadores
+  van a 1,30 m/s de mediana. Un `D` no siempre es lento.
+
+Cambio después de ver los agregados, por fallos encontrados con casos inventados y no con datos:
+- **El emparejamiento de gol a saque** era hacia delante (cada gol con el primer saque libre). Con un gol
+  sin su saque, un `GOALS` falso o un reinicio por medio, anclaba juego vivo. Ahora va hacia atrás (cada
+  saque con el último gol que acaba antes) y no ancla si entre los dos empieza otro `GOALS` u otro
+  `SET PIECES`.
+- **Después de la segunda revisión** (también con casos inventados), tampoco ancla si el otro `GOALS` o
+  `SET PIECES` empieza justo en un extremo del tramo (en el fin del gol o en el mismo frame que el saque),
+  ni si otro `GOALS` se pisa con el tramo aunque empiece antes. Dos saques en el mismo frame no anclan
+  ninguno.
+- **Las tres suposiciones del tramo, todas [sin verificar]:**
+  - (a) la ventana `GOALS` acaba con el balón ya en la portería;
+  - (b) la ventana del saque empieza en el reinicio o antes. Apoyo indirecto [inferencia]: según el
+    código oficial (`starter/load_smart_tagging.py`, cabecera), las dos ventanas de `Kick Off (Start)`
+    contienen el saque real. Que las de `Kick Off (After Goal)` hagan lo mismo no está comprobado;
+  - (c) cada `GOALS` es un gol válido.
+
+  **Si falla cualquiera de las tres, se fuerza `D` en juego.** (Antes ponía que si fallaba (a) solo se
+  perdían frames de `D`: era al revés. Si la ventana acaba antes de que entre el balón, el tramo empieza
+  con juego.) Si se cumplen, lo que se pierde es el `D` entre el gol y el fin de su ventana, que no se
+  ancla y decide el decodificador.
+
+Regla de lectura de `validation/partido/agregados_dead_ball.py`, fijada antes de ejecutarlo:
+- **Sustituye a la que había aquí,** que no se llegó a usar. La segunda revisión vio tres problemas:
+  - al mirar los tramos juntos, un gol falso se diluía entre los buenos;
+  - no decía qué hacer sin goles ni sin balón;
+  - dejaba abierto retocar la capa hasta que pasara.
+
+  Esta regla se sube a GitHub antes de que Manuel ejecute el script, así que el historial demuestra el
+  orden.
+- **Gol a saque está programado, pero fuera de `evidence`** (`goal_to_kickoff_mask`, que `dead_mask` no usa
+  todavía), igual que la capa 4. Así, mergear la rama antes de medir no cambia la entrega. Si pasa la
+  regla, se conecta en el commit que trae los agregados.
+- **Las medidas:** todas sobre los frames evaluados y con el balón como lo ve el pipeline (`tracking.from_atd`
+  y `ball.clean`).
+  - **Balón deprisa:** 5 m/s o más, con el desplazamiento suavizado a 1 s, en fracción de los frames con
+    balón visto.
+  - **Cuándo falla una prueba:** si esa fracción pasa de la mitad de la del partido entero. Solo decide
+    con 1 s (25 frames) de balón visto o más.
+  - **Cada tramo pasa tres pruebas:** el tramo entero (para (c)) y 5 s en cada borde, empezando 1 s dentro
+    (para (a) y (b)). La velocidad de un frame usa las posiciones de ±0,96 s a su alrededor, así que desde
+    1 s dentro ninguna mira frames de fuera del tramo, salvo por el suavizado propio del balón del ATD
+    (unos 25 frames, que meten en el borde alrededor de 0,5 s de lo de fuera). El tramo falla si falla
+    alguna, y no decide si no decide ninguna.
+  - **(a) y (b) solo se comprueban donde el ATD ve el balón en el borde.** (a) queda sin comprobar en los
+    tramos cuyo borde inicial no decide, y (b) en los que no decide el final (lo probable si el ATD no ve
+    el balón tras el gol). Un tramo puede pasar así por el tramo entero. El script imprime cuántos bordes
+    de cada lado no deciden; esas fronteras son **[sin verificar]**, y la PR lo dice.
+  - **El script solo imprime cuántos tramos pasan y cuántos fallan,** nunca cuál: con 4 goles, cualquier
+    desglose identifica cada parada.
+- **De gol a saque entra si se cumplen las tres cosas.** Si no, queda fuera entera:
+  - **el control pasa:** el tramo antes del saque de la 2ª parte, que el FAQ da como `D`, pasa las mismas
+    pruebas. Si no, el instrumento no separa el balón muerto del juego y la medida no decide;
+  - **el placebo tiene potencia:** se desplazan los tramos anclados 4, 6 y 8 minutos a cada lado (los que
+    caen enteros en un tramo evaluado sin tocar ninguna ancla). Al menos el doble de los que hay anclados
+    tienen que decidir, y tienen que fallar la mitad o más de los que deciden. Si no, la medida no decide;
+  - **ningún tramo anclado falla, y pasan la mitad o más.** No se puede quitar un gol concreto, porque
+    sería una constante sacada del partido. Por eso un solo tramo que falla deja fuera toda la capa.
+
+  Es conservadora a propósito: un tramo bueno puede fallar si el ATD apenas ve el balón tras el gol y
+  alguien lo patea al centro. Se prefiere perder la capa a forzar `D` en juego.
+- **Sin ningún gol que ancle,** esta capa no tiene nada que subir.
+- **El hueco antes de cada reinicio (capa 4) entra si se cumplen las tres cosas,** con una puntuación de
+  `D` de 1 por frame, marcada «sin ajustar» (la misma escala que `NEAREST_SCORE` en `candidates.py`; la
+  escala la ajusta David con los costes). Se aplica a todos los tipos de reinicio menos los saques
+  iniciales:
+  - **cobertura:** la mitad o más de las ventanas `SET PIECES` que no son saques iniciales y empiezan en
+    frames evaluados tienen un hueco que la capa puntúa (el estado `hueco`: de 5 a 60 s y sin otro
+    reinicio dentro). Cuentan todas en el denominador, también las de los estados `hueco largo` y
+    `reinicio dentro`;
+  - **placebo:** esa cobertura es al menos el doble de la de los mismos inicios desplazados 4, 6 y 8
+    minutos a cada lado;
+  - **el modelo de jugadores de Ana** (`possession/dead_state.py`, entrenado en la DFL e independiente del
+    balón) ve `D` en los frames de todos los huecos al menos tanto como en el punto medio entre el
+    partido entero y el control. Es decir, los huecos se parecen más al `D` seguro que al partido medio.
+    Se cuenta solo en los frames en que el modelo opina. Si en el control no ve más `D` que en el partido
+    entero, el instrumento no separa y la capa no entra.
+    - **El control** es el tramo antes del saque de la 2ª parte y, si gol a saque entra (es decir, si
+      cumple las tres condiciones de arriba: control, placebo y tramos), también esos tramos. El tramo antes del saque solo
+      puede no bastar: en sus primeros 30 s los jugadores van a 1,30 m/s de mediana, con el 33,9 % por
+      debajo de 1,2, casi como el partido entero (1,50 y 35,4 %) [medido, agregado 4]. Si el modelo no
+      ve ahí más `D` que en el partido, la capa no entraría sin haber aprendido nada de los huecos. Si
+      aun así no separa, se dice así en el resultado: no es un fallo de los huecos.
+    - **Puede ver peor los huecos de banda y saque de puerta [inferencia]:** antes de esos reinicios la
+      velocidad media de los jugadores no baja (44 % y 36 % de los 10 s previos por debajo de 1,2 m/s,
+      frente al 91 % y el 73 % antes de córner y falta; medida de Ismael en
+      `validation/resultados/2026-11-14_agregados_jugadores_atd.md`, que él marca como observación). Pero
+      el modelo también mira cuántos jugadores hay fuera del campo (`fuera_2s`, con peso 3,32), y hay
+      alguno fuera en el 84,6 % de las ventanas de banda y el 70 % de las de puerta [medido, agregado 6,
+      contando desde 5 s antes de la ventana hasta su fin; no en el hueco].
+      Si los ve peor, la condición es más difícil de pasar: la regla queda conservadora, no al revés.
+    - **Dos cambios antes de medir:** la primera versión era esta. La segunda, al ver la medida de Ismael,
+      juzgaba solo los huecos de córner y falta con «la mayoría de los frames». La revisión la tumbó por
+      tres motivos:
+      - daba por hecho, sin etiqueta, que el modelo no ve las paradas de banda y de puerta;
+      - casi no podía fallar, porque se eligieron justo los tipos con los jugadores ya lentos antes de la
+        ventana, y «la mayoría» está cerca de la proporción de `D` (el 44,8 % de los frames de la DFL con
+        los que se entrenó el modelo);
+      - la capa se aplicaría también a banda y puerta sin que nada mirara esos huecos.
+    - **Lo que no comprueba:** que el hueco empiece justo en la parada. El modelo llega tarde al instante
+      (entrada anterior de Ismael), así que solo dice si el hueco es sobre todo `D`. **[sin verificar]**
+      Con lo que hay, la precisión del inicio no se puede medir: la DFL tapa el balón a partir de sus
+      propias etiquetas de `D`, y medirla ahí sería circular (`docs/PLAN_ENTREGA.md` §4, «El `D` en la
+      DFL tiene un límite»).
+- **Si algo no pasa,** la capa se queda fuera. Con esta salida no se reajusta ningún número: ni los topes
+  (180 s, 5 s, 60 s), ni los umbrales (5 m/s, la mitad, el 50 %, el doble, el punto medio), ni los
+  desplazamientos.
+- **El script imprime la regla aplicada** (las líneas «regla: … -> la capa entra»). Si lo impreso y este
+  texto no cuadran, manda este texto. Que el código aplica este texto se comprueba en el repo, en la
+  sección 9 de `validation/scripts/comprobar_balon_muerto.py`, con la apertura de ficheros prohibida:
+  - **la regla en sus umbrales exactos:** `goal_rule` y `gap_rule` justo en cada límite y un poco por
+    debajo, dónde miran los bordes (desde 1 s dentro y durante 5 s), el placebo que no pisa anclas y el
+    modelo de Ana contado solo donde opina;
+  - **`measure` con un partido inventado y doce variantes,** cada una con su resultado esperado: el
+    partido normal (entran las dos capas, con sus recuentos exactos), un gol falso (falla el tramo
+    entero), una ventana `GOALS` que acaba antes del gol y un saque que empieza tarde (falla el borde, no
+    el tramo entero), sin balón en los tramos o en el control (no deciden), el balón siempre lento (el
+    placebo no tiene potencia), sin goles, juego en el control (el control falla y no entra ninguna),
+    jugadores corriendo en el control (los tramos de gol a saque lo completan), jugadores corriendo en
+    los huecos (no pasa el modelo de Ana), hueco antes de solo 2 de 8 ventanas (no llega a la
+    cobertura) y sin balón 45 s de cada minuto (no gana al placebo).
+
+  Se comprobó rompiendo la regla a propósito, condición a condición (32 roturas, entre ellas las 24 que
+  probó la segunda revisión): todas hacen fallar alguna prueba. El script de esas roturas no está en el
+  repo **[sin verificar en el repo]**; las pruebas que las detectan, sí.
+- **Descriptivo, no decide:** el desglose por tipo, la duración de los huecos, la velocidad de los
+  jugadores, el modelo de Ana en lo anclado, en los primeros 5 s de los huecos y en cada grupo (córner y
+  falta; banda y saque de puerta), y el recuento de equipos del Smart Tagging que coinciden con los
+  nombres del ATD (para la capa del equipo que reanuda).
+- **De dónde sale cada número.** Ninguno sale de la GT ni de la salida de este script. Los 5 s se
+  eligieron con un agregado del partido medido antes:
+  - 5 m/s: se fija aquí; el suavizado de 1 s es el de `agregados_balon_reinicios.py`;
+  - 5 s de hueco: el umbral de los huecos largos del perfil del ATD (`2026-11-14_perfil_atd.md`);
+  - 60 s: una parada antes de un saque de banda, un córner o un saque de puerta suele durar menos de un
+    minuto **[sin verificar]**. Las faltas con barrera o tarjeta pueden pasar de 60 s: esas quedan como
+    `hueco largo`, sin puntuar, y la capa es más conservadora;
+  - la mitad, el doble, el punto medio y el 50 %: se fijan aquí;
+  - los desplazamientos de 4, 6 y 8 minutos: los tramos de gol a saque duran 3 minutos como mucho, así
+    que desplazados no se pisan consigo mismos.
+
+Resultado de `validation/partido/agregados_dead_ball.py` (ejecutado por Manuel el 15/11, con la regla ya en
+GitHub en `e677893`; la salida, tal cual, en `validation/resultados/2026-11-15_agregados_dead_ball.md`):
+- **[medido] De gol a saque:** 4 goles y 4 saques tras gol, pero no ancla ninguno. Las ventanas `GOALS`
+  duran 169 s de mediana.
+- **[medido] El control de la prueba del balón falla:** en el tramo antes del saque de la 2ª parte, que es
+  `D`, el balón visto va deprisa el 46,7 % del tiempo, frente al 50,5 % del partido entero.
+- **[medido] El hueco antes de cada reinicio:**
+  - 53 ventanas: hueco 28 (52,8 %), balón visto 23, hueco largo 0 y reinicio dentro 2;
+  - por tipo, con hueco: banda 13 de 26, córner 11 de 12, saque de puerta 2 de 10 y falta 2 de 5;
+  - placebo: 65 de 279 inicios (23,3 %);
+  - modelo de Ana: `D` en el 47,4 % del partido, el 94,6 % del control (solo el tramo antes del saque,
+    porque gol a saque no entra) y el 84,5 % de los huecos; punto medio, 71,0 %.
+- **[medido] El `Team` de los `SET PIECES`:** 27 lo traen, y los 27 coinciden con un nombre de los
+  metadatos del ATD (16 el local y 11 el visitante).
+
+Decisión según la regla, sin cambiarla:
+- **De gol a saque no entra:** no ancla ningún gol, y además el control no pasa. Queda programada y probada
+  (`goal_to_kickoff` y `goal_to_kickoff_mask`), fuera de `dead_mask`.
+- **El hueco antes de cada reinicio entra en `evidence`:** `GAP_SCORE` de 1 por frame en la columna `D`,
+  sin ajustar, en las mismas ventanas que se midieron (las que empiezan en un tramo evaluado). La escala la
+  ajusta David con los costes del decodificador.
+- **Desde aquí la entrega usa el Smart Tagging** (a través de `dead_ball.evidence`). El aviso de abajo para
+  Ismael (`pipeline.py` no lo pide en `games.require`) pasa a importar, y el documento técnico lo tiene que
+  decir.
+
+Lo que la regla no preveía (no cambia la decisión):
+- **[inferencia] Las ventanas `GOALS` parecen cubrir la parada entera hasta el saque,** no acabar con el
+  balón en la portería. La suposición (a) falla, pero de la forma que deja la capa sin tramos, no de la
+  que fuerza `D` en juego. Usar la propia ventana `GOALS` como `D` sería un candidato nuevo: se escribiría
+  y se mediría antes de entrar. Con esta salida no se hace.
+- **[medido] La prueba del balón deprisa no separa `D` de juego en este partido** (46,7 % frente a
+  50,5 %). [inferencia] El balón del ATD no está quieto durante el `D`, o tiene ruido: cualquier capa que
+  feche el `D` con la velocidad del balón tiene que contar con ello.
+- **Los márgenes de la capa 4 son justos:** con 2 huecos menos, la cobertura bajaría al 49,1 %.
+- **[medido, descriptivo] En los primeros 5 s de los huecos el modelo de Ana solo ve `D` en el 60,9 %,**
+  por debajo del punto medio, frente al 84,5 % del hueco entero. [inferencia] O algunos huecos empiezan
+  antes de la parada, o el modelo llega tarde al instante (entrada de Ismael). El inicio de la capa sigue
+  **[sin verificar]**. La escala de `GAP_SCORE` la decide David con los costes del decodificador, o un
+  criterio escrito antes de medir; nunca la ventana pública.
+- **[medido] Por tipo, el hueco aparece sobre todo antes de los córners** (11 de 12) y casi nunca antes de los
+  saques de puerta (2 de 10).
+- **El `Team` coincide siempre con los nombres del ATD:** la capa del equipo que reanuda (27 reinicios:
+  córner, saque de puerta y falta) se puede escribir. Queda pendiente.
+- **[medido] La entrega regenerada** (Manuel, 15/11, con la rama en `8f6ca9f`:
+  `python -m possession.pipeline --name equipo_dfronteras`; sha256 `9539ce42…cc17a`):
+  - 0 frames con piezas en conflicto;
+  - `D` en 71.625 de los 158.857 frames evaluados (45,1 %), 113 paradas y 215 posesiones, frente al 44,4 %,
+    114 y 219 de `equipo_v2`: dentro de la banda fijada para la entrega (`D` entre el 15 y el 60 %, 250
+    paradas como mucho);
+  - `validate_submission.py`: válida, y ninguna `X` en frames evaluados;
+  - ventana pública, solo para ver que no está rota (no elige ni mide la mejora): `spellF1` 0,658 y
+    `macroF1` 0,851, con 14 posesiones frente a las 17 de la GT.
+
+Abierto:
+- **Dos ficheros más, además de `dead_ball.py`, los dos de esta pieza:** las pruebas de las capas con un
+  Smart Tagging inventado y de la regla con un partido inventado (secciones 7, 8 y 9 de
+  `validation/scripts/comprobar_balon_muerto.py`) y `validation/partido/agregados_dead_ball.py`. Las dos
+  filas de `validation/README.md` que los describen se tocan solo para eso.
+- **La salida de los tres agregados de arriba,** tal cual, está en
+  `validation/resultados/2026-11-14_agregados_balon_muerto.md`.
+- **Una PR por medida:** las capas que se miden en la misma ejecución del script (gol a saque y la capa 4)
+  van en la misma PR, cada una con sus agregados. Una capa que no pasa no entra en `evidence`.
+- **Aviso para Ismael:** `possession/pipeline.py` no pide el Smart Tagging en `games.require`. Si falta,
+  el error sale de `ET.parse` y se entiende peor.
+- **La capa 4 se midió con la limpieza del balón v0 (`ball.clean`, que lo deja igual).** Si la entrega
+  pasa a `clean_v1` de Antonio, que quita detecciones aisladas, los huecos pueden alargarse: habría que
+  volver a ejecutar `agregados_dead_ball.py` con la misma regla. La salida dice con qué limpieza se midió.
+- **Las paradas tras un gol se quedan sin capa de esta pieza:** de gol a saque no ancla, y la capa 4 no
+  mira los saques iniciales (la regla se fijó así). Ahí solo opina el modelo de Ana. Meter los saques tras
+  gol en la capa 4 sería un candidato nuevo, que se escribe y se mide antes de entrar.
