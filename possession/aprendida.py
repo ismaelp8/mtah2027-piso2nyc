@@ -242,7 +242,7 @@ def direccion_del_balon(bx, equipos, fps):
     direccion = float(np.sign(media_a - media_h))
     m = DIRECCION_MITAD
     with np.errstate(invalid="ignore"):
-        v = (bx[2 * m:] - bx[:-2 * m]) * (fps / (2.0 * m)) * direccion
+        v = (bx[2 * m:] - bx[:-2 * m]) * fps / (2.0 * m) * direccion
         salida[m:n - m] = np.where(v > DIRECCION_UMBRAL, 1.0, np.where(v < -DIRECCION_UMBRAL, -1.0, 0.0))
     return salida
 
