@@ -35,7 +35,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 sys.path.insert(0, ROOT)
 import games  # noqa: E402
 from comun import MIN_CASES_PER_TYPE, graded_mask, utf8_stdout  # noqa: E402
-from possession import dead_ball, dead_state, pipeline, tracking  # noqa: E402
+from possession import dead_ball, dead_state, pipeline, temporal, tracking  # noqa: E402
 
 H, A, D = tracking.H, tracking.A, tracking.D
 # Todo fijado antes de medir (docs/decisiones.md, 15/11).
@@ -61,6 +61,16 @@ def model_fingerprint(model):
     return hashlib.sha256(json.dumps(model, sort_keys=True).encode("utf-8")).hexdigest()[:12]
 
 
+def code_fingerprint(folder):
+    """Huella corta del código de `folder` (los .py, en orden y con los finales de línea de Unix), para
+    saber con qué pipeline se midió. Solo lee código del repo, nunca datos."""
+    digest = hashlib.sha256()
+    for name in sorted(f for f in os.listdir(folder) if f.endswith(".py")):
+        with open(os.path.join(folder, name), "rb") as handle:
+            digest.update(name.encode("utf-8") + b"\0" + handle.read().replace(b"\r\n", b"\n") + b"\0")
+    return digest.hexdigest()[:12]
+
+
 def search_stop(window, cut, fps):
     """Fin, sin incluir, de la búsqueda de las señales en una ventana: SEARCH_AFTER_S después de su fin, sin
     pasar de `cut` (el inicio del siguiente reinicio, dead_ball.next_restart)."""
@@ -75,7 +85,7 @@ def harm_stop(window, cut, layer_stop, fps):
 
 def play_transition(odds, start, stop, sustain):
     """Primer frame f en [start, stop) en que el modelo de Ana pasa de parado a juego: log-odds > 0 en f − 1
-    y < 0 en los `sustain` frames desde f. None si no hay."""
+    y < 0 en los `sustain` frames desde f (que pueden pasar de `stop`). None si no hay."""
     negative = odds < 0
     for f in range(max(start, 1), min(stop, len(odds) - sustain + 1)):
         if odds[f - 1] > 0 and negative[f:f + sustain].all():
@@ -147,6 +157,12 @@ def last_exit(codes, start, stop):
     return start + int(dead[-1]) + 1
 
 
+def worse(without, with_layer, start, stop):
+    """La capa parte la parada de [start, stop): con ella hay dos tramos de D o más, y más que sin ella. Pasar
+    de ninguno a uno no cuenta: es lo que la capa quiere hacer cuando alarga un D hasta el instante."""
+    return dead_runs(with_layer, start, stop) > max(dead_runs(without, start, stop), 1)
+
+
 def changes(without, with_layer, mask):
     """Frames de `mask` que cambian, por tipo: (de un equipo al otro, de juego a D, de D a juego)."""
     play_before, play_after = without != D, with_layer != D
@@ -157,8 +173,8 @@ def changes(without, with_layer, mask):
 
 
 def harm_rule(runs_without, runs_with, split_windows):
-    """Condición de daño: ninguna ventana con ancla tiene más tramos de D con la capa que sin ella
-    (`split_windows`, contados en harm_stop), y las posesiones no suben más que las paradas (cada posesión
+    """Condición de daño: ninguna ventana con ancla queda partida por la capa (`split_windows`, con worse()
+    en harm_stop), y las posesiones no suben más que las paradas (cada posesión
     nueva tiene que venir de una parada nueva que la parte)."""
     return split_windows == 0 and runs_with[0] - runs_without[0] <= runs_with[1] - runs_without[1]
 
@@ -223,7 +239,7 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
         for window, start, instant, stop in spans:
             inside[start:stop] = True
             end = harm_stop(window, dead_ball.next_restart(events, window), stop, fps)
-            split += dead_runs(with_layer, start, end) > dead_runs(without, start, end)
+            split += worse(without, with_layer, start, end)
             for i, codes in enumerate((without, with_layer)):
                 frame = last_exit(codes, start, end)
                 near[i] += frame is not None and abs(frame - instant) <= NEAR_S * fps
@@ -235,8 +251,8 @@ def measure_instant(trk, events, delivery_fn, no_gap_fn, game=games.GAME, pieces
     else:
         report = {}
         without = pipeline.run(trk, extra=[delivery_fn], report=report, pieces=pieces)
-        m.update(conflicts=(report["conflictos"], None), harm_ok=False)
-    m["entra"] = bool(anchors) and m["harm_ok"]
+        m.update(spans=0, conflicts=(report["conflictos"], None), harm_ok=False)
+    m["entra"] = bool(anchors) and m["spans"] >= 1 and m["harm_ok"]
 
     # 4. La capa del hueco (lo que pidió el revisor)
     report = {}
@@ -274,8 +290,10 @@ def main():
     m = measure_instant(trk, events, delivery_fn, no_gap_fn, game)
     fps = trk.fps
 
-    print("limpieza del balón: ball.{} (pipeline.PIECES)   modelo de Ana: huella {}".format(
-        pipeline.PIECES["ball"], model_fingerprint(dead_state.MODEL)))
+    print("pipeline: piezas {}   costes {}".format(json.dumps(pipeline.PIECES, sort_keys=True),
+                                                   json.dumps(temporal.DEFAULTS, sort_keys=True)))
+    print("huellas: modelo de Ana {}   código de possession/ {}".format(
+        model_fingerprint(dead_state.MODEL), code_fingerprint(os.path.join(ROOT, "possession"))))
     print("regla: sostén {} s   búsqueda hasta {} s tras el fin de la ventana   capa ±{:g} en D, {} s tras el"
           " instante".format(SUSTAIN_S, SEARCH_AFTER_S, dead_ball.ANCHOR_SCORE, dead_ball.ANCHOR_AFTER_S))
     print("\n1. Dónde cae el reinicio dentro de cada ventana SET PIECES (no los saques iniciales)")
@@ -287,10 +305,10 @@ def main():
         print("   {:<22} n={}".format(kind, cases(t["n"])))
         for label, values in (("modelo de Ana, de parado a juego", t["transitions"]),
                               ("el balón vuelve a verse", t["ball"])):
-            if len(values) >= MIN_CASES_PER_TYPE:
+            if len(values) >= MIN_WINDOWS:  # los cuantiles, solo con 10 o más: con menos son ventanas sueltas
                 print("      {:<34} n={:<3} {}".format(label, len(values), seconds(values, fps)))
             else:
-                print("      {:<34} n=< 5".format(label))
+                print("      {:<34} n={}".format(label, cases(len(values))))
         print("      balón: " + "   ".join("{} {}".format(s, cases(k)) for s, k in t["states"].items()))
         pairs = t["pairs"]
         if len(pairs) >= MIN_CASES_PER_TYPE and len(t["transitions"]) >= MIN_WINDOWS:
@@ -311,9 +329,6 @@ def main():
             m["anchors"][kind] / fps, m["anchors"][kind]) if ok else ""
         print("   {:<22} suficientes {}   poca dispersión {}   el balón coincide {}   el ancla gana {}   -> ancla:"
               " {}{}".format(kind, yes(enough), yes(tight), yes(agree), yes(beats), yes(ok), anchor))
-    if m["anchors"]:
-        print("   para copiar a dead_ball (frames desde el inicio de la ventana): {}".format(
-            json.dumps(m["anchors"], sort_keys=True)))
 
     print("\n3. La capa con esas anclas")
     if m["anchors"]:
@@ -321,18 +336,22 @@ def main():
             cases(m["spans"]), *m["conflicts"]))
         print("   posesiones y paradas: sin la capa {} y {}   con ella {} y {}".format(
             *m["runs"][0], *m["runs"][1]))
-        print("   ventanas con ancla y más tramos de D con la capa que sin ella: {}".format(cases(m["split"])))
+        print("   ventanas con ancla partidas por la capa (2 tramos de D o más, y más que sin ella): {}   ninguna: {}"
+              .format(cases(m["split"]), yes(m["split"] == 0)))
         print("   salidas del D a ≤ {:g} s del instante anclado: sin la capa {}   con ella {}".format(
             NEAR_S, *(cases(k) for k in m["near"])))
         print("   frames evaluados que cambian, dentro de las ventanas con ancla: de un equipo al otro {}"
               "   de juego a D {}   de D a juego {}".format(*m["changed_inside"]))
         print("   y fuera de ellas: de un equipo al otro {}   de juego a D {}   de D a juego {}".format(
             *m["changed_outside"]))
-        print("   regla: sin conflictos, ninguna ventana con más tramos de D y las posesiones no suben más que"
-              " las paradas -> se cumple: {}".format(yes(m["harm_ok"])))
+        print("   regla: sin conflictos, ninguna ventana partida y las posesiones no suben más que las paradas"
+              " -> se cumple: {}".format(yes(m["harm_ok"])))
     else:
         print("   ningún tipo tiene ancla: la capa no se prueba")
     print("\n-> la capa del instante entra: {}".format(yes(m["entra"])))
+    if m["entra"]:
+        print("   para copiar a dead_ball (frames desde el inicio de la ventana): {}".format(
+            json.dumps(m["anchors"], sort_keys=True)))
 
     print("\n4. La capa del hueco (PR #8): frames evaluados que cambian de etiqueta con ella: {}   de ellos, en los"
           " primeros {} s de cada hueco: {}".format(m["gap_changed"], FIRST_SECONDS_S, m["gap_changed_first"]))

@@ -510,10 +510,22 @@ def check_restart_instant(game, folder):
     blocks = tracking.evaluated_blocks(game)
     H, A, D = tracking.H, tracking.A, tracking.D
 
-    check("la regla está congelada: sostén 2 s, búsqueda 10 s, 10 ventanas, recorrido 2 s, 5 balones, 1 s, y "
-          "los descriptivos (1 s, 5 s, 1 s)",
+    check("la regla está congelada: sostén 2 s, búsqueda 10 s, 10 ventanas, recorrido 2 s, 5 balones, 1 s, "
+          "«otros» por debajo de 5, y los descriptivos (1 s, 5 s, 1 s)",
           (air.SUSTAIN_S, air.SEARCH_AFTER_S, air.MIN_WINDOWS, air.MAX_IQR_S, air.MIN_BALL, air.MAX_AGREE_S,
-           air.NEAR_S, air.FIRST_SECONDS_S, air.OFF_DURATION_S) == (2, 10, 10, 2.0, 5, 1.0, 1.0, 5, 1.0))
+           air.MIN_CASES_PER_TYPE, air.NEAR_S, air.FIRST_SECONDS_S, air.OFF_DURATION_S)
+          == (2, 10, 10, 2.0, 5, 1.0, 5, 1.0, 5, 1.0))
+    possession_dir = os.path.join(ROOT, "possession")
+    prints = []
+    for name, content in (("unix", b"x = 1\n"), ("windows", b"x = 1\r\n"), ("otro", b"x = 2\n")):
+        os.makedirs(os.path.join(folder, name))
+        with open(os.path.join(folder, name, "a.py"), "wb") as handle:
+            handle.write(content)
+        prints.append(air.code_fingerprint(os.path.join(folder, name)))
+    check("code_fingerprint: corta, estable, igual con finales de línea de Windows y distinta si cambia el código",
+          len(air.code_fingerprint(possession_dir)) == 12
+          and air.code_fingerprint(possession_dir) == air.code_fingerprint(possession_dir)
+          and prints[0] == prints[1] != prints[2])
 
     # Las dos señales.
     odds = np.array([1, 1, 1, -1, -1, -1, 1, 0, -1, -1, -1], dtype=float)
@@ -607,7 +619,18 @@ def check_restart_instant(game, folder):
           air.dead_runs(codes, 0, 9) == 3 and air.dead_runs(codes, 0, 3) == 1 and air.last_exit(codes, 0, 6) == 5
           and air.last_exit(codes, 0, 9) is None and air.last_exit(codes, 5, 7) is None)
     check("runs: posesiones y paradas", air.runs(codes, ((0, 9),)) == (3, 3))
-    check("harm_rule: ninguna ventana con más tramos de D y las posesiones no suben más que las paradas",
+    def runs_of(*spans):
+        codes = np.full(20, H, dtype=np.int8)
+        for a, b in spans:
+            codes[a:b] = D
+        return codes
+
+    none, one, two, three = runs_of(), runs_of((2, 5)), runs_of((2, 5), (8, 10)), runs_of((2, 5), (8, 10), (12, 14))
+    check("worse: la capa parte la parada si deja 2 tramos de D o más y más que sin ella (de 0 a 1 no cuenta)",
+          not air.worse(none, one, 0, 20) and air.worse(none, two, 0, 20) and air.worse(one, two, 0, 20)
+          and not air.worse(two, two, 0, 20) and air.worse(two, three, 0, 20) and not air.worse(one, one, 0, 20)
+          and not air.worse(none, two, 0, 6))
+    check("harm_rule: ninguna ventana partida y las posesiones no suben más que las paradas",
           air.harm_rule((10, 5), (11, 6), 0) and air.harm_rule((10, 5), (9, 5), 0)
           and not air.harm_rule((10, 5), (11, 5), 0) and not air.harm_rule((10, 5), (10, 5), 1))
     check("cases: los recuentos por debajo de 5 se tapan", air.cases(4) == "< 5" and air.cases(0) == "< 5"
@@ -763,6 +786,15 @@ def check_restart_instant(game, folder):
     check("measure_instant: con conflictos entre piezas, aunque haya ancla, la capa no entra",
           clash["anchors"] == {"throw-in": 8 * fps} and clash["conflicts"] == (10, 10) and not clash["harm_ok"]
           and not clash["entra"], str(clash["conflicts"]))
+
+    # Tres tipos de 4 ventanas cada uno van juntos en «otros», que nunca tiene ancla, aunque las señales sean
+    # las de los saques de banda de arriba.
+    mixed = [window(s, ("throw-in", "corner kick", "goal kick")[i % 3]) for i, s in enumerate(starts)]
+    pooled = measured(pieces, tagged=mixed)
+    check("measure_instant: los tipos de menos de 5 ventanas van a «otros», sin ancla, y la capa no entra",
+          list(pooled["by_type"]) == ["otros"] and pooled["by_type"]["otros"]["n"] == 12
+          and pooled["by_type"]["otros"]["rule"] == (False,) * 5 and pooled["anchors"] == {}
+          and pooled["spans"] == 0 and not pooled["entra"], str(list(pooled["by_type"])))
 
     # Y con el reinicio disperso (a los 0, 2, 4 y 6 s), no hay ancla y la capa no se prueba.
     scattered = np.full(n, -1.0)

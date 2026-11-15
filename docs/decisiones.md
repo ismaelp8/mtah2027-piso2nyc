@@ -2034,7 +2034,7 @@ ejecución mide las señales, aplica la regla y prueba la capa.
 - **Las señales** se buscan desde el inicio de la ventana hasta 10 s después de su fin, sin pasar del inicio
   del siguiente `GOALS` o `SET PIECES`:
   - **el modelo de Ana pasa a juego:** el primer frame con log-odds > 0 en el anterior y < 0 durante los 2 s
-    siguientes;
+    siguientes. El frame tiene que caer antes del corte; los 2 s de sostén pueden pasar de él;
   - **el balón vuelve a verse:** si no se veía en el frame anterior al inicio de la ventana, el primero en
     que se ve. Si se veía, no cuenta.
 - **Desde el inicio o desde el fin:** las ventanas duran 35 s fijos [medido, 14/11], así que la dispersión
@@ -2065,27 +2065,37 @@ Regla de lectura, fijada antes de ejecutarlo:
   no corre en la DFL, así que nadie puede medir su escala.
 - **La condición de daño,** con el pipeline de la entrega sin la capa y con ella:
   - ningún frame con piezas en conflicto;
-  - **ninguna ventana con ancla tiene más tramos de `D` con la capa que sin ella.** Se cuentan desde el inicio
-    de la ventana hasta 10 s después de su fin o del fin de la capa, lo que llegue más tarde, sin pasar del
-    siguiente reinicio. Así se ve si el `D` sale en el instante y vuelve donde acaba la capa (`D`, 5 s de
-    juego y otra vez `D`): esa parada partida añade una posesión;
+  - **ninguna ventana con ancla queda partida por la capa:** con ella tiene dos tramos de `D` o más, y más de
+    los que tenía sin ella.
+    - Los tramos se cuentan desde el inicio de la ventana hasta 10 s después de su fin o del fin de la capa,
+      lo que llegue más tarde, sin pasar del siguiente reinicio.
+    - Así se ve si el `D` sale en el instante y vuelve donde acaba la capa (`D`, 5 s de juego y otra vez `D`):
+      esa parada partida añade una posesión.
+    - Pasar de ningún tramo a uno no cuenta: es lo que hace la capa cuando alarga hasta el instante un `D`
+      que acababa en el inicio de la ventana (por ejemplo, el de la capa del hueco);
   - las posesiones no suben más que las paradas (cada posesión nueva tiene que venir de una parada nueva
     que la parte).
-- **La capa entra** si algún tipo tiene ancla y se cumple la condición de daño. Si no, se queda fuera, y con
+- **La capa entra** si algún tipo tiene ancla, alguna ventana recibe la capa y se cumple la condición de
+  daño. Si no, se queda fuera, y con
   esta salida no se reajusta nada: ni los 2 s, ni las 10 y 5 ventanas, ni el 1 s, ni los 2 s de sostén, ni
   los 10 s de búsqueda, ni las puntuaciones.
-- **Si entra,** el script imprime los desfases en frames, listos para copiar. Cómo se conectan en `evidence`
-  lo decide Ismael:
+- **Si entra,** y solo entonces, el script imprime los desfases en frames, listos para copiar. Cómo se
+  conectan en `evidence` lo decide Ismael:
   - copiando la constante en `possession/dead_ball.py`, que es la excepción a §2;
   - o calculando el ancla al ejecutar, con estas mismas funciones.
 
   La medida es la misma en los dos casos. Después se regenera la entrega y se comprueba que no hay
   conflictos.
-- **Con qué se midió:** el script imprime la limpieza del balón y una huella del modelo de Ana
-  (`dead_state.MODEL`). Si cambia cualquiera de los dos antes de que la capa entre, se repite la medida con
-  esta misma regla.
+- **Con qué se midió:** el script imprime:
+  - las piezas del pipeline (`pipeline.PIECES`, con la limpieza del balón) y los costes del decodificador
+    (`temporal.DEFAULTS`);
+  - una huella del modelo de Ana (`dead_state.MODEL`);
+  - una huella del código de `possession/`.
+
+  Si antes de que la capa entre cambian la limpieza o el modelo de Ana, se repite todo con esta misma regla.
+  Si cambian la evidencia de equipo o los costes, se repite por lo menos la sección 3 (el daño).
 - **Descriptivo, no decide:**
-  - los cuantiles de las dos señales por tipo;
+  - los cuantiles de las dos señales por tipo, solo con 10 ventanas o más: con menos serían ventanas sueltas;
   - cuántas ventanas tienen el balón visto al empezar;
   - la distancia entre las dos señales, y la del balón al ancla fija;
   - cuántas salidas del `D` del pipeline caen a 1 s o menos del instante, sin la capa y con ella;
@@ -2106,6 +2116,9 @@ Regla de lectura, fijada antes de ejecutarlo:
     sesgo.
   - **Corregirlo sería otra regla,** que decidirían Ismael y Ana: restar un sesgo medido en la DFL, o anclar
     en el balón. No se hace con esta salida.
+  - **Que «el ancla gana» distinga siempre.** Si las dos señales son precisas y el reinicio cae siempre en el
+    mismo sitio, las dos medianas se parecen y, con 5 a 13 pares, la condición sale casi a cara o cruz. En
+    ese caso la capa apenas movería nada, así que perderla cuesta poco.
   - **Que la transición sea la de esa parada.** Es la primera que aparece. Si el modelo no llega a decir
     «parado» en la ventana, puede coger un repunte suelto. Eso se ve en la dispersión: un tipo con
     transiciones así no pasa el recorrido de 2 s.
@@ -2116,7 +2129,9 @@ Regla de lectura, fijada antes de ejecutarlo:
 - **Que el código aplica este texto se comprueba en el repo:** sección 11 de
   `validation/scripts/comprobar_balon_muerto.py`, con datos inventados y la apertura de ficheros
   prohibida. Comprueba:
-  - que las constantes de la regla son estas;
+  - que las constantes de la regla son estas, también el 5 de «otros»;
+  - qué cuenta como parada partida (de 0 a 1 tramos no; de 0 o 1 a 2, sí);
+  - que la huella del código sale igual con finales de línea de Windows y de Linux;
   - las señales y la regla en sus límites exactos, en frames;
   - la capa y sus cortes;
   - la condición de daño;
@@ -2127,9 +2142,10 @@ Regla de lectura, fijada antes de ejecutarlo:
     - con una posesión nueva sin parada: no entra;
     - con conflictos: no entra;
     - con el reinicio disperso: sin ancla;
+    - con tres tipos de 4 ventanas: todo va a «otros», sin ancla;
     - con el siguiente reinicio cortando la búsqueda: sin señales.
 
-  Romper la capa y el script a propósito (53 cambios, uno a uno, entre ellos los 8 que el revisor vio
+  Romper la capa y el script a propósito (58 cambios, uno a uno, entre ellos los 8 que el revisor vio
   pasar sin que fallara nada) hace fallar alguna prueba.
 
 **Revisión antes de subirla (15/11).** El revisor encontró en la primera versión seis agujeros, y se
@@ -2143,6 +2159,15 @@ arreglaron antes de ejecutar nada:
   los bordes de los cortes y las posesiones con y sin la capa al revés.
 
 También pidió nombrar el choque con §2 del plan y el retraso que hereda el ancla, que van arriba.
+
+**Segunda revisión (15/11), también antes de subirla y de ejecutar nada:**
+- **La condición de daño contaba como parada partida el paso de 0 a 1 tramos de `D`.** Es justo lo que hace la
+  capa cuando alarga el `D` del hueco hasta el instante: la habría rechazado cuando hace su trabajo. Ahora
+  hacen falta 2 tramos o más, y más que sin la capa.
+- **La línea para copiar las anclas salía aunque la capa no entrara.** Ahora solo sale si entra.
+- **El grupo «otros» no tenía ninguna prueba.** Ahora la tiene, y la capa además exige que alguna ventana la
+  reciba.
+- **Lo impreso no decía con qué evidencia de equipo ni con qué costes se midió el daño.** Ahora lo dice.
 
 Lo que pidió el revisor de la PR #8:
 - **Los comentarios de `GAP_SCORE`, `LONG_GAP_S` y `MAX_GAP_BEFORE_RESTART_S`** los dejó Ismael en `main`
