@@ -40,6 +40,10 @@ que faltan, los scripts y los resultados. El porqué está en
 | `skillcorner/lector.py` | biblioteca: un partido de SkillCorner en el formato de `possession/tracking.py` (de 10 a 25 fps), con sus etiquetas | SkillCorner, datos abiertos de otros partidos |
 | `skillcorner/prueba_lector.py` | prueba el lector de SkillCorner con un partido inventado | ninguno |
 | `skillcorner/medir.py` | ¿aguanta B5 con un tracking automático? Puntúa el control, N1 y `main` en los partidos de SkillCorner, con la regla de `skillcorner/BITACORA.md` | SkillCorner, datos abiertos de otros partidos |
+| `metrica/lector.py` | biblioteca: los 3 partidos abiertos de Metrica en el formato de `possession/tracking.py`, con las etiquetas derivadas de sus eventos (`metrica/BITACORA.md` §3) | Metrica sample-data, datos abiertos de otros partidos |
+| `metrica/prueba_lector.py` | prueba el lector de Metrica con etiquetas y un partido inventados | ninguno |
+| `metrica/medir.py` | ¿aguanta B5 con etiquetas derivadas de los eventos de Metrica? Puntúa el control, N1 y `main` en sus 3 partidos, con la regla de `metrica/BITACORA.md` | Metrica sample-data, datos abiertos de otros partidos |
+| `metrica/sensibilidad_paradas.py` | comprobaciones de la revisión: cuánto dura cada evento que para el juego, cuántos saques llegan sin parada antes y la misma medida con la parada en el frame final del evento. Descriptivo, escrito después de medir | Metrica sample-data, datos abiertos de otros partidos |
 | `scripts/diagnostico_errores.py` | ¿por qué fallamos? Causa de cada posesión que no encontramos, retraso de los cambios y qué borde del `D` cuesta más. Descriptivo. Solo usa la mitad de SkillCorner; la otra queda como examen | la DFL y SkillCorner, datos abiertos de otros partidos |
 | `partido/ver_ventana.py` | **lee una entrega nuestra:** dibuja la GT pública y la entrega en una imagen, con el tiempo del vídeo, para ver los 5 minutos junto al vídeo. No imprime etiquetas y escribe fuera del repo | **una entrega nuestra** y la GT pública: solo lo ejecuta una persona |
 | `partido/comun.py` | constantes y utilidades de los dos diagnósticos (no se ejecuta solo) | — |
