@@ -1671,3 +1671,158 @@ Abierto:
 - **Las paradas tras un gol se quedan sin capa de esta pieza:** de gol a saque no ancla, y la capa 4 no
   mira los saques iniciales (la regla se fijó así). Ahí solo opina el modelo de Ana. Meter los saques tras
   gol en la capa 4 sería un candidato nuevo, que se escribe y se mide antes de entrar.
+
+### 2026-11-15 · decodificador · costes, duraciones mínimas y poda (candidatos, antes de medir)
+
+Quién: David (`possession/temporal.py`), con Claude. Escrito antes de ejecutar el harness con B5 en `main`
+(`d671f44`): ningún número de abajo se ha mirado al escribirlo.
+
+Qué hay en `main`: Viterbi sobre {`H`, `A`, `D`} con `switch`, `to_dead` y `from_dead` a 25, sin ajustar,
+encima de B5 (`aprendida.evidence_b5`). El α de B5 se eligió con el coste 25.
+
+**Lo que el harness puede medir y lo que no** [inferencia, por construcción del harness]:
+- Con el `D` oráculo, `D` solo está permitido donde las etiquetas dicen `D`, y `H` y `A` solo donde no. Todos
+  los caminos posibles tienen los mismos cambios hacia y desde `D`, así que **`to_dead` y `from_dead` no
+  cambian nada en el harness**. Solo se mide `switch` (`H` ↔ `A`).
+- Por lo mismo, **la duración mínima del `D` no se mide en el harness.** Se escribe como garantía para el
+  partido (el criterio del `D` del 13/11 pide que ninguna racha de `D` ni de juego vivo quede por debajo de
+  un mínimo) y se comprueba con evidencia inventada (comprobaciones de abajo). Si se quieren en
+  `validation/scripts/prueba_pipeline.py`, lo decide Ismael, que es su dueño.
+- `to_dead` y `from_dead` se quedan en 25. Ajustarlos pide el `D` propio, y con el balón tapado en los `D`
+  de la DFL ese número no decide (plan §4).
+
+**Candidatos** (las tres del plan, §3 «David»), todos encima de B5 y con el `D` oráculo:
+
+| | qué | parámetros, fijados antes de medir |
+|---|---|---|
+| `main` | Viterbi, coste 25 | `{}` |
+| (a) | Viterbi con otro coste de cambio | `switch` 12 y 50 (la mitad y el doble; `to_dead` y `from_dead`, 25) |
+| (b) | Viterbi con duración mínima, como restricción dura dentro del Viterbi | ninguna racha de `H` o `A` de menos de 12 frames, ni de `D` de menos de 25; coste 25 |
+| (c) | Viterbi de `main` y después poda | cada racha de `H` o `A` de menos de 12 frames pasa al otro equipo si tiene al lado una racha de ese equipo; coste 25 |
+
+- **Por qué 12 frames (0,5 s) y no más:** la GT tiene posesiones reales de menos de 1 s (plan §3) y la
+  convención «control» del harness exige 12 frames de control para cambiar. Un mínimo de 1 s o más quitaría
+  posesiones reales. No sale de la ventana pública ni de la tabla de retrasos (D21).
+- **Por qué 25 frames (1 s) para el `D`:** una parada real dura varios segundos, y un `D` que parpadea cuesta
+  más que un `D` perdido (13/11). Sin ajustar: no se puede medir aquí.
+- **Lo prohibido manda sobre el mínimo:** una racha que `allowed` obliga a cortar (por ejemplo, el juego vivo
+  entre dos `D` del oráculo, o el tramo antes del saque) puede ser más corta. Si no, con el `D` oráculo
+  habría tramos sin ningún camino posible.
+- **La poda (c)** empieza siempre por la racha más corta (si empatan, la primera en el tiempo), la fusiona
+  con sus vecinas y repite hasta que no queda ninguna por debajo del mínimo. Respeta `allowed`, y una racha
+  de juego vivo entre dos `D` no se toca. Es T7 sin el ajuste de fronteras al toque, que pide anclas que el
+  decodificador no tiene.
+  - *Cambiado antes de medir (15/11):* la primera versión recorría las rachas una sola vez, en orden de
+    tiempo. La comprobación 3 de abajo, con evidencia inventada, enseñó que rebotaba: al cambiar una racha
+    corta, la siguiente podía volver a cambiar, y quedaban rachas cortas. No se había puntuado nada en el
+    harness.
+
+**Regla de lectura** (la del plan §4 y §5.8, sin cambios):
+- se mide con `python validation/harness/puntuar.py --versiones <fichero> --eventos`, con los 7 partidos;
+- un candidato entra si gana al control **y** a `main` con §5.8: 6 de 7 partidos o más, +0,03 o más con
+  el intervalo por encima de cero, en «como el ATD» y «como el ATD, sin bloques», con las dos convenciones;
+- si empata con `main`, se queda `main`. Si ganan varios y empatan entre sí, entra el más simple:
+  (a), luego (c), luego (b);
+- en (a), la fila «elegida dejando un partido fuera» se mira como descripción: si los pliegues no eligen
+  siempre el mismo coste, el coste no está bien determinado;
+- los eventos humanos (`--eventos`) son descriptivos. Se mira sobre todo si sube el acierto en las
+  recuperaciones (B5 saca 70 frente a 84 de N1) sin hundir los duelos sin cambio.
+
+Comprobaciones del instrumento, antes de medir:
+1. (b) con mínimos de 1 frame y (c) con poda de 0 frames dan exactamente la salida de `main`;
+2. (b) da el mejor camino que cumple las reglas: comparado con todos los caminos posibles, por fuerza bruta,
+   en tramos cortos;
+3. con evidencia inventada, (b) no deja ninguna racha por debajo del mínimo salvo las que obliga `allowed`,
+   y (c) no deja ninguna posesión corta que se pueda podar.
+
+Todas salen bien [medido, evidencia inventada, sin datos de ningún partido].
+
+Resultado (15/11, `python validation/harness/puntuar.py --versiones
+validation/harness/versiones/decodificador_2026-11-15.json --eventos`, huella `969922247863`, código
+`d671f44` más `possession/temporal.py` de la rama `feat/decodificador`; 7 partidos, `D` oráculo) [medido]:
+
+| etiquetas | balón | `main` | (a) 12 | (a) 50 | (b) | (c) |
+|---|---|---|---|---|---|---|
+| flag | como el ATD | 0,498 | −0,000 (4 de 7) | −0,004 (2 de 7) | +0,000 | +0,000 |
+| flag | sin bloques | 0,512 | +0,000 (3 de 7) | −0,005 (2 de 7) | +0,000 | +0,000 |
+| control | como el ATD | 0,728 | −0,017 (0 de 7) | +0,010 (7 de 7) | +0,000 | +0,000 |
+| control | sin bloques | 0,748 | −0,015 (0 de 7) | +0,010 (7 de 7) | +0,000 | +0,000 |
+
+(diferencias de `spellF1` frente a `main`; entre paréntesis, en cuántos partidos gana)
+
+- **Los cuatro candidatos ganan al control y empatan con `main`** con §5.8. Ninguno llega a +0,03.
+- **(a): el coste que conviene depende de la convención,** como el 14/11 con N1. Con el flag, 50 pierde un
+  poco (intervalo entero por debajo de cero) y 12 empata; con las etiquetas de control, 50 gana un poco y 12
+  pierde. La fila «elegida dejando un partido fuera» no da una elección estable entre convenciones. El 25 de
+  `main` queda en medio.
+- **(b) y (c) dan la salida de `main`** en las dos condiciones que votan (posesiones predichas iguales,
+  diferencia +0,000). Solo cambian algo en «huecos y suavizado», sin voto: +0,001 y +0,002.
+  [inferencia] Con B5 y coste 25 el Viterbi ya casi no deja posesiones de menos de 12 frames: para pagar dos
+  cambios de 25 en menos de 12 frames, la evidencia tiene que dar más de 4 por frame a favor del otro equipo.
+- **Eventos (descriptivo):** ningún candidato recupera las recuperaciones de B5 (70,3 frente a 84,1 del
+  control, «como el ATD»). El coste 12 no las sube (69,2) y empeora los duelos sin cambio. [inferencia] Las
+  recuperaciones que pierde B5 no son un problema del coste de cambio, sino de la evidencia.
+
+Decisión y por qué: **se queda `main` (Viterbi, coste 25).** Es la regla escrita antes de medir: si un
+candidato empata con `main`, se queda `main`. La entrega no cambia.
+- `decode_min` y `decode_prune` se quedan en `possession/temporal.py` como opciones, fuera de la entrega
+  (`pipeline.PIECES` sigue con `decode`). `decode_min` es la garantía de duración mínima del `D` que pide el
+  criterio del 13/11, por si se usa con un `D` propio que parpadee. Eso no se puede medir en el harness.
+- **Lo que queda abierto, para Ismael:** el decodificador solo podría mover más la nota en `to_dead` y
+  `from_dead`, es decir, con el `D` propio, que el harness hoy no puede usar para decidir (plan §4).
+
+Descartado: subir o bajar el coste de cambio (empata y el signo depende de la convención), y la poda y la
+duración mínima como cambio de la entrega (empatan: dan lo mismo que `main`).
+
+### 2026-11-15 · validación · dónde se pierde el `spellF1` (diagnóstico descriptivo)
+
+Quién: David, con Claude, después de la entrada anterior.
+
+Qué se probó: cuánto `spellF1` pierde cada fase. Se cambia una pieza cada vez por la respuesta de las
+etiquetas. Es **descriptivo:** no se escribió antes de medir y no decide nada. Sirve para repartir el
+trabajo que queda.
+
+Cómo se midió: los 7 partidos de la DFL, con el balón «como el ATD» y las dos convenciones, el scorer
+oficial (`puntuar.contar`) y el código `d671f44` más `possession/temporal.py` de `feat/decodificador`.
+Script: `python validation/scripts/diagnostico_spell.py` (unos 3 minutos; solo la DFL). Las versiones:
+- `main`: B5, coste 25 y `D` oráculo, lo que mide el harness;
+- `main` con el `D` propio: el `D` lo pone `dead_state`, sin oráculo, con el balón tapado en los `D` (no
+  decide; plan §4);
+- equipo perfecto donde se ve el balón: +5 al equipo de la etiqueta en los frames con balón visible y 0 en
+  el resto; coste 25 y `D` oráculo;
+- equipo perfecto siempre: lo mismo en todos los frames de juego.
+
+Resultado [medido]:
+
+| versión | flag | control |
+|---|---|---|
+| equipo perfecto siempre (techo del decodificador) | 0,970 | 0,999 |
+| equipo perfecto donde se ve el balón | 0,901 | 0,947 |
+| `main` | 0,498 | 0,728 |
+| `main` con el `D` propio | 0,416 | 0,616 |
+
+Posesiones reales que `main` encuentra (IoU ≥ 0,5), por duración:
+
+| duración | flag: reales | flag: encontradas | control: reales | control: encontradas |
+|---|---|---|---|---|
+| < 1 s | 384 | 2 % | 48 | 15 % |
+| 1–2 s | 535 | 10 % | 111 | 25 % |
+| 2–5 s | 934 | 27 % | 399 | 53 % |
+| 5–10 s | 569 | 58 % | 437 | 76 % |
+| ≥ 10 s | 639 | 86 % | 741 | 92 % |
+
+Cambios de equipo en juego: 2.351 reales con el flag y 1.026 con el control. `main` predice 951.
+
+Lectura [inferencia]:
+- **El decodificador casi no pierde:** con una evidencia perfecta saca 0,97–1,00.
+- **Los huecos del balón pierden poco:** entre 0,05 y 0,07, la diferencia entre «perfecto siempre» y
+  «perfecto donde se ve».
+- **La evidencia de equipo con el balón a la vista es la mayor pérdida:** 0,40 con el flag y 0,22 con el
+  control. Sobre todo, cambios reales que no se ven (recuperaciones, posesiones de 2 a 5 s).
+- **El `D` propio es la segunda:** entre 0,08 y 0,11, y en el harness va regalado.
+- **Con el flag, casi todo lo que se pierde son posesiones de menos de 2 s** (919 reales, el 30 %). Si la
+  GT del reto se parece al flag, ahí hay mucha nota. Ir a por ellas es cambiar la convención «exigir
+  control» (decisión de Ismael del 12/11), no el código del decodificador.
+
+Decisión: ninguna. Se pasa a Ismael para el reparto hasta el corte del lunes a las 14:00.
+
