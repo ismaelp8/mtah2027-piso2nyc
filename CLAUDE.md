@@ -483,8 +483,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - PR 17 (Manuel): el instante del reinicio y la tarea 3 de la pieza de `D`;
     - PR 18 (Antonio): los árboles para el estado de `D` (idea 2.4) no ganan. G3 falla en 1 de las 8 celdas y mejora
       los bordes en el criterio del 13/11, pero es más frágil con temblor.
-  - **La línea del balón del vídeo** (rama `exp/balon-video`; reglas y resultados en
-    `validation/balon_video/BITACORA.md`).
+  - **La línea del balón del vídeo, parada el 16/11 por la noche** (rama `exp/balon-video`; reglas y resultados en
+    la `validation/balon_video/BITACORA.md` de esa rama).
     - **Qué es:** un detector de balón público (YOLO11n, AGPL-3.0), en local y en CPU, en un recorte de 320 px
       alrededor del balón del ATD ampliado ×2. Solo lo vería B5, con una capa apagada (`balon_video.ajuste_b5_video`).
     - **Puerta 0 (datos abiertos):** con el balón de 4–5 px, encuentra el balón en el 82–91 % de las imágenes.
@@ -492,15 +492,22 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - **Lo que cabe esperar** [medido, DFL emulada, `D` de las etiquetas]: con B5 tal cual, hasta un detector perfecto
       da solo +0,010/+0,012 con el flag y +0,014/+0,017 con control, y uno realista, +0,007–0,009 y +0,011–0,015.
       Positivo con las dos convenciones, pero pequeño.
-    - **Si pasa la puerta 1b:** la detección del partido entero (unas 3 h de CPU), la entrega de prueba, la
-      reproducción en dos máquinas y el comando único (`regenerar.py`, de Antonio). Todos los pasos:
-      `validation/balon_video/ESTA_NOCHE.md`.
-  - **En marcha (16/11, tarde):**
-    - David: B10, un modelo de equipo pensado para el balón nítido, en la DFL emulada;
-    - Manuel: la idea 1.3, hecha y en `main`, apagada (PR 20, arriba);
-    - Ana: el final de cada parada en el golpeo del balón del vídeo, como capa nueva de `D`;
-    - Antonio: la puerta 1b, la detección y `regenerar.py`;
-    - Claude (sesión de Ismael): la línea del vídeo y el borrador del documento técnico.
+    - **Puerta 1b (Ismael, 16/11 por la noche): «NO SIGUE». La línea se para** (`docs/decisiones.md`, 16/11).
+      - Falla la condición 2: el 40,7 % de las detecciones cae a más de 5 m del balón del ATD, y se admitía un
+        10 %. El detector da 2,6 detecciones por frame de media. La condición 1 cumple (78,9 %).
+      - No se lanza la detección del partido entero ni ninguna puerta 2.x, y la capa no entra.
+      - El código, las pruebas, `regenerar.py` (PR 19 de Antonio) y la bitácora se quedan en `exp/balon-video`, para
+        el documento técnico. No entran en `main`.
+      - Los «balones largos», la fase que se quedó sin subir en el ordenador del trabajo de Ismael, no se retoman.
+      - Reabrirla sería una decisión nueva, con su propia regla escrita antes de medir.
+  - **En marcha (16/11, noche):**
+    - David: el detector de cambios de posesión (rama `feat/detector-cambios`), en la DFL. B10 y su variante «vídeo»
+      se quedan sin balón del vídeo; le queda la variante con el balón «como el ATD»;
+    - Manuel: la idea 1.3, hecha y encendida (arriba);
+    - Ana: su capa de `D` con el golpeo del balón del vídeo se queda sin balón del vídeo;
+    - Antonio: la línea del vídeo, cerrada;
+    - Claude (sesión de Ismael): el borrador del documento técnico (PR 21). Está escrito para `equipo_v8`: hay que
+      ponerlo al día con `equipo_v9`.
 
 **Lo siguiente: el plan hasta la entrega** ([`docs/PLAN_ENTREGA.md`](docs/PLAN_ENTREGA.md), decidido por
 Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal para el final.

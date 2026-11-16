@@ -1,5 +1,11 @@
 # Bitácora: el balón sacado del vídeo táctico (16/11)
 
+> **Cerrada (16/11, 22:10): la línea se paró en la puerta 1b, que dio «NO SIGUE».** Falla la condición 2: el 40,7 %
+> de las detecciones cae a más de 5 m del balón del ATD, y el límite era el 10 %. Esta copia de `main` es la versión de
+> la mañana. El detalle (las reglas posteriores, el resultado de la 1b y su lectura) está en la rama
+> `exp/balon-video`, en este mismo fichero. La decisión está en `docs/decisiones.md`, entrada del 16/11 «la línea del
+> balón del vídeo se para».
+
 - **Quién lo decide:** Ismael (16/11): «vamos a centrarnos en la red o los métodos que te he mencionado para el tema de
   detectar el balón», con el modelo https://huggingface.co/martinjolif/yolo-football-ball-detection como primera
   opción. Lo orquesta Claude (sesión principal de Ismael); las medidas en datos abiertos las hace una sesión aparte.
