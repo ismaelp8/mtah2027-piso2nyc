@@ -5143,3 +5143,29 @@ la entrega decodifica con `decode_cortas_a_d` (`equipo_v9`). El candidato se rep
 1.538 a 1.647 con el propio. Como w = 0, el candidato es solo una capa de estados: no necesita `decode_cambios` ni
 tocar `pipeline.run`, y se suma con `--capa` como las demás. Un partido se puntúa con una combinación que su pliegue no
 eligió (eligió la misma sin «contra el otro»).
+
+### 2026-11-16 · temporal · detector de cambios: el candidato en las celdas que midió la puerta 1b (antes de medir)
+
+Quién: David (16/11), con Claude. Escrita antes de ejecutar nada con estas celdas.
+
+Por qué: la puerta 1b ya midió el detector del vídeo en el partido (entrada «la línea del balón del vídeo se para»), y
+el candidato de la segunda ronda se midió con una celda provisional (p = 0,8, σ = 0,06 m, L = 12) que **no tiene
+detecciones equivocadas**. La 1b dice que las hay: la detección elegida está a más de 3 m del balón del ATD en el
+18,76 % de los frames en que hay alguna (el 91,0 %). Para unas reglas que buscan giros y cambios de velocidad, un salto
+a un falso positivo es un toque falso.
+
+Qué se mide: el mismo candidato, sin elegir nada (reglas 45° / 60 % / 30 frames, γ = 8, W = 50, contra el otro equipo,
+con `decode_cortas_a_d`), en dos celdas:
+- **M1, la celda de la bitácora del vídeo:** p = 0,7, σ = 0,03 m, L = 12, sin detecciones equivocadas.
+- **M2, con las equivocadas (la que decide):** de los frames con balón «como el ATD», el 74 % lleva el balón limpio con
+  σ = 0,03 m (0,91 × 0,8124), el 17 % una detección equivocada (0,91 × 0,1876) y el 9 % el balón «como el ATD». Los
+  frames que no son buenos van en rachas de longitud media 6 (la racha de fallos medida, 6,18); cada racha es
+  «equivocada» con probabilidad 17/26 y, si no, «sin detección». En una racha equivocada el balón es el del ATD más un
+  desplazamiento fijo de 3 a 5 m (uniforme) en una dirección al azar, más el mismo ruido σ. Es el caso malo: supone que
+  todas las detecciones a más de 3 m son falsos positivos, cuando parte será error del balón del ATD, que va suavizado.
+
+Regla: los puntos 1 y 3 del límite de daño, como siempre. **Si M2 no pasa, el candidato se cierra** con el detector tal
+como está (confianza 0,10). Si pasa M2, sigue dependiendo de que haya balón del vídeo del partido entero, y eso lo
+decide el equipo: la línea del vídeo está parada.
+
+No se cambia nada del candidato mirando esto. Limitación: M2 no modela el desfase (la 1b ve 0 frames, no 4).
