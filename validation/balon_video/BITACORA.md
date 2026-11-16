@@ -227,7 +227,7 @@ propia regla y no usa la del «límite de daño» de los cambios pequeños (`doc
    apuntarlo en `possession/tracking.py`, en `docs/PLAN_ENTREGA.md` §2 y en `CLAUDE.md`, y la detección tiene que ir en
    el comando de la entrega (punto 3).
 
-### Precisión de la puerta 2.1: el `D` propio, con réplicas (16/11, 20:45, antes de leer ninguna cifra del partido)
+### Precisión de la puerta 2.1: el `D` propio, con réplicas (16/11, 20:40, antes de leer ninguna cifra del partido)
 
 La escribe la sesión que lee las puertas en la máquina de Ismael. A esta hora no ha visto ni el JSON de la 1b ni el de
 la detección del partido entero.
