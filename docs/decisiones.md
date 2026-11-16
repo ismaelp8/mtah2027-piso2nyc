@@ -3426,7 +3426,9 @@ Regla de lectura, fijada antes de ejecutarlo:
   - una huella del código de `possession/`.
 
   Si antes de que la capa entre cambian la limpieza o el modelo de Ana, se repite todo con esta misma regla.
-  Si cambian la evidencia de equipo o los costes, se repite por lo menos la sección 3 (el daño).
+  Si cambian la evidencia de equipo o los costes, se repite por lo menos la sección 3 (el daño). **→ Ya no: el
+  veredicto quedó cerrado y este script no se repite por ninguna de esas causas** (Manuel, 15/11; entrada
+  «cierres de la pieza de Manuel»).
 - **Descriptivo, no decide:**
   - los cuantiles de las dos señales por tipo, solo con 10 ventanas o más: con menos serían ventanas sueltas;
   - cuántas ventanas tienen el balón visto al empezar;
@@ -3584,7 +3586,8 @@ Lo que pidió el revisor de la PR #8:
 
   Dar más peso al principio del hueco necesitaría su propia regla, escrita antes de medir.
 - **Si se enciende la limpieza de Antonio** (`clean_v1`), se repiten `agregados_dead_ball.py` y este script con
-  la misma regla. Los dos imprimen con qué limpieza se midió.
+  la misma regla. Los dos imprimen con qué limpieza se midió. **→ Este script ya no se repite** (cierres de la pieza
+  de Manuel, 15/11); **`agregados_dead_ball.py` sí**, porque mide la capa del hueco, que está en la entrega.
 
 Abierto:
 - **El equipo que reanuda:** retirado de momento (plan del 15/11, tarea 6: la revisión externa midió en la
@@ -3679,7 +3682,8 @@ Abierto:
     no hay `D`. En contra de subir el peso está lo que ya decía el plan: en esos 5 s el modelo de Ana solo ve `D`
     el 60,9 %, y un peso alto puede forzar `D` en juego.
   - La tarea pide hacerlo «solo si eso lo apoya». Cerrarla como «no se apoya» sería una lectura de estos
-    agregados, no el resultado de una regla. Queda por decidir.
+    agregados, no el resultado de una regla. Queda por decidir. **→ Cerrada como «no se apoya»** (Manuel, 15/11;
+    entrada «cierres de la pieza de Manuel»).
 - **El orden real de los mensajes** [fuente: los mensajes del 15/11 entre Manuel, Ana e Ismael]:
   - Manuel mandó las 9 interpretaciones de arriba para que se confirmaran antes de ejecutar.
   - Contestó Ana, que lo había hablado con Ismael: confirmó las 9 sin cambios y pidió dos añadidos, para antes de
@@ -3713,14 +3717,16 @@ Abierto, después del resultado:
   Ana antes de que la capa entre. Eso incluye `dead_state.MODEL` y también el cálculo de los rasgos y de los
   log-odds: la PR 12 los cambió sin tocar `MODEL` ni su huella. Como la capa no ha entrado, un cambio así obliga
   a repetir la medida. Repetir con cada cambio sería buscar hasta que salga. Queda por decidir si el veredicto se
-  cierra como «no entra».
+  cierra como «no entra». **→ Cerrado como «no entra»** (Manuel, 15/11; entrada «cierres de la pieza de Manuel»).
   - Ojo con la huella del código: con el merge de `main` del 15/11 por la noche (`69f4647`) pasó a ser
     `fafbd30245b5` [medido], porque `possession/pipeline.py` ahora imprime el commit. Una repetición enseñaría otra
     huella sin que cambie nada que afecte a esta medida; cualquier cambio de `possession/` la cambia.
-- **La tarea 3:** cerrarla como «no se apoya» sería una lectura (arriba). Queda por decidir.
+- **La tarea 3:** cerrarla como «no se apoya» sería una lectura (arriba). Queda por decidir. **→ Cerrada como «no se
+  apoya»** (Manuel, 15/11; entrada «cierres de la pieza de Manuel»).
 - **Una señal por ventana** en vez de un desfase fijo: es solo una idea, sin regla.
 - **La rama `feat/d-equipo-reanuda`** sigue en GitHub, sin PR. Queda por decidir si se guarda como registro. Como
-  ya está subida, no se reescribe: se haría una rama nueva desde `main` con esos commits.
+  ya está subida, no se reescribe: se haría una rama nueva desde `main` con esos commits. **→ Se queda en GitHub
+  sin PR, como registro** (Manuel, 15/11; entrada «cierres de la pieza de Manuel»).
 - **La máscara «< 5» del script se puede deshacer restando** en algunas filas: en los saques de banda, «no vuelve»
   sale de restar al total «vuelve a verse» y «visto al empezar»; también salen, restando, las ventanas sin
   transición. No son datos de ninguna jugada, pero si se quiere que tape de verdad, hay que tapar también una celda
@@ -3764,6 +3770,10 @@ añadidos que Ana pidió para antes de ejecutar; el tercero lo decidió después
      - la alternativa sería comparar el balón con la mediana corregida y mirar los lados de A en la mediana, donde
        ve el instrumento. Entonces contaría que la reaparición del balón también puede llegar tarde (el balón del
        ATD viene suavizado unos 25 frames y unos 4 frames tarde respecto a los jugadores), y eso no está medido.
+
+     (Nota del 15/11 por la noche: Ana seguía la pieza por traspaso cuando escribió «lo decide Ana, como dueña de la
+     pieza». Manuel la retoma; desde entonces, un cambio así lo deciden Manuel y Ana. El veredicto quedó cerrado en
+     la entrada «cierres de la pieza de Manuel», así que no hay repetición prevista.)
    - **Si el ancla corregida cae antes del inicio de la ventana** (una mediana menor que el retraso), ese tipo no
      recibe la capa ni puede cumplir A. Con las medianas del 15/11 (de 120 a 172 frames) no puede pasar.
    - **Qué tipos se corrigen.** Ana escribió «los tipos sin una medida propia de 50 paradas o más en la DFL no
@@ -3860,8 +3870,9 @@ Qué cambia en `possession/dead_ball.py`:
 - No choca con el tramo antes del saque, que acaba en el frame anterior (113.741). En la 1ª parte el primer frame
   evaluado ya es el saque, así que allí no hay tramo.
 
-Por qué [fuente: FAQ.md]: los 2.934 frames de 110.808 a 113.741 son `D`, y en el 113.742 se saca: desde ese frame el
-balón está en juego. La GT pública tampoco tiene `D` en el primer frame evaluado de la 1ª parte (sección 3 de
+Por qué: los 2.934 frames de 110.808 a 113.741 son `D`, y en el 113.742 se saca [fuente: FAQ.md]; desde ese frame el
+balón está en juego [inferencia a partir de FAQ.md, que no lo dice con esas palabras; corregido el 15/11, antes
+decía solo «fuente»]. La GT pública tampoco tiene `D` en el primer frame evaluado de la 1ª parte (sección 3 de
 `validation/scripts/comprobar_balon_muerto.py`). No sale ninguna constante del partido: son las de `games.py` y del
 código oficial.
 
@@ -4008,6 +4019,64 @@ rama en `03fe7e8` y sin cambios locales en el código de la entrega. La salida e
 --name equipo_v6` da 0 conflictos, ninguna racha corta y el sha256 `27dc8aa8…efb7`, el mismo que el «con el ancla» del
 script y que `equipo_v5`. El validador oficial la da por válida (199.319 filas). La entrega vigente no cambia de
 contenido: `equipo_v6` es `equipo_v5` byte a byte. La rama ya se puede mergear.
+
+### 2026-11-15 · `D` · cierres de la pieza de Manuel: el instante, la tarea 3 y la rama del equipo que reanuda
+
+Quién: Manuel, que retoma su pieza (`docs/PLAN_ENTREGA.md` §3). Ana la siguió por traspaso desde el 15/11 por la
+tarde y apuntó estas preguntas abiertas en la entrada «el instante del reinicio». Las normas del 15/11 dejan decidir
+a cualquiera del equipo y piden apuntarlo aquí. Las tres decisiones no se le consultaron a Ana antes: se le avisa.
+
+Qué se probó: nada nuevo. Son decisiones sobre resultados ya medidos.
+
+Cómo se midió: no aplica. Las cifras del instante y de la tarea 3 salen de
+`validation/resultados/2026-11-15_instante_reinicio.md`. El 60,9 %, de
+`validation/resultados/2026-11-15_agregados_dead_ball.md` (citado en el plan, §3), medido con el modelo de Ana de
+antes de la PR 12. Las del equipo que reanuda, del fichero de resultados de su rama.
+
+Decisión y por qué:
+- **El instante del reinicio se cierra como «no entra»,** y este script no se repite por ninguna causa:
+  - tampoco si cambian el modelo de Ana o la limpieza del balón, ni si cambian la evidencia de equipo o los costes;
+  - así quedan sin efecto las frases de su regla que obligaban a repetirlo (marcadas arriba, en su entrada);
+  - la capa del hueco no entra en el cierre: `agregados_dead_ball.py` se sigue repitiendo si se enciende la
+    limpieza de Antonio.
+
+  Por qué, por tipo de reinicio [inferencia sobre lo medido]:
+  - **saques de banda:** la transición del modelo de Ana se dispersa 3,2 s y la reaparición del balón 3,0 s. El
+    balón no depende del modelo, así que la variación parece del propio reinicio: un desfase fijo no vale, sea cual
+    sea el modelo;
+  - **córners:** el balón se concentra (1,7 s) y la transición no (3,1 s). Aquí la dispersión parece más del
+    instrumento, y un modelo distinto sí podría concentrarla. El cierre no se apoya en que no tenga arreglo, sino
+    en dos cosas: repetir con cada cambio sería buscar hasta que salga, y anclar los córners en el balón sería una
+    regla nueva, estimada con este mismo partido.
+
+  Consecuencias: la capa sigue fuera de `evidence`, programada y probada. El cambio 3 del control de juego (el que
+  se decidió viendo la salida) no llega a usarse. La excepción a §2 del plan no hace falta. Si alguien quiere
+  fechar el fin del `D` (por ejemplo, con una señal por ventana o con el balón en los córners), sería una regla
+  nueva, escrita antes de medir.
+- **La tarea 3 («más peso al principio del hueco») se cierra como «no se apoya».**
+  - En 19 de los 28 huecos el `D` de la entrega ya empieza antes del hueco o en su primer segundo, así que hay poco
+    que ganar [inferencia sobre agregados medidos].
+  - Un peso alto ahí puede forzar `D` en juego: en esos 5 s el modelo de Ana solo veía `D` el 60,9 %.
+  - No es el resultado de una regla escrita antes: es una lectura de los agregados, y así se dice.
+- **La rama `feat/d-equipo-reanuda` se queda en GitHub sin PR, como registro** (`63c6bc6`; la regla se subió en
+  `28565ce`, antes de ejecutar). Su resultado, para que no dependa de que la rama siga existiendo [medido por Manuel
+  el 15/11, solo agregados]:
+  - el `Team` del Smart Tagging es fiable en córners y saques de puerta: coincide con la física en 20 de 20;
+  - la capa no entra: no arregla ninguna salida y hace daño (retrasa 3 cambios, añade 2 posesiones y 1 parada, y
+    pasa 220 frames de juego a `D`);
+  - descriptivo: sin la capa, el pipeline sale de 12 de las 25 paradas con el equipo contrario al del `Team`. No se
+    sabe si es el pipeline o la forma de medir la salida [inferencia].
+
+  La tarea 6 del plan (el equipo que reanuda) está retirada.
+
+Lo que no cambia: la entrega. Esta entrada y los retoques de la misma PR no tocan nada de lo que usa la entrega.
+- El docstring de `possession/dead_ball.py` ya dice que el saque entró.
+- La cita del FAQ pasa a ser [inferencia].
+- Los cambios del ancla corregida los deciden Manuel y Ana.
+
+Descartado:
+- **Repetir el instante con cada cambio del modelo de Ana:** sería buscar hasta que salga.
+- **Una PR de registro para `feat/d-equipo-reanuda`:** no cambia la entrega y la rama ya guarda el registro.
 
 ### 2026-11-16 · `D` · se enciende la capa del balón fuera (`dead_ball.ball_out`), con una entrega de prueba antes
 
