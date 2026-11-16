@@ -71,6 +71,55 @@
      el detector de toques ya ve decenas de toques falsos por minuto [cuenta, sin medir]. La cifra de la DFL se calcula
      y se apunta aquí antes de ejecutar la 1b.
 
+### Corrección de la puerta 1b (16/11, 15:50, antes de ejecutar nada del partido)
+
+**Lo que la motiva:** la calibración en la DFL (`salidas/2026-11-16_calibracion_toques_dfl.md`, datos abiertos)
+[medido]:
+- con el balón limpio salen 38,4 toques y 2,1 de suelo de ruido por minuto, así que el umbral de la condición 4 es
+  4,2;
+- un temblor de solo 0,05 m ya da 8,7 de suelo de ruido, y no pasa. Con el balón de 4 px, eso es menos de un píxel
+  [inferencia];
+- el balón «como el ATD», sin ningún temblor, ya da 4,1.
+
+**Por qué no sirve como puerta** [inferencia]:
+- En el partido, el suelo de ruido sube por cosas que no dependen del detector: jugadores que faltan en el ATD, balones
+  en el aire llevados al césped con la homografía y frames de balón muerto.
+- B5 no usa toques: usa la distancia del balón a los jugadores, en ventanas, y un temblor de unos centímetros apenas
+  la mueve.
+
+La condición 4, tal como estaba, podía tumbar un detector que a B5 le sirve, y la 3 no distingue toques de verdad de
+toques de temblor sin la 4.
+
+**Cómo queda la puerta 1b:**
+- **Las condiciones 3 y 4 pasan a descriptivas.** Se imprimen, y al lado va el suelo de ruido del balón del ATD en los
+  mismos frames, como referencia dentro del partido.
+- **Además, el sondeo imprime:**
+  - el temblor del balón del detector (`instrumento.temblor` del experimento 2: la mediana de |x[t+1] − 2·x[t] +
+    x[t−1]|, con los tres frames con detección);
+  - la longitud media de las rachas de fallos: frames seguidos con balón del ATD y sin detección a 3 m o menos.
+- **La 1b decide con las condiciones 1 y 2 y con una quinta.**
+
+**5. La emulación en la DFL (la medida de la puerta 2.1, adelantada), leída en el punto que mide la 1b.**
+- **La rejilla, calculada en datos abiertos antes de que se ejecute la 1b:**
+  - cobertura p ∈ {0,5, 0,6, 0,7, 0,8, 0,9, 1,0};
+  - temblor σ ∈ {0,03, 0,06, 0,12, 0,25} m;
+  - fallos en rachas de longitud media ∈ {1, 12, 50} frames.
+- **El balón emulado:** donde el balón «como el ATD» del harness se ve, con probabilidad p es el balón limpio más un
+  ruido gaussiano σ; si no, es el balón «como el ATD». Donde el balón «como el ATD» no se ve, tampoco se ve: el
+  detector solo busca alrededor del balón del ATD.
+- **Lo que se mide:** B5 de `main` (dejando el partido fuera) con ese balón, frente a B5 con el balón «como el ATD».
+- **La celda que se lee:**
+  - p: la condición 1, redondeada hacia abajo a la rejilla;
+  - σ: el menor de la rejilla cuyo temblor en la DFL (calibrado con la misma función) es igual o mayor que el que
+    mide la 1b;
+  - la longitud de las rachas: la medida en la 1b, redondeada hacia arriba a la rejilla.
+- **Pasa si, en esa celda y con el `D` de las etiquetas:**
+  - con control: +0,01 o más en las dos condiciones que votan, ganando en 6 de 7 partidos;
+  - con el flag: no pierde más de 0,005 en ninguna.
+
+**Si la 1b pasa,** se lanza de noche la detección del partido entero. La puerta 2 no cambia: la 2.1 se repite con la
+cobertura, el temblor y las rachas del partido entero, y después vienen la 2.2, la 2.3, la 2.4 y la 2.5.
+
 ## Puerta 2: ¿entra en la entrega? (regla de entrada fijada ahora; los detalles, antes de medir)
 
 Es la tercera excepción a «lo que no ha ganado en el harness no entra»: la DFL no tiene vídeo. Esta línea tiene su
