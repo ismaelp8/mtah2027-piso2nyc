@@ -117,6 +117,21 @@ toques de temblor sin la 4.
   - con control: +0,01 o más en las dos condiciones que votan, ganando en 6 de 7 partidos;
   - con el flag: no pierde más de 0,005 en ninguna.
 
+**La variante,** fijada el 16/11 a las 16:00, antes de medir nada del partido, con la puerta 0 [medido]:
+- se detecta en un recorte de 320 px alrededor de la proyección del balón del ATD en t+4, ampliado ×2: la red recibe
+  640×640;
+- es la única variante que pasa la puerta 0 desde 3 px (con la imagen tal cual hacen falta 6 px) y que cabe en 8 horas
+  en CPU (unos 60 ms por frame en la CPU de la puerta 0);
+- con 320 px de lado quedan unos ±8 m de margen alrededor del balón del ATD con el balón de 4 px [cuenta];
+- se usa la misma variante en la 1b y en la detección del partido entero, sea cual sea `b_partido`, siempre que sea de
+  3 px o más. Con menos, la línea se para.
+
+**El balón del vídeo que recibe B5,** también fijado ahora:
+- en cada frame con balón del ATD, la detección de más confianza a 5 m o menos del balón del ATD en t+4;
+- si no hay ninguna, el balón del ATD adelantado 4 frames (`ball.advance_ball`), para que todo el balón vaya en el
+  mismo tiempo que los jugadores;
+- donde el ATD no ve el balón, nada, como en la emulación de la condición 5.
+
 **Si la 1b pasa,** se lanza de noche la detección del partido entero. La puerta 2 no cambia: la 2.1 se repite con la
 cobertura, el temblor y las rachas del partido entero, y después vienen la 2.2, la 2.3, la 2.4 y la 2.5.
 
