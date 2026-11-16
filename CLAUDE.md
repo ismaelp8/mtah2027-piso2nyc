@@ -234,7 +234,18 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v8`** (Ismael, 16/11, con `main` en `44678d1`): `equipo_v5` más la capa del balón
+- **Entrega vigente: `equipo_v9`** (16/11 por la noche): `equipo_v8` más «cortas a `D`»
+  (`temporal.decode_cortas_a_d`, en `pipeline.PIECES` desde el 16/11; Ismael: «si enciendela»; `docs/decisiones.md`).
+  - Es la entrega de prueba `prueba_cortas_a_d`: sha256 `d9706dfb…be63`, válida, con 201 posesiones de 17,0 s de
+    media, 116 paradas y el 46,2 % de `D` en lo evaluado. Ismael la generó en el entorno limpio y Manuel en su
+    máquina, y sale igual.
+  - Frente a `equipo_v8` cambian 1.167 frames, todos de un equipo a `D` (609 de `H` y 558 de `A`).
+  - **Falta que Ismael la regenere con `main` ya encendido:** `python -m possession.pipeline --name equipo_v9`, con
+    el python del entorno limpio, tiene que dar esa huella.
+  - **En el harness:** con el `D` de las etiquetas, la fila por defecto no cambia (la salida es idéntica antes y
+    después). Con el `D` propio, sí: 0,416 → 0,414 con el flag y 0,616 → 0,623 con control («como el ATD»). Quien
+    compare con «main» usando el `D` propio fija `main` en `3220707` o vuelve a medir su referencia.
+- **Entrega anterior: `equipo_v8`** (Ismael, 16/11, con `main` en `44678d1`): `equipo_v5` más la capa del balón
   fuera (D7, más abajo). Es válida, con 219 posesiones de 15,8 s de media, 116 paradas, el 45,4 % de `D` en lo
   evaluado y sha256 `d78c514d…e2b2`.
   - **El ensayo del 16/11 por la noche pasa** (Ismael, entorno limpio, Python 3.13.9 y numpy 2.5.4, con `main` en
@@ -247,7 +258,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     posesiones, una diferencia de hasta 0,39 es ruido.
   - **Reproducida en otra máquina** (Antonio, 16/11): el mismo sha256 en un Mac M1 (macOS, ARM), con Python 3.13.7
     y numpy 2.5.4, tres veces y sin cambios locales.
-- **Entrega anterior: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
+- **Antes: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
   más la capa de los contraataques (más abajo). Es válida, con 219 posesiones de 15,9 s de media, 113
   paradas, el mismo `D` que `equipo_v3` y sha256 `27dc8aa8…efb7`.
   - Sale byte a byte igual que `prueba_transiciones2`, que se generó con numpy 2.3.4.
@@ -374,7 +385,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - `python -m possession.pipeline --name <prueba> --pieza nombre=modulo.funcion --capa modulo.funcion`. Con
     el nombre de la entrega da error, y la salida dice qué se ha cambiado.
   - `python validation/partido/probar_entrega.py <prueba> --capa ...` hace la prueba entera en un solo comando:
-    genera la entrega, cuenta el balón fuera y la compara con la vigente (`--contra`, hoy `equipo_v8`).
+    genera la entrega, cuenta el balón fuera y la compara con la vigente (`--contra`, hoy `equipo_v9`).
   - Lo ejecuta una persona (regla nº 1).
 - **`D` de estado: tareas 1 a 3 de Ana en `main`** (PR 12, `98c38ca`; `docs/decisiones.md`).
   - Las ventanas de `dead_state` ya no cruzan el principio ni el final de los tramos evaluados.
@@ -453,19 +464,19 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - la idea 1.1 (cambios de equipo entre fases del Smart Tagging) se cierra: cuentan 16 cambios y se pedían 30;
     - la 1.2, también: en el 12,9 % de los frames un equipo tiene más de 11 slots (0 % en los abiertos), pero imitado
       en la DFL le cuesta a `main` como mucho 0,008. `ball.clean_slots` se queda apagada;
-    - la 1.3, «cortas a `D`», está en `main` como opción apagada (`temporal.decode_cortas_a_d`, PR 20, `10aadef`):
+    - la 1.3, «cortas a `D`» (`temporal.decode_cortas_a_d`, PR 20, `10aadef`), **está encendida desde el 16/11 por
+      la noche:**
       - pasa las cuatro condiciones de la regla nueva (punto siguiente), con el examen de SkillCorner usado una vez
         para este candidato, con el corte de 125 frames;
       - en la entrega de prueba de Manuel cambian 1.167 frames, todos de un equipo a `D`, y las posesiones pasan de
         219 a 201;
       - Ismael la reprodujo en el entorno limpio: sale la misma entrega de prueba que a Manuel (sha256
         `d9706dfb…be63`);
-      - **no está encendida:** `pipeline.PIECES` no cambia y la entrega sigue siendo `equipo_v8`. Encenderla es una
-        decisión aparte, que está por tomar, y obliga a regenerar y validar;
-      - **si se enciende,** lo que quede pendiente contra `equipo_v8` (la puerta 2.2 del balón del vídeo) reescribe
-        antes sus límites contra la base nueva. Y la fila por defecto del harness sale de `pipeline.PIECES`: cambia
-        el «main» de referencia de lo que se esté midiendo (B10, la puerta 2.1), que tiene que fijar el commit de
-        antes o volver a medir su referencia.
+      - **Ismael decidió encenderla** («si enciendela»): `pipeline.PIECES["temporal"]` es `decode_cortas_a_d` y la
+        entrega pasa a ser `equipo_v9` (arriba);
+      - lo que quede pendiente contra `equipo_v8` (la puerta 2.2 del balón del vídeo) vale mientras su entrega de
+        prueba se genere sin traer `main`; si se trae, reescribe antes sus límites contra `equipo_v9`;
+      - el corte se queda en 125 y el examen de SkillCorner queda cerrado para esta idea.
   - **Decisión de Ismael:** en los cambios pequeños hacia control, el flag pasa de veto a límite de daño
     (`docs/decisiones.md`, 16/11). El examen de SkillCorner se puede abrir una vez por candidato.
   - **Cierres:**

@@ -48,7 +48,12 @@ DELIVERY_LAYERS = (transiciones.evidence_equipo, dead_ball.ball_out)
 # versiones sin tocar este fichero.
 # Desde el 14/11 la evidencia de equipo es B5 de la apuesta B (`aprendida.evidence_b5`), que ganó con los
 # criterios fijados antes de medir (docs/decisiones.md). Antes era N1 (`candidates.evidence`).
-PIECES = {"ball": "clean", "candidates": "aprendida.evidence_b5", "dead_state": "evidence", "temporal": "decode"}
+# Desde el 16/11 el decodificador es `temporal.decode_cortas_a_d` (idea 1.3, PR 20): el Viterbi de `decode` y,
+# después, las posesiones cortas que vienen de un cambio directo y acaban en `D` pasan a `D`. Pasó las cuatro
+# condiciones del límite de daño, con el examen de SkillCorner, e Ismael decidió encenderlo (docs/decisiones.md,
+# «se enciende "cortas a D"»). Antes era `decode`.
+PIECES = {"ball": "clean", "candidates": "aprendida.evidence_b5", "dead_state": "evidence",
+          "temporal": "decode_cortas_a_d"}
 MODULES = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal,
            "aprendida": aprendida}
 

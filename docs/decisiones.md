@@ -4844,3 +4844,54 @@ Para cuando se decida encender «cortas a `D`» [leído en el código]: la fila 
 `pipeline.PIECES` (`validation/harness/puntuar.py`). Al cambiar `PIECES["temporal"]` cambia el «main» de referencia de
 cualquier medida en marcha (B10, la puerta 2.1 del balón del vídeo, la capa de `D` de Ana). Cada una fija el commit de
 antes del cambio o vuelve a medir su referencia.
+
+### 2026-11-16 · decodificador · se enciende «cortas a `D`»: `pipeline.PIECES["temporal"]` pasa a `decode_cortas_a_d`
+
+Quién: Ismael (16/11, por la noche): «si enciendela». Lo aplica la sesión planificadora (Claude), que lo había
+recomendado.
+
+Qué cambia:
+- `pipeline.PIECES["temporal"]` pasa de `decode` a `decode_cortas_a_d`, con el corte de 125 frames. Nada más del
+  código de la entrega.
+- La entrega nueva es `equipo_v9`. Tiene que salir byte a byte igual que `prueba_cortas_a_d` (sha256
+  `d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63`), que Ismael generó en el entorno limpio con
+  `main` en `c52a746` y Manuel en su máquina. **Falta regenerarla con `main` ya encendido.**
+
+Por qué:
+- Es la primera candidata que pasa entera la regla del límite de daño (16/11), escrita antes de medir: con control en
+  la DFL, de +0,007 a +0,019 con 6 o 7 de 7; en SkillCorner, +0,010 y +0,009 en entrenamiento y +0,009 y +0,008 en el
+  examen, 10 de 10; con el flag, la peor celda pierde 0,0024.
+- La entrega de prueba pasa los cinco criterios de daño, y sale igual en dos máquinas (entrada anterior).
+- El ensayo de `equipo_v8` ya estaba hecho con `main` en `c6a3dee`.
+
+Riesgo que se acepta:
+- Si la GT se parece al flag, cuesta hasta 0,002 [medido en la DFL].
+- Quita 18 posesiones (219 → 201), y el punto débil conocido es que predecimos de menos.
+
+Comprobado al encender [medido, datos abiertos y pruebas sin datos]:
+- **Harness de la DFL** (`validation/harness/puntuar.py --bootstrap 0 --json`, los 7 partidos), antes (`main` en
+  `3220707`) y después:
+  - con el `D` de las etiquetas, la salida es idéntica byte a byte. La regla no convierte nada donde `D` está
+    prohibido, así que la referencia «main» de las medidas con el `D` de las etiquetas no se mueve;
+  - con el `D` propio cambia, como midió Manuel. Fila «Viterbi, coste 25 (v0)»: con el flag, 0,416 → 0,414 («como el
+    ATD») y 0,433 → 0,431 («sin bloques»); con control, 0,616 → 0,623 y 0,642 → 0,651.
+- **Pruebas sin datos de `validation/scripts/`:** en verde. `prueba_pipeline.py` y `prueba_harness.py` fijaban el
+  decodificador por defecto y se ponen al día. `prueba_silbato.py` no pasa en esta máquina porque no encuentra un
+  programa externo; no depende de este cambio [sin verificar que fallara antes].
+
+Lo que arrastra:
+- **Harness:** una versión que no nombra «funcion» en `temporal` usa ahora `decode_cortas_a_d`. Para repetir una medida
+  anterior con el `D` propio hace falta `main` en `3220707`.
+- **Medidas en marcha** (B10 y el detector de cambios de David, la puerta 2.1 del balón del vídeo, la capa de Ana): con
+  el `D` propio, fijan `3220707` o vuelven a medir su referencia. Con el `D` de las etiquetas no cambia nada.
+- **La puerta 2.2 del balón del vídeo** está escrita contra `equipo_v8`. Vale mientras su entrega de prueba se genere
+  desde `exp/balon-video` sin traer `main`. Si se trae, se reescriben antes los límites contra `equipo_v9`.
+- **`validation/balon_video/ESTA_NOCHE.md`** (en `exp/balon-video`) dice que `main` da `d78c514d…e2b2`. Desde este
+  commit, `main` da la huella de `equipo_v9`. Para reproducir `equipo_v8` hace falta `main` en `3220707`.
+- `validation/partido/probar_entrega.py` compara por defecto con `equipo_v9`.
+
+Descartado:
+- El corte de 75 frames: se elegiría después de ver los resultados, y no puede confirmarse en el examen sin abrirlo
+  otra vez. El examen de SkillCorner queda cerrado para esta idea [recomendación de la revisión de la PR 20; el equipo
+  no la ha discutido].
+- Esperar a mañana: no quedaba ninguna comprobación pendiente.

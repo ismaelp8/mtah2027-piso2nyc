@@ -15,7 +15,8 @@ Variantes para el harness (candidatos del 15/11 en docs/decisiones.md), con la m
   directo desde el otro equipo y acaban en `D` pasan a `D` (idea 1.3 de
   `docs/investigacion_2026-11-16.md` §2.1; la variante «a D» de los sondeos S5 y S9).
 
-La entrega usa `decode` (`pipeline.PIECES`). Las variantes solo entran si ganan en el harness.
+La entrega usa `decode_cortas_a_d` desde el 16/11 (`pipeline.PIECES`; docs/decisiones.md, «se enciende "cortas a
+D"»). Antes usaba `decode`. Las demás variantes solo entran si ganan en el harness.
 """
 
 import heapq
