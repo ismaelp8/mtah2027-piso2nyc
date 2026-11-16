@@ -4553,4 +4553,44 @@ de las etiquetas, `contra_d` no cambia nada, así que no se podría elegir).
 Regla de entrada: la misma de la primera ronda (el límite de daño; puntos 1 y 3 aquí). Son 10 candidatos y ya hubo 4:
 si pasa uno solo y por poco, se dice. La emulación del vídeo sigue en la celda provisional.
 
-Estado: en marcha.
+Estado: medida el 16/11 (entrada siguiente).
+
+### 2026-11-16 · temporal · detector de cambios, segunda ronda: las reglas afinadas con el balón del vídeo pasan los puntos 1 y 3
+
+Quién: David (16/11), con Claude. Salida: `validation/cambios/salidas/2026-11-16_ronda2.md` (`ronda2.py`, código en
+`d6cc926`; los 7 partidos de la DFL; emulación del vídeo en la celda provisional p = 0,8, σ = 0,06 m, L = 12).
+
+Resultado [medido], diferencia con `main` del candidato de cada familia (control / flag; el rango de las cuatro celdas:
+dos condiciones que votan × `D` de las etiquetas y propio):
+
+| familia | balón de respaldo | balón «como el vídeo» |
+|---|---|---|
+| C, primera ronda con la capa contra el otro equipo: aprendido | +0,003 a +0,006 / +0,012 a +0,016 | +0,009 a +0,013 / +0,019 a +0,020 |
+| C: reglas sin afinar | +0,004 a +0,014 / +0,007 a +0,015 | +0,010 a +0,015 / +0,038 a +0,043 |
+| A, avisos | −0,005 / +0,004 a +0,005 | −0,010 a −0,003 / +0,008 a +0,014 |
+| B, confirmación | +0,003 a +0,006 / +0,006 a +0,008 | +0,008 a +0,011 / +0,017 a +0,025 |
+| **D, reglas afinadas** | +0,006 a +0,009 / +0,010 a +0,013 | **+0,014 a +0,020 / +0,049 a +0,054** |
+
+- **D con el balón del vídeo pasa el punto 1** (control: +0,014, +0,020, +0,019 y +0,020, ganando en 6, 6, 6 y 7 de 7;
+  los cuatro intervalos por encima de cero) **y el punto 3** (con el flag gana en 7 de 7 en las cuatro celdas). Lo
+  elegido es estable: en 6 de los 7 pliegues, giro de 45°, cambio de velocidad del 60 %, 30 frames de confirmación,
+  w = 0, γ = 8, W = 50 y la capa contra el otro equipo; en el séptimo, lo mismo sin «contra el otro».
+- **Los otros nueve no pasan el punto 1.** Ninguno falla el punto 3: nada pierde con el flag.
+- **La capa contra el otro equipo arregla el daño al `D` propio:** el aprendido con el balón del vídeo pasa de −0,011 /
+  −0,014 (primera ronda) a +0,011 / +0,013. Se elige en casi todos los pliegues.
+- **Los avisos (A) empeoran y la confirmación (B) mejora poco:** con la probabilidad corregida quedan muy pocos avisos.
+- Con el balón de respaldo nada pasa: sin el balón del vídeo no hay candidato.
+
+Decisión y por qué: **el candidato «reglas afinadas con el balón del vídeo» sigue al punto 2 (SkillCorner).** No entra
+todavía en nada: `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+Lo que hay que decir con el número:
+- **Es 1 de 14 candidatos** en dos rondas. Pasa con margen sobre el umbral (+0,014 frente a +0,005) y con la misma
+  elección en 6 de 7 pliegues, pero no es una prueba limpia: SkillCorner y la entrega de prueba siguen siendo obligatorios.
+- **Depende del balón del vídeo, que aquí es una emulación en una celda provisional.** Hay que repetirlo con la
+  cobertura, el temblor y las rachas que mida la puerta 1b. SkillCorner no tiene balón limpio que emular: allí solo se
+  puede medir con su propio balón.
+- **Ni la capa ni las reglas usan un modelo:** si entra, no hace falta scikit-learn ni exportar árboles.
+- Sigue muy lejos del techo (+0,096): el detector ve una parte de los cambios.
+
+Descartado: A (avisos) y B (confirmación) con estos umbrales; el detector aprendido como candidato.
