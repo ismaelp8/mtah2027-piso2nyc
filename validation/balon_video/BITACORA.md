@@ -288,6 +288,16 @@ la 1b de Antonio puede estar ya ejecutada. El umbral y la regla no cambian.
   - el ensayo corto de la 1b, correcto.
 - **Pendiente:** la 1b de verdad (en marcha a las 18:50).
 
+### Ensayo de la entrega en `main` (16/11, noche; lo ejecutó Ismael en Windows, con el entorno limpio) [medido, agregados del partido]
+
+- **Qué:** el paso 1 de `ESTA_NOCHE.md`: `python -m possession.pipeline --name ensayo_16nov`, con Python 3.13.9 y numpy
+  2.5.4, en `main` (`c6a3dee`) y sin cambios locales en el código de la entrega.
+- **Sale el sha256 de `equipo_v8`:** `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`.
+- El validador la da por válida: 219 posesiones de 15,8 s de media. Hay 0 frames con piezas en conflicto y ninguna
+  racha de menos de 25 frames.
+- `main` lleva ya la PR 20 («cortas a `D`», apagada): no cambia la entrega.
+- Los agregados se los pegó Ismael a la sesión planificadora, que los pasó a esta.
+
 ### Puerta 0 (16/11, sesión aparte; datos abiertos) [medido]
 
 - **Entorno:** CPU Intel Core Ultra 5 225U (12 núcleos, 14 hilos), Python 3.14.7, torch 2.15.0+cpu, ultralytics 8.4.215,
