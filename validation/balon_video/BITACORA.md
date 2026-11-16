@@ -474,6 +474,28 @@ quitar casi todos los falsos positivos.
   en `possession/balon_video.py`. Cambia la llave de la caché, pero todavía no hay ninguna caché hecha;
 - después vienen las puertas 2.1 a 2.5 como están escritas, contra la entrega vigente, `equipo_v9`.
 
+**Resultado: «NO SIGUE». La línea se queda parada** (16/11, noche; lo ejecutó Ismael en su Windows, con el mismo
+entorno y la misma muestra que la 1b) [medido, agregados del partido]:
+- **Condición 1, cumple:** el 75,88 % de los frames tiene una detección a 3 m o menos (con 0,10, 78,94 %).
+- **Condición 2, NO cumple:** el 36,26 % de las detecciones está a más de 5 m (5.228 de 14.420; umbral: 10 %). Con
+  0,10 era el 40,68 %.
+  - Hay 2,03 detecciones por frame (con 0,10, 2,64), y el 60 % de los frames tiene 2 o más.
+- **Condición 5, cumple:** la misma celda (p = 0,7, σ = 0,03, L = 12), «sin decidir».
+- **Descriptivo:** la detección elegida está a más de 3 m en el 17,9 % de los frames; el desfase con menor mediana
+  sigue siendo 0.
+
+**Lectura** [inferencia, con cuentas]:
+- **La confianza no separa el balón de lo demás.** Subir de 0,10 a 0,25 quita 4.385 detecciones. De ellas, 2.422 (el
+  55 %) estaban lejos, pero las que quedan siguen lejos en el 36 %.
+- **Los falsos positivos tienen tanta confianza como el balón:** las detecciones que quedan tienen una mediana de 0,68
+  y la elegida, de 0,79.
+- **Por azar** saldría alguna detección a 3 m o menos en cerca del 33 % de los frames: parte del 75,9 % de la
+  condición 1 sigue sin ser el balón.
+
+**No se prueba ninguna otra confianza,** como dice la regla. Probar varias hasta que una pase sería elegir el umbral
+con el partido. Además, la condición 1 ya ha bajado del 78,9 % al 75,9 %, y un umbral más alto la acercaría al 70 %
+antes de que la 2 bajara al 10 % [inferencia].
+
 ### Puerta 1a y reproducción de `equipo_v8` (16/11, tarde; lo ejecutó Antonio en su Mac M1, macOS, CPU) [medido, agregados del partido]
 
 - **`equipo_v8` reproducida en otra máquina:**
