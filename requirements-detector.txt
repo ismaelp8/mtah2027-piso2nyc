@@ -1,0 +1,22 @@
+# Versiones fijadas del entorno del detector del balón del vídeo (validation/balon_video/BITACORA.md). Es un entorno
+# APARTE del de la entrega (requirements-entrega.txt), para que torch y ultralytics no toquen lo de la entrega. Con él
+# se ejecutan validation/balon_video/detector.py y la detección del partido entero
+# (validation/partido/balon_video_detectar.py), que lanza regenerar.py si hace falta.
+#
+# Python 3.13, como el de la entrega. Todo en CPU. numpy y pandas, las mismas que en requirements-entrega.txt.
+#
+#   python3.13 -m venv <carpeta>                       (Windows: py -3.13 -m venv <carpeta>)
+#   <carpeta>/bin/python -m pip install -r requirements-detector.txt
+#   <carpeta>/bin/python -m pip show opencv-python-headless      tiene que decir que no está: dos opencv se pisan
+#
+# En Linux, antes, torch y torchvision desde el índice de CPU de PyTorch (si no, pip baja varios GB de CUDA):
+#   <carpeta>/bin/python -m pip install torch==2.15.0 torchvision==0.29.2 --index-url https://download.pytorch.org/whl/cpu
+#
+# Solo se fijan estas seis: las dependencias de ultralytics (pillow, scipy, matplotlib…) no se fijan. regenerar.py
+# comprueba estas seis antes de detectar, y la caché guarda las de python, numpy, torch, opencv y ultralytics.
+torch==2.15.0
+torchvision==0.29.2
+ultralytics==8.4.215
+opencv-python==5.0.0.93
+numpy==2.5.4
+pandas==3.1.1

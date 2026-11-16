@@ -231,6 +231,107 @@ propia regla y no usa la del «límite de daño» de los cambios pequeños (`doc
 `MTAH_DATA_DIR/tactical/` con un nombre que empiece por `BAR-ATH_tactical_` (lo cubre el bloqueo de
 `.claude/settings.json`), nunca en el repo ni en `~/mtah2027-salidas/`.
 
+## Cómo se reproduce: el comando único (puertas 2.3 y 2.4)
+
+Si la línea entra, la entrega se regenera con un solo comando con la detección dentro: `regenerar.py`, en la raíz del
+repo.
+- `regenerar.py` lee el partido, así que solo lo ejecuta una persona.
+- Hoy genera una entrega de prueba con la capa por `--capa`; no toca `pipeline.py` ni `DELIVERY_LAYERS`.
+- Su prueba sin datos, que puede ejecutar cualquiera, es `validation/scripts/prueba_regenerar.py`.
+
+**Python y los dos entornos.** Los dos con Python 3.13, y aparte, para que torch y ultralytics no toquen lo de la
+entrega:
+
+| entorno | versiones | qué ejecuta |
+|---|---|---|
+| de la entrega | `requirements-entrega.txt`: numpy 2.5.4, pandas 3.1.1 y sus dos dependencias | `regenerar.py`, el pipeline y el validador |
+| del detector | `requirements-detector.txt`: torch 2.15.0, torchvision 0.29.2, ultralytics 8.4.215, opencv-python 5.0.0.93, numpy 2.5.4 y pandas 3.1.1 | la detección (`validation/partido/balon_video_detectar.py`) |
+
+Se crean una sola vez. En Windows el python de un entorno es `<carpeta>\Scripts\python.exe`, y el entorno se crea con
+`py -3.13 -m venv <carpeta>`:
+
+```bash
+python3.13 -m venv <entrega>
+<entrega>/bin/python -m pip install -r requirements-entrega.txt
+python3.13 -m venv <detector>
+<detector>/bin/python -m pip install -r requirements-detector.txt
+<detector>/bin/python -m pip show opencv-python-headless        # tiene que decir que no está
+<detector>/bin/python validation/balon_video/detector.py --descargar
+<detector>/bin/python validation/balon_video/detector.py --comprobar
+```
+
+- **En Linux,** antes del `pip install -r` del detector, torch y torchvision desde el índice de CPU (si no, pip baja
+  varios GB de CUDA): `<detector>/bin/python -m pip install torch==2.15.0 torchvision==0.29.2 --index-url
+  https://download.pytorch.org/whl/cpu`.
+- **El modelo** (`--descargar`) va a `~/mtah2027-modelos/`, fuera del repo, con su sha256 fijado. Es AGPL-3.0, como
+  ultralytics (puerta 2.5).
+- **No se fijan** las dependencias de ultralytics (pillow, scipy, matplotlib…): solo las seis de arriba.
+
+**El comando:**
+
+```bash
+<entrega>/bin/python regenerar.py --python-detector <detector>/bin/python
+```
+
+- `--name <nombre>` cambia el nombre del CSV. Por defecto es `regenerada_balon_video` con la capa apagada y
+  `pipeline.DEFAULT_NAME` con ella encendida.
+- `--forzar` rehace la detección aunque la caché valga: es la segunda ejecución de la 2.3 en una misma máquina.
+- `--python-detector` también puede ir en la variable `MTAH_PYTHON_DETECTOR`. Solo hace falta si hay que detectar.
+
+**Qué hace y qué imprime.** Comprueba el entorno de la entrega contra su requirements y que están los cinco ficheros
+del partido. Después decide si hay que detectar:
+- **No detecta** si la caché vale:
+  - está completa, es de la variante fijada y su huella cuadra con sus arrays;
+  - su llave es la que escribiría la detección ahora: el mismo código que detecta, los mismos hilos, el mismo vídeo y
+    la misma lista de frames. La lista se recalcula con el ATD y la homografía (un par de minutos);
+  - y las versiones que guarda son las fijadas.
+- **Detecta** si no vale o con `--forzar`. Antes comprueba el entorno del detector de dos formas: las versiones de los
+  paquetes y las que guardaría en la caché (`detector.versiones()`). La detección va siempre con `--forzar`, así que:
+  - pisa la caché que no valía y tira un parcial de otra configuración;
+  - si se corta, el mismo comando sigue desde el último parcial, que es de la misma configuración.
+
+Luego genera la entrega con la capa y la pasa por el validador. Imprime, solo agregados:
+- las versiones de los dos entornos;
+- el commit, y si hay cambios sin commitear en el código que detecta;
+- la huella de la caché;
+- el sha256 de la entrega;
+- el veredicto del validador y los tiempos.
+
+**Dónde va la caché:** en `MTAH_DATA_DIR/tactical/BAR-ATH_tactical_balon_video.npz`; mientras se detecta, también un
+`….parcial.npz`. Es dato del partido derivado:
+- nunca en el repo, ni en `~/mtah2027-salidas/`;
+- ni se pega a Claude ni se publica.
+
+Quien reproduzca la entrega la rehace con el mismo comando.
+
+**Qué se compara (2.3):** la huella de la caché y el sha256 de la entrega. Tienen que salir iguales dos veces en una
+máquina (la segunda con `--forzar`) y una en otra, con el mismo commit y «sin cambios locales». Si las huellas no
+coinciden, el JSON de la detección dice qué cambia (`para_comparar_maquinas`).
+
+**Cuánto tarda** (la detección entera, sin medir todavía en el partido):
+- **Con la caché hecha:** lo que tarda el pipeline, unos minutos, más un par de minutos para recalcular la lista.
+- **Con la detección:** la puerta 0 midió de 43 a 72 ms por recorte de 640×640 en CPU (Intel Core Ultra 5 225U). Son
+  de 2,4 a 4,0 horas si se detectaran los 199.319 frames. Es un techo:
+  - solo se detecta donde el ATD ve el balón, en los tramos con juego;
+  - pero además se decodifica el vídeo entero.
+- **El techo de cada máquina** lo da el ensayo del sondeo (`horas_estimadas_partido_entero_techo`). La cifra real son
+  los `tiempos_acumulados` del JSON de la detección, y es la medida de la 2.4: el comando entero tiene que caber en
+  8 horas en la máquina de referencia.
+- **Medido con el ensayo** (Antonio, 16/11): en un Mac M1 (macOS, 8 núcleos, 4 hilos de torch), 1,118 ms por frame
+  decodificado y 51,78 ms por detección. Da un techo de **2,93 horas** para el partido entero [medido].
+
+La detección real se apunta aquí cuando se mida:
+
+| máquina | CPU | techo del ensayo | horas de la detección | minutos de la entrega |
+|---|---|---|---|---|
+| Antonio | Apple M1 | 2,93 h | — | — |
+
+**Límites:**
+- El determinismo de la detección entre máquinas está sin medir. Lo dice la 2.3. Entre un Mac ARM y un Windows x86,
+  torch en CPU puede no dar lo mismo bit a bit [inferencia].
+- `torchvision` no queda guardada en la caché: `detector.versiones()` no la lleva. `regenerar.py` la comprueba antes
+  de detectar, pero una caché hecha a mano con el paso 9 de `ESTA_NOCHE.md` se acepta sin que nadie la haya mirado.
+
 ## Resultados
 
 ### Puerta 1a y reproducción de `equipo_v8` (16/11, tarde; lo ejecutó Antonio en su Mac M1, macOS, CPU) [medido, agregados del partido]
