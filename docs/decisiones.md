@@ -4920,6 +4920,10 @@ Resultado [medido, agregados del partido]:
 Decisión: **la línea se para, con la regla tal como estaba escrita.** No se lanza la detección del partido entero ni
 ninguna puerta 2.x, y la capa `balon_video.ajuste_b5_video` no entra. La entrega sigue siendo `equipo_v9`.
 
+Después, por decisión de Ismael, la variante B (la misma 1b con confianza 0,25, el otro valor que midió la puerta 0;
+regla escrita antes de medirla): también «NO SIGUE», con el 36,3 % de las detecciones a más de 5 m [medido]. No se
+prueba ninguna otra confianza: sería elegir el umbral con el partido. Detalle en la bitácora de `exp/balon-video`.
+
 Lo que queda: el código, las pruebas y la bitácora siguen en `exp/balon-video` para el documento técnico. No entran en
 `main`: la capa no se va a encender, y un `regenerar.py` en la raíz del repo público, que genera otra entrega,
 confundiría.
