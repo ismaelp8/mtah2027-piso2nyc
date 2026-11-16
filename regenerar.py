@@ -38,6 +38,8 @@ Qué hace, en orden. Todo lo que puede fallar va antes de las horas de detecció
      de la misma configuración se reanuda igual: si se corta, relanzar `regenerar.py` sigue donde se quedó (guarda un
      parcial cada 5.000 frames);
    - al acabar, vuelve a comprobar la caché.
+   Si no detecta y junto a la caché hay un parcial (un `--forzar` que se cortó), lo avisa aquí y en el resumen: la
+   caché que usa es la de antes, no una recién hecha.
 5. El pipeline: `python -m possession.pipeline --name <nombre> --capa balon_video.ajuste_b5_video`. Si la capa ya está
    en `pipeline.DELIVERY_LAYERS` (encendida), va sin `--capa`, que entonces daría error.
 6. El validador oficial sobre el CSV escrito.
@@ -272,6 +274,16 @@ def estado_cache(paths, fijadas_detector, llave_de_ahora, game=games.GAME):
     return dict(estado, vale=True, motivo="vale")
 
 
+def hay_parcial(paths):
+    """Si junto a la caché hay una detección a medias: el parcial de `balon_video_detectar`. Solo mira si existe."""
+    return os.path.isfile(bvd.rutas_cache(os.path.dirname(balon_video.ruta_cache(paths)))[1])
+
+
+AVISO_PARCIAL = ("AVISO: junto a la caché hay una detección a medias (un parcial): una ejecución con --forzar se "
+                 "cortó. Este comando NO ha detectado: usa la caché que ya había. Para acabar aquella detección, "
+                 "relánzalo con --forzar (sigue desde el parcial).")
+
+
 # -- los comandos ----------------------------------------------------------------------------------------------------
 
 def capa_encendida():
@@ -399,6 +411,11 @@ def main(argv=None, data_dir=None):
         versiones_detector, de_donde = cache["versiones"], "las de la caché, recién hecha"
     else:
         print("no hace falta detectar (con --forzar se rehace)")
+    # Un --forzar cortado deja un parcial junto a la caché de antes, que sigue valiendo: sin este aviso, relanzar sin
+    # --forzar daría la caché vieja por recién hecha (la «segunda ejecución» de la puerta 2.3 no compararía nada).
+    aviso = AVISO_PARCIAL if "detección" not in tiempos and hay_parcial(paths) else None
+    if aviso:
+        print(aviso)
 
     titulo("2. La entrega")
     inicio = time.perf_counter()
@@ -425,6 +442,10 @@ def main(argv=None, data_dir=None):
     print("entrega: {}".format(pipeline.shown(ruta)))
     print("sha256: {}".format(sha))
     print("validador: {}".format("OK" if validador == 0 else "FALLA (código de salida {})".format(validador)))
+    print("detección en este comando: {}".format("sí, {}".format(horas(tiempos["detección"])) if "detección" in tiempos
+                                                  else "no: se ha usado la caché que ya había"))
+    if aviso:
+        print(aviso)
     print("tiempo de este comando: {}; en total, {}".format(
         "; ".join("{}, {}".format(k, horas(v)) for k, v in tiempos.items()), horas(time.perf_counter() - reloj)))
     return 0 if validador == 0 else 1

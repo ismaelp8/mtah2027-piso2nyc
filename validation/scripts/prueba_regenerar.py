@@ -404,6 +404,24 @@ def prueba_main(carpeta):
           codigo == 0 and falso.lanzados("deteccion") == [[py_det, rg.DETECCION, "--forzar"]]
           and falso.lecturas == 1)
 
+    check("sin parcial: ni al usar la caché ni al detectar sale el aviso del parcial",
+          not any("AVISO" in s for s in todas))
+    parcial = os.path.join(os.path.dirname(paths["atd_raw"]), bvd.NOMBRE_PARCIAL)
+    with open(parcial, "w") as f:  # un --forzar que se cortó: el parcial queda junto a la caché de antes
+        f.write("")
+    codigo, salida, falso = correr(paths, carpeta, base)
+    todas.append(salida)
+    check("la caché vale y hay un parcial (un --forzar cortado): no detecta, y lo avisa dos veces, la segunda en el "
+          "resumen", codigo == 0 and not falso.lanzados("deteccion") and salida.count(rg.AVISO_PARCIAL) == 2
+          and salida.index("## Resumen") < salida.rindex(rg.AVISO_PARCIAL)
+          and "detección en este comando: no" in salida)
+    codigo, salida, falso = correr(paths, carpeta, base + ["--forzar"])
+    todas.append(salida)
+    check("con el parcial y --forzar: detecta, sin aviso, y el resumen dice que ha detectado",
+          codigo == 0 and len(falso.lanzados("deteccion")) == 1 and "AVISO" not in salida
+          and "detección en este comando: sí" in salida)
+    os.remove(parcial)
+
     escribir_cache(paths, estado="parcial")
     codigo, salida, falso = correr(paths, carpeta, base)
     todas.append(salida)
