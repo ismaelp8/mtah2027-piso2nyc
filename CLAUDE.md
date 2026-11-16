@@ -235,16 +235,18 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
 - **Entrega vigente: `equipo_v8`** (Ismael, 16/11, con `main` en `44678d1`): `equipo_v5` más la capa del balón
-  fuera (D7, más abajo). El entorno está [sin verificar], porque no se pegó la línea de versiones, pero la
-  huella es la de `prueba_d7_v5`, que salió con Python 3.13.9 y numpy 2.5.4. Es válida, con 219 posesiones de 15,8 s de media, 116 paradas, el
-  45,4 % de `D` en lo evaluado y sha256 `d78c514d…e2b2`.
+  fuera (D7, más abajo). Es válida, con 219 posesiones de 15,8 s de media, 116 paradas, el 45,4 % de `D` en lo
+  evaluado y sha256 `d78c514d…e2b2`.
+  - **El ensayo del 16/11 por la noche pasa** (Ismael, entorno limpio, Python 3.13.9 y numpy 2.5.4, con `main` en
+    `c6a3dee` y sin cambios locales): el mismo sha256, 0 conflictos, ninguna racha corta y el validador en verde.
+    `main` ya llevaba la PR 20 («cortas a `D`», apagada), así que esa PR no cambia la entrega.
   - Sale byte a byte igual que `prueba_d7_v5`, la entrega de prueba.
   - Frente a `equipo_v5` cambian 574 frames, todos de un equipo a `D` (331 de `H` y 243 de `A`), con 3 paradas
     más. Los 817 cambios de la capa de los contraataques siguen enteros.
   - En la ventana pública, el spellF1 no cambia (0,658) y el macroF1 sube de 0,851 a 0,865. No elige nada: con 17
     posesiones, una diferencia de hasta 0,39 es ruido.
   - **Reproducida en otra máquina** (Antonio, 16/11): el mismo sha256 en un Mac M1 (macOS, ARM), con Python 3.13.7
-    y numpy 2.5.4, tres veces y sin cambios locales. El ensayo de Ismael en Windows con `main` sigue en pie.
+    y numpy 2.5.4, tres veces y sin cambios locales.
 - **Entrega anterior: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
   más la capa de los contraataques (más abajo). Es válida, con 219 posesiones de 15,9 s de media, 113
   paradas, el mismo `D` que `equipo_v3` y sha256 `27dc8aa8…efb7`.
@@ -409,8 +411,9 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     huella. Lo hizo en otro entorno, con numpy 2.3.4, así que la huella también aguanta ese cambio de versión.
   - **Con `main` en `8f90dea`** (después de la PR 12), ya en el entorno limpio, sale otra vez el mismo
     sha256.
-  - **En el ensayo del lunes por la noche** se repite con lo que haya en `main`, con el python del entorno
-    limpio: `C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline`.
+  - **El ensayo del lunes por la noche está hecho** (16/11, `main` en `c6a3dee`): sale `d78c514d…e2b2`. Cada
+    regeneración va con el python del entorno limpio:
+    `C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline`.
     - El comando imprime el commit con el que se genera. Si el código de la entrega tiene cambios sin
       commitear, lo avisa.
 - **Harness de la DFL** (14/11, `validation/harness/`; primera medida en
@@ -455,9 +458,14 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
         para este candidato, con el corte de 125 frames;
       - en la entrega de prueba de Manuel cambian 1.167 frames, todos de un equipo a `D`, y las posesiones pasan de
         219 a 201;
+      - Ismael la reprodujo en el entorno limpio: sale la misma entrega de prueba que a Manuel (sha256
+        `d9706dfb…be63`);
       - **no está encendida:** `pipeline.PIECES` no cambia y la entrega sigue siendo `equipo_v8`. Encenderla es una
-        decisión aparte, después del ensayo, y obliga a regenerar y validar. Lo que quede pendiente contra
-        `equipo_v8` (la puerta 2.2 del balón del vídeo) reescribe antes sus límites contra la base nueva.
+        decisión aparte, que está por tomar, y obliga a regenerar y validar;
+      - **si se enciende,** lo que quede pendiente contra `equipo_v8` (la puerta 2.2 del balón del vídeo) reescribe
+        antes sus límites contra la base nueva. Y la fila por defecto del harness sale de `pipeline.PIECES`: cambia
+        el «main» de referencia de lo que se esté midiendo (B10, la puerta 2.1), que tiene que fijar el commit de
+        antes o volver a medir su referencia.
   - **Decisión de Ismael:** en los cambios pequeños hacia control, el flag pasa de veto a límite de daño
     (`docs/decisiones.md`, 16/11). El examen de SkillCorner se puede abrir una vez por candidato.
   - **Cierres:**

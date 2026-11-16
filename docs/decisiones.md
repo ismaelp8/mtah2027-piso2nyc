@@ -4817,3 +4817,30 @@ Para encenderla, si el equipo lo decide:
    huella de arriba.
 3. Lo que quede escrito contra `equipo_v8` (la puerta 2.2 del balón del vídeo) reescribe sus límites contra la base
    nueva antes de generar nada.
+
+### 2026-11-16 · infraestructura · ensayo de la entrega: `equipo_v8` sale igual con `main` en `c6a3dee`
+
+Quién: lo ejecutó Ismael; lo apunta la sesión planificadora (Claude). Solo agregados.
+
+Qué se probó: el ensayo del congelado del plan (el paso 1 de `validation/balon_video/ESTA_NOCHE.md`):
+`python -m possession.pipeline --name ensayo_16nov` con el python del entorno limpio, y el validador oficial.
+
+Resultado [medido]:
+- `python 3.13.9, numpy 2.5.4`; `código: commit c6a3dee, sin cambios locales en el código de la entrega`; las piezas
+  de la entrega, sin capas añadidas.
+- ATD: 199.319 líneas leídas y válidas; 0 saltadas, 0 repetidas y 0 frames sin línea.
+- `H` 54.445, `A` 32.213, `D` 72.199 y `X` 40.462. Tramo 1: 103 posesiones y 54 paradas; tramo 2: 116 y 62. Ninguna
+  racha de menos de 12 ni de 25 frames, y 0 frames con piezas en conflicto.
+- **sha256 `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`, el de `equipo_v8`.**
+- Validador: `OK` y `Valid`, 199.319 filas, 219 posesiones de 15,8 s de media.
+
+Qué cierra:
+- El entorno de `equipo_v8`, que estaba [sin verificar]: sale con el limpio.
+- La PR 20 («cortas a `D`», apagada, `10aadef`) no cambia la entrega tampoco en el entorno limpio. Manuel lo había
+  visto con Python 3.14.4 y numpy 2.4.4.
+- `equipo_v8` sale igual en tres máquinas: el Windows de Ismael, el Mac M1 de Antonio y el Windows de Manuel.
+
+Para cuando se decida encender «cortas a `D`» [leído en el código]: la fila por defecto del harness (`{}`) sale de
+`pipeline.PIECES` (`validation/harness/puntuar.py`). Al cambiar `PIECES["temporal"]` cambia el «main» de referencia de
+cualquier medida en marcha (B10, la puerta 2.1 del balón del vídeo, la capa de `D` de Ana). Cada una fija el commit de
+antes del cambio o vuelve a medir su referencia.
