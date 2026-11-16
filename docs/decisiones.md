@@ -5095,3 +5095,87 @@ Lo que hay que decir con el número:
 - Sigue muy lejos del techo (+0,096): el detector ve una parte de los cambios.
 
 Descartado: A (avisos) y B (confirmación) con estos umbrales; el detector aprendido como candidato.
+
+### 2026-11-16 · temporal · detector de cambios en SkillCorner: el instrumento y la regla de lectura (antes de medir)
+
+Quién: lo pidió Ana (16/11); la escribe Claude antes de puntuar ningún detector en SkillCorner. Rama
+`exp/cambios-skillcorner`, que sale de `feat/detector-cambios` en `032d4d8`.
+
+Qué se prueba: el punto 2 de la regla del detector (entrada «candidatos, rejilla y regla de entrada» de hoy), en la
+mitad de entrenamiento de SkillCorner. Solo para el candidato que pasó los puntos 1 y 3 en la DFL (entrada «segunda
+ronda» de hoy): **las reglas afinadas con el balón del vídeo**, con lo elegido en 6 de los 7 pliegues: giro de 45°,
+cambio de velocidad de 0,6, 30 frames de confirmación, w = 0, γ = 8, W = 50 y la capa contra el otro equipo. Nada de
+esto se elige en SkillCorner.
+
+Cómo se medirá: con `validation/cambios/medir_skillcorner.py` (`50b7135`), una sola ejecución:
+
+    python validation/cambios/medir_skillcorner.py --detector reglas --giro 45 --velocidad 0.6 --confirma 30 \
+        --w 0 --gamma 8 --ventana 50 --contra-d --balon sin-suavizar
+
+- **Partidos:** los 10 de `lector.ENTRENAMIENTO`. `lector.EXAMEN` solo se lee con `--examen` y
+  `--examen-con-permiso`; con `--examen` solo, da error.
+- **Condiciones:** las dos que votan en SkillCorner, «detectado» y «detectado, suavizado», pasadas de 10 a 25 fps con
+  `lector.tracking_de`, como `validation/skillcorner/medir.py`.
+- **`main`:** B5 con los coeficientes de la entrega, `dead_state` y `temporal.decode` con coste 25. Es la de
+  `validation/resultados/2026-11-15_skillcorner.md` y la de las rondas de la DFL. No lleva «cortas a `D`», que está en
+  la entrega desde hoy:
+  - con el `D` de las etiquetas no cambia nada, porque solo convierte rachas en las que `D` está permitido [por
+    inspección del código];
+  - con el `D` propio, el detector junto con «cortas a `D`» no se mide aquí.
+- **El candidato:** la misma evidencia más `cambios.capa`, decodificada con `temporal.decode_cambios` y
+  `cambios.rebaja` (`ronda2.decodificar`).
+- **El balón que ve el detector** (`--balon sin-suavizar`): el detectado de SkillCorner sin la media móvil de 25
+  frames, en las dos condiciones. B5 y el `D` siguen con el de la condición.
+  - Es la disposición de la DFL: allí el detector ve el balón «del vídeo», sin el suavizado de 1 s, y B5 y el `D`,
+    el balón «como el ATD».
+  - En «detectado, suavizado» la disposición es la misma. En «detectado», los dos ven el mismo balón.
+  - No emula el detector del vídeo: SkillCorner no tiene un balón limpio que emular (entrada «segunda ronda»).
+- **Los dos modos del `D`:** el de las etiquetas (`puntuar.d_oraculo`) y el propio.
+- **Métrica:** `spellF1` con los 10 partidos juntos, en cuántos de los 10 gana y el bootstrap pareado (5–95 %, 1.000
+  remuestreos).
+
+Resultado de la comprobación del instrumento, hecha antes de escribir esta regla [medido]. Sin detector
+(`--detector ninguno`: `p` a cero, con w = 25, γ = 8, W = 50 y la capa contra el otro equipo, para que pase por todo
+el camino del candidato; salida en `validation/cambios/salidas/2026-11-16_skillcorner_instrumento.md`):
+- el candidato sale igual que `main` en todos los frames en las 40 salidas (10 partidos × 2 condiciones × 2 modos del
+  `D`);
+- `main` saca 0,519 y 0,514 con el `D` de las etiquetas y 0,382 y 0,378 con el propio («detectado» y «detectado,
+  suavizado»), con 2.270, 2.284, 2.342 y 2.345 posesiones predichas frente a 3.228 reales;
+- **repite la medida del 15/11 en estos 10 partidos:**
+  - `2026-11-15_skillcorner.md` solo da los 20 juntos (0,514 y 0,509 con el `D` de las etiquetas), así que se
+    ejecutó el código de esa medida (`3b227c4`, `validation/skillcorner/medir.py --partidos` con estos 10; salida en
+    `validation/cambios/salidas/2026-11-16_skillcorner_referencia_1511.md`);
+  - da lo mismo en las cuatro celdas: el mismo `spellF1`, el mismo mínimo y máximo por partido y las mismas
+    posesiones predichas;
+  - `validation/resultados/2026-11-15_diagnostico_errores.md` ya daba 0,519, con 2.270 posesiones de 3.228, en
+    «detectado» con el `D` de las etiquetas.
+
+Decisión y por qué (la regla de lectura, escrita antes de puntuar ningún detector en SkillCorner):
+- **Pasa la mitad de entrenamiento** si, frente a `main`, saca **+0,005 o más con los 10 partidos juntos y gana en 7
+  de 10**, en las **cuatro celdas**: «detectado» y «detectado, suavizado», con el `D` de las etiquetas y con el propio.
+  - El umbral es el del punto 2 (el límite de daño del 16/11, no el +0,03 de §5.8).
+  - Se piden los dos modos del `D`, como en el punto 1, porque la capa toca el `D`.
+- El intervalo del bootstrap se enseña, pero no decide.
+- **Descriptivo, sin voto:**
+  - lo que ve el detector frente a las etiquetas de SkillCorner: cambios vistos, avisos por minuto vivo y avisos
+    buenos;
+  - las posesiones predichas.
+- **Una sola ejecución,** con lo de arriba. Después de ver los números no se cambia nada: ni el candidato, ni el balón,
+  ni las condiciones, ni `main`, ni la regla. En SkillCorner no se prueban otros umbrales ni otras combinaciones.
+- **Si no pasa:** el candidato no sigue y el detector se queda apagado. El examen no se abre.
+- **Si pasa:** no entra nada, porque **la línea del balón del vídeo se paró hoy** (la puerta 1b da «NO SIGUE»; entrada
+  de `main` del 16/11). En el partido no habrá balón del vídeo, así que este candidato no se puede entregar tal cual.
+  - El examen se abre una vez por candidato, con `--examen --examen-con-permiso` y la autorización del equipo en el
+    momento.
+  - Solo tiene sentido abrirlo si el equipo recupera un balón del vídeo. Hasta entonces, no se abre.
+
+Descartado (antes de medir):
+- **Medir aquí las reglas afinadas con el balón de respaldo:** no pasaron el punto 1 en la DFL, y la regla del 16/11
+  solo abre SkillCorner si pasa. Tampoco se mide ninguno de los otros 13 candidatos de las dos rondas.
+- **Medir el candidato junto con «cortas a `D`»:** sería otra comparación, con su propia regla.
+- **Elegir en SkillCorner** el balón, los umbrales o la combinación.
+
+El script mide otros detectores elegidos en la DFL (el aprendido o las reglas, con sus umbrales y su combinación) por
+argumentos. Cada uso nuevo lleva antes su propia regla en este fichero.
+
+Estado: escrita antes de medir. El resultado va en la entrada siguiente.
