@@ -4370,4 +4370,9 @@ Avisado antes de medir:
   cambios tampoco tiene balón.
 - El respaldo ve el balón suavizado 1 s: el experimento 2 y B8 dicen que ahí casi no hay toques que ver.
 
+**Añadido el 16/11, después de ver el techo en un partido y antes de entrenar o medir ningún detector:** la rejilla
+gana γ = 8 (20 combinaciones con algún efecto). Por qué: con el detector perfecto, en un partido (J03WMX), el spellF1
+seguía subiendo en γ = 4, el borde de la rejilla. El techo es descriptivo y elige mirando el resultado; el candidato
+sigue siendo uno, elegido dejando un partido fuera.
+
 Estado: en marcha. `pipeline.PIECES` y la entrega no cambian.

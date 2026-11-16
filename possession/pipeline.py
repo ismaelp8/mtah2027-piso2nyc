@@ -126,7 +126,7 @@ def combine(pieces, n):
     return score, allowed, conflict
 
 
-def run(trk, extra=(), params=None, report=None, pieces=None):
+def run(trk, extra=(), params=None, report=None, pieces=None, cambios=None):
     """Etiquetas por frame (códigos de possession/tracking.py) a partir de un `Tracking`.
 
     `extra`: evidencias que se suman a las del tracking. Cada una es `(score, allowed)` ya calculada, o
@@ -138,6 +138,11 @@ def run(trk, extra=(), params=None, report=None, pieces=None):
     `pieces` cambia alguna pieza por otra función con la misma firma, para comparar versiones en el
     harness: un diccionario con claves de `PIECES` ("ball", "candidates", "dead_state" y "temporal"). Sin
     él van las de `PIECES` (`default_piece`), que son las de la entrega.
+
+    `cambios` (candidato del 16/11, apagado: docs/decisiones.md) es la rebaja del coste de cambiar de equipo en
+    cada frame, de forma (n, 2), o una función que recibe el tracking con el balón ya limpio y la devuelve
+    (`cambios.rebaja`). Con ella decodifica `temporal.decode_cambios`, salvo que `pieces` nombre otro
+    decodificador, que tiene que aceptar `bonus`. Con `None`, el valor por defecto, nada cambia.
 
     Si en algún frame evaluado las piezas se contradicen, da error. Con `report` (un diccionario) no da
     error: apunta el recuento en `report["conflictos"]` y sigue.
@@ -160,7 +165,11 @@ def run(trk, extra=(), params=None, report=None, pieces=None):
         report["conflictos"] = conflicts
     elif conflicts:
         raise ValueError("las piezas se contradicen en {} frames evaluados".format(conflicts))
-    return decode(score, allowed, trk.blocks, params)
+    if cambios is None:
+        return decode(score, allowed, trk.blocks, params)
+    if "temporal" not in pieces:
+        decode = temporal.decode_cambios
+    return decode(score, allowed, trk.blocks, params, bonus=cambios(trk) if callable(cambios) else cambios)
 
 
 def write_submission(path, codes):

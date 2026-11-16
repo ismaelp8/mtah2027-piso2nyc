@@ -12,6 +12,10 @@ Variantes para el harness (candidatos del 15/11 en docs/decisiones.md), con la m
 - `decode_prune`: el Viterbi de `decode` y después la poda de las posesiones cortas (c, T7 sin el ajuste de
   fronteras).
 
+- `decode_cambios`: el Viterbi de `decode` con el coste de pasar de un equipo al otro rebajado frame a frame
+  por un detector de cambios de posesión (`possession/cambios.py`; docs/decisiones.md, 16/11). Sin `bonus` es
+  `decode`.
+
 La entrega usa `decode` (`pipeline.PIECES`). Las variantes solo entran si ganan en el harness.
 """
 
@@ -71,6 +75,50 @@ def viterbi(emission, cost):
             for i in states:
                 if i != j:
                     v = best[i] - cost[i][j]
+                    if v > value:
+                        arg, value = i, v
+            new[j] = value + row[j]
+            pointers[j] = arg
+        best = new
+        back.append(pointers)
+    state = max(states, key=lambda s: (best[s], -s))
+    path = np.empty(n, dtype=np.int8)
+    path[n - 1] = state
+    for t in range(n - 2, -1, -1):
+        state = back[t][state]
+        path[t] = state
+    return path
+
+
+def viterbi_cambios(emission, cost, bonus):
+    """Como `viterbi`, con el coste de pasar de un equipo al otro rebajado en cada frame.
+
+    `bonus`: (n, 2), no negativo. Entrar en `H` desde `A` en el frame t cuesta `max(0, cost[A][H] - bonus[t][H])`,
+    y entrar en `A` desde `H`, `max(0, cost[H][A] - bonus[t][A])`. Los pasos por `D` no cambian. Con `bonus` a
+    cero da exactamente la salida de `viterbi`, con los mismos empates.
+    """
+    rows = emission.tolist()
+    extra = np.asarray(bonus, dtype=float).tolist()
+    n = len(rows)
+    if n == 0:
+        return np.zeros(0, dtype=np.int8)
+    states = range(N_STATES)
+    best = list(rows[0])
+    back = []
+    for t in range(1, n):
+        row = rows[t]
+        new = [0.0] * N_STATES
+        pointers = [0] * N_STATES
+        for j in states:
+            arg, value = j, best[j]
+            for i in states:
+                if i != j:
+                    c = cost[i][j]
+                    if i != D and j != D:
+                        c -= extra[t][j]
+                        if c < 0.0:
+                            c = 0.0
+                    v = best[i] - c
                     if v > value:
                         arg, value = i, v
             new[j] = value + row[j]
@@ -241,6 +289,27 @@ def decode(score, allowed, blocks, params=None):
     blocks, cost, emission, codes = _prepare(score, allowed, blocks, params)
     for start, stop in blocks:
         codes[start:stop] = viterbi(emission[start:stop], cost)
+    return codes
+
+
+def decode_cambios(score, allowed, blocks, params=None, bonus=None):
+    """Candidato del 16/11: como `decode`, con el coste de cambiar de equipo rebajado por un detector de cambios.
+
+    `bonus`: (n, 2), no negativo y finito, en las unidades de los costes: cuánto baja en cada frame el coste de
+    entrar en `H` (columna 0) y en `A` (columna 1) desde el otro equipo (`viterbi_cambios`). Lo da
+    `cambios.rebaja`. Con `bonus=None` es exactamente `decode`.
+    """
+    if bonus is None:
+        return decode(score, allowed, blocks, params)
+    blocks, cost, emission, codes = _prepare(score, allowed, blocks, params)
+    bonus = np.asarray(bonus, dtype=float)
+    if bonus.shape != (len(codes), 2):
+        raise ValueError("`bonus` tiene que ser de forma (n, 2)")
+    for start, stop in blocks:
+        tramo = bonus[start:stop]
+        if not np.isfinite(tramo).all() or (tramo < 0).any():
+            raise ValueError("`bonus` tiene valores negativos o no finitos en un tramo evaluado")
+        codes[start:stop] = viterbi_cambios(emission[start:stop], cost, tramo)
     return codes
 
 
