@@ -170,7 +170,22 @@ propia regla y no usa la del «límite de daño» de los cambios pequeños (`doc
    - con control, +0,01 o más en las dos condiciones que votan y ganando en 6 de 7 partidos, con el `D` de las
      etiquetas y con el propio;
    - con el flag, no pierde más de 0,005 en ninguna celda.
-2. **Entrega de prueba frente a `equipo_v8`,** con criterios de daño escritos aquí antes de generarla.
+2. **Entrega de prueba frente a `equipo_v8`,** con criterios de daño escritos aquí antes de generarla. **Escritos el
+   16/11 a las 17:20:**
+   - **Cómo se genera:**
+     - `python -m possession.pipeline --name prueba_balon_video --capa balon_video.ajuste_b5_video`, con la caché de
+       la detección del partido entero;
+     - la capa le cambia a B5 el balón del ATD por el balón del vídeo (la regla de arriba) y no toca nada más;
+     - se compara con `validation/partido/probar_entrega.py ... --contra equipo_v8`.
+   - **Pasa si se cumple todo:**
+     - 0 frames con piezas en conflicto, y ninguna racha de menos de 25 frames (posesiones, juego y paradas) en los dos
+       tramos;
+     - el `D` casi no se mueve, porque la capa solo cambia B5: como mucho 1.000 frames evaluados entre los que pasan de
+       `D` a juego y los que pasan de juego a `D`, y las paradas a ±6 de las 116 de `equipo_v8`;
+     - las posesiones, entre 219 y 328 (×1,5). Con menos, la capa no hace nada; con más, sospecha de parpadeo;
+     - los frames que cambian de un equipo al otro, el 10 % o menos de los evaluados (15.886);
+     - la ventana pública se imprime y no decide.
+   - **Lo que decide si mejora es la 2.1.** Esto solo dice que no rompe nada.
 3. **Reproducible:** el comando único regenera la entrega byte a byte dos veces en una máquina y una en otra (con la
    detección dentro: las detecciones del partido no se pueden publicar). Si no, no entra.
 4. **Tiempo:** el comando entero cabe en 8 horas en la máquina de referencia que se documente.
