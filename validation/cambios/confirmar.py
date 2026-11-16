@@ -10,9 +10,12 @@ entrega usa `temporal.decode_cortas_a_d`. Aquí se repite el candidato que pasó
 umbrales y la combinación son los que salieron en 6 de los 7 pliegues. La regla es la misma (puntos 1 y 3).
 """
 
+import argparse
 import concurrent.futures
 import os
 import sys
+
+import numpy as np
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
@@ -27,13 +30,50 @@ REGLA = (45.0, 0.6, 30)  # giro, cambio de velocidad y frames de confirmación
 GAMMA, VENTANA, CONTRA_D = 8.0, 50, True
 
 
-def partido(nombre_partido):
+# Las celdas de la decisión del 16/11 «el candidato en las celdas que midió la puerta 1b»:
+# (fracción buena, fracción equivocada, σ en m, racha media de los frames no buenos).
+CELDAS = {"provisional": None, "M1": (0.70, 0.0, 0.03, 12), "M2": (0.74, 0.17, 0.03, 6)}
+LEJOS = (3.0, 5.0)  # m: a qué distancia del balón del ATD cae una detección equivocada
+
+
+def balon_de_celda(cargado, condicion, celda):
+    """El tracking con el balón «como el vídeo» de una celda. Con `None`, el de `medir` (la celda provisional)."""
+    if celda is None:
+        return medir.balones_de(cargado, condicion)["vídeo"][0]
+    buena, equivocada, sigma, largo = celda
+    trk, limpio = dfl.tracking_de(cargado, condicion), dfl.tracking_de(cargado, "limpio")
+    rng = np.random.default_rng([medir.SEMILLA, cargado["indice"], dfl.CONDICIONES.index(condicion), 1])
+    n = len(trk.bx)
+    estado = np.zeros(n, dtype=np.int8)  # 0 buena, 1 equivocada, 2 sin detección
+    dx, dy = np.zeros(n), np.zeros(n)
+    media_buena = max(1.0, largo * buena / (1.0 - buena))
+    t = int(rng.geometric(1.0 / media_buena))
+    while t < n:
+        fallo = int(rng.geometric(1.0 / largo))
+        if rng.random() < equivocada / (1.0 - buena):
+            radio, angulo = rng.uniform(*LEJOS), rng.uniform(0.0, 2.0 * np.pi)
+            estado[t:t + fallo] = 1
+            dx[t:t + fallo], dy[t:t + fallo] = radio * np.cos(angulo), radio * np.sin(angulo)
+        else:
+            estado[t:t + fallo] = 2
+        t += fallo + int(rng.geometric(1.0 / media_buena))
+    rx, ry = rng.normal(0.0, sigma, n), rng.normal(0.0, sigma, n)
+    hay = ~np.isnan(trk.bx)
+    es_buena = hay & (estado == 0) & ~np.isnan(limpio.bx)
+    es_mala = hay & (estado == 1)
+    bx = np.where(es_buena, limpio.bx + rx, np.where(es_mala, trk.bx + dx + rx, trk.bx))
+    by = np.where(es_buena, limpio.by + ry, np.where(es_mala, trk.by + dy + ry, trk.by))
+    return trk._replace(bx=bx, by=by)
+
+
+def partido(args):
+    nombre_partido, celda = args
     cargado, _, bases = comun.cargar(nombre_partido)
     gt = cargado["gt"]
     decode = pipeline.default_piece("temporal")
     recuentos = {}
     for condicion in dfl.VOTAN:
-        trk = medir.balones_de(cargado, condicion)["vídeo"][0]
+        trk = balon_de_celda(cargado, condicion, CELDAS[celda])
         capa = cambios.capa(cambios.p_reglas(trk, *REGLA), GAMMA, VENTANA, contra_d=CONTRA_D)[0]
         for modo in comun.MODOS_D:
             base = bases[(condicion, modo)]
@@ -46,13 +86,18 @@ def partido(nombre_partido):
 
 
 def main():
+    parser = argparse.ArgumentParser(description="El candidato de la segunda ronda con el decodificador de la entrega.")
+    parser.add_argument("--celda", choices=sorted(CELDAS), default="provisional")
+    celda = parser.parse_args().celda
     partidos = list(dfl.PARTIDOS)
     with concurrent.futures.ProcessPoolExecutor(4) as pool:
-        recuentos = dict(pool.map(partido, partidos))
+        recuentos = dict(pool.map(partido, [(p, celda) for p in partidos]))
     print("# El candidato de la segunda ronda con el decodificador de la entrega ({})\n".format(
         pipeline.PIECES["temporal"]))
-    print("Código: {} · reglas {} · γ {:g}, W {}, contra el otro equipo · emulación p = {}, σ = {} m, L = {}\n".format(
-        puntuar.version_del_codigo(), REGLA, GAMMA, VENTANA, medir.P_VIDEO, medir.SIGMA_VIDEO, medir.L_VIDEO))
+    print("Código: {} · reglas {} · γ {:g}, W {}, contra el otro equipo · celda «{}»: {}\n".format(
+        puntuar.version_del_codigo(), REGLA, GAMMA, VENTANA, celda,
+        "p = {}, σ = {} m, L = {}".format(medir.P_VIDEO, medir.SIGMA_VIDEO, medir.L_VIDEO) if CELDAS[celda] is None
+        else "buena {}, equivocada {}, σ = {} m, racha media {}".format(*CELDAS[celda])))
     print("| `D` | condición | etiquetas | main | candidato | diferencia [intervalo] | gana en | posesiones: main → "
           "candidato (reales) |")
     print("|---|---|---|---|---|---|---|---|")

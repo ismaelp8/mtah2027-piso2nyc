@@ -5169,3 +5169,37 @@ como está (confianza 0,10). Si pasa M2, sigue dependiendo de que haya balón de
 decide el equipo: la línea del vídeo está parada.
 
 No se cambia nada del candidato mirando esto. Limitación: M2 no modela el desfase (la 1b ve 0 frames, no 4).
+
+### 2026-11-16 · temporal · detector de cambios: con las cifras de la puerta 1b el candidato no pasa; se cierra
+
+Quién: David (16/11), con Claude. Salidas: `validation/cambios/salidas/2026-11-16_confirmar_M1.md` y `_M2.md`
+(`confirmar.py --celda`, código en `3b7b76a` más el script; los 7 partidos de la DFL, con `decode_cortas_a_d`).
+
+Resultado [medido], diferencia con `main` (el rango de las cuatro celdas):
+
+| celda de la emulación | control | flag | punto 1 | punto 3 |
+|---|---|---|---|---|
+| provisional (p = 0,8, σ = 0,06, sin equivocadas) | +0,014 a +0,021 (6–7 de 7) | +0,044 a +0,054 | pasa | pasa |
+| M1 (p = 0,7, σ = 0,03, sin equivocadas) | +0,010 a +0,017 (5, 6, 6 y 6 de 7) | +0,039 a +0,051 | no pasa, por un partido | pasa |
+| **M2 (74 % buena, 17 % equivocada, 9 % sin detección)** | **−0,022 a −0,042 (0–1 de 7)** | +0,034 a +0,054 | **no pasa** | pasa |
+
+- Con las detecciones equivocadas, el candidato predice de más: de 1.661 a 1.971–2.083 posesiones con el `D` de las
+  etiquetas, cuando con control hay 1.736. Cada salto a un falso positivo es un toque falso.
+- Con el flag sigue ganando en 7 de 7 en las tres celdas: el flag tiene 3.061 posesiones y aguanta las inventadas. Lo
+  que gana depende, pues, de la convención.
+
+Decisión y por qué: **el candidato se cierra,** con la regla escrita antes de medir (M2 decidía). Además, la línea del
+balón del vídeo está parada en la puerta 1b y no hay detección del partido entero. No se abre SkillCorner. El código
+queda apagado: `cambios.capa`, `cambios.p_reglas`, `temporal.decode_cambios` y `pipeline.run(cambios=None)`.
+`pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega (`equipo_v9`) no cambian.
+
+Lo que queda para el documento técnico y para la fase siguiente:
+- **El mecanismo vale:** un detector de cambios perfecto da +0,096 con control y +0,218 con el flag sobre B5.
+- **El balón del vídeo trae la información que falta** (las reglas ven el doble de cambios que con el balón del ATD),
+  **pero solo si sus detecciones equivocadas se filtran.** M2 es el caso malo: supone que toda detección a más de 3 m
+  del balón del ATD es falsa. Lo que habría que probar, si se retoma: un filtro de trayectoria (continuidad entre
+  frames) o una confianza mínima más alta antes de buscar toques.
+- Sin balón del vídeo no hay candidato: con el del ATD nada pasó en ninguna de las dos rondas.
+
+Descartado: reajustar los umbrales de las reglas para M2 (sería elegir después de ver el resultado, y la regla decía
+que no se cambiaba nada).
