@@ -5179,3 +5179,41 @@ El script mide otros detectores elegidos en la DFL (el aprendido o las reglas, c
 argumentos. Cada uso nuevo lleva antes su propia regla en este fichero.
 
 Estado: escrita antes de medir. El resultado va en la entrada siguiente.
+
+### 2026-11-16 · temporal · detector de cambios en SkillCorner: las reglas afinadas no pasan la mitad de entrenamiento
+
+Quién: lo pidió Ana (16/11); lo ejecutó Claude (son datos abiertos), una sola vez, con la regla de la entrada anterior
+ya commiteada (`c111042`).
+
+Qué se probó: las reglas afinadas con el balón del vídeo (giro de 45°, cambio de velocidad de 0,6, 30 frames de
+confirmación; w = 0, γ = 8, W = 50, contra el otro equipo), con el balón detectado de SkillCorner sin suavizar.
+
+Cómo se midió: `validation/cambios/medir_skillcorner.py` en `c111042`, los 10 partidos de `lector.ENTRENAMIENTO`
+(3.228 posesiones), `spellF1` con bootstrap de 1.000. Salida en
+`validation/cambios/salidas/2026-11-16_skillcorner_reglas_afinadas.md`. El examen no se abrió.
+
+Resultado [medido], candidato frente a `main`:
+
+| `D` | condición | `main` | candidato | diferencia [5–95 %] | gana en |
+|---|---|---|---|---|---|
+| de las etiquetas | detectado | 0,519 | 0,514 | −0,005 [−0,011 a −0,000] | 4 de 10 |
+| de las etiquetas | detectado, suavizado | 0,514 | 0,511 | −0,003 [−0,008 a +0,003] | 5 de 10 |
+| propio | detectado | 0,382 | 0,381 | −0,000 [−0,005 a +0,004] | 6 de 10 |
+| propio | detectado, suavizado | 0,378 | 0,381 | +0,003 [−0,002 a +0,008] | 6 de 10 |
+
+- **Ninguna de las cuatro celdas cumple** (+0,005 y 7 de 10). Es un empate, o una pérdida pequeña con el `D` de las
+  etiquetas.
+- Descriptivo: el candidato predice unas 150–240 posesiones más que `main` (2.507 frente a 2.270 en «detectado» con el
+  `D` de las etiquetas), pero el detector solo ve el 21 % de los 2.210 cambios directos de las etiquetas, con 3,8 avisos
+  por minuto vivo y el 22 % de avisos buenos. En la DFL, con el balón «del vídeo», las reglas veían el 61–71 % con un
+  36–37 % de avisos buenos (primera ronda, sin afinar).
+
+Decisión y por qué: **con la regla escrita antes, el candidato no sigue.** El detector de cambios se queda apagado y el
+examen de SkillCorner no se abre para él. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+Lectura [inferencia]: lo que la DFL ganaba con el balón «del vídeo» no se traslada a un tracking automático de otro
+proveedor. Con el balón de SkillCorner (10 fps, interpolado) las reglas ven pocos cambios, y la mayoría de sus avisos son
+falsos, así que añaden posesiones que no existen. Va en la línea de la primera ronda: falla la precisión del detector,
+no el mecanismo.
+
+Descartado: probar otros umbrales o combinaciones en SkillCorner (sería elegir mirando).
