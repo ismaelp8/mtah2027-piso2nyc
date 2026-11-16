@@ -233,6 +233,29 @@ propia regla y no usa la del «límite de daño» de los cambios pequeños (`doc
 
 ## Resultados
 
+### Puerta 1a y reproducción de `equipo_v8` (16/11, tarde; lo ejecutó Antonio en su Mac M1, macOS, CPU) [medido, agregados del partido]
+
+- **`equipo_v8` reproducida en otra máquina:**
+  - con Python 3.13.7 y numpy 2.5.4 sale el sha256 `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`;
+  - tres veces, sin cambios locales: dos en `exp/balon-video` (`3aa1916`) y una en `main`;
+  - el validador la da por válida: 219 posesiones de 15,8 s y 116 paradas;
+  - es la primera reproducción en macOS y en ARM: la huella de la entrega aguanta un cambio de sistema y de procesador.
+- **El balón en el vídeo** (`tamano_balon_video.py`):
+  - diámetro p50 = 5,92 px, con p5 = 4,4 y p95 = 8,86 px; solo el 1,4 % de los frames, por debajo de 4 px;
+  - el «unos 4 px» que había en el repo (una cuenta) se quedaba corto.
+- **Lectura con la regla** de las puertas 0 y 1a: `b_partido` = 5 px. La variante fijada (×2) pasa la puerta 0, con un
+  recall de 0,912 / 0,872 y 0,25 / 0,10 falsos positivos por imagen.
+- **El tiempo,** en su máquina, con FFMPEG y 4 hilos:
+  - 1,118 ms por frame decodificado y 51,78 ms por detección;
+  - un techo de 2,93 horas para el partido entero: también cabe en 8 horas.
+- **El entorno del detector, comprobado:**
+  - versiones: torch 2.15.0, torchvision 0.29.2, ultralytics 8.4.215, opencv-python 5.0.0.93, numpy 2.5.4, pandas
+    3.1.1;
+  - el modelo es `fb37942448e7…`, con su escaneo del pickle bien;
+  - las pruebas sin datos, todas en verde;
+  - el ensayo corto de la 1b, correcto.
+- **Pendiente:** la 1b de verdad (en marcha a las 18:50).
+
 ### Puerta 0 (16/11, sesión aparte; datos abiertos) [medido]
 
 - **Entorno:** CPU Intel Core Ultra 5 225U (12 núcleos, 14 hilos), Python 3.14.7, torch 2.15.0+cpu, ultralytics 8.4.215,
