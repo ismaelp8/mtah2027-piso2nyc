@@ -450,7 +450,14 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - la idea 1.1 (cambios de equipo entre fases del Smart Tagging) se cierra: cuentan 16 cambios y se pedían 30;
     - la 1.2, también: en el 12,9 % de los frames un equipo tiene más de 11 slots (0 % en los abiertos), pero imitado
       en la DFL le cuesta a `main` como mucho 0,008. `ball.clean_slots` se queda apagada;
-    - la 1.3, «cortas a `D`», la está implementando Manuel con la regla nueva (punto siguiente).
+    - la 1.3, «cortas a `D`», está en `main` como opción apagada (`temporal.decode_cortas_a_d`, PR 20, `10aadef`):
+      - pasa las cuatro condiciones de la regla nueva (punto siguiente), con el examen de SkillCorner usado una vez
+        para este candidato, con el corte de 125 frames;
+      - en la entrega de prueba de Manuel cambian 1.167 frames, todos de un equipo a `D`, y las posesiones pasan de
+        219 a 201;
+      - **no está encendida:** `pipeline.PIECES` no cambia y la entrega sigue siendo `equipo_v8`. Encenderla es una
+        decisión aparte, después del ensayo, y obliga a regenerar y validar. Lo que quede pendiente contra
+        `equipo_v8` (la puerta 2.2 del balón del vídeo) reescribe antes sus límites contra la base nueva.
   - **Decisión de Ismael:** en los cambios pequeños hacia control, el flag pasa de veto a límite de daño
     (`docs/decisiones.md`, 16/11). El examen de SkillCorner se puede abrir una vez por candidato.
   - **Cierres:**
@@ -471,7 +478,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       `validation/balon_video/ESTA_NOCHE.md`.
   - **En marcha (16/11, tarde):**
     - David: B10, un modelo de equipo pensado para el balón nítido, en la DFL emulada;
-    - Manuel: la idea 1.3 como opción del decodificador, con el examen de SkillCorner;
+    - Manuel: la idea 1.3, hecha y en `main`, apagada (PR 20, arriba);
     - Ana: el final de cada parada en el golpeo del balón del vídeo, como capa nueva de `D`;
     - Antonio: la puerta 1b, la detección y `regenerar.py`;
     - Claude (sesión de Ismael): la línea del vídeo y el borrador del documento técnico.
