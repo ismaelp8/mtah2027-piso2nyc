@@ -4295,6 +4295,107 @@ Riesgos apuntados antes de empezar:
 
 `equipo_v8` no cambia mientras no pase la puerta 2.
 
+### 2026-11-16 · `D` · estado con árboles (idea 2.4): candidatos y regla de entrada, escritos antes de medir
+
+Quién: Antonio, con la tarea asignada el 16/11 (idea 2.4 de `docs/investigacion_2026-11-16.md`). La pieza
+(`possession/dead_state.py`) es de Ana: no se toca salvo que un candidato gane, y entonces solo con una función nueva
+apagada.
+
+Qué se probó: todavía nada. Esta entrada fija los candidatos, lo que queda fijo y la regla, antes de entrenar ni medir.
+
+- **Candidatos (dos):**
+  - **G2:** árboles con *boosting* con los 11 rasgos de E2;
+  - **G3:** lo mismo con los 19 rasgos de E3 (E2 más las ventanas solo hacia atrás y solo hacia delante, de 2 y 4 s).
+- **Referencia:** E2, el modelo de `main` (la regresión logística de la entrada del 14/11).
+- **Lo que queda fijo y no se ajusta:**
+  - `HistGradientBoostingClassifier` de `scikit-learn` 1.7.2 con `learning_rate` 0,1, 200 árboles, 15 hojas por árbol,
+    200 frames por hoja como mínimo, `l2_regularization` 1, sin parada temprana y `random_state` 0, entrenado con un
+    solo hilo para que dos ejecuciones den lo mismo. Son valores comunes fijados ahora; no se prueba ningún otro;
+  - las muestras de E2: uno de cada 5 frames con etiqueta y con todos los rasgos, `D` frente a juego;
+  - la salida, como E2: el logaritmo de la razón de probabilidades en la columna `D`, cero donde falta algún rasgo,
+    recortado a ±8 y redondeado a la rejilla de `SCORE_GRID`; escala 1;
+  - el decodificador y sus costes, los de `main`.
+- **Entorno:** uno aparte (`scikit-learn` 1.7.2, numpy 2.4.6, Python 3.11) que no entra en `requirements-entrega.txt`.
+  Reproduce el `MODEL` de E2 bit a bit (`entrenar.py --comprobar`).
+
+Cómo se medirá (dataset, nº de partidos/posesiones, métrica): los 7 partidos de la DFL (Bassek et al., 2025, CC BY 4.0).
+Cada candidato puntúa un partido con los árboles entrenados en los otros seis.
+
+1. **Harness con el `D` propio:** el pipeline de `main` con su `dead_state` cambiado por el candidato. Ocho celdas: las
+   dos convenciones (flag y control) × las dos condiciones que votan («como el ATD» y «como el ATD, sin bloques») × el
+   balón en los `D` tapado (como `puntuar.py --d propio`) y a la vista (como `con_balon_en_d` de
+   `validation/apuesta_b/d_propio.py`).
+2. **El criterio del 13/11** de `validation/scripts/d_estado/medir.py`, con E2 medido en la misma ejecución, también
+   dejando un partido fuera.
+
+Decisión y por qué (la regla de entrada, fijada antes de medir):
+- **Un candidato gana si cumple las dos cosas:**
+  1. **Harness:** frente a `main`, +0,010 o más de `spellF1` con los 7 partidos juntos y gana en 6 de 7 partidos, **en
+     cada una de las ocho celdas**. El intervalo del bootstrap se enseña pero no decide.
+  2. **No empeora el criterio del 13/11** frente a E2:
+     - sigue cumpliendo las dos condiciones que E2 cumple: 0,3 `D` espurios o menos por minuto de juego y ninguna racha
+       de menos de 25 frames;
+     - el inicio y el fin a 25 frames o menos no bajan más de 1 punto (lo que redondea la tabla);
+     - el sesgo mediano de cada borde, en valor absoluto, no sube más de 1 frame.
+- **Si ganan los dos, entra G2,** salvo que G3 le gane con la regla 1 en las ocho celdas.
+- **Si gana,** la predicción de los árboles pasa a numpy en `dead_state.py` como función nueva **apagada** (los árboles
+  como arrays en el módulo), determinista y redondeada a la rejilla de `SCORE_GRID`, con su prueba en
+  `validation/scripts/`, y PR. Encenderla es otra decisión, con su entrega de prueba.
+- **Si no gana ninguno,** se apunta lo medido y la idea 2.4 se cierra. Nada de lo de arriba se vuelve a probar con otros
+  valores.
+
+Descriptivo, sin voto: AUC por frame, paradas detectadas y `spellF1` con equipo oráculo de `medir.py`; el placebo
+(desplazada 60 s); la escala a la mitad y al doble; un temblor de 0,1 y 0,2 m en los jugadores; las condiciones del
+balón sin voto; y una fila de E2 dejando un partido fuera en el harness.
+
+Avisos, escritos antes de medir:
+- **`main` está en muestra en el harness:** su `MODEL` se entrenó con los 7 partidos, y el candidato deja fuera el que
+  se puntúa. Eso juega en contra del candidato. La fila de E2 dejando un partido fuera dice cuánto.
+- **E2 ya es frágil con un temblor en los jugadores** (detecta el 61 % de las paradas con 0,1 m; entrada del 14/11).
+  Si los árboles lo son más, se apunta como riesgo y lo decide el equipo; no cambia la regla.
+- **La regla pide ganar también con el flag.** Es más estricta que la del límite de daño del 16/11.
+
+Descartado (antes de medir):
+- **Probar otros valores de los árboles** (más árboles, más hojas, otra tasa): sería ajustar mirando la medida.
+- **Usar el balón:** lo mismo que el 14/11; delataría el `D` en la DFL.
+- **Una red o un bosque aleatorio:** con dos candidatos como mucho, se prueba el *boosting*, que es lo que mejor salió
+  en Lang et al. (2022) (allí AdaBoost; aquí el *gradient boosting* por histogramas de `scikit-learn`, que entrena rápido).
+
+### 2026-11-16 · `D` · estado con árboles (idea 2.4): ningún candidato gana; se cierra
+
+Quién: Antonio
+
+Qué se probó: G2 y G3, los dos candidatos de la entrada anterior, frente a E2, con su regla.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): los 7 partidos de la DFL dejando uno fuera (713 paradas),
+con `validation/scripts/d_estado/medir_arboles.py`: el criterio del 13/11 con las funciones de `medir.py` y el harness
+con el `D` propio, con el balón tapado y a la vista en los `D`. Detalle en
+`validation/resultados/2026-11-16_d_estado_arboles.md`.
+
+Resultado:
+- **[medido] Harness, regla 1 (+0,010 y 6 de 7 en las ocho celdas):**
+  - **G3 no cumple en 1 de 8:** con el balón tapado, «como el ATD, sin bloques» y el flag, +0,008 y gana en 5 de 7. En
+    las otras siete, de +0,011 a +0,030 y 6 o 7 de 7;
+  - **G2 no cumple en 4 de 8,** las cuatro con el balón tapado (de −0,001 a +0,006). Con el balón a la vista, de +0,011
+    a +0,019.
+- **[medido] Criterio del 13/11, regla 2:** los dos lo mejoran y ninguno empeora nada. G3: inicio y fin a 25 frames o
+  menos en el 47 % y el 54 % de las paradas (E2: 35 % y 40 %), sesgo mediano de +5 y 0 frames (E2: +14 y +17) y 0,16
+  `D` espurios por minuto (E2: 0,26). Ninguno llega al 70 % que pide el criterio.
+- **[medido] Descriptivo:**
+  - con el equipo oráculo, G3 gana a E2 por +0,034 a +0,046 y G2 por +0,023 a +0,028;
+  - placebo: con la puntuación desplazada 60 s, AUC 0,52 y `spellF1` 0,22 a 0,28 por debajo de no opinar;
+  - con un temblor de 0,1 m en los jugadores, los árboles detectan el 46 % de las paradas (E2, el 61 %);
+  - E2 dejando un partido fuera queda a −0,001 o menos de `main`: estar en muestra no le da ventaja.
+
+Decisión y por qué:
+- **Ningún candidato gana con la regla fijada antes de medir. La idea 2.4 se cierra** y `possession/dead_state.py` no
+  cambia. No se escribe la predicción en numpy ni se abre la PR del paso 4.
+- **G3 se queda cerca:** gana en siete de las ocho celdas y mejora los bordes en el criterio del 13/11. La regla no
+  cambia después de medir. Si el equipo quisiera volver sobre G3, sería otra decisión, con su regla escrita antes.
+- **Riesgo apuntado:** los árboles son más frágiles que E2 si los jugadores del ATD tiemblan.
+
+Descartado:
+- **G2 y G3,** por la regla 1. Los parámetros de los árboles no se prueban con otros valores (entrada anterior).
 ### 2026-11-16 · decodificador · la idea 1.3 («cortas a `D`») se desaparca y se implementa apagada
 
 Quién: Manuel, por encargo de Ismael (16/11). **Reglas escritas antes de medir nada con ellas.**
@@ -4357,7 +4458,7 @@ valor del corte no se ejercitaba; de ahí la prueba con evidencia forzada.
 
 | etiquetas | balón en los `D` | «como el ATD» | «sin bloques» |
 |---|---|---|---|
-| DFL flag | a la vista | +0,004 (5 de 7) | +0,004 (5 de 7) |*
+| DFL flag | a la vista | +0,004 (5 de 7) (*) | +0,004 (5 de 7) (*) |
 | DFL flag | tapado | −0,002 | −0,002 |
 | DFL control | a la vista | +0,018 (7 de 7) | +0,019 (7 de 7) |
 | DFL control | tapado | +0,007 | +0,009 |
@@ -4376,8 +4477,12 @@ o más en las cuatro celdas y con el flag no pierde más de 0,005 en ninguna. **
 reproducirlo era que pasara la condición 1,** que pide ganar en 6 de 7 partidos *en cada celda*: S9 solo
 publica el recuento por partido en dos de las cuatro celdas de control (las de «a la vista», 7 de 7), y su «26
 de 28» es un agregado que no excluye que una celda se quede en 5 de 7. **Si al reproducirlas no salen las
-mismas cifras, se para y se averigua por qué antes de seguir.** (Reproducido el mismo día: sale 6 de 7 en las
-dos celdas que faltaban y la condición 1 pasa. Ver el resultado al final de esta entrada.)
+mismas cifras, se para y se averigua por qué antes de seguir.**
+
+(Dos avisos añadidos después, para no dejar esto más fuerte de lo que es: **esa frase valía solo para la tabla
+de la bitácora**; las salidas de S5 y de S9 que ya estaban en `main` sí publicaban los cuatro recuentos. Y
+reproducido el mismo día sale 6 de 7 en las dos celdas, así que la condición 1 pasa. Ver el resultado más
+abajo.)
 
 **Las medidas se hacen siempre con el `D` propio, nunca con el oráculo.** Con el `D` oráculo,
 `puntuar.d_oraculo` prohíbe `D` donde las etiquetas tienen juego y `pipeline.combine` cruza los `allowed`, así
@@ -4393,7 +4498,9 @@ que «ningún número con `D` propio que dependa del balón se da por bueno». L
 `D`: con el `D` oráculo no se puede medir, igual que no se pueden medir en el harness las capas que solo corren
 en el partido. Queda apuntado aquí para que el plan y esta entrada no se lean como una contradicción.
 
-**Con qué se mide** (los dos los puede ejecutar Claude; el examen, no):
+**Con qué se mide** (los dos los puede ejecutar Claude, examen incluido: SkillCorner son datos abiertos y la
+regla nº 1 no está en juego. Lo que el examen exige no es una persona, sino una **autorización explícita** del
+equipo en el momento y la bandera `--confirmo-el-unico-uso`, para que no se gaste por inercia):
 - **DFL, las ocho celdas:** `validation/scripts/cortas_a_d_dfl.py`. Hacía falta un script propio porque
   `validation/harness/puntuar.py --d propio` solo da el modo «tapado» y las condiciones 1 y 3 piden también «a
   la vista», que vive en `validation/apuesta_b/d_propio.py`; y porque `paquete_control.py` mide su propia copia
@@ -4452,12 +4559,16 @@ Lo ejecutó Claude (son datos abiertos): `validation/scripts/cortas_a_d_dfl.py` 
 - **Se cierra lo que quedaba «por comprobar»:** el recuento por partido de las dos celdas de control con el
   balón tapado es **6 de 7 en las dos**. Suman 7+7+6+6 = 26 de 28, que es el agregado que daba S9. **La
   condición 1 pasa.**
-  - **Matiz, para no vender esto como más de lo que es:** la *tabla de S9* no traía esos recuentos, pero la
-    salida de S5 que ya está en `main` (`validation/investigacion_1116/salidas/
-    2026-11-16_s5_cambio_antes_de_parada.md`) sí los publicaba, y dice lo mismo: 6 de 7 en las dos de control
-    con el balón tapado y 5 de 7 en las dos del flag con el balón a la vista. Así que lo nuevo aquí no es el
-    número, sino que sale **ejecutando `temporal.decode_cortas_a_d`**, la pieza de verdad, y no la copia de la
-    lógica que vive en el sondeo.
+  - **Matiz, para no vender esto como más de lo que es** (corregido dos veces, en la tercera y la cuarta
+    revisión): lo único que no traía esos recuentos era la *tabla de la bitácora* de S9. **Las dos salidas que
+    ya están en `main` sí los publicaban**, y las dos dicen lo mismo:
+    `validation/investigacion_1116/salidas/2026-11-16_s5_cambio_antes_de_parada.md` y
+    `…/2026-11-16_s9_paquete_control.md`, con 6 de 7 en las dos celdas de control con el balón tapado y 5 de 7
+    en cada una de las dos del flag con el balón a la vista. Así que aquí no se descubre ningún número.
+  - **Lo que sí aporta la reproducción:** que esas cifras salen **ejecutando `temporal.decode_cortas_a_d`**, la
+    pieza que iría en la entrega, y no la copia de la lógica que vive en el sondeo. Y sale idéntica a la salida
+    de S9 en los ocho valores absolutos (0,395 / 0,409 / 0,414 / 0,431 / 0,587 / 0,613 / 0,623 / 0,651) y en los
+    ocho recuentos por partido.
 - **La [inferencia] del «5 de 7»** del flag con el balón a la vista queda confirmada: 5 de 7 en las dos.
 - **Condición 1 (control): PASA.** Las cuatro celdas dan +0,0072, +0,0087, +0,0185 y +0,0192, todas por encima
   de +0,005, con 6 o 7 de 7.
@@ -4474,9 +4585,10 @@ sigue siendo `equipo_v8`.
 volver a abrir.** [medido]
 
 Lo autorizó Ismael el 16/11 y el umbral estaba escrito y commiteado antes de bajar los datos (+0,005 o más y
-ganar en 7 de 10, en las dos condiciones). Lo ejecutó Claude con
-`cortas_a_d_skillcorner.py --examen --confirmo-el-unico-uso`, sobre los 10 partidos de `lector.EXAMEN`, con el
-mismo fichero de versiones (huella `7d0ba8cf…425e`).
+ganar en 7 de 10, en las dos condiciones). **Lo ejecutó Claude, con la autorización de Manuel en el momento**
+(«Sí, ábrelo»), con `cortas_a_d_skillcorner.py --examen --confirmo-el-unico-uso`, sobre los 10 partidos de
+`lector.EXAMEN` y el mismo fichero de versiones (huella `7d0ba8cf…425e`). SkillCorner son datos abiertos, así
+que la regla nº 1 no lo impide; el guardarraíl es la autorización y la bandera, no que lo teclee una persona.
 
 | condición | `main` | «cortas a `D`» | veredicto |
 |---|---|---|---|
@@ -4517,8 +4629,10 @@ solo la entrega y la GT pública) [medido]:
 - **El validador oficial la da por válida:** 199.319 filas, frames 0..199318, y 201 posesiones de 17,0 s de
   media.
 - **En la ventana pública no se rompe nada:** spellF1 0,658 → **0,680** y macroF1 0,865 → **0,874** frente a
-  `equipo_v8`. **No elige nada:** la ventana tiene 17 posesiones y una diferencia de hasta 0,39 es ruido
-  (`CLAUDE.md`); solo dice que la variante no rompe la alineación ni el formato.
+  `equipo_v8`. **No elige nada,** por la regla del repo: la ventana sirve para comprobar que el pipeline es
+  correcto, nunca para elegir entre versiones. En el `spellF1` hay además una razón numérica —17 posesiones, y
+  una diferencia de hasta 0,39 es ruido (`CLAUDE.md`)—; el `macroF1` es por frame y mucho menos ruidoso, pero
+  tampoco decide. Lo único que dice esto es que la variante no rompe la alineación ni el formato.
 
 Además [medido]:
 - **Los 1.167 frames que cambian están todos a más de 250 frames del borde de un tramo evaluado,** y 0 cambian
@@ -4554,18 +4668,20 @@ La medida se hizo con la rama en `1fcf40f`. Lo único que ha cambiado en `posses
 docstring de `cortas_a_d` (`git diff 1fcf40f..HEAD -- possession/`), que no puede cambiar ninguna etiqueta, así
 que la huella sigue valiendo para el tip de la rama.
 
-### Añadido: `equipo_v8` reproducida en una segunda máquina [medido]
+### Añadido: `equipo_v8` en una tercera máquina, con versiones nuevas [medido]
 
-El mismo sha256 lo sacó **Manuel en su máquina**, que no es la de Ismael: es la segunda máquina que pedía
-`CLAUDE.md` («falta reproducirla en otra máquina»). Con un matiz que conviene que Ismael juzgue: se generó
-desde `1fcf40f`, el commit de esta rama, no desde `main` en `44678d1`. Como el sha256 es el mismo, eso no debilita
-la reproducción, sino que además prueba lo del apartado anterior; pero si el ensayo del congelado quiere la
-reproducción «desde `main` y en otra máquina» en sentido estricto, esto no la sustituye.
+**Corregido al traer `main`:** esto se escribió como «la segunda máquina que pedía `CLAUDE.md`», y ya no lo es.
+Antonio la reprodujo el mismo 16/11 en un Mac M1 (macOS, ARM) con Python 3.13.7, y está apuntado en `CLAUDE.md`.
+Lo de aquí es **una tercera máquina**, y lo que añade no es cerrar ese pendiente, sino el entorno:
 
-**Y lo hace con un entorno que no es el fijado:** Python 3.14.4 y numpy 2.4.4, en vez de 3.13.9 y 2.5.4. La
-huella ya había aguantado numpy 2.3.4 ↔ 2.5.4; ahora aguanta también un cambio de versión de Python. No cambia
-lo fijado (`requirements-entrega.txt` sigue mandando para el congelado), pero es una prueba más de que la
-entrega no depende de la máquina.
+- **Windows con Python 3.14.4 y numpy 2.4.4**, en vez de los 3.13.9 y 2.5.4 fijados. La huella ya había
+  aguantado numpy 2.3.4 ↔ 2.5.4 y, con Antonio, un cambio de sistema y de arquitectura con Python 3.13.7; esta
+  es la primera vez que aguanta **Python 3.14**. No cambia lo fijado: `requirements-entrega.txt` sigue mandando
+  para el congelado.
+- Con un matiz que conviene que Ismael juzgue: se generó desde `1fcf40f`, el commit de esta rama, no desde
+  `main`. Como el sha256 es el mismo, eso no debilita la reproducción y además prueba lo del apartado anterior;
+  pero si el ensayo del congelado quiere la reproducción «desde `main`» en sentido estricto, esto no la
+  sustituye.
 
 ### El corte de 125 frames no es el único que pasaría, y el examen ya está gastado en él
 
@@ -4613,6 +4729,11 @@ condición 2 se apoya solo en la mitad de entrenamiento.
 La regla del 16/11 no pide intervalo —usa el recuento por partido como sustituto—, pero `docs/PLAN_ENTREGA.md`
 §4 sí lo pide para §5.8 y los márgenes aquí son estrechos, así que se midió con `cortas_a_d_dfl.py
 --bootstrap 1000` (pareado sobre las posesiones reales, `puntuar.diferencia_bootstrap`).
+
+**Qué son exactamente estos intervalos, porque toda la lectura de abajo se apoya en su extremo malo:** son los
+**percentiles 5 y 95** (`puntuar.PERCENTILES`), es decir del 90 %; con un 95 % saldrían más anchos. Y el
+remuestreo es de las posesiones reales **juntando los 7 partidos**, no partido a partido, así que no recoge la
+varianza entre partidos: para eso está el recuento «x de 7», que es el sustituto que eligió la regla.
 
 | celda | diferencia | intervalo |
 |---|---|---|

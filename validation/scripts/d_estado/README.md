@@ -12,6 +12,8 @@ incluido, y solo imprimen agregados y coeficientes.
 |---|---|
 | `entrenar.py` | ajusta la regresión logística (`D` frente a juego) con los rasgos de `dead_state.features` e imprime el `MODEL` que va escrito en el módulo. Con `--comprobar` dice si el `MODEL` del módulo es el que sale de aquí. Es el único sitio donde se usa `scikit-learn` |
 | `medir.py` | mide los tres candidatos (E1, E2 y E3) dejando un partido fuera: AUC por frame, el criterio del 13/11 por parada, el `spellF1` oficial con el equipo oráculo frente al control, el placebo y la sensibilidad |
+| `arboles.py` | los candidatos de árboles con *boosting* de la idea 2.4 (G2 con los rasgos de E2 y G3 con los de E3; `docs/decisiones.md`, 16/11): el ajuste, con los parámetros fijados antes de medir, y la puntuación en la escala de E2. Sin argumentos, los entrena con los 7 partidos y dice su tamaño. Usa `scikit-learn` en un entorno aparte |
+| `medir_arboles.py` | mide G2 y G3 frente a E2 con la regla del 16/11, dejando un partido fuera: el criterio del 13/11 con las funciones de `medir.py` y el harness con el `D` propio, con el balón tapado y a la vista en los `D` |
 | `prueba_d_estado.py` | prueba la pieza con un partido inventado, sin cargar ninguno de verdad: que no mira fuera de los tramos evaluados (lo que haya fuera no cambia la puntuación de dentro, y donde fuera no hay datos, como en la DFL, el resultado es el de siempre, bit a bit) y que la opción de escala hace lo que dice. No necesita la caché ni `scikit-learn` |
 | `referencia_agregado4.py` | cómo se mueven los jugadores en la DFL, tal cual y con un temblor añadido, en las mismas dos líneas que imprime `validation/partido/agregados_jugadores.py` en su punto 4. Es con lo que se compara la salida del partido para saber si el modelo se traslada al ATD |
 | `retraso_transicion.py` | con cuánto retraso pasa el modelo E2 de parado a juego al acabar una parada, por tipo de reinicio de los eventos de la DFL, dejando un partido fuera. Es la medida de los retrasos que se restan al ancla del instante del reinicio (`DFL_DELAY` de `validation/partido/agregados_instante_reinicio.py`): los tipos con 50 paradas o más con transición y la mediana positiva |
@@ -55,6 +57,18 @@ python validation/scripts/d_estado/retraso_transicion.py
 ```
 
 `medir.py` tarda unos minutos con los 7 partidos. Con `--sin-sensibilidad` hace solo la medida principal.
+
+Los árboles de la idea 2.4 se midieron en un entorno aparte, que no entra en `requirements-entrega.txt`: Python 3.11,
+`numpy` 2.4.6, `pandas` 3.1.1, `lxml` 6.1.3 y `scikit-learn` 1.7.2 (con él, `entrenar.py --comprobar` coincide bit a
+bit).
+
+```bash
+python validation/scripts/d_estado/medir_arboles.py
+```
+
+```bash
+python validation/scripts/d_estado/arboles.py
+```
 
 ## Cómo se cambia el modelo
 

@@ -5,9 +5,10 @@ examen una sola vez.
     python validation/scripts/cortas_a_d_skillcorner.py --versiones <fichero> --examen --confirmo-el-unico-uso
 
 Datos abiertos de otros partidos (A-League 2024/25, licencia MIT; ver `validation/skillcorner/descargar.py`).
-Solo imprime agregados. **La mitad de entrenamiento la puede ejecutar cualquiera, Claude incluido. La de
-examen la ejecuta una persona,** porque gasta el único uso permitido: hace falta `--examen` y, además,
-`--confirmo-el-unico-uso`.
+Solo imprime agregados. **Lo puede ejecutar cualquiera, Claude incluido, las dos mitades:** son datos abiertos
+y la regla nº 1 no está en juego. Lo que la mitad de examen exige no es una persona, sino una **autorización
+explícita del equipo en el momento**, porque gasta el único uso permitido: hacen falta `--examen` y
+`--confirmo-el-unico-uso`, y el uso se apunta en `docs/decisiones.md`.
 
 El `D` es siempre el propio, como en S9. **Nunca con el `D` oráculo:** en ese modo la puerta `allowed[.., D]`
 de `cortas_a_d` dejaría pasar solo candidatas que ya son `D` de verdad y la regla saldría correcta por

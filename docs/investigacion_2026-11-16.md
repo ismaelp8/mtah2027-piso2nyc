@@ -219,6 +219,10 @@ la convención y no pasó sus reglas.
 
 ### 2.4 Un modelo no lineal para el estado de `D`
 
+> **Resultado (16/11, Antonio):** se cierra. Con la regla escrita antes de medir (`docs/decisiones.md`, 16/11), ningún
+> candidato gana a `main`: G3 (árboles con los rasgos de E3) no llega en 1 de las 8 celdas del harness y G2 en 4. Los dos
+> colocan mejor los bordes que E2. Detalle en `validation/resultados/2026-11-16_d_estado_arboles.md`.
+
 - **Qué es.** Cambiar la regresión logística de la pieza de estado (E2) por árboles con *boosting*, con los mismos
   rasgos sin identidad y más ventanas antes y después.
 - **Qué fallo arregla.** Los bordes de las paradas, la segunda pérdida: valen de +0,05 a +0,07 en la DFL si se ponen en
