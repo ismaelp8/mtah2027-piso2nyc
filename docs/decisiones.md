@@ -4446,3 +4446,24 @@ Lo ejecutó Claude (son datos abiertos): `validation/scripts/cortas_a_d_dfl.py` 
 
 **Lo que falta:** la condición 2 en el examen (una sola vez) y la condición 4 (entrega de prueba). La entrega
 sigue siendo `equipo_v8`.
+
+**El examen de SkillCorner: USADO el 16/11 (Manuel, con la rama en `846a305`). Queda gastado: no se puede
+volver a abrir.** [medido]
+
+Lo autorizó Ismael el 16/11 y el umbral estaba escrito y commiteado antes de bajar los datos (+0,005 o más y
+ganar en 7 de 10, en las dos condiciones). Lo ejecutó Claude con
+`cortas_a_d_skillcorner.py --examen --confirmo-el-unico-uso`, sobre los 10 partidos de `lector.EXAMEN`, con el
+mismo fichero de versiones (huella `7d0ba8cf…425e`).
+
+| condición | `main` | «cortas a `D`» | veredicto |
+|---|---|---|---|
+| detectado | 0,380 | 0,389 (+0,009, 10 de 10) | PASA |
+| detectado, suavizado | 0,376 | 0,384 (+0,008, 10 de 10) | PASA |
+
+- **Pasa las dos**, con margen sobre el umbral y ganando en los 10 partidos.
+- Da una pizca menos que la mitad de entrenamiento (+0,010 / +0,009), que es lo que se espera de un conjunto
+  que nadie había tocado. La diferencia es de 0,001: no hay señal de que el entrenamiento estuviera inflado.
+
+**Estado de las cuatro condiciones del límite de daño:** 1 PASA, 2 PASA (entrenamiento y examen), 3 PASA.
+**Falta solo la 4, la entrega de prueba,** que lee el partido y la ejecuta una persona. La entrega sigue siendo
+`equipo_v8` y `pipeline.PIECES` no se toca.
