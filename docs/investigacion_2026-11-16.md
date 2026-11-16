@@ -44,6 +44,12 @@
 > dos agregados del partido están escritos, con sus reglas antes (P1 y P2 de
 > `validation/investigacion_1116/BITACORA.md`): `validation/partido/cambios_entre_fases.py` y
 > `validation/partido/rasgos_b5.py`. Los ejecuta Ismael.
+>
+> **Resultados (16/11):**
+> - **1.1, cerrada:** solo 16 cambios entre fases cuentan (se pedían 30), y en 10 la entrega ya iba con ese equipo.
+> - **1.2, abre un candidato:** un equipo tiene más de 11 slots en el 12,8 % de los frames con balón (0 % en los datos
+>   abiertos), y ahí la velocidad del equipo, la dispersión y el núcleo de 1 m se salen de rango. Se sigue con «quitar
+>   los slots sobrantes» (P3 de la bitácora).
 
 ### 1.1 Los cambios de equipo entre fases del Smart Tagging (ficha 2.2)
 
