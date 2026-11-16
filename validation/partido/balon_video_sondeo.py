@@ -108,7 +108,7 @@ UMBRAL_C1 = 70  # % de frames con balón del ATD con una detección a RADIO_ACIE
 UMBRAL_C2 = 10  # % de detecciones a más de RADIO_LEJOS m (o menos)
 UMBRAL_C3 = 10  # toques por minuto (descriptiva desde la corrección del 16/11)
 PERCENTILES = (5, 25, 50, 75, 95)
-# Variante B (bitácora, «Variante B», 16/11, 22:45): la misma 1b con confianza 0,25, el otro umbral que midió la puerta 0.
+# Variante B (bitácora, «Variante B», 16/11, 22:10): la misma 1b con confianza 0,25, el otro umbral que midió la puerta 0.
 # No se admite ningún otro valor.
 CONF_B = 0.25
 

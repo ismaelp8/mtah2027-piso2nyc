@@ -447,7 +447,7 @@ Reabrir la línea sería una decisión nueva, con su propia regla escrita antes 
 **Lo que queda de la línea:** el código, las pruebas y esta bitácora siguen en `exp/balon-video`, para el documento
 técnico (lo que se probó y por qué se descartó). No entran en `main`.
 
-### Variante B: la 1b con confianza 0,25 (decisión de Ismael, 16/11, 22:45; escrita antes de medirla)
+### Variante B: la 1b con confianza 0,25 (decisión de Ismael, 16/11, 22:10; escrita antes de medirla)
 
 **Quién y por qué:** Ismael pide seguir con la confianza («¿no continuarías con lo de la confianza?»). La 1b con 0,10
 falló por los falsos positivos, y subir la confianza mínima es la forma directa de quitarlos.
