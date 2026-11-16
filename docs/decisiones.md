@@ -4354,14 +4354,16 @@ la fila de SkillCorner son sus dos condiciones, «detectado» y «detectado, sua
 de la DFL: se reproducen con el script de SkillCorner, no con el de la DFL.
 
 (*) S9 da ese «5 de 7» una sola vez, para la celda colapsada: el recuento de la segunda condición no está
-publicado por separado, así que repetirlo en las dos columnas es [inferencia]. La reproducción dará los dos.
+publicado por separado, así que repetirlo en las dos columnas era [inferencia]. **La reproducción lo confirma:
+5 de 7 en las dos** (ver el resultado al final de esta entrada).
 
 Sobre el papel **no contradice** ninguna de las tres condiciones medibles en abierto: con el control da +0,005
-o más en las cuatro celdas y con el flag no pierde más de 0,005 en ninguna. **Pero no se puede decir todavía
-que pase la condición 1,** que pide ganar en 6 de 7 partidos *en cada celda*: S9 solo publica el recuento por
-partido en dos de las cuatro celdas de control (las de «a la vista», 7 de 7), y su «26 de 28» es un agregado
-que no excluye que una celda se quede en 5 de 7. El recuento por celda queda **por comprobar** al reproducirlo.
-**Si al reproducirlas no salen las mismas cifras, se para y se averigua por qué antes de seguir.**
+o más en las cuatro celdas y con el flag no pierde más de 0,005 en ninguna. **Lo que no se podía decir antes de
+reproducirlo era que pasara la condición 1,** que pide ganar en 6 de 7 partidos *en cada celda*: S9 solo
+publica el recuento por partido en dos de las cuatro celdas de control (las de «a la vista», 7 de 7), y su «26
+de 28» es un agregado que no excluye que una celda se quede en 5 de 7. **Si al reproducirlas no salen las
+mismas cifras, se para y se averigua por qué antes de seguir.** (Reproducido el mismo día: sale 6 de 7 en las
+dos celdas que faltaban y la condición 1 pasa. Ver el resultado al final de esta entrada.)
 
 **Las medidas se hacen siempre con el `D` propio, nunca con el oráculo.** Con el `D` oráculo,
 `puntuar.d_oraculo` prohíbe `D` donde las etiquetas tienen juego y `pipeline.combine` cruza los `allowed`, así
@@ -4407,3 +4409,40 @@ que votan allí. Se ejecuta **una sola vez**, con el permiso que dio Ismael el 1
 
 Lo que no cambia: la entrega sigue siendo `equipo_v8` y `pipeline.PIECES` no se toca. Que entre o no lo decide
 el equipo con estos números.
+
+**Resultado en datos abiertos (16/11, Manuel, con la rama en `84b2ccc`) [medido]: reproduce S9 celda por
+celda, y las condiciones 1 y 3 pasan.**
+
+Lo ejecutó Claude (son datos abiertos): `validation/scripts/cortas_a_d_dfl.py` y
+`cortas_a_d_skillcorner.py`, con el fichero de versiones `cortas_a_d_2026-11-16.json` (huella
+`7d0ba8cf…425e`). DFL: 7 partidos, `D` propio, los dos modos del balón. SkillCorner: los 10 de
+`lector.ENTRENAMIENTO`.
+
+| etiquetas | balón en los `D` | «como el ATD» | «sin bloques» | S9 decía |
+|---|---|---|---|---|
+| DFL flag | a la vista | +0,004 (5 de 7) | +0,004 (5 de 7) | +0,004 / +0,004 (5 de 7) |
+| DFL flag | tapado | −0,002 (2 de 7) | −0,002 (2 de 7) | −0,002 / −0,002 |
+| DFL control | a la vista | +0,018 (7 de 7) | +0,019 (7 de 7) | +0,018 / +0,019 (7 de 7) |
+| DFL control | tapado | +0,007 (6 de 7) | +0,009 (6 de 7) | +0,007 / +0,009 |
+| SkillCorner entrenamiento | – | +0,010 (10 de 10) | +0,009 (10 de 10) | +0,010 / +0,009 (10 de 10) |
+
+(en SkillCorner las dos columnas son «detectado» y «detectado, suavizado»)
+
+- **Las diez cifras coinciden con S9**, así que la regla de parada del paso 3 no se activa. Es además la
+  confirmación empírica de que la puerta `allowed` es inerte en datos abiertos: si no lo fuera, estos números
+  habrían bajado.
+- **Se cierra lo que quedaba «por comprobar»:** el recuento por partido de las dos celdas de control con el
+  balón tapado, que S9 no publicaba, es **6 de 7 en las dos**. Suman 7+7+6+6 = 26 de 28, que es el agregado que
+  daba S9. **La condición 1 pasa de verdad**, no solo «no se contradice».
+- **Se cierra la [inferencia] del «5 de 7»:** las dos celdas del flag con el balón a la vista dan 5 de 7 cada
+  una, como se había supuesto.
+- **Condición 1 (control): PASA.** Las cuatro celdas dan +0,0072, +0,0087, +0,0185 y +0,0192, todas por encima
+  de +0,005, con 6 o 7 de 7.
+- **Condición 3 (flag): PASA.** La peor celda pierde 0,0024, menos de los 0,005 del límite.
+- **Condición 2: pasa la mitad de entrenamiento.** Falta la confirmación en `lector.EXAMEN`, que sigue **sin
+  abrirse**.
+- **El control queda muy por debajo en las ocho celdas** (de 0,257 a 0,397 frente a 0,391–0,642 de `main`), así
+  que la variante no gana por un `main` flojo.
+
+**Lo que falta:** la condición 2 en el examen (una sola vez) y la condición 4 (entrega de prueba). La entrega
+sigue siendo `equipo_v8`.
