@@ -7,7 +7,7 @@
   Ismael): cribar a fondo las señales del propio tracking.
 - **Regla nº 1 respetada.** No se ha abierto nada del partido: ni el tracking, ni el Smart Tagging, ni el vídeo, ni
   las entregas. Los números del partido que se citan son agregados que ya estaban en el repo.
-- **Qué se ha medido:** once sondeos en datos abiertos de otros partidos, cada uno con su regla de lectura subida
+- **Qué se ha medido:** doce sondeos en datos abiertos de otros partidos, cada uno con su regla de lectura subida
   **antes** de ejecutarlo: los 7 de la Bundesliga (Bassek et al., 2025, CC BY 4.0), la mitad de entrenamiento de
   SkillCorner (`lector.ENTRENAMIENTO`; el examen no se ha tocado) y los 3 de Metrica sample-data. Reglas, scripts,
   salidas y resultados: `validation/investigacion_1116/` (la bitácora es `BITACORA.md`).
@@ -19,16 +19,16 @@
 
 ## En pocas líneas
 
-1. **La mayoría de lo que se podía probar barato ya está probado, y ahora también lo nuevo.** He medido once ideas
+1. **La mayoría de lo que se podía probar barato ya está probado, y ahora también lo nuevo.** He medido doce ideas
    distintas. Ninguna gana a `main` con la regla de §5.8 (+0,03, con las dos convenciones) [medido].
 2. **La única mejora medida a favor es pequeña y no pasa sus reglas:** pasar a `D` las posesiones de menos de 5 s
    que acaban en una parada nuestra. Con el balón tapado en los `D`, que es lo más parecido al ATD, da +0,007 / +0,009
    con el control, +0,009 / +0,010 en SkillCorner (gana en los 10 partidos) y −0,002 con el flag [medido, S5 y S9].
    Las dos reglas que escribí antes de medirla dicen «no hay candidato».
-3. **Las señales «nuevas» del tracking no añaden nada a B5** [medido, S7]. Probé 21 señales (distancias, velocidades,
+3. **Las señales «nuevas» del tracking no añaden nada a B5** [medido, S7 y S7b]. Probé 26 señales (distancias, velocidades,
    formación, el momento del toque, los huecos del balón, el balón muerto). Las que más aciertan en general, como la
-   anchura de los equipos (87–91 %), son justo las que fallan donde fallamos (12–27 %): dicen el equipo que llevaba
-   un rato con el balón.
+   anchura de los equipos (87–91 %), son justo las que fallan donde fallamos (12–27 %): parecen decir el equipo que
+   llevaba un rato con el balón [inferencia].
 4. **Lo grande no cabe antes del martes:** sacar el balón del vídeo o de la retransmisión. Es lo único que traería
    información nueva sobre los toques, y cuesta días [fuente e inferencia].
 5. **Un punto débil nuevo de la validación:** en Metrica el balón va pegado al jugador (a menos de 0,3 m en el 46 % de
@@ -251,7 +251,7 @@ la convención y no pasó sus reglas.
 
 ## 3. Cribado de señales del propio tracking (lo pidió Ismael)
 
-**Qué se hizo** (S7; regla en `validation/investigacion_1116/BITACORA.md`, subida antes de medir). 21 señales nuevas y
+**Qué se hizo** (S7 y S7b; reglas en `validation/investigacion_1116/BITACORA.md`, subidas antes de medir). 26 señales nuevas y
 3 de referencia, todas sin etiquetas y con umbrales fijados antes. Se miden en los frames donde fallamos: las posesiones
 de 2 a 10 s que `main` no ve (Z1) y ±1 s de los cambios reales (Z2). La columna que decide es cuánto sube el acierto en
 Z1 ∪ Z2 una regresión con B5 y la señal, fuera de muestra. La regla pedía +1 punto en las cuatro medidas.
@@ -274,7 +274,12 @@ Z1 ∪ Z2 una regresión con B5 y la señal, fuera de muestra. La regla pedía +
 | S18 la línea defensiva más alta | 48 % | 32 % | +0,87 | −0,08 | −0,09 | +0,46 |
 | S19 jugadores por detrás del balón | 73 % | 41 % | −0,19 | +0,04 | +0,30 | +0,41 |
 | S21 el balón desaparece junto al portero | 83 % | – | +0,05 | +0,00 | +0,00 | +0,01 |
-| **B5 + todas a la vez** | | | +8,20 | +3,74 | +3,68 | +2,08 |
+| S22 el equipo que se abre (cambio de anchura en 2 s) | 67 % | 60 % | +0,70 | −0,03 | +0,13 | −0,05 |
+| S23 el que se alarga | 51 % | 30 % | +0,43 | +0,11 | +0,23 | +0,08 |
+| S24 el que gana área | 69 % | 50 % | −0,01 | +0,07 | −0,02 | −0,00 |
+| S25 el receptor frena | 50 % | 49 % | +0,01 | +0,00 | +0,04 | −0,00 |
+| S26 el balón dentro de un solo bloque | 16 % | 69 % | −0,15 | +0,25 | +0,29 | +0,02 |
+| **B5 + todas a la vez (S1–S21)** | | | +8,20 | +3,74 | +3,68 | +2,08 |
 
 (acierto en juego y en Z1 con el flag de la DFL; la tabla completa, con las 24 señales, cuánto opina cada una, lo que
 rescata y lo que estropea, está en `validation/investigacion_1116/salidas/`)
@@ -285,7 +290,9 @@ rescata y lo que estropea, está en `validation/investigacion_1116/salidas/`)
   con el control.
 - **Lo que más acierta en general falla donde fallamos.** La anchura y el área de los equipos aciertan el 84–91 % de los
   frames, más que el más cercano, pero en las posesiones que perdemos aciertan el 12–27 % [medido]. Mi lectura es que
-  son señales lentas: un equipo tarda en abrirse más de lo que duran esas posesiones [inferencia].
+  son señales lentas: un equipo tarda en abrirse más de lo que duran esas posesiones [inferencia]. Lo apoya S22: el
+  **cambio** de anchura en 2 s sí acierta el 58–60 % ahí, pero tampoco suma a B5 con el control ni en SkillCorner
+  [medido, S7b].
 - **Cuidado con la columna de Z1:** Z1 son las posesiones en que B5 falla, así que cualquier señal parecida a B5 sale
   baja ahí por construcción (el propio signo de B5 acierta el 11–19 %). Por eso decide la regresión con B5 dentro, no
   esa columna.
@@ -304,8 +311,13 @@ rescata y lo que estropea, está en `validation/investigacion_1116/salidas/`)
   posiciones) acierta el 82 % de los frames solo con la forma, menos que B5 [fuente]. Por lo que enseñan la anchura y el
   área, fallaría en el mismo sitio [inferencia].
 
-**Qué sale de aquí: ningún candidato nuevo de equipo.** Con los rasgos del tracking no hay más, y ahora está medido de
-otra forma que en la fase 3. Lo que falta está en los toques, que el suavizado borra.
+**Qué sale de aquí: ningún candidato nuevo de equipo.** Con estas 26 señales no hay más, y ahora está medido de otra
+forma que en la fase 3. Mi lectura es que lo que falta está en los toques, que el suavizado borra [inferencia].
+
+**No se han cribado, y por qué:** el balón quieto, junto a un córner, al área pequeña o a una línea, y el balón fuera,
+como señales de `D`. En la DFL el balón va tapado en los `D`, y en SkillCorner las paradas casi no tienen tracking (S4).
+El balón fuera ya se probó en el partido (D7, dos versiones apagadas). Tampoco el control del campo completo (con
+aceleraciones y la superficie entera): se probó su versión simple, el tiempo de llegada al balón (S6).
 
 ---
 
@@ -397,7 +409,7 @@ autoentrenamiento no vale la pena. Una estandarización por partido sí, si se v
 - El encuadre de la cámara como sustituto del balón: es el centroide de los jugadores, con retraso (S3).
 - SkillCorner para validar los bordes de las paradas: solo 133 paradas con tracking (S4).
 - Metrica para validar el arranque del balón: el balón no se ve antes del saque (S6).
-- 21 señales del tracking (distancias, velocidades, formación, toque, huecos) y 5 de balón muerto: ninguna añade (S7).
+- 26 señales del tracking (distancias, velocidades, formación y su cambio, toque, huecos) y 5 de balón muerto: ninguna añade (S7 y S7b).
 - El final de la parada por la geometría del saque de banda o de córner: peor que la pieza de estado (S8).
 - Encoger nuestras paradas, porque alargar una posesión es el error barato: empata o resta (S11).
 
