@@ -9,9 +9,22 @@ el mismo balón emulado y la misma forma de juntar que el `D` de las etiquetas.
 No toca `emular_dfl.py` ni su JSON (lo leen por su nombre el sondeo y la detección): importa sus funciones. Se para si
 el `emular_dfl.py` que importa no es el que escribió ese JSON (`script_sha256`).
 
-**Comprobación:** la réplica 0 tiene que dar, celda a celda, las cifras del `D` propio del JSON de la emulación
-(spellF1, Δ, «gana en» y posesiones predichas, en las dos condiciones que votan y las dos convenciones). El resultado
-va en `comprobacion_r0`. Si no coincide, con este fichero no se lee nada.
+**El decodificador va fijado** con `--temporal` (por defecto `decode`, el de `equipo_v8`), y no se toma de
+`pipeline.PIECES`: así el resultado no cambia según el commit en que se ejecute. Desde que `main` usa
+`decode_cortas_a_d` (`equipo_v9`), la 2.1 con el `D` propio se mide también con ese decodificador
+(`--temporal decode_cortas_a_d`, con su propio fichero de salida). El JSON y el md apuntan el decodificador.
+
+**Comprobación:** con `--temporal decode`, la réplica 0 tiene que dar, celda a celda, las cifras del `D` propio del JSON
+de la emulación, que se midió con ese decodificador (spellF1, Δ, «gana en» y posesiones predichas, en las dos
+condiciones que votan y las dos convenciones). El resultado va en `comprobacion_r0`. Si no coincide, con este fichero no
+se lee nada y el script acaba con código 1. Con otro decodificador no hay con qué comparar la réplica 0: lo que lo
+respalda es que el mismo script, con `--temporal decode`, reproduce la emulación.
+
+**Solo las celdas con p ≥ 0,7,** como las réplicas de las 18:30 para el `D` de las etiquetas. Con p < 0,7 queda la
+tirada única de `emular_dfl.py`, con los dos `D`.
+
+**El fichero que decide no se pisa:** con `--partidos`, `--celdas` o `--replicas` distintos de los de por defecto hace
+falta `--salida`.
 
 Datos abiertos de otros partidos: los 7 de la Bundesliga (Bassek et al., 2025, CC BY 4.0), con la caché del
 experimento 0 y el harness. Lo puede ejecutar cualquiera, Claude incluido. Solo escribe agregados.
@@ -24,7 +37,8 @@ del JSON de la emulación (descriptivo); aquí no se recalcula.
 
 Uso, desde la raíz del repo:
 
-    python validation/balon_video/emular_dfl_propio.py                  # las 48 celdas con p ≥ 0,7
+    python validation/balon_video/emular_dfl_propio.py                  # las 48 celdas con p ≥ 0,7, con decode
+    python validation/balon_video/emular_dfl_propio.py --temporal decode_cortas_a_d     # lo mismo, con el de v9
     python validation/balon_video/emular_dfl_propio.py --partidos J03WMX --celdas 0.8,0.06,12 --salida /tmp/x
 """
 
@@ -48,6 +62,7 @@ dfl, pu = em.dfl, em.pu
 MODO = "propio"
 EMULACION = em.SALIDA + ".json"
 SALIDA = em.SALIDA + "_propio"
+TEMPORAL = "decode"  # el decodificador con que se midió el JSON de la emulación (el de equipo_v8)
 CELDAS = tuple(c for c in em.REJILLA if c[0] >= em.P_REPLICAS)
 TOLERANCIA = 1e-12  # la réplica 0 frente al JSON de la emulación: las mismas cuentas en otra máquina
 CIFRAS = ("spell_f1", "spell_f1_main", "diferencia")
@@ -61,11 +76,25 @@ def sha_lf(ruta):
         return hashlib.sha256(handle.read().replace(bytes([13, 10]), bytes([10]))).hexdigest()
 
 
+def salida_por_defecto(temporal):
+    return SALIDA if temporal == TEMPORAL else "{}_{}".format(SALIDA, temporal)
+
+
+_VERSIONES = {}
+
+
+def version(temporal):
+    """`main` del harness con el decodificador `temporal` fijado (el resto de piezas, las de `pipeline.PIECES`)."""
+    if temporal not in _VERSIONES:
+        _VERSIONES[temporal] = pu.version_de({"piezas": {"temporal": temporal}}, "main con temporal={}".format(temporal))
+    return _VERSIONES[temporal]
+
+
 def tarea(args):
     """Recuentos con el `D` propio de la referencia y de cada réplica de cada celda, en un partido y una condición."""
-    partido, condicion, celdas, replicas = args
+    partido, condicion, celdas, replicas, temporal = args
     inicio = time.time()
-    main = em.version_main()
+    main = version(temporal)
     cargado = dfl.cargar(partido)
     gt = cargado["gt"]
     atd = pu.solo_lectura(dfl.tracking_de(cargado, condicion))
@@ -114,11 +143,15 @@ def comprobar_r0(r0, guardado):
     return distintas
 
 
-def resumir(resultados, partidos, celdas, replicas, emulacion):
+def resumir(resultados, partidos, celdas, replicas, emulacion, comparar=True):
+    """`comparar`: si la réplica 0 se compara con el `D` propio del JSON de la emulación (solo con su mismo
+    decodificador, `TEMPORAL`). Sin comparar, de ese JSON solo se toma el veredicto con el `D` de las etiquetas, que no
+    depende del decodificador: con el `D` de las etiquetas, `cortas_a_d` no puede convertir nada (`D` no está
+    permitido en el juego)."""
     salida = collections.OrderedDict()
     for celda in celdas:
         guardada = emulacion["celdas"].get(em.clave(celda)) if emulacion else None
-        if guardada is not None:
+        if guardada is not None and comparar:
             intervalos = {c: {conv: guardada[MODO]["condiciones"][c][conv]["intervalo"] for conv in dfl.CONVENCIONES}
                           for c in dfl.VOTAN}
         else:
@@ -146,6 +179,10 @@ def resumir(resultados, partidos, celdas, replicas, emulacion):
                 "propio_r0": {"condiciones": por_replica[0], "veredicto": veredictos[0]}}
         if guardada is None:
             fila["comprobacion_r0"] = {"coincide": None, "no_coinciden": ["la celda no está en el JSON de la emulación"]}
+        elif not comparar:
+            fila["comprobacion_r0"] = {"coincide": None, "no_coinciden": [
+                "no se compara: el JSON de la emulación se midió con temporal={}".format(TEMPORAL)]}
+            fila["pasa_con_el_d_de_las_etiquetas"] = bool(guardada["oraculo"]["veredicto"]["pasa"])
         else:
             distintas = comprobar_r0(por_replica[0], guardada[MODO]["condiciones"])
             fila["comprobacion_r0"] = {"coincide": not distintas, "no_coinciden": distintas}
@@ -155,11 +192,25 @@ def resumir(resultados, partidos, celdas, replicas, emulacion):
     return salida
 
 
-def comprobacion_global(resumen):
+def comprobacion_global(resumen, comparar=True):
     con_json = [f for f in resumen.values() if f["comprobacion_r0"]["coincide"] is not None]
     bien = sum(f["comprobacion_r0"]["coincide"] for f in con_json)
-    return {"celdas": len(resumen), "celdas_en_la_emulacion": len(con_json), "coinciden": int(bien),
-            "coincide_todo": bool(con_json) and bien == len(con_json) == len(resumen), "tolerancia": TOLERANCIA}
+    return {"aplica": bool(comparar), "celdas": len(resumen), "celdas_en_la_emulacion": len(con_json),
+            "coinciden": int(bien), "coincide_todo": bool(con_json) and bien == len(con_json) == len(resumen),
+            "tolerancia": TOLERANCIA}
+
+
+def texto_comprobacion(global_, temporal):
+    if not global_["aplica"]:
+        return ("- **Comprobación de la réplica 0:** no aplica. El JSON de la emulación se midió con `temporal={}` y "
+                "aquí va `temporal={}`. Lo que respalda este fichero es que el mismo script, con `--temporal {}`, "
+                "reproduce la emulación (`2026-11-16_emulacion_dfl_propio.json`, 48 de 48 celdas).".format(
+                    TEMPORAL, temporal, TEMPORAL))
+    return ("- **Comprobación de la réplica 0** frente al `D` propio del JSON de la emulación: coinciden {} de {} "
+            "celdas (tolerancia {:g}). {}".format(
+                global_["coinciden"], global_["celdas"], TOLERANCIA,
+                "**Coincide todo.**" if global_["coincide_todo"]
+                else "**NO COINCIDE TODO: con este fichero no se lee nada.**"))
 
 
 def texto_veredicto(v):
@@ -185,16 +236,16 @@ def informe(resumen, partidos, args, tiempos, comando, global_):
         "con `validation/harness/dfl.py`. Nada del partido.".format(n),
         "- **Comando:** `{}` (Python {}, numpy {}; {} procesos, hilos de BLAS a 1).".format(
             comando, platform.python_version(), np.__version__, args.procesos),
-        "- **Código:** repo en {}; `emular_dfl.py` sha256 `{}` (el que escribió el JSON de la emulación); "
-        "`emular_dfl_propio.py` sha256 `{}`.".format(em.commit(), sha_lf(em.__file__)[:16],
-                                                    sha_lf(os.path.abspath(__file__))[:16]),
+        "- **Código:** repo en {}; `emular_dfl.py` sha256 `{}`{}; `emular_dfl_propio.py` sha256 `{}`.".format(
+            em.commit(), sha_lf(em.__file__)[:16],
+            " (el que escribió el JSON de la emulación)" if global_["celdas_en_la_emulacion"] else "",
+            sha_lf(os.path.abspath(__file__))[:16]),
+        "- **Decodificador:** `temporal={}` (fijado con `--temporal`; el resto de piezas, las de `pipeline.PIECES`)."
+        .format(args.temporal),
         "- **Réplicas:** {} por celda (r = 0…{}), con las semillas de `emular_dfl.py`. En cada partido se juntan con "
         "`pu.juntar` (su spellF1 da «gana»); el Δ sale de todas juntas, y el veredicto, de esos dos.".format(
             args.replicas, args.replicas - 1),
-        "- **Comprobación de la réplica 0** frente al `D` propio del JSON de la emulación: coinciden {} de {} celdas "
-        "(tolerancia {:g}). {}".format(
-            global_["coinciden"], global_["celdas"], TOLERANCIA,
-            "**Coincide todo.**" if global_["coincide_todo"] else "**NO COINCIDE TODO: con este fichero no se lee nada.**"),
+        texto_comprobacion(global_, args.temporal),
         "- **Tiempo:** {:.0f} s de pared; {:.0f} s de CPU sumando las tareas.".format(tiempos["pared"],
                                                                                       tiempos["tareas"]),
         "", "## Qué celdas pasan con el `D` propio", "",
@@ -257,6 +308,7 @@ def a_json(resumen, partidos, args, global_):
     """Sin el comando ni los tiempos (van en el md): el mismo código da el mismo JSON byte a byte."""
     return {"fecha": em.FECHA, "codigo": em.commit(), "script_sha256": sha_lf(os.path.abspath(__file__)),
             "emular_dfl_sha256": sha_lf(em.__file__), "emulacion": os.path.basename(EMULACION),
+            "temporal": args.temporal,
             "python": platform.python_version(), "numpy": np.__version__, "partidos": partidos,
             "condiciones_que_votan": list(dfl.VOTAN), "semilla": em.SEMILLA,
             "replicas": {"R": args.replicas, "p_minima": em.P_REPLICAS,
@@ -275,19 +327,37 @@ def main():
     parser.add_argument("--procesos", type=int, default=None,
                         help="por defecto, uno por tarea (partido × condición) hasta el número de CPU")
     parser.add_argument("--replicas", type=int, default=em.REPLICAS, help="R (para probar)")
-    parser.add_argument("--salida", default=SALIDA, help="prefijo de los ficheros .md y .json")
+    parser.add_argument("--temporal", default=TEMPORAL,
+                        help="el decodificador, una función de possession/temporal.py (por defecto {}, el de "
+                             "equipo_v8; decode_cortas_a_d es el de equipo_v9)".format(TEMPORAL))
+    parser.add_argument("--salida", default=None,
+                        help="prefijo de los ficheros .md y .json (por defecto, el fichero que decide; obligatorio "
+                             "con --partidos, --celdas o --replicas distintos de los de por defecto)")
     args = parser.parse_args()
     celdas = list(args.celdas) if args.celdas else list(CELDAS)
+    bajas = [em.clave(c) for c in celdas if c[0] < em.P_REPLICAS]
+    if bajas:
+        sys.exit("ERROR: con p < {} la 2.1 se lee con la tirada única de emular_dfl.py, no aquí: {}".format(
+            em.dec(em.P_REPLICAS), ", ".join(bajas)))
+    de_prueba = (list(args.partidos) != list(dfl.PARTIDOS) or celdas != list(CELDAS) or args.replicas != em.REPLICAS)
+    if args.salida is None:
+        if de_prueba:
+            sys.exit("ERROR: con --partidos, --celdas o --replicas distintos de los de por defecto, pasa --salida "
+                     "(si no, se pisaría el fichero que decide)")
+        args.salida = salida_por_defecto(args.temporal)
+    version(args.temporal)  # una errata en --temporal falla aquí, antes de medir
+    comparar = args.temporal == TEMPORAL
     emulacion = None
     if os.path.isfile(EMULACION):
         with open(EMULACION, encoding="utf-8") as handle:
             emulacion = json.load(handle)
-        if emulacion.get("script_sha256") != sha_lf(em.__file__):
+        # El sha256 del JSON puede ser el de los bytes con LF (el de git) o con CRLF (un checkout de Windows).
+        if emulacion.get("script_sha256") not in (sha_lf(em.__file__), em.sha(em.__file__)):
             sys.exit("ERROR: emular_dfl.py no es el que escribió el JSON de la emulación (script_sha256 distinto)")
         if list(emulacion.get("partidos", [])) != list(args.partidos):
             emulacion = None  # con menos partidos (una prueba) no hay con qué comparar la réplica 0
     comando = " ".join(["python validation/balon_video/emular_dfl_propio.py"] + sys.argv[1:])
-    tareas = [(p, c, celdas, args.replicas) for p in args.partidos for c in dfl.VOTAN]
+    tareas = [(p, c, celdas, args.replicas, args.temporal) for p in args.partidos for c in dfl.VOTAN]
     if args.procesos is None:
         args.procesos = max(1, min(len(tareas), os.cpu_count() or 1))
     inicio = time.time()
@@ -303,20 +373,28 @@ def main():
     for partido, condicion, referencia, por_celda, t in salidas:
         resultados[(partido, condicion)] = (referencia, por_celda)
         segundos += t
-    resumen = resumir(resultados, args.partidos, celdas, args.replicas, emulacion)
-    global_ = comprobacion_global(resumen)
+    resumen = resumir(resultados, args.partidos, celdas, args.replicas, emulacion, comparar)
+    global_ = comprobacion_global(resumen, comparar)
     tiempos = {"pared": time.time() - inicio, "tareas": segundos}
     with open(args.salida + ".md", "w", encoding="utf-8", newline="\n") as handle:
         handle.write(informe(resumen, args.partidos, args, tiempos, comando, global_))
     with open(args.salida + ".json", "w", encoding="utf-8", newline="\n") as handle:
         json.dump(a_json(resumen, args.partidos, args, global_), handle, ensure_ascii=False, indent=1)
         handle.write("\n")
+    print("escrito {}.md y .json en {:.0f} s".format(args.salida, tiempos["pared"]), file=sys.stderr)
+    if not comparar:
+        print("réplica 0: no se compara (temporal={}; la emulación se midió con {})".format(args.temporal, TEMPORAL),
+              file=sys.stderr)
+        return 0
     print("réplica 0 frente a la emulación: coinciden {} de {} celdas".format(global_["coinciden"], global_["celdas"]),
           file=sys.stderr)
-    print("escrito {}.md y .json en {:.0f} s".format(args.salida, tiempos["pared"]), file=sys.stderr)
+    if emulacion is not None and not global_["coincide_todo"]:
+        print("ERROR: la réplica 0 no reproduce la emulación: con este fichero no se lee nada", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    main()
+    sys.exit(main())
