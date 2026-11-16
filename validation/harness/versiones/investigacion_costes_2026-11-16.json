@@ -1,0 +1,19 @@
+{
+  "main: B5 y coste 25": {},
+  "coste de cambio 6": {
+    "nota": "sondeo S1 de validation/investigacion_1116/BITACORA.md; solo switch",
+    "params": {"switch": 6.0}
+  },
+  "coste de cambio 12": {
+    "nota": "sondeo S1; solo switch",
+    "params": {"switch": 12.0}
+  },
+  "coste de cambio 18": {
+    "nota": "sondeo S1; solo switch",
+    "params": {"switch": 18.0}
+  },
+  "coste de cambio 40": {
+    "nota": "sondeo S1; solo switch",
+    "params": {"switch": 40.0}
+  }
+}
