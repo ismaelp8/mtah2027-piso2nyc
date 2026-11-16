@@ -259,6 +259,36 @@ flag, no pierde más de 0,005 en ninguna de las dos. «Sin decidir» se imprime 
 **Reconocido:** la rejilla del `D` propio con una tirada ya estaba a la vista (`salidas/2026-11-16_emulacion_dfl.md`), y
 la 1b de Antonio puede estar ya ejecutada. El umbral y la regla no cambian.
 
+### La entrega pasa a `equipo_v9`: contra qué se leen la 2.1 y la 2.2 (16/11, 21:30, antes de generar ninguna entrega de prueba)
+
+**Qué cambia:** Ismael ha decidido encender «cortas a `D`» en `main` (`temporal.decode_cortas_a_d`, PR 20). La entrega
+vigente pasa a ser `equipo_v9`: 201 posesiones, 116 paradas y 1.167 frames más de `D` que `equipo_v8` [medido por Ismael
+con la entrega de prueba; lo pasa la sesión planificadora]. `exp/balon-video` sale de antes y no lleva ese cambio.
+
+**La 2.1** está medida contra el pipeline de `equipo_v8`: el `possession/` de esta rama, que es el de `main` en `3220707`,
+antes del cambio.
+- Con el `D` de las etiquetas, «cortas a `D`» no debería cambiar nada [inferencia]: la regla no convierte donde `D` no
+  está permitido.
+- Con el `D` propio y el decodificador de `equipo_v9` no está medida. Si la capa se fuera a encender sobre
+  `equipo_v9`, antes se repite la rejilla del `D` propio con ese decodificador y con la misma regla.
+
+**La 2.2** tiene ahora dos partes, y para encender la capa tienen que pasar las dos:
+- **Parte A, la de siempre, frente a `equipo_v8`.** Dice si la capa rompe algo por sí sola. La entrega de prueba se
+  genera con el decodificador de `equipo_v8`: desde `exp/balon-video` sin traer `main` o, con `main` dentro, añadiendo
+  `--pieza temporal=temporal.decode`. Los criterios de las 17:20 no cambian.
+- **Parte B, frente a `equipo_v9`,** solo si la capa se fuera a encender. Con `main` dentro y el decodificador de la
+  entrega: `probar_entrega.py prueba_balon_video_v9 --capa balon_video.ajuste_b5_video --contra equipo_v9`. Pasa si se
+  cumple todo:
+  - 0 frames con piezas en conflicto, y ninguna racha de menos de 25 frames en los dos tramos;
+  - las paradas, entre 110 y 122. «Cortas a `D`» no crea ni quita paradas: alarga hacia atrás la que ya hay [por el
+    código de `temporal.cortas_a_d`];
+  - las posesiones, entre 201 y 301 (las de `equipo_v9`, ×1,5);
+  - los frames que cambian de un equipo al otro, como mucho 15.886, el 10 % de los evaluados;
+  - entre los frames evaluados que pasan de `D` a juego y los que pasan de juego a `D`, como mucho 2.167: los 1.000 de
+    siempre más los 1.167 que mueve «cortas a `D`» entera. Con este decodificador la capa sí puede mover el `D`, porque
+    cambia qué posesiones cortas acaban en una parada;
+  - la ventana pública se imprime y no decide.
+
 **Dónde va lo que sale del partido:** la caché de detecciones es dato del partido derivado. Va en
 `MTAH_DATA_DIR/tactical/` con un nombre que empiece por `BAR-ATH_tactical_` (lo cubre el bloqueo de
 `.claude/settings.json`), nunca en el repo ni en `~/mtah2027-salidas/`.
