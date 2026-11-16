@@ -447,6 +447,33 @@ Reabrir la línea sería una decisión nueva, con su propia regla escrita antes 
 **Lo que queda de la línea:** el código, las pruebas y esta bitácora siguen en `exp/balon-video`, para el documento
 técnico (lo que se probó y por qué se descartó). No entran en `main`.
 
+### Variante B: la 1b con confianza 0,25 (decisión de Ismael, 16/11, 22:45; escrita antes de medirla)
+
+**Quién y por qué:** Ismael pide seguir con la confianza («¿no continuarías con lo de la confianza?»). La 1b con 0,10
+falló por los falsos positivos, y subir la confianza mínima es la forma directa de quitarlos.
+
+**Qué valor y por qué ese:** 0,25, el otro umbral que la puerta 0 midió en datos abiertos. Con el balón de 5 px y ×2
+dio un recall de 0,872 y 0,10 falsos positivos por imagen (con 0,10: 0,912 y 0,25). No se elige ningún otro valor.
+
+**Reconocido:** se escribe después de ver la 1b con 0,10, que trae los percentiles de confianza del partido
+(detecciones: p25 0,27 y p50 0,56). Un umbral más alto se elegiría mirando esos números, y por eso no se admite.
+
+**La regla:** la misma 1b, sin cambiar nada más:
+- la misma muestra (40 tramos de 375 frames desde el saque de cada parte), la misma variante (recorte de 320 px, ×2) y
+  el mismo código;
+- las mismas condiciones 1, 2 y 5, con los mismos umbrales: 70 %, 10 % y la celda de la emulación;
+- sigue si da «SIGUE». Si da «NO SIGUE» o no hay veredicto, la línea se queda parada y no se prueba ninguna otra
+  confianza.
+
+**Lo que espero** [inferencia, apuntado antes de medir]: que no pase. Con 0,25 se quita más o menos la cuarta parte de
+las detecciones (la que está por debajo del p25), y para bajar del 40,7 % al 10 % de detecciones lejanas haría falta
+quitar casi todos los falsos positivos.
+
+**Si pasa:**
+- la detección del partido entero se hace con 0,25. Hay que cambiar `CONF` en `validation/balon_video/detector.py` y
+  en `possession/balon_video.py`. Cambia la llave de la caché, pero todavía no hay ninguna caché hecha;
+- después vienen las puertas 2.1 a 2.5 como están escritas, contra la entrega vigente, `equipo_v9`.
+
 ### Puerta 1a y reproducción de `equipo_v8` (16/11, tarde; lo ejecutó Antonio en su Mac M1, macOS, CPU) [medido, agregados del partido]
 
 - **`equipo_v8` reproducida en otra máquina:**
