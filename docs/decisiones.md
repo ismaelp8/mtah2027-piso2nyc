@@ -4572,17 +4572,18 @@ Lo ejecutó Claude (son datos abiertos): `validation/scripts/cortas_a_d_dfl.py` 
     pieza que iría en la entrega, y no la copia de la lógica que vive en el sondeo. Y sale idéntica a la salida
     de S9 en los ocho valores absolutos (0,395 / 0,409 / 0,414 / 0,431 / 0,587 / 0,613 / 0,623 / 0,651) y en los
     ocho recuentos por partido.
-- **La [inferencia] del «5 de 7»** del flag con el balón a la vista queda confirmada: 5 de 7 en las dos.
+- **El «5 de 7»** que la tabla de la bitácora daba una sola vez sale en las dos condiciones del flag con
+  el balón a la vista: 5 de 7 en cada una, como ya publicaba la salida de S9.
 - **Condición 1 (control): PASA.** Las cuatro celdas dan +0,0072, +0,0087, +0,0185 y +0,0192, todas por encima
   de +0,005, con 6 o 7 de 7.
 - **Condición 3 (flag): PASA.** La peor celda pierde 0,0024, menos de los 0,005 del límite.
-- **Condición 2: pasa la mitad de entrenamiento.** Falta la confirmación en `lector.EXAMEN`, que sigue **sin
-  abrirse**.
+- **Condición 2: pasa la mitad de entrenamiento.** Falta la confirmación en `lector.EXAMEN`, sin abrir **en
+  ese momento**; se abrió después, en el apartado siguiente.
 - **El control queda muy por debajo en las ocho celdas** (de 0,257 a 0,397 frente a 0,391–0,642 de `main`), así
   que la variante no gana por un `main` flojo.
 
-**Lo que falta:** la condición 2 en el examen (una sola vez) y la condición 4 (entrega de prueba). La entrega
-sigue siendo `equipo_v8`.
+**Lo que faltaba al escribir esto:** la condición 2 en el examen y la condición 4 (entrega de prueba). Las dos
+se cerraron el mismo día, más abajo. La entrega sigue siendo `equipo_v8`.
 
 **El examen de SkillCorner: abierto el 16/11 para este candidato (Manuel, con la rama en `846a305`).** [medido]
 
@@ -4684,7 +4685,8 @@ Lo de aquí es **una tercera máquina**, y lo que añade no es cerrar ese pendie
   visto con numpy 2.5.4** (Python 3.13.9 en Windows y 3.13.7 en el Mac de Antonio), así que esta ejecución
   aporta dos cosas nuevas para `equipo_v8`: **el primer numpy distinto (2.4.4) y el primer Python 3.14**. No
   cambia lo fijado: `requirements-entrega.txt` sigue mandando para el congelado.
-- Con un matiz que conviene que Ismael juzgue: se generó desde `1fcf40f`, el commit de esta rama, no desde
+- Con un matiz que conviene que juzgue quien lleve el congelado: se generó desde `1fcf40f`, el commit de esta
+  rama, no desde
   `main`. Como el sha256 es el mismo, eso no debilita la reproducción y además prueba lo del apartado anterior;
   pero si el ensayo del congelado quiere la reproducción «desde `main`» en sentido estricto, esto no la
   sustituye.
@@ -4775,7 +4777,8 @@ varianza entre partidos: para eso está el recuento «x de 7», que es el sustit
 - **Las cuatro celdas del control ganan de verdad:** ningún intervalo incluye el 0.
 - **Pero en las dos celdas de «tapado» el intervalo baja por debajo del umbral:** +0,0029 y +0,0044, frente a
   los +0,005 que pide la condición 1. El valor central pasa; la incertidumbre se solapa con el umbral. Y
-  «tapado» es justo el modo que más se parece al ATD (`2026-11-14_perfil_atd.md`).
+  «tapado» es el modo que la lectura de `docs/investigacion_2026-11-16.md` §2.1 considera más parecido al ATD
+  —**no está cerrado en el repo:** ver el apartado del corte de 75 frames—.
 - **La pérdida con el flag no se distingue de cero** en las dos celdas de «tapado», lo cual es bueno para la
   condición 3; pero el extremo malo del intervalo (−0,0057 y −0,0060) se pasa de los 0,005 que esa condición
   permite.
@@ -4783,5 +4786,5 @@ varianza entre partidos: para eso está el recuento «x de 7», que es el sustit
 **Por la letra de la regla, que se escribió con valores centrales y el recuento por partido como sustituto del
 intervalo, las condiciones 1 y 3 pasan.** Esto no lo cambia: lo matiza, y refuerza el apartado del corte de 75
 frames, que en esas dos celdas de «tapado» da +0,008 / +0,009 con el control y +0,000 / +0,001 con el flag.
-Si Ismael quiere que la regla del 16/11 exija además que el intervalo no cruce el umbral, eso es una decisión
+Si el equipo quiere que la regla del 16/11 exija además que el intervalo no cruce el umbral, eso es una decisión
 suya y esta candidata tendría que volver a leerse con ella.

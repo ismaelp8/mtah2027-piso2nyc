@@ -7,8 +7,9 @@ examen una sola vez.
 Datos abiertos de otros partidos (A-League 2024/25, licencia MIT; ver `validation/skillcorner/descargar.py`).
 Solo imprime agregados. **Lo puede ejecutar cualquiera, Claude incluido, las dos mitades:** son datos abiertos
 y la regla nº 1 no está en juego. Lo que la mitad de examen exige no es una persona, sino una **autorización
-explícita del equipo en el momento**, porque gasta el único uso permitido: hacen falta `--examen` y
-`--confirmo-el-unico-uso`, y el uso se apunta en `docs/decisiones.md`.
+explícita del equipo en el momento**, porque gasta el único uso de **este candidato**: hacen falta
+`--examen` y `--confirmo-el-unico-uso`, y el uso se apunta en `docs/decisiones.md` y en
+`validation/skillcorner/BITACORA.md`.
 
 El `D` es siempre el propio, como en S9. **Nunca con el `D` oráculo:** en ese modo la puerta `allowed[.., D]`
 de `cortas_a_d` dejaría pasar solo candidatas que ya son `D` de verdad y la regla saldría correcta por
@@ -51,7 +52,7 @@ def main():
     parser.add_argument("--examen", action="store_true",
                         help="abre la mitad de examen (lector.EXAMEN). Con autorizacion del equipo; una vez por candidato")
     parser.add_argument("--confirmo-el-unico-uso", action="store_true", dest="confirmado",
-                        help="hace falta junto con --examen: confirma que este es el único uso del examen")
+                        help="hace falta junto con --examen: confirma que es el unico uso del examen para este candidato")
     args = parser.parse_args()
 
     versiones, contenido, huella = puntuar.leer_versiones(args.versiones)
