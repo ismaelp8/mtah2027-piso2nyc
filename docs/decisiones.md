@@ -4293,3 +4293,81 @@ Riesgos apuntados antes de empezar:
 - el tiempo de cálculo.
 
 `equipo_v8` no cambia mientras no pase la puerta 2.
+
+### 2026-11-16 · temporal · detector de cambios de posesión: candidatos, rejilla y regla de entrada (antes de medir)
+
+Quién: David (16/11), con Claude. Escrita antes de medir nada; el techo (punto 1) y el detector (punto 2) se miden
+después de este commit.
+
+Qué se prueba: una pieza nueva que no contesta «¿quién tiene el balón?», como B5, sino «¿acaba de cambiar la posesión
+en este frame, y hacia qué equipo?». B5 no se toca. Por qué: B5 pesa señales lentas y, tras un cambio, sigue votando
+al equipo anterior; en las posesiones que perdemos empuja al contrario con 6–11 veces el coste de cambio, así que
+bajar `switch` no las arregla (`validation/resultados/2026-11-15_posesiones_cortas.md`, puntos 3 y 4).
+
+Cómo entra en el pipeline (todo apagado por defecto: sin el detector, `main` da exactamente lo mismo):
+- **`temporal.decode_cambios`:** el Viterbi de siempre, con el coste de pasar de un equipo al otro rebajado en cada
+  frame: `max(0, switch − w·p_haciaX(t))` para entrar en X. Los pasos por `D` no cambian.
+- **La capa de estados `cambios.capa`:** `score_X(t) = γ · max de p_haciaX(τ)` con τ en `[t − 12 − W, t − 12]`. Los 12
+  frames son el semiancho de la clase (abajo): así, con un detector perfecto, el empujón empieza en el cambio y no 12
+  frames antes. Sin ella, B5 sigue votando al equipo anterior y el Viterbi no corta.
+- **`pipeline.run(..., cambios=None)`:** el argumento nuevo, opcional. Con `None`, el camino de siempre.
+
+1. **El techo, antes de entrenar (descriptivo, no decide):** se pasa como detector perfecto `p = 1` a 12 frames o menos
+   de cada cambio directo real de la DFL (los que cruzan un `D` no cuentan), hacia el equipo nuevo. Se da el spellF1
+   con el flag (con los cambios del flag), con control (con los de control) y con el flag usando los cambios de control
+   (lo que sacaría un detector perfecto entrenado con control si la GT fuera el flag), y la tabla por duración.
+
+2. **El detector aprendido:**
+   - **Etiquetas:** DFL, convención de control. «Hacia H» / «hacia A»: frames vivos a 12 o menos de un cambio directo
+     (si dos cambios pisan el mismo frame, el más cercano). «Sin cambio»: el resto de los vivos. Los `D` no entran. No
+     se quitan los frames dudosos.
+   - **Rasgos** en t, con k ∈ {6, 13, 25}, todos en metros (también en el partido, con `x_m, y_m` del balón del vídeo):
+     la distancia del jugador más cercano de cada equipo al balón en t−k, t y t+k y su diferencia; el cambio de esa
+     diferencia entre t−k y t+k; la velocidad del balón antes y después, el ángulo de giro y la aceleración; los
+     jugadores de cada equipo a 2 m o menos en t−k y t+k; la fracción de la ventana sin balón y la fracción con balón
+     del vídeo. Nada de ventanas de más de 25 frames ni rasgos de forma.
+   - **Simetría:** cada fila va dos veces, la segunda con los equipos intercambiados.
+   - **Modelo:** `HistGradientBoostingClassifier` de scikit-learn (no LightGBM, que no está instalado; mismo tipo de
+     modelo), 3 clases, con `learning_rate` 0,1, 200 iteraciones, 31 hojas, 100 muestras por hoja, L2 de 1, sin parada
+     temprana, semilla 0 y un solo hilo. «Sin cambio» pesa menos: entra 1 de cada 5 de sus frames. No se prueban otros.
+   - **Pliegues:** 7, uno por partido de la DFL (cada partido se puntúa con el modelo que no lo vio). No son 16: los 16
+     de la apuesta B eran 8 pliegues × 2 convenciones.
+   - **Dos variantes del balón que ve el detector** (B5 y el `D` siguen con el balón «como el ATD» en las dos):
+     - **respaldo:** el balón «como el ATD» del harness;
+     - **principal («como el vídeo»):** donde el balón «como el ATD» se ve, con probabilidad p es el balón limpio más
+       un ruido gaussiano σ; si no, el balón «como el ATD»; los fallos van en rachas de longitud media L. Es la
+       emulación de `validation/balon_video/BITACORA.md` (condición 5). **Celda provisional:** p = 0,8, σ = 0,06 m,
+       L = 12, hasta que la puerta 1b mida el detector del partido; entonces se repite en la celda medida, con la
+       regla de lectura de esa bitácora.
+   - **Paso 0, la versión con reglas** (línea base, sin voto propio): toque = el balón gira más de 30° o cambia su
+     velocidad más de un 40 % entre los 6 frames anteriores y los 6 posteriores, con un jugador a menos de 2 m; cambio
+     hacia X si el toque anterior era del otro equipo y el siguiente toque es de X o X sigue siendo el más cercano 20
+     frames. Sin ajustar umbrales.
+
+3. **La rejilla del decodificador,** fija: w ∈ {0, 12,5, 25}, γ ∈ {0, 2, 4} y W ∈ {25, 50} (14 combinaciones con
+   algún efecto). **El candidato de cada variante es uno solo:** para cada partido, la combinación que más saca en los
+   otros seis (media del spellF1 de control en las dos condiciones que votan, con las probabilidades fuera de muestra),
+   puntuada en ese. Las 14 se imprimen como descripción. No está anidado del todo, como la fila «elegida dejando un
+   partido fuera» del harness.
+
+Regla de entrada: la del «límite de daño» del 16/11, tal cual, para cada variante frente a `main`:
+1. DFL con control: +0,005 o más en las dos condiciones que votan, ganando en 6 de 7 partidos en cada una, con el `D`
+   de las etiquetas **y** con el `D` propio (la capa empuja a un equipo también frente a `D`, así que toca el `D`).
+2. SkillCorner: gana en la mitad de entrenamiento y lo confirma una sola vez en el examen (+0,005 o más, 7 de 10).
+   Solo se abre si pasa el punto 1.
+3. DFL con el flag: no pierde más de 0,005 en ninguna celda.
+4. Entrega de prueba frente a la vigente, con criterios de daño escritos antes de generarla. Para la variante principal
+   hace falta la detección del partido entero.
+
+La predicción de los árboles en numpy (para que la entrega siga usando solo numpy) se escribe solo si pasa 1 y 3.
+
+Avisado antes de medir:
+- **Circularidad:** las etiquetas de control salen de una regla de proximidad con el tracking limpio, y los rasgos son
+  de proximidad. El número con control saldrá inflado; por eso deciden también el flag (límite de daño) y SkillCorner.
+- **El «hueco del vídeo junto a un jugador»** no se puede aprender en la DFL: en la emulación los fallos son al azar,
+  no balones tapados. Entra solo como «fracción de la ventana con balón del vídeo».
+- **El detector del vídeo solo busca alrededor del balón del ATD:** donde el ATD no ve el balón, el detector de
+  cambios tampoco tiene balón.
+- El respaldo ve el balón suavizado 1 s: el experimento 2 y B8 dicen que ahí casi no hay toques que ver.
+
+Estado: en marcha. `pipeline.PIECES` y la entrega no cambian.
