@@ -4938,3 +4938,402 @@ Descartado:
 - **Los «balones largos»** (la fase que se quedó sin subir en el ordenador del trabajo de Ismael): su techo es del
   orden de +0,01 [inferencia, con la cota de la DFL y el 4,6 % de huecos con juego del partido] y pediría una detección
   nueva y puertas nuevas.
+
+### 2026-11-16 · temporal · detector de cambios de posesión: candidatos, rejilla y regla de entrada (antes de medir)
+
+Quién: David (16/11), con Claude. Escrita antes de medir nada; el techo (punto 1) y el detector (punto 2) se miden
+después de este commit.
+
+Qué se prueba: una pieza nueva que no contesta «¿quién tiene el balón?», como B5, sino «¿acaba de cambiar la posesión
+en este frame, y hacia qué equipo?». B5 no se toca. Por qué: B5 pesa señales lentas y, tras un cambio, sigue votando
+al equipo anterior; en las posesiones que perdemos empuja al contrario con 6–11 veces el coste de cambio, así que
+bajar `switch` no las arregla (`validation/resultados/2026-11-15_posesiones_cortas.md`, puntos 3 y 4).
+
+Cómo entra en el pipeline (todo apagado por defecto: sin el detector, `main` da exactamente lo mismo):
+- **`temporal.decode_cambios`:** el Viterbi de siempre, con el coste de pasar de un equipo al otro rebajado en cada
+  frame: `max(0, switch − w·p_haciaX(t))` para entrar en X. Los pasos por `D` no cambian.
+- **La capa de estados `cambios.capa`:** `score_X(t) = γ · max de p_haciaX(τ)` con τ en `[t − 12 − W, t − 12]`. Los 12
+  frames son el semiancho de la clase (abajo): así, con un detector perfecto, el empujón empieza en el cambio y no 12
+  frames antes. Sin ella, B5 sigue votando al equipo anterior y el Viterbi no corta.
+- **`pipeline.run(..., cambios=None)`:** el argumento nuevo, opcional. Con `None`, el camino de siempre.
+
+1. **El techo, antes de entrenar (descriptivo, no decide):** se pasa como detector perfecto `p = 1` a 12 frames o menos
+   de cada cambio directo real de la DFL (los que cruzan un `D` no cuentan), hacia el equipo nuevo. Se da el spellF1
+   con el flag (con los cambios del flag), con control (con los de control) y con el flag usando los cambios de control
+   (lo que sacaría un detector perfecto entrenado con control si la GT fuera el flag), y la tabla por duración.
+
+2. **El detector aprendido:**
+   - **Etiquetas:** DFL, convención de control. «Hacia H» / «hacia A»: frames vivos a 12 o menos de un cambio directo
+     (si dos cambios pisan el mismo frame, el más cercano). «Sin cambio»: el resto de los vivos. Los `D` no entran. No
+     se quitan los frames dudosos.
+   - **Rasgos** en t, con k ∈ {6, 13, 25}, todos en metros (también en el partido, con `x_m, y_m` del balón del vídeo):
+     la distancia del jugador más cercano de cada equipo al balón en t−k, t y t+k y su diferencia; el cambio de esa
+     diferencia entre t−k y t+k; la velocidad del balón antes y después, el ángulo de giro y la aceleración; los
+     jugadores de cada equipo a 2 m o menos en t−k y t+k; la fracción de la ventana sin balón y la fracción con balón
+     del vídeo. Nada de ventanas de más de 25 frames ni rasgos de forma.
+   - **Simetría:** cada fila va dos veces, la segunda con los equipos intercambiados.
+   - **Modelo:** `HistGradientBoostingClassifier` de scikit-learn (no LightGBM, que no está instalado; mismo tipo de
+     modelo), 3 clases, con `learning_rate` 0,1, 200 iteraciones, 31 hojas, 100 muestras por hoja, L2 de 1, sin parada
+     temprana, semilla 0 y un solo hilo. «Sin cambio» pesa menos: entra 1 de cada 5 de sus frames. No se prueban otros.
+   - **Pliegues:** 7, uno por partido de la DFL (cada partido se puntúa con el modelo que no lo vio). No son 16: los 16
+     de la apuesta B eran 8 pliegues × 2 convenciones.
+   - **Dos variantes del balón que ve el detector** (B5 y el `D` siguen con el balón «como el ATD» en las dos):
+     - **respaldo:** el balón «como el ATD» del harness;
+     - **principal («como el vídeo»):** donde el balón «como el ATD» se ve, con probabilidad p es el balón limpio más
+       un ruido gaussiano σ; si no, el balón «como el ATD»; los fallos van en rachas de longitud media L. Es la
+       emulación de `validation/balon_video/BITACORA.md` (condición 5). **Celda provisional:** p = 0,8, σ = 0,06 m,
+       L = 12, hasta que la puerta 1b mida el detector del partido; entonces se repite en la celda medida, con la
+       regla de lectura de esa bitácora.
+   - **Paso 0, la versión con reglas** (línea base, sin voto propio): toque = el balón gira más de 30° o cambia su
+     velocidad más de un 40 % entre los 6 frames anteriores y los 6 posteriores, con un jugador a menos de 2 m; cambio
+     hacia X si el toque anterior era del otro equipo y el siguiente toque es de X o X sigue siendo el más cercano 20
+     frames. Sin ajustar umbrales.
+
+3. **La rejilla del decodificador,** fija: w ∈ {0, 12,5, 25}, γ ∈ {0, 2, 4} y W ∈ {25, 50} (14 combinaciones con
+   algún efecto). **El candidato de cada variante es uno solo:** para cada partido, la combinación que más saca en los
+   otros seis (media del spellF1 de control en las dos condiciones que votan, con las probabilidades fuera de muestra),
+   puntuada en ese. Las 14 se imprimen como descripción. No está anidado del todo, como la fila «elegida dejando un
+   partido fuera» del harness.
+
+Regla de entrada: la del «límite de daño» del 16/11, tal cual, para cada variante frente a `main`:
+1. DFL con control: +0,005 o más en las dos condiciones que votan, ganando en 6 de 7 partidos en cada una, con el `D`
+   de las etiquetas **y** con el `D` propio (la capa empuja a un equipo también frente a `D`, así que toca el `D`).
+2. SkillCorner: gana en la mitad de entrenamiento y lo confirma una sola vez en el examen (+0,005 o más, 7 de 10).
+   Solo se abre si pasa el punto 1.
+3. DFL con el flag: no pierde más de 0,005 en ninguna celda.
+4. Entrega de prueba frente a la vigente, con criterios de daño escritos antes de generarla. Para la variante principal
+   hace falta la detección del partido entero.
+
+La predicción de los árboles en numpy (para que la entrega siga usando solo numpy) se escribe solo si pasa 1 y 3.
+
+Avisado antes de medir:
+- **Circularidad:** las etiquetas de control salen de una regla de proximidad con el tracking limpio, y los rasgos son
+  de proximidad. El número con control saldrá inflado; por eso deciden también el flag (límite de daño) y SkillCorner.
+- **El «hueco del vídeo junto a un jugador»** no se puede aprender en la DFL: en la emulación los fallos son al azar,
+  no balones tapados. Entra solo como «fracción de la ventana con balón del vídeo».
+- **El detector del vídeo solo busca alrededor del balón del ATD:** donde el ATD no ve el balón, el detector de
+  cambios tampoco tiene balón.
+- El respaldo ve el balón suavizado 1 s: el experimento 2 y B8 dicen que ahí casi no hay toques que ver.
+
+**Añadido el 16/11, después de ver el techo en un partido y antes de entrenar o medir ningún detector:** la rejilla
+gana γ = 8 (20 combinaciones con algún efecto). Por qué: con el detector perfecto, en un partido (J03WMX), el spellF1
+seguía subiendo en γ = 4, el borde de la rejilla. El techo es descriptivo y elige mirando el resultado; el candidato
+sigue siendo uno, elegido dejando un partido fuera.
+
+Estado: medido el 16/11 (entrada siguiente). `pipeline.PIECES` y la entrega no cambian.
+
+### 2026-11-16 · temporal · detector de cambios de posesión: el techo es alto, pero ningún candidato pasa la regla
+
+Quién: David (16/11), con Claude. Salidas: `validation/cambios/salidas/2026-11-16_techo.md` y `2026-11-16_medir.md`.
+
+Cómo se midió: los 7 partidos de la DFL, balón «como el ATD» y «sin bloques», `D` de las etiquetas y propio, con
+`validation/cambios/techo.py` y `medir.py` (código en `1c69918`). `main` repite el harness (0,498 / 0,728 y 0,416 /
+0,616). La emulación del vídeo va en la celda provisional (p = 0,8, σ = 0,06 m, L = 12).
+
+Resultado [medido]:
+- **El techo (detector perfecto, descriptivo, mejor combinación mirando el resultado):** con el `D` de las etiquetas y
+  «como el ATD», de 0,728 a 0,824 con control (+0,096), de 0,498 a 0,716 con el flag (+0,218) y, con los cambios de
+  control puntuados con el flag, a 0,584 (+0,085); 7 de 7 en todo. Con el `D` propio, +0,091 con control. La rebaja del
+  coste sola da +0,007; la capa sola, +0,084. La mejor combinación es el borde de la rejilla (γ = 8, W = 50).
+- **El detector por sí solo** (umbral 0,5): el aprendido ve el 55–63 % de los cambios de control con el balón de
+  respaldo y el 62–71 % con el del vídeo, pero da de 10 a 16 avisos por minuto vivo y solo el 23–25 % es bueno. Las
+  reglas con el balón del vídeo ven lo mismo (61–71 %) con 4,6–5,2 avisos por minuto y el 36–37 % bueno; con el de
+  respaldo, el 31–35 %.
+- **Los cuatro candidatos, con la regla** (diferencia con `main`; control / flag, «como el ATD»):
+
+  | candidato | `D` de las etiquetas | `D` propio | punto 1 | punto 3 |
+  |---|---|---|---|---|
+  | aprendido, respaldo | −0,007 / +0,004 | −0,014 / −0,002 | no pasa | pasa |
+  | aprendido, vídeo | +0,003 / +0,017 | −0,011 / +0,004 | no pasa | pasa |
+  | reglas, respaldo | −0,000 / +0,006 | −0,001 / +0,005 | no pasa | pasa |
+  | reglas, vídeo | +0,003 / +0,024 | +0,006 / +0,023 | no pasa | pasa |
+
+  El que más se acerca es el de reglas con el balón del vídeo: gana con el flag en 6 o 7 partidos de 7 (+0,023 a
+  +0,027) y con control queda en +0,003 a +0,007 en 5 de 7 (se pedían 6).
+
+Decisión y por qué: **ninguno entra.** No se abre SkillCorner ni se escribe la predicción en numpy. El código queda
+apagado (`decode_cambios`, `cambios.capa`, `pipeline.run(cambios=None)`).
+
+Lectura [inferencia]: el mecanismo vale (el techo) y lo que falla es la precisión del detector: tres de cada cuatro
+avisos del aprendido son falsos, y cada uno empuja una posesión que no existe. Con el `D` propio el aprendido pierde
+más, porque la capa empuja a un equipo también frente a `D`. El balón del vídeo sí trae información: dobla los cambios
+que ven las reglas.
+
+Descartado: elegir una combinación de la tabla descriptiva (varias ganan en alguna celda): sería elegir mirando.
+
+### 2026-11-16 · temporal · detector de cambios, segunda ronda: cuatro familias contra la falta de precisión (antes de medir)
+
+Quién: David (16/11, «haz la segunda ronda»), con Claude. Escrita antes de medir nada de esta ronda.
+
+Qué se prueba: la primera ronda dijo que el mecanismo vale (techo de +0,096 con control) y que falla la precisión del
+detector (10–16 avisos por minuto, el 23–25 % buenos) y el efecto de la capa sobre el `D` propio. Cuatro familias, todas
+sobre las probabilidades y los modelos de la primera ronda (no se reentrena la primera etapa):
+
+- **C, la capa contra el otro equipo:** `cambios.capa(..., contra_d=True)` suma lo mismo a la columna `D`, así que solo
+  empuja contra el otro equipo. Se aplica a los cuatro detectores de la primera ronda, sin tocarlos.
+- **A, avisos:** la probabilidad del aprendido se corrige por el submuestreo de «sin cambio» (1 de cada 5) y se queda en
+  avisos: el máximo de cada racha con p ≥ u, separados 25 frames o más (gana el más alto). La capa y la rebaja reciben
+  1 a 12 frames o menos de cada aviso. u ∈ {0,5, 0,7, 0,85}.
+- **B, confirmación:** un segundo modelo mira cada aviso de la primera etapa (los de A con u = 0,3) y dice si es un
+  cambio real. Rasgos, solo aquí con más de 25 frames: en los 50 y 75 frames siguientes, la fracción de frames con
+  balón en que el equipo nuevo es el más cercano, la mediana de la distancia de cada equipo y la fracción sin balón; en
+  los 50 anteriores, la fracción en que el más cercano era el otro equipo; los toques de cada equipo (`cambios.toques`)
+  en los 75 siguientes y en los 50 anteriores; y la p del aviso. Mismo `HistGradientBoostingClassifier` (con 20 muestras
+  por hoja, porque hay pocos avisos), un modelo por partido dejado fuera. Quedan los avisos con p₂ ≥ v, v ∈ {0,3, 0,5,
+  0,7}. No está anidado del todo: los avisos de los partidos de entrenamiento salen de modelos de la primera etapa que
+  sí vieron el partido que se puntúa.
+- **D, las reglas afinadas:** `GIRO_TOQUE` ∈ {20, 30, 45}, `CAMBIO_VELOCIDAD` ∈ {0,3, 0,4, 0,6} y `CONFIRMA` ∈ {12, 20,
+  30} (27 juegos; el de hoy es 30 / 0,4 / 20).
+
+La rejilla del decodificador de esta ronda: w ∈ {0, 25}, γ ∈ {4, 8, 16}, W ∈ {50, 100} y la capa de las dos formas
+(`contra_d` sí o no): 24 combinaciones. Para D, solo cuatro (w = 0, W = 50, γ ∈ {4, 8}, las dos formas), por tiempo.
+
+Un candidato por familia y balón (10 en total: C × 4 detectores, A × 2 balones, B × 2 y D × 2). Cada uno elige todo lo
+suyo (u, v o el juego de umbrales, y la combinación del decodificador) dejando un partido fuera: lo que más saca en los
+otros seis, con la media del spellF1 de control en las dos condiciones que votan **y los dos modos del `D`** (con el `D`
+de las etiquetas, `contra_d` no cambia nada, así que no se podría elegir).
+
+Regla de entrada: la misma de la primera ronda (el límite de daño; puntos 1 y 3 aquí). Son 10 candidatos y ya hubo 4:
+si pasa uno solo y por poco, se dice. La emulación del vídeo sigue en la celda provisional.
+
+Estado: medida el 16/11 (entrada siguiente).
+
+### 2026-11-16 · temporal · detector de cambios, segunda ronda: las reglas afinadas con el balón del vídeo pasan los puntos 1 y 3
+
+Quién: David (16/11), con Claude. Salida: `validation/cambios/salidas/2026-11-16_ronda2.md` (`ronda2.py`, código en
+`d6cc926`; los 7 partidos de la DFL; emulación del vídeo en la celda provisional p = 0,8, σ = 0,06 m, L = 12).
+
+Resultado [medido], diferencia con `main` del candidato de cada familia (control / flag; el rango de las cuatro celdas:
+dos condiciones que votan × `D` de las etiquetas y propio):
+
+| familia | balón de respaldo | balón «como el vídeo» |
+|---|---|---|
+| C, primera ronda con la capa contra el otro equipo: aprendido | +0,003 a +0,006 / +0,012 a +0,016 | +0,009 a +0,013 / +0,019 a +0,020 |
+| C: reglas sin afinar | +0,004 a +0,014 / +0,007 a +0,015 | +0,010 a +0,015 / +0,038 a +0,043 |
+| A, avisos | −0,005 / +0,004 a +0,005 | −0,010 a −0,003 / +0,008 a +0,014 |
+| B, confirmación | +0,003 a +0,006 / +0,006 a +0,008 | +0,008 a +0,011 / +0,017 a +0,025 |
+| **D, reglas afinadas** | +0,006 a +0,009 / +0,010 a +0,013 | **+0,014 a +0,020 / +0,049 a +0,054** |
+
+- **D con el balón del vídeo pasa el punto 1** (control: +0,014, +0,020, +0,019 y +0,020, ganando en 6, 6, 6 y 7 de 7;
+  los cuatro intervalos por encima de cero) **y el punto 3** (con el flag gana en 7 de 7 en las cuatro celdas). Lo
+  elegido es estable: en 6 de los 7 pliegues, giro de 45°, cambio de velocidad del 60 %, 30 frames de confirmación,
+  w = 0, γ = 8, W = 50 y la capa contra el otro equipo; en el séptimo, lo mismo sin «contra el otro».
+- **Los otros nueve no pasan el punto 1.** Ninguno falla el punto 3: nada pierde con el flag.
+- **La capa contra el otro equipo arregla el daño al `D` propio:** el aprendido con el balón del vídeo pasa de −0,011 /
+  −0,014 (primera ronda) a +0,011 / +0,013. Se elige en casi todos los pliegues.
+- **Los avisos (A) empeoran y la confirmación (B) mejora poco:** con la probabilidad corregida quedan muy pocos avisos.
+- Con el balón de respaldo nada pasa: sin el balón del vídeo no hay candidato.
+
+Decisión y por qué: **el candidato «reglas afinadas con el balón del vídeo» sigue al punto 2 (SkillCorner).** No entra
+todavía en nada: `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+Lo que hay que decir con el número:
+- **Es 1 de 14 candidatos** en dos rondas. Pasa con margen sobre el umbral (+0,014 frente a +0,005) y con la misma
+  elección en 6 de 7 pliegues, pero no es una prueba limpia: SkillCorner y la entrega de prueba siguen siendo obligatorios.
+- **Depende del balón del vídeo, que aquí es una emulación en una celda provisional.** Hay que repetirlo con la
+  cobertura, el temblor y las rachas que mida la puerta 1b. SkillCorner no tiene balón limpio que emular: allí solo se
+  puede medir con su propio balón.
+- **Ni la capa ni las reglas usan un modelo:** si entra, no hace falta scikit-learn ni exportar árboles.
+- Sigue muy lejos del techo (+0,096): el detector ve una parte de los cambios.
+
+Descartado: A (avisos) y B (confirmación) con estos umbrales; el detector aprendido como candidato.
+
+**Añadido el 16/11, tras traer `main` (`032d4d8`):** la segunda ronda se midió con `temporal.decode`, y desde `1e71d72`
+la entrega decodifica con `decode_cortas_a_d` (`equipo_v9`). El candidato se repitió con el decodificador de la entrega
+(`validation/cambios/confirmar.py`, salida en `salidas/2026-11-16_confirmar.md`), sin elegir nada: reglas 45° / 60 % /
+30 frames, γ = 8, W = 50, contra el otro equipo. **Sigue pasando los puntos 1 y 3** [medido]: con control, +0,014 y
++0,020 con el `D` de las etiquetas (6 de 7) y +0,021 y +0,019 con el propio (7 y 6 de 7); con el flag, de +0,044 a
++0,054 (7 de 7). Predice más posesiones: de 1.661 a 1.859 con el `D` de las etiquetas (1.736 reales con control) y de
+1.538 a 1.647 con el propio. Como w = 0, el candidato es solo una capa de estados: no necesita `decode_cambios` ni
+tocar `pipeline.run`, y se suma con `--capa` como las demás. Un partido se puntúa con una combinación que su pliegue no
+eligió (eligió la misma sin «contra el otro»).
+
+### 2026-11-16 · temporal · detector de cambios: el candidato en las celdas que midió la puerta 1b (antes de medir)
+
+Quién: David (16/11), con Claude. Escrita antes de ejecutar nada con estas celdas.
+
+Por qué: la puerta 1b ya midió el detector del vídeo en el partido (entrada «la línea del balón del vídeo se para»), y
+el candidato de la segunda ronda se midió con una celda provisional (p = 0,8, σ = 0,06 m, L = 12) que **no tiene
+detecciones equivocadas**. La 1b dice que las hay: la detección elegida está a más de 3 m del balón del ATD en el
+18,76 % de los frames en que hay alguna (el 91,0 %). Para unas reglas que buscan giros y cambios de velocidad, un salto
+a un falso positivo es un toque falso.
+
+Qué se mide: el mismo candidato, sin elegir nada (reglas 45° / 60 % / 30 frames, γ = 8, W = 50, contra el otro equipo,
+con `decode_cortas_a_d`), en dos celdas:
+- **M1, la celda de la bitácora del vídeo:** p = 0,7, σ = 0,03 m, L = 12, sin detecciones equivocadas.
+- **M2, con las equivocadas (la que decide):** de los frames con balón «como el ATD», el 74 % lleva el balón limpio con
+  σ = 0,03 m (0,91 × 0,8124), el 17 % una detección equivocada (0,91 × 0,1876) y el 9 % el balón «como el ATD». Los
+  frames que no son buenos van en rachas de longitud media 6 (la racha de fallos medida, 6,18); cada racha es
+  «equivocada» con probabilidad 17/26 y, si no, «sin detección». En una racha equivocada el balón es el del ATD más un
+  desplazamiento fijo de 3 a 5 m (uniforme) en una dirección al azar, más el mismo ruido σ. Es el caso malo: supone que
+  todas las detecciones a más de 3 m son falsos positivos, cuando parte será error del balón del ATD, que va suavizado.
+
+Regla: los puntos 1 y 3 del límite de daño, como siempre. **Si M2 no pasa, el candidato se cierra** con el detector tal
+como está (confianza 0,10). Si pasa M2, sigue dependiendo de que haya balón del vídeo del partido entero, y eso lo
+decide el equipo: la línea del vídeo está parada.
+
+No se cambia nada del candidato mirando esto. Limitación: M2 no modela el desfase (la 1b ve 0 frames, no 4).
+
+### 2026-11-16 · temporal · detector de cambios: con las cifras de la puerta 1b el candidato no pasa; se cierra
+
+Quién: David (16/11), con Claude. Salidas: `validation/cambios/salidas/2026-11-16_confirmar_M1.md` y `_M2.md`
+(`confirmar.py --celda`, código en `3b7b76a` más el script; los 7 partidos de la DFL, con `decode_cortas_a_d`).
+
+Resultado [medido], diferencia con `main` (el rango de las cuatro celdas):
+
+| celda de la emulación | control | flag | punto 1 | punto 3 |
+|---|---|---|---|---|
+| provisional (p = 0,8, σ = 0,06, sin equivocadas) | +0,014 a +0,021 (6–7 de 7) | +0,044 a +0,054 | pasa | pasa |
+| M1 (p = 0,7, σ = 0,03, sin equivocadas) | +0,010 a +0,017 (5, 6, 6 y 6 de 7) | +0,039 a +0,051 | no pasa, por un partido | pasa |
+| **M2 (74 % buena, 17 % equivocada, 9 % sin detección)** | **−0,022 a −0,042 (0–1 de 7)** | +0,034 a +0,054 | **no pasa** | pasa |
+
+- Con las detecciones equivocadas, el candidato predice de más: de 1.661 a 1.971–2.083 posesiones con el `D` de las
+  etiquetas, cuando con control hay 1.736. Cada salto a un falso positivo es un toque falso.
+- Con el flag sigue ganando en 7 de 7 en las tres celdas: el flag tiene 3.061 posesiones y aguanta las inventadas. Lo
+  que gana depende, pues, de la convención.
+
+Decisión y por qué: **el candidato se cierra,** con la regla escrita antes de medir (M2 decidía). Además, la línea del
+balón del vídeo está parada en la puerta 1b y no hay detección del partido entero. No se abre SkillCorner. El código
+queda apagado: `cambios.capa`, `cambios.p_reglas`, `temporal.decode_cambios` y `pipeline.run(cambios=None)`.
+`pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega (`equipo_v9`) no cambian.
+
+Lo que queda para el documento técnico y para la fase siguiente:
+- **El mecanismo vale:** un detector de cambios perfecto da +0,096 con control y +0,218 con el flag sobre B5.
+- **El balón del vídeo trae la información que falta** (las reglas ven el doble de cambios que con el balón del ATD),
+  **pero solo si sus detecciones equivocadas se filtran.** M2 es el caso malo: supone que toda detección a más de 3 m
+  del balón del ATD es falsa. Lo que habría que probar, si se retoma: un filtro de trayectoria (continuidad entre
+  frames) o una confianza mínima más alta antes de buscar toques.
+- Sin balón del vídeo no hay candidato: con el del ATD nada pasó en ninguna de las dos rondas.
+
+Descartado: reajustar los umbrales de las reglas para M2 (sería elegir después de ver el resultado, y la regla decía
+que no se cambiaba nada).
+
+### 2026-11-16 · temporal · detector de cambios en SkillCorner: el instrumento y la regla de lectura (antes de medir)
+
+**Nota al juntar las ramas (16/11):** esta regla y su medida se hicieron en `exp/cambios-skillcorner`, que salió de
+`feat/detector-cambios` en `032d4d8`, sin saber que en `869ad78` (entrada anterior) el candidato ya se había cerrado
+con las cifras de la puerta 1b. Se midió la celda provisional, sin detecciones equivocadas. El texto de la regla se
+deja como se escribió antes de medir; el caso «Si pasa» ya no aplica.
+
+Quién: lo pidió Ana (16/11); la escribe Claude antes de puntuar ningún detector en SkillCorner. Rama
+`exp/cambios-skillcorner`, que sale de `feat/detector-cambios` en `032d4d8`.
+
+Qué se prueba: el punto 2 de la regla del detector (entrada «candidatos, rejilla y regla de entrada» de hoy), en la
+mitad de entrenamiento de SkillCorner. Solo para el candidato que pasó los puntos 1 y 3 en la DFL (entrada «segunda
+ronda» de hoy): **las reglas afinadas con el balón del vídeo**, con lo elegido en 6 de los 7 pliegues: giro de 45°,
+cambio de velocidad de 0,6, 30 frames de confirmación, w = 0, γ = 8, W = 50 y la capa contra el otro equipo. Nada de
+esto se elige en SkillCorner.
+
+Cómo se medirá: con `validation/cambios/medir_skillcorner.py` (`50b7135`), una sola ejecución:
+
+    python validation/cambios/medir_skillcorner.py --detector reglas --giro 45 --velocidad 0.6 --confirma 30 \
+        --w 0 --gamma 8 --ventana 50 --contra-d --balon sin-suavizar
+
+- **Partidos:** los 10 de `lector.ENTRENAMIENTO`. `lector.EXAMEN` solo se lee con `--examen` y
+  `--examen-con-permiso`; con `--examen` solo, da error.
+- **Condiciones:** las dos que votan en SkillCorner, «detectado» y «detectado, suavizado», pasadas de 10 a 25 fps con
+  `lector.tracking_de`, como `validation/skillcorner/medir.py`.
+- **`main`:** B5 con los coeficientes de la entrega, `dead_state` y `temporal.decode` con coste 25. Es la de
+  `validation/resultados/2026-11-15_skillcorner.md` y la de las rondas de la DFL. No lleva «cortas a `D`», que está en
+  la entrega desde hoy:
+  - con el `D` de las etiquetas no cambia nada, porque solo convierte rachas en las que `D` está permitido [por
+    inspección del código];
+  - con el `D` propio, el detector junto con «cortas a `D`» no se mide aquí.
+- **El candidato:** la misma evidencia más `cambios.capa`, decodificada con `temporal.decode_cambios` y
+  `cambios.rebaja` (`ronda2.decodificar`).
+- **El balón que ve el detector** (`--balon sin-suavizar`): el detectado de SkillCorner sin la media móvil de 25
+  frames, en las dos condiciones. B5 y el `D` siguen con el de la condición.
+  - Es la disposición de la DFL: allí el detector ve el balón «del vídeo», sin el suavizado de 1 s, y B5 y el `D`,
+    el balón «como el ATD».
+  - En «detectado, suavizado» la disposición es la misma. En «detectado», los dos ven el mismo balón.
+  - No emula el detector del vídeo: SkillCorner no tiene un balón limpio que emular (entrada «segunda ronda»).
+- **Los dos modos del `D`:** el de las etiquetas (`puntuar.d_oraculo`) y el propio.
+- **Métrica:** `spellF1` con los 10 partidos juntos, en cuántos de los 10 gana y el bootstrap pareado (5–95 %, 1.000
+  remuestreos).
+
+Resultado de la comprobación del instrumento, hecha antes de escribir esta regla [medido]. Sin detector
+(`--detector ninguno`: `p` a cero, con w = 25, γ = 8, W = 50 y la capa contra el otro equipo, para que pase por todo
+el camino del candidato; salida en `validation/cambios/salidas/2026-11-16_skillcorner_instrumento.md`):
+- el candidato sale igual que `main` en todos los frames en las 40 salidas (10 partidos × 2 condiciones × 2 modos del
+  `D`);
+- `main` saca 0,519 y 0,514 con el `D` de las etiquetas y 0,382 y 0,378 con el propio («detectado» y «detectado,
+  suavizado»), con 2.270, 2.284, 2.342 y 2.345 posesiones predichas frente a 3.228 reales;
+- **repite la medida del 15/11 en estos 10 partidos:**
+  - `2026-11-15_skillcorner.md` solo da los 20 juntos (0,514 y 0,509 con el `D` de las etiquetas), así que se
+    ejecutó el código de esa medida (`3b227c4`, `validation/skillcorner/medir.py --partidos` con estos 10; salida en
+    `validation/cambios/salidas/2026-11-16_skillcorner_referencia_1511.md`);
+  - da lo mismo en las cuatro celdas: el mismo `spellF1`, el mismo mínimo y máximo por partido y las mismas
+    posesiones predichas;
+  - `validation/resultados/2026-11-15_diagnostico_errores.md` ya daba 0,519, con 2.270 posesiones de 3.228, en
+    «detectado» con el `D` de las etiquetas.
+
+Decisión y por qué (la regla de lectura, escrita antes de puntuar ningún detector en SkillCorner):
+- **Pasa la mitad de entrenamiento** si, frente a `main`, saca **+0,005 o más con los 10 partidos juntos y gana en 7
+  de 10**, en las **cuatro celdas**: «detectado» y «detectado, suavizado», con el `D` de las etiquetas y con el propio.
+  - El umbral es el del punto 2 (el límite de daño del 16/11, no el +0,03 de §5.8).
+  - Se piden los dos modos del `D`, como en el punto 1, porque la capa toca el `D`.
+- El intervalo del bootstrap se enseña, pero no decide.
+- **Descriptivo, sin voto:**
+  - lo que ve el detector frente a las etiquetas de SkillCorner: cambios vistos, avisos por minuto vivo y avisos
+    buenos;
+  - las posesiones predichas.
+- **Una sola ejecución,** con lo de arriba. Después de ver los números no se cambia nada: ni el candidato, ni el balón,
+  ni las condiciones, ni `main`, ni la regla. En SkillCorner no se prueban otros umbrales ni otras combinaciones.
+- **Si no pasa:** el candidato no sigue y el detector se queda apagado. El examen no se abre.
+- **Si pasa:** no entra nada, porque **la línea del balón del vídeo se paró hoy** (la puerta 1b da «NO SIGUE»; entrada
+  de `main` del 16/11). En el partido no habrá balón del vídeo, así que este candidato no se puede entregar tal cual.
+  - El examen se abre una vez por candidato, con `--examen --examen-con-permiso` y la autorización del equipo en el
+    momento.
+  - Solo tiene sentido abrirlo si el equipo recupera un balón del vídeo. Hasta entonces, no se abre.
+
+Descartado (antes de medir):
+- **Medir aquí las reglas afinadas con el balón de respaldo:** no pasaron el punto 1 en la DFL, y la regla del 16/11
+  solo abre SkillCorner si pasa. Tampoco se mide ninguno de los otros 13 candidatos de las dos rondas.
+- **Medir el candidato junto con «cortas a `D`»:** sería otra comparación, con su propia regla.
+- **Elegir en SkillCorner** el balón, los umbrales o la combinación.
+
+El script mide otros detectores elegidos en la DFL (el aprendido o las reglas, con sus umbrales y su combinación) por
+argumentos. Cada uso nuevo lleva antes su propia regla en este fichero.
+
+Estado: escrita antes de medir. El resultado va en la entrada siguiente.
+
+### 2026-11-16 · temporal · detector de cambios en SkillCorner: las reglas afinadas no pasan la mitad de entrenamiento
+
+**Nota al juntar las ramas (16/11):** este resultado no decide nada nuevo. El candidato ya estaba cerrado por la
+puerta 1b (`869ad78`); SkillCorner lo confirma por otro lado: tampoco pasa en un tracking automático de otro proveedor.
+
+Quién: lo pidió Ana (16/11); lo ejecutó Claude (son datos abiertos), una sola vez, con la regla de la entrada anterior
+ya commiteada (`c111042`).
+
+Qué se probó: las reglas afinadas con el balón del vídeo (giro de 45°, cambio de velocidad de 0,6, 30 frames de
+confirmación; w = 0, γ = 8, W = 50, contra el otro equipo), con el balón detectado de SkillCorner sin suavizar.
+
+Cómo se midió: `validation/cambios/medir_skillcorner.py` en `c111042`, los 10 partidos de `lector.ENTRENAMIENTO`
+(3.228 posesiones), `spellF1` con bootstrap de 1.000. Salida en
+`validation/cambios/salidas/2026-11-16_skillcorner_reglas_afinadas.md`. El examen no se abrió.
+
+Resultado [medido], candidato frente a `main`:
+
+| `D` | condición | `main` | candidato | diferencia [5–95 %] | gana en |
+|---|---|---|---|---|---|
+| de las etiquetas | detectado | 0,519 | 0,514 | −0,005 [−0,011 a −0,000] | 4 de 10 |
+| de las etiquetas | detectado, suavizado | 0,514 | 0,511 | −0,003 [−0,008 a +0,003] | 5 de 10 |
+| propio | detectado | 0,382 | 0,381 | −0,000 [−0,005 a +0,004] | 6 de 10 |
+| propio | detectado, suavizado | 0,378 | 0,381 | +0,003 [−0,002 a +0,008] | 6 de 10 |
+
+- **Ninguna de las cuatro celdas cumple** (+0,005 y 7 de 10). Es un empate, o una pérdida pequeña con el `D` de las
+  etiquetas.
+- Descriptivo: el candidato predice unas 150–240 posesiones más que `main` (2.507 frente a 2.270 en «detectado» con el
+  `D` de las etiquetas), pero el detector solo ve el 21 % de los 2.210 cambios directos de las etiquetas, con 3,8 avisos
+  por minuto vivo y el 22 % de avisos buenos. En la DFL, con el balón «del vídeo», las reglas veían el 61–71 % con un
+  36–37 % de avisos buenos (primera ronda, sin afinar).
+
+Decisión y por qué: **con la regla escrita antes, el candidato no sigue.** El detector de cambios se queda apagado y el
+examen de SkillCorner no se abre para él. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+Lectura [inferencia]: lo que la DFL ganaba con el balón «del vídeo» no se traslada a un tracking automático de otro
+proveedor. Con el balón de SkillCorner (10 fps, interpolado) las reglas ven pocos cambios, y la mayoría de sus avisos son
+falsos, así que añaden posesiones que no existen. Va en la línea de la primera ronda: falla la precisión del detector,
+no el mecanismo.
+
+Descartado: probar otros umbrales o combinaciones en SkillCorner (sería elegir mirando).
