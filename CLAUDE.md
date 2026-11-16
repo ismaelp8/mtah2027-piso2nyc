@@ -495,6 +495,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - **Puerta 1b (Ismael, 16/11 por la noche): «NO SIGUE». La línea se para** (`docs/decisiones.md`, 16/11).
       - Falla la condición 2: el 40,7 % de las detecciones cae a más de 5 m del balón del ATD, y se admitía un
         10 %. El detector da 2,6 detecciones por frame de media. La condición 1 cumple (78,9 %).
+      - **Variante B** (confianza 0,25, decisión de Ismael, con su regla escrita antes): también «NO SIGUE», con
+        el 36,3 % de las detecciones a más de 5 m. No se prueba otra confianza.
       - No se lanza la detección del partido entero ni ninguna puerta 2.x, y la capa no entra.
       - El código, las pruebas, `regenerar.py` (PR 19 de Antonio) y la bitácora se quedan en `exp/balon-video`, para
         el documento técnico. No entran en `main`.
