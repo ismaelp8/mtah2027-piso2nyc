@@ -4467,3 +4467,52 @@ mismo fichero de versiones (huella `7d0ba8cf…425e`).
 **Estado de las cuatro condiciones del límite de daño:** 1 PASA, 2 PASA (entrenamiento y examen), 3 PASA.
 **Falta solo la 4, la entrega de prueba,** que lee el partido y la ejecuta una persona. La entrega sigue siendo
 `equipo_v8` y `pipeline.PIECES` no se toca.
+
+**Condición 4, la entrega de prueba (16/11, la generó Manuel en su máquina) [medido, solo agregados]: pasa los
+cinco criterios.**
+
+`prueba_cortas_a_d`, con `python validation/partido/probar_entrega.py prueba_cortas_a_d --pieza
+temporal=temporal.decode_cortas_a_d --contra equipo_v8`, con el código de `1fcf40f` y sin cambios locales.
+sha256 `d9706dfb…be63`.
+
+1. **0 frames evaluados con piezas en conflicto** y ninguna racha de menos de 25 frames (ni de 12) en los dos
+   tramos. **Cumple.**
+2. **El 100 % de lo que cambia pasa de un equipo a `D`:** 1.167 frames de 158.857 (0,735 %), 609 de `H` y 558
+   de `A`, y ninguno a otra cosa. Cuadra con los recuentos por etiqueta (`H` 54.445 → 53.836, `A` 32.213 →
+   31.655, `D` 72.199 → 73.366). **Cumple.**
+3. **Dentro de la banda del plan:** `D` en el 46,18 % de lo evaluado (45,45 % en `equipo_v8`) y 116 paradas.
+   **Cumple.**
+4. **Quita 18 posesiones:** 219 → 201 (103 → 95 en el tramo 1 y 116 → 106 en el 2). Las paradas no se mueven
+   (116 → 116), que es lo que se espera: una candidata convertida se funde con el `D` que ya venía detrás, así
+   que no crea ni destruye paradas.
+5. **0 de las 18 caen en la ventana de un contraataque** (`cortas_en_contraataques.py`, con las 24 «Attacking
+   Transition» con equipo), y 0 empiezan dentro. El criterio pedía 2 como mucho. **Cumple con holgura:** la
+   regla no está borrando lo que crea la capa de los contraataques.
+
+Además [medido]:
+- **Los 1.167 frames que cambian están todos a más de 250 frames del borde de un tramo evaluado,** y 0 cambian
+  fuera de los tramos: no es un efecto de borde.
+- **El balón fuera (D7) no se mueve:** seguimos llegando tarde en 12 de 47 rachas (25,5 %), lo mismo que con
+  `equipo_v8`. La regla no arregla ese problema ni lo empeora.
+
+**El punto en contra, que estaba apuntado antes de medir (criterio 4) y se confirma:** el pipeline ya predice
+**menos** posesiones de las que hay, y esta regla quita más. Pasa de 3,79 a **3,53 por minuto de juego vivo**,
+cuando las referencias en datos abiertos con nuestro `D` son 4,11 en SkillCorner y 4,26–4,29 en la DFL. Es
+decir: **el harness y SkillCorner dicen que sube el `spellF1`, y a la vez el recuento de posesiones se aleja de
+las referencias.** No es una contradicción —se gana emparejando mejor las posesiones que quedan, no teniendo
+más— pero es el riesgo que hay que pesar si la GT se parece al flag, donde la regla da −0,002.
+
+**Las cuatro condiciones del límite de daño pasan.** Encenderla (`pipeline.PIECES["temporal"]`) es una decisión
+del equipo, no de esta rama: aquí la variante se queda **apagada** y la entrega sigue siendo `equipo_v8`.
+
+### Añadido: `equipo_v8` reproducida en una segunda máquina [medido]
+
+Al generar la entrega vigente para poder comparar, **Manuel sacó el sha256
+`d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`**, el de `equipo_v8`, con el código de
+`1fcf40f` y sin cambios locales. Cierra el «falta reproducirla en otra máquina» de `CLAUDE.md`.
+
+**Y lo hace con un entorno que no es el fijado:** Python 3.14.4 y numpy 2.4.4, en vez de 3.13.9 y 2.5.4. La
+huella ya había aguantado numpy 2.3.4 ↔ 2.5.4; ahora aguanta también un cambio de versión de Python. No cambia
+lo fijado (`requirements-entrega.txt` sigue mandando para el congelado), pero es una prueba más de que la
+entrega no depende de la máquina. Los recuentos coinciden con los apuntados: 219 posesiones (103 y 116), 116
+paradas (54 y 62), 45,45 % de `D` y 0 conflictos.
