@@ -4472,8 +4472,8 @@ mismo fichero de versiones (huella `7d0ba8cf…425e`).
 cinco criterios.**
 
 `prueba_cortas_a_d`, con `python validation/partido/probar_entrega.py prueba_cortas_a_d --pieza
-temporal=temporal.decode_cortas_a_d --contra equipo_v8`, con el código de `1fcf40f` y sin cambios locales.
-sha256 `d9706dfb…be63`.
+temporal=temporal.decode_cortas_a_d --contra equipo_v8`, con el código de `1fcf40f` y, según el propio comando,
+«sin cambios locales en el código de la entrega». sha256 `d9706dfb…be63`.
 
 1. **0 frames evaluados con piezas en conflicto** y ninguna racha de menos de 25 frames (ni de 12) en los dos
    tramos. **Cumple.**
@@ -4492,12 +4492,15 @@ sha256 `d9706dfb…be63`.
 Además [medido]:
 - **Los 1.167 frames que cambian están todos a más de 250 frames del borde de un tramo evaluado,** y 0 cambian
   fuera de los tramos: no es un efecto de borde.
-- **El balón fuera (D7) no se mueve:** seguimos llegando tarde en 12 de 47 rachas (25,5 %), lo mismo que con
-  `equipo_v8`. La regla no arregla ese problema ni lo empeora.
+- **El balón fuera (D7) no se mueve:** con la variante llegamos tarde en 12 de 47 rachas (25,5 %), que es el
+  valor apuntado para la capa `ball_out` que lleva `equipo_v8`. La comparación es contra ese registro, no
+  contra una ejecución nueva de `equipo_v8`. La regla no arregla ese problema ni lo empeora.
 
 **El punto en contra, que estaba apuntado antes de medir (criterio 4) y se confirma:** el pipeline ya predice
-**menos** posesiones de las que hay, y esta regla quita más. Pasa de 3,79 a **3,53 por minuto de juego vivo**,
-cuando las referencias en datos abiertos con nuestro `D` son 4,11 en SkillCorner y 4,26–4,29 en la DFL. Es
+**menos** posesiones de las que hay, y esta regla quita más. Pasa de 3,79 a **3,53 por minuto de juego vivo**
+[calculado aquí dividiendo las posesiones por los frames de `H` y `A`; para `equipo_v8` estaba apuntado ~3,7,
+así que el 3,79 es la misma cifra con otro redondeo, no un dato nuevo], cuando las referencias en datos
+abiertos con nuestro `D` son 4,11 en SkillCorner y 4,26–4,29 en la DFL. Es
 decir: **el harness y SkillCorner dicen que sube el `spellF1`, y a la vez el recuento de posesiones se aleja de
 las referencias.** No es una contradicción —se gana emparejando mejor las posesiones que quedan, no teniendo
 más— pero es el riesgo que hay que pesar si la GT se parece al flag, donde la regla da −0,002.
@@ -4505,14 +4508,25 @@ más— pero es el riesgo que hay que pesar si la GT se parece al flag, donde la
 **Las cuatro condiciones del límite de daño pasan.** Encenderla (`pipeline.PIECES["temporal"]`) es una decisión
 del equipo, no de esta rama: aquí la variante se queda **apagada** y la entrega sigue siendo `equipo_v8`.
 
+### Lo más importante para mergear: esta rama no cambia la entrega [medido]
+
+**Regenerada desde el commit de esta rama (`1fcf40f`), la entrega vigente sale byte a byte igual:** sha256
+`d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`, el de `equipo_v8`, con 0 conflictos y los
+recuentos apuntados (219 posesiones, 103 y 116; 116 paradas, 54 y 62; 45,45 % de `D`). El comando dijo «sin
+cambios locales en el código de la entrega».
+
+Es la comprobación que pide el repo cuando una PR toca código que usa la entrega: aunque `decode_cortas_a_d`
+viva ya en el módulo del decodificador, `pipeline.PIECES` sigue con `decode` y no cambia ninguna etiqueta.
+
 ### Añadido: `equipo_v8` reproducida en una segunda máquina [medido]
 
-Al generar la entrega vigente para poder comparar, **Manuel sacó el sha256
-`d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`**, el de `equipo_v8`, con el código de
-`1fcf40f` y sin cambios locales. Cierra el «falta reproducirla en otra máquina» de `CLAUDE.md`.
+El mismo sha256 lo sacó **Manuel en su máquina**, que no es la de Ismael: es la segunda máquina que pedía
+`CLAUDE.md` («falta reproducirla en otra máquina»). Con un matiz que conviene que Ismael juzgue: se generó
+desde `1fcf40f`, el commit de esta rama, no desde `main` en `44678d1`. Como el sha256 es el mismo, eso no debilita
+la reproducción, sino que además prueba lo del apartado anterior; pero si el ensayo del congelado quiere la
+reproducción «desde `main` y en otra máquina» en sentido estricto, esto no la sustituye.
 
 **Y lo hace con un entorno que no es el fijado:** Python 3.14.4 y numpy 2.4.4, en vez de 3.13.9 y 2.5.4. La
 huella ya había aguantado numpy 2.3.4 ↔ 2.5.4; ahora aguanta también un cambio de versión de Python. No cambia
 lo fijado (`requirements-entrega.txt` sigue mandando para el congelado), pero es una prueba más de que la
-entrega no depende de la máquina. Los recuentos coinciden con los apuntados: 219 posesiones (103 y 116), 116
-paradas (54 y 62), 45,45 % de `D` y 0 conflictos.
+entrega no depende de la máquina.
