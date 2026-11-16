@@ -4896,3 +4896,41 @@ Descartado:
   otra vez. El examen de SkillCorner queda cerrado para esta idea [recomendación de la revisión de la PR 20; el equipo
   no la ha discutido].
 - Esperar a mañana: no quedaba ninguna comprobación pendiente.
+
+### 2026-11-16 · balón · la línea del balón del vídeo se para: la puerta 1b da «NO SIGUE»
+
+Quién: lo ejecutó Ismael en su Windows (CPU) y pegó solo agregados; lo apunta la sesión del balón del vídeo (Claude).
+Se los pasó también a David, que los había pedido.
+
+Qué se probó: la puerta 1b de `validation/balon_video/BITACORA.md` (rama `exp/balon-video`), con la variante fijada
+antes de medir: un detector YOLO11n público en un recorte de 320 px alrededor del balón del ATD en t+4, ampliado ×2 y
+con confianza 0,10, en 40 tramos de 15 s (7.010 frames con balón del ATD dentro del campo). El vídeo decodifica sus
+199.319 frames.
+
+Resultado [medido, agregados del partido]:
+- **Condición 1, cumple:** el 78,94 % de esos frames tiene una detección a 3 m o menos del balón del ATD (umbral:
+  70 %).
+- **Condición 2, no cumple:** el 40,68 % de las detecciones está a más de 5 m del balón del ATD (umbral: 10 %). El
+  detector da 2,64 detecciones por frame de media.
+- **Condición 5, cumple:** la emulación en la DFL, leída en la celda p = 0,7, σ = 0,03 y L = 12, pasa «sin decidir».
+- **Global: «NO SIGUE».**
+- Descriptivo: 45,9 toques por minuto con el balón del detector y 2,1 con el del ATD; el desfase con el ATD que mejor
+  cuadra es 0 frames, no los 4 esperados; unas 2,5 h de CPU para el partido entero.
+
+Decisión: **la línea se para, con la regla tal como estaba escrita.** No se lanza la detección del partido entero ni
+ninguna puerta 2.x, y la capa `balon_video.ajuste_b5_video` no entra. La entrega sigue siendo `equipo_v9`.
+
+Lo que queda: el código, las pruebas y la bitácora siguen en `exp/balon-video` para el documento técnico. No entran en
+`main`: la capa no se va a encender, y un `regenerar.py` en la raíz del repo público, que genera otra entrega,
+confundiría.
+
+Lo que arrastra: B10 (David) y la capa de `D` con el golpeo del vídeo (Ana) necesitaban la detección del partido
+entero. Sin ella no tienen balón del vídeo.
+
+Descartado:
+- **Cambiar la condición 2 después de ver el resultado.** Contaba todas las detecciones del recorte, y la regla de B5
+  solo usa la más fiable a 5 m o menos del balón del ATD [inferencia: muchas de las lejanas no se usarían]. Pero se
+  escribió antes de medir justo para parar un detector que ve muchas cosas que no son el balón, y no se toca.
+- **Los «balones largos»** (la fase que se quedó sin subir en el ordenador del trabajo de Ismael): su techo es del
+  orden de +0,01 [inferencia, con la cota de la DFL y el 4,6 % de huecos con juego del partido] y pediría una detección
+  nueva y puertas nuevas.
