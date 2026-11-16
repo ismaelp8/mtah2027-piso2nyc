@@ -4897,6 +4897,44 @@ Descartado:
   no la ha discutido].
 - Esperar a mañana: no quedaba ninguna comprobación pendiente.
 
+### 2026-11-16 · balón · la línea del balón del vídeo se para: la puerta 1b da «NO SIGUE»
+
+Quién: lo ejecutó Ismael en su Windows (CPU) y pegó solo agregados; lo apunta la sesión del balón del vídeo (Claude).
+Se los pasó también a David, que los había pedido.
+
+Qué se probó: la puerta 1b de `validation/balon_video/BITACORA.md` (rama `exp/balon-video`), con la variante fijada
+antes de medir: un detector YOLO11n público en un recorte de 320 px alrededor del balón del ATD en t+4, ampliado ×2 y
+con confianza 0,10, en 40 tramos de 15 s (7.010 frames con balón del ATD dentro del campo). El vídeo decodifica sus
+199.319 frames.
+
+Resultado [medido, agregados del partido]:
+- **Condición 1, cumple:** el 78,94 % de esos frames tiene una detección a 3 m o menos del balón del ATD (umbral:
+  70 %).
+- **Condición 2, no cumple:** el 40,68 % de las detecciones está a más de 5 m del balón del ATD (umbral: 10 %). El
+  detector da 2,64 detecciones por frame de media.
+- **Condición 5, cumple:** la emulación en la DFL, leída en la celda p = 0,7, σ = 0,03 y L = 12, pasa «sin decidir».
+- **Global: «NO SIGUE».**
+- Descriptivo: 45,9 toques por minuto con el balón del detector y 2,1 con el del ATD; el desfase con el ATD que mejor
+  cuadra es 0 frames, no los 4 esperados; unas 2,5 h de CPU para el partido entero.
+
+Decisión: **la línea se para, con la regla tal como estaba escrita.** No se lanza la detección del partido entero ni
+ninguna puerta 2.x, y la capa `balon_video.ajuste_b5_video` no entra. La entrega sigue siendo `equipo_v9`.
+
+Lo que queda: el código, las pruebas y la bitácora siguen en `exp/balon-video` para el documento técnico. No entran en
+`main`: la capa no se va a encender, y un `regenerar.py` en la raíz del repo público, que genera otra entrega,
+confundiría.
+
+Lo que arrastra: B10 (David) y la capa de `D` con el golpeo del vídeo (Ana) necesitaban la detección del partido
+entero. Sin ella no tienen balón del vídeo.
+
+Descartado:
+- **Cambiar la condición 2 después de ver el resultado.** Contaba todas las detecciones del recorte, y la regla de B5
+  solo usa la más fiable a 5 m o menos del balón del ATD [inferencia: muchas de las lejanas no se usarían]. Pero se
+  escribió antes de medir justo para parar un detector que ve muchas cosas que no son el balón, y no se toca.
+- **Los «balones largos»** (la fase que se quedó sin subir en el ordenador del trabajo de Ismael): su techo es del
+  orden de +0,01 [inferencia, con la cota de la DFL y el 4,6 % de huecos con juego del partido] y pediría una detección
+  nueva y puertas nuevas.
+
 ### 2026-11-16 · temporal · detector de cambios de posesión: candidatos, rejilla y regla de entrada (antes de medir)
 
 Quién: David (16/11), con Claude. Escrita antes de medir nada; el techo (punto 1) y el detector (punto 2) se miden
@@ -5096,7 +5134,82 @@ Lo que hay que decir con el número:
 
 Descartado: A (avisos) y B (confirmación) con estos umbrales; el detector aprendido como candidato.
 
+**Añadido el 16/11, tras traer `main` (`032d4d8`):** la segunda ronda se midió con `temporal.decode`, y desde `1e71d72`
+la entrega decodifica con `decode_cortas_a_d` (`equipo_v9`). El candidato se repitió con el decodificador de la entrega
+(`validation/cambios/confirmar.py`, salida en `salidas/2026-11-16_confirmar.md`), sin elegir nada: reglas 45° / 60 % /
+30 frames, γ = 8, W = 50, contra el otro equipo. **Sigue pasando los puntos 1 y 3** [medido]: con control, +0,014 y
++0,020 con el `D` de las etiquetas (6 de 7) y +0,021 y +0,019 con el propio (7 y 6 de 7); con el flag, de +0,044 a
++0,054 (7 de 7). Predice más posesiones: de 1.661 a 1.859 con el `D` de las etiquetas (1.736 reales con control) y de
+1.538 a 1.647 con el propio. Como w = 0, el candidato es solo una capa de estados: no necesita `decode_cambios` ni
+tocar `pipeline.run`, y se suma con `--capa` como las demás. Un partido se puntúa con una combinación que su pliegue no
+eligió (eligió la misma sin «contra el otro»).
+
+### 2026-11-16 · temporal · detector de cambios: el candidato en las celdas que midió la puerta 1b (antes de medir)
+
+Quién: David (16/11), con Claude. Escrita antes de ejecutar nada con estas celdas.
+
+Por qué: la puerta 1b ya midió el detector del vídeo en el partido (entrada «la línea del balón del vídeo se para»), y
+el candidato de la segunda ronda se midió con una celda provisional (p = 0,8, σ = 0,06 m, L = 12) que **no tiene
+detecciones equivocadas**. La 1b dice que las hay: la detección elegida está a más de 3 m del balón del ATD en el
+18,76 % de los frames en que hay alguna (el 91,0 %). Para unas reglas que buscan giros y cambios de velocidad, un salto
+a un falso positivo es un toque falso.
+
+Qué se mide: el mismo candidato, sin elegir nada (reglas 45° / 60 % / 30 frames, γ = 8, W = 50, contra el otro equipo,
+con `decode_cortas_a_d`), en dos celdas:
+- **M1, la celda de la bitácora del vídeo:** p = 0,7, σ = 0,03 m, L = 12, sin detecciones equivocadas.
+- **M2, con las equivocadas (la que decide):** de los frames con balón «como el ATD», el 74 % lleva el balón limpio con
+  σ = 0,03 m (0,91 × 0,8124), el 17 % una detección equivocada (0,91 × 0,1876) y el 9 % el balón «como el ATD». Los
+  frames que no son buenos van en rachas de longitud media 6 (la racha de fallos medida, 6,18); cada racha es
+  «equivocada» con probabilidad 17/26 y, si no, «sin detección». En una racha equivocada el balón es el del ATD más un
+  desplazamiento fijo de 3 a 5 m (uniforme) en una dirección al azar, más el mismo ruido σ. Es el caso malo: supone que
+  todas las detecciones a más de 3 m son falsos positivos, cuando parte será error del balón del ATD, que va suavizado.
+
+Regla: los puntos 1 y 3 del límite de daño, como siempre. **Si M2 no pasa, el candidato se cierra** con el detector tal
+como está (confianza 0,10). Si pasa M2, sigue dependiendo de que haya balón del vídeo del partido entero, y eso lo
+decide el equipo: la línea del vídeo está parada.
+
+No se cambia nada del candidato mirando esto. Limitación: M2 no modela el desfase (la 1b ve 0 frames, no 4).
+
+### 2026-11-16 · temporal · detector de cambios: con las cifras de la puerta 1b el candidato no pasa; se cierra
+
+Quién: David (16/11), con Claude. Salidas: `validation/cambios/salidas/2026-11-16_confirmar_M1.md` y `_M2.md`
+(`confirmar.py --celda`, código en `3b7b76a` más el script; los 7 partidos de la DFL, con `decode_cortas_a_d`).
+
+Resultado [medido], diferencia con `main` (el rango de las cuatro celdas):
+
+| celda de la emulación | control | flag | punto 1 | punto 3 |
+|---|---|---|---|---|
+| provisional (p = 0,8, σ = 0,06, sin equivocadas) | +0,014 a +0,021 (6–7 de 7) | +0,044 a +0,054 | pasa | pasa |
+| M1 (p = 0,7, σ = 0,03, sin equivocadas) | +0,010 a +0,017 (5, 6, 6 y 6 de 7) | +0,039 a +0,051 | no pasa, por un partido | pasa |
+| **M2 (74 % buena, 17 % equivocada, 9 % sin detección)** | **−0,022 a −0,042 (0–1 de 7)** | +0,034 a +0,054 | **no pasa** | pasa |
+
+- Con las detecciones equivocadas, el candidato predice de más: de 1.661 a 1.971–2.083 posesiones con el `D` de las
+  etiquetas, cuando con control hay 1.736. Cada salto a un falso positivo es un toque falso.
+- Con el flag sigue ganando en 7 de 7 en las tres celdas: el flag tiene 3.061 posesiones y aguanta las inventadas. Lo
+  que gana depende, pues, de la convención.
+
+Decisión y por qué: **el candidato se cierra,** con la regla escrita antes de medir (M2 decidía). Además, la línea del
+balón del vídeo está parada en la puerta 1b y no hay detección del partido entero. No se abre SkillCorner. El código
+queda apagado: `cambios.capa`, `cambios.p_reglas`, `temporal.decode_cambios` y `pipeline.run(cambios=None)`.
+`pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega (`equipo_v9`) no cambian.
+
+Lo que queda para el documento técnico y para la fase siguiente:
+- **El mecanismo vale:** un detector de cambios perfecto da +0,096 con control y +0,218 con el flag sobre B5.
+- **El balón del vídeo trae la información que falta** (las reglas ven el doble de cambios que con el balón del ATD),
+  **pero solo si sus detecciones equivocadas se filtran.** M2 es el caso malo: supone que toda detección a más de 3 m
+  del balón del ATD es falsa. Lo que habría que probar, si se retoma: un filtro de trayectoria (continuidad entre
+  frames) o una confianza mínima más alta antes de buscar toques.
+- Sin balón del vídeo no hay candidato: con el del ATD nada pasó en ninguna de las dos rondas.
+
+Descartado: reajustar los umbrales de las reglas para M2 (sería elegir después de ver el resultado, y la regla decía
+que no se cambiaba nada).
+
 ### 2026-11-16 · temporal · detector de cambios en SkillCorner: el instrumento y la regla de lectura (antes de medir)
+
+**Nota al juntar las ramas (16/11):** esta regla y su medida se hicieron en `exp/cambios-skillcorner`, que salió de
+`feat/detector-cambios` en `032d4d8`, sin saber que en `869ad78` (entrada anterior) el candidato ya se había cerrado
+con las cifras de la puerta 1b. Se midió la celda provisional, sin detecciones equivocadas. El texto de la regla se
+deja como se escribió antes de medir; el caso «Si pasa» ya no aplica.
 
 Quién: lo pidió Ana (16/11); la escribe Claude antes de puntuar ningún detector en SkillCorner. Rama
 `exp/cambios-skillcorner`, que sale de `feat/detector-cambios` en `032d4d8`.
@@ -5181,6 +5294,9 @@ argumentos. Cada uso nuevo lleva antes su propia regla en este fichero.
 Estado: escrita antes de medir. El resultado va en la entrada siguiente.
 
 ### 2026-11-16 · temporal · detector de cambios en SkillCorner: las reglas afinadas no pasan la mitad de entrenamiento
+
+**Nota al juntar las ramas (16/11):** este resultado no decide nada nuevo. El candidato ya estaba cerrado por la
+puerta 1b (`869ad78`); SkillCorner lo confirma por otro lado: tampoco pasa en un tracking automático de otro proveedor.
 
 Quién: lo pidió Ana (16/11); lo ejecutó Claude (son datos abiertos), una sola vez, con la regla de la entrada anterior
 ya commiteada (`c111042`).
