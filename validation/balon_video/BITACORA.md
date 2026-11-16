@@ -405,20 +405,3 @@ reducida. «×2» es reducir a b y ampliar ×2 antes de detectar: la red ve 2b.
   de los dos umbrales (recall de 0,82 a 0,90, FP/img de 0,06 a 0,15). Su tiempo cabe en 8 horas solo si se detecta en un
   recorte alrededor del balón del ATD: uno de 320 px ampliado ×2 es una entrada de 640×640, unas 3 horas en esta CPU; la
   imagen entera ×2 no cabe. Tal cual solo pasa desde 6 px.
-
-### Puerta 1a (16/11, Antonio; `tamano_balon_video.py` en su máquina, solo agregados) [medido]
-
-- **Frames:** de 158.857 evaluados, todos con la homografía válida, se miden los 90.265 en que el ATD ve el balón dentro
-  del campo.
-- **Diámetro del balón:** p5 4,4 px; p25 5,15; **p50 5,92**; p75 7,08; p95 8,86.
-  - Por tramos: el 1,41 % por debajo de 4 px, el 50,57 % de 4 a 6 px, el 36,15 % de 6 a 8 y el 11,86 % de 8 a 12.
-  - Más pequeño en la mitad lejana del ancho (mediana de 5,17 px) que en la cercana (6,92 px).
-- **Escala:** p50 de 26,92 px por metro a lo largo y de 12,72 a lo ancho. A media altura se ven unos 62 m de campo
-  (p50), y nunca entran las cuatro esquinas.
-- **Mismo resultado en `main` (`b93b6c2`) y en `exp/balon-video` (`3aa1916`):** el script es idéntico en las dos ramas.
-- **Lectura con la regla de la puerta 0:**
-  - `b_partido` = 5 px: la mediana, redondeada hacia abajo al tamaño del barrido.
-  - En 5 px, la variante ×2 encuentra el balón en el 91,2 % de las imágenes con confianza 0,10 (0,25 FP/img) y en el
-    87,2 % con 0,25 (0,10 FP/img). **Pasa.**
-  - La condición de tiempo, con el ensayo de la 1b en la misma máquina: techo de 2,93 h, dentro de las 8. **Pasa.**
-  - La variante fijada (recorte de 320 px ×2, confianza 0,10) sigue tal cual.
