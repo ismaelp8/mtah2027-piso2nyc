@@ -618,3 +618,37 @@ comparación por separado en los frames con balón con un equipo de más de 11 s
   propone es quitar los slots sobrantes (un candidato nuevo), no estandarizar.
 - Si sale fuera también en el resto, se propone estandarizar, como dice P2.
 - En los dos casos se avisa a la sesión principal antes de escribir nada.
+
+### P2. Resultado (16/11; `rasgos_b5.py` lo ejecutó Ismael, con el código de `18f6ff3`) [medido, agregados del partido]
+
+Medianas del valor absoluto, en los frames con balón; entre paréntesis, el rango de los 17 abiertos:
+
+| rasgo (de los diez de más peso) | partido, todos | con un equipo de más de 11 slots (12,8 %) | el resto (87,2 %) |
+|---|---|---|---|
+| velocidad en la dirección de ataque, ventana 25 (1,716–2,512) | 1,722 | **1,478 fuera** | 1,761 |
+| dispersión, ventana 51 (3,703–5,658) | 5,532 | **5,705 fuera** | 5,504 |
+| núcleo de 1 m, ventana 13 (0,176–0,298) | **0,167 fuera** | **0,120 fuera** | **0,176 fuera**, en el borde |
+| los otros siete | dentro | dentro | dentro |
+
+- Fuera de los diez, también salen bajos el núcleo de 1 m de ventana 1 (0,132 frente a 0,166–0,305) y la velocidad de
+  ventana 101 (1,570 frente a 1,599–2,297). El p90 de la dispersión es 12,38, frente a 10,53 como mucho en los abiertos.
+- El signo de B5 coincide con el del más cercano en el 75,6 % de los frames con balón; en los abiertos, del 76,1 al
+  85,1 % (descriptivo).
+
+**Con la regla de P2: «desplazado»,** por el núcleo de 1 m de ventana 13. **Con P2b:**
+
+- **La velocidad del equipo y la dispersión se salen solo en los frames con más de 11 slots** → el arreglo que se
+  propone es quitar los slots sobrantes.
+- **El núcleo de 1 m se sale en los dos grupos,** pero en el resto queda justo en el borde (0,176) y donde de verdad cae
+  es con más de 11 slots (0,120) → estandarizarlo daría poco; lo que pesa es lo mismo, los slots de más [inferencia].
+
+**¿Lo explica el retraso del balón?** No [medido en la DFL; `salidas/2026-11-16_p2_nucleo_y_retraso.md`]. Con el balón
+4 frames tarde, el núcleo de 1 m de ventana 13 **sube** en los 7 partidos (media de 0,207 a 0,248), y el del partido
+está por debajo. Queda sin explicar en los frames sin slots de más; puede ser el ruido de posición del ATD a esa escala
+[sin verificar].
+
+**Siguiente paso: un candidato, que hay que proponer antes a la sesión principal** (no se escribe nada aún):
+1. un agregado del partido que describa los slots de más (dentro o fuera del campo, cerca de una banda, velocidad,
+   cuánto duran, de qué equipo), con su regla;
+2. una degradación de la DFL que los imite, para medir cuánto pierde B5 con ellos;
+3. el arreglo (quitar los sobrantes con una regla fija) medido con esa degradación en el harness, con §5.8.
