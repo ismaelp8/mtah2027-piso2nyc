@@ -50,7 +50,9 @@ def carpeta():
 
 
 # BITACORA §8. La medida del 15/11 usó los 20, antes de este corte. Entrenar o mirar errores
-# solo con ENTRENAMIENTO. EXAMEN no se lee en ningún script nuevo.
+# solo con ENTRENAMIENTO. EXAMEN solo se lee con `--examen --confirmo-el-unico-uso` en
+# validation/scripts/cortas_a_d_skillcorner.py, una vez por candidato; los usos están en la sección
+# «Usos del examen» de validation/skillcorner/BITACORA.md.
 ENTRENAMIENTO = (1874553, 1899585, 1927964, 1959846, 1996435, 2006229, 2007448, 2010085, 2013725, 2016236)
 EXAMEN = (1886347, 1925299, 1953632, 1986691, 1996436, 2006363, 2007721, 2011166, 2015213, 2017461)
 

@@ -104,7 +104,8 @@ def comprobar_opciones(carpeta):
         comprobar("y llegan a la función: la prueba con el partido inventado la llama una vez", llamadas == [3.0])
         ruta = escribir(carpeta, json.dumps({"solo opciones": {"piezas": {"temporal": {"opciones": {}}}}}))
         version = puntuar.leer_versiones(ruta)[0]["solo opciones"]
-        comprobar("sin «funcion», la de siempre", version["piezas"]["temporal"] is temporal.decode)
+        comprobar("sin «funcion», la de la entrega («cortas a D» desde el 16/11)",
+                  version["piezas"]["temporal"] is temporal.decode_cortas_a_d)
         ruta = escribir(carpeta, json.dumps({"x": {"piezas": {"candidates": {"opciones": {}}}}}))
         comprobar("sin «funcion» ni «dejar_fuera», la de equipo de la entrega (B5, con «fuera») da error",
                   da_error(lambda: puntuar.leer_versiones(ruta)))
