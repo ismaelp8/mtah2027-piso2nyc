@@ -462,3 +462,24 @@ señales de `D`. En la DFL el balón va tapado en los `D` y en SkillCorner las p
 balón fuera ya se probó en el partido (D7, dos versiones apagadas).
 
 **Regla de lectura:** la de S7.
+
+## S7b. Resultado [medido]
+
+«+ B5: Δ en Z1 ∪ Z2», en puntos (salida: `salidas/2026-11-16_s7b_cribado.md`):
+
+| señal | DFL flag | DFL control | DFL control, 4 tarde | SkillCorner | acierta en Z1 (flag) |
+|---|---|---|---|---|---|
+| S22 el que se abre | +0,70 | −0,03 | +0,13 | −0,05 | 60 % |
+| S23 el que se alarga | +0,43 | +0,11 | +0,23 | +0,08 | 30 % |
+| S24 el que gana área | −0,01 | +0,07 | −0,02 | −0,00 | 50 % |
+| S25 el receptor frena | +0,01 | +0,00 | +0,04 | −0,00 | 49 % (opina en el 1–2 %) |
+| S26 el balón dentro de un solo bloque | −0,15 | +0,25 | +0,29 | +0,02 | 69 % (con el signo al revés del previsto en el juego en general) |
+| B5 + las cinco | +1,18 | +0,08 | +0,14 | +0,07 | – |
+
+**Con la regla: ninguna añade.**
+- **Matiza S7:** el **cambio** de anchura (S22) acierta el 58–60 % dentro de las posesiones que perdemos, frente al
+  12–27 % de la anchura fija. La forma que cambia sí dice algo distinto de B5, pero no lo bastante para sumar con el
+  control ni en SkillCorner.
+- S26 acierta el 14–16 % en el juego en general: el balón dentro del bloque de un equipo suele ser de ese equipo, al
+  revés de lo previsto. Dentro de Z1 va al revés de B5, pero tampoco suma.
+- S25 casi nunca opina.
