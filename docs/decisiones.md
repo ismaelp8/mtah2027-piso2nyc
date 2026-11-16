@@ -4230,3 +4230,66 @@ media). Su sha256 es `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf3
   coinciden con `D` en la GT más de lo que no coinciden [inferencia, por el macroF1].
 - Lectura: no rompe nada en la ventana. Si mejora el `spellF1` del partido no se puede saber: ni la ventana ni la DFL lo
   miden.
+
+### 2026-11-16 · validación · en los cambios pequeños hacia control, el flag pasa de veto a límite de daño
+
+Quién: Ismael (16/11), sobre la recomendación de la sesión principal: «Me parece bien tu recomendación con límite de
+daño». Escrita antes de medir ningún candidato con ella.
+
+Qué se decide: una regla de entrada nueva para los cambios que se pueden medir en datos abiertos y que ganan con las
+etiquetas de control y en SkillCorner pero empatan o pierden poco con el flag (el punto débil 3 de
+`docs/investigacion_2026-11-16.md`: el coste 40 y «cortas a `D`» se quedaban fuera por el veto del flag).
+
+Un candidato de ese tipo entra si se cumple todo, frente a `main`:
+1. **DFL con control:** +0,005 o más en las dos condiciones del balón que votan, ganando en 6 de 7 partidos en cada una.
+   Si toca el `D`, con el `D` propio y en los dos modos del balón en los `D` (tapado y a la vista).
+2. **SkillCorner:** gana en la mitad de entrenamiento y lo confirma **una sola vez** en la de examen
+   (`lector.EXAMEN`), con +0,005 o más y ganando en 7 de 10. El umbral se escribe antes de abrirla y cada uso del
+   examen se apunta aquí. Ismael dio el permiso para abrirlo el 16/11; todavía no se ha usado.
+3. **DFL con el flag:** no pierde más de 0,005 en ninguna celda (condición × modo del `D`).
+4. **Entrega de prueba** frente a la vigente, con criterios de daño escritos antes de generarla.
+
+Lo que no cambia:
+- Lo que dice ganar con las dos convenciones sigue con §5.8 (+0,03).
+- Las capas que solo corren en el partido siguen con sus criterios propios.
+- El balón del vídeo tiene su propia regla (`validation/balon_video/BITACORA.md`).
+- No usa la tabla de retrasos ni las notas oficiales del partido completo (D21).
+
+Por qué:
+- El equipo decidió el 12/11 «exigir control».
+- La ventana pública tiene 4,23 posesiones por minuto de juego, típico de control (4,71) y no del flag (8,30)
+  [descriptivo, revisión externa A.6].
+- SkillCorner, que también exige control, dice lo mismo que control en los sondeos del 16/11.
+
+Riesgo: si la GT se parece al flag, cada cambio de este tipo puede costar hasta 0,005.
+
+Descartado:
+- Mantener el veto: deja fuera cambios pequeños y consistentes en la dirección que eligió el equipo.
+- Decidir solo con control: si la GT se parece al flag, la pérdida no tendría límite.
+
+Estado: la idea 1.3 («cortas a `D`»), la candidata que lo motivó, queda aparcada (Ismael, 16/11). Nada entra solo por
+esta decisión.
+
+### 2026-11-16 · balón · se abre la línea del balón sacado del vídeo táctico, con sus puertas escritas antes de medir
+
+Quién: Ismael (16/11), que pide centrarse en detectar el balón en el vídeo, con el modelo
+`martinjolif/yolo-football-ball-detection` (YOLO11n afinado, AGPL-3.0) como primera opción.
+
+Qué: un detector de balón público, ejecutado en local sobre el vídeo táctico, para tener un balón sin el suavizado de
+1 s del ATD. Solo lo vería la evidencia de equipo (B5); el `D` sigue con el balón del ATD.
+
+Cómo se decide: cuatro puertas escritas antes de medir en `validation/balon_video/BITACORA.md`:
+- puerta 0: el acierto del detector según el tamaño del balón, en datos abiertos;
+- puerta 1a: el tamaño del balón en el partido (`validation/partido/tamano_balon_video.py`, lo ejecuta Ismael);
+- puerta 1b: si el balón del detector trae toques que el ATD no trae;
+- puerta 2: la entrada, con la DFL degradada «como el vídeo», la entrega de prueba, la reproducción byte a byte con la
+  detección dentro del comando y 8 horas como mucho.
+
+Es la tercera excepción a «lo que no ha ganado en el harness no entra»: la DFL no tiene vídeo.
+
+Riesgos apuntados antes de empezar:
+- el balón puede medir unos 4 px (era una cuenta, no una medida);
+- la entrega tiene que regenerarse byte a byte con una red dentro, y eso no está garantizado entre máquinas;
+- el tiempo de cálculo.
+
+`equipo_v8` no cambia mientras no pase la puerta 2.
