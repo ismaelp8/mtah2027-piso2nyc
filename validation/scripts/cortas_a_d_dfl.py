@@ -52,6 +52,8 @@ def main():
     parser.add_argument("--versiones", default=VERSIONES, help="fichero de versiones del harness")
     parser.add_argument("--partidos", nargs="+", default=list(dfl.PARTIDOS), choices=list(dfl.PARTIDOS),
                         help="por defecto, los 7. Con menos, el veredicto sale marcado como parcial")
+    parser.add_argument("--bootstrap", type=int, default=1000,
+                        help="remuestreos del intervalo de la diferencia; 0 lo quita")
     args = parser.parse_args()
 
     versiones, contenido, huella = puntuar.leer_versiones(args.versiones)
@@ -125,6 +127,20 @@ def main():
                     celdas[(conv, modo, cond)] = (dif, gana, len(r))
                 print("| DFL {} | {} | {} |".format(conv, modo, " | ".join(fila)))
 
+        def intervalo(conv, modo, cond):
+            """El intervalo de la diferencia frente a `main`, pareado sobre las posesiones reales."""
+            if not args.bootstrap:
+                return ""
+            juntos = {}
+            for nombre in (base_nombre, variante):
+                juntos[nombre] = puntuar.juntar(rec[(conv, modo, cond, nombre)])
+            vals = puntuar.diferencia_bootstrap(juntos[variante], juntos[base_nombre], args.bootstrap)
+            if not vals:
+                return ""
+            bajo, alto = vals[0], vals[1]
+            return ", intervalo [{:+.4f}, {:+.4f}]{}".format(
+                bajo, alto, "" if bajo > 0 or alto < 0 else " (incluye el 0)")
+
         if not completo:
             print("\n**Veredicto PARCIAL, no vale como puerta de entrada:** se han medido {} de los {} "
                   "partidos. Las condiciones 1 y 3 se leen solo con los {} completos.".format(
@@ -140,8 +156,9 @@ def main():
                 dif, gana, total = celdas[("control", modo, cond)]
                 ok = dif >= UMBRAL_CONTROL and gana >= GANA_DE
                 uno.append(ok)
-                print("- control / {} / {}: {:+.4f} y {} de {} -> {}".format(
-                    modo, cond, dif, gana, total, "PASA" if ok else "NO PASA"))
+                print("- control / {} / {}: {:+.4f} y {} de {}{} -> {}".format(
+                    modo, cond, dif, gana, total, intervalo("control", modo, cond),
+                    "PASA" if ok else "NO PASA"))
         print("\n**Condición 3 (flag):** no perder más de {:.3f} en ninguna celda.".format(PERDIDA_MAXIMA_FLAG))
         tres = []
         for modo in MODOS:
@@ -149,7 +166,8 @@ def main():
                 dif, _, _ = celdas[("flag", modo, cond)]
                 ok = dif >= -PERDIDA_MAXIMA_FLAG
                 tres.append(ok)
-                print("- flag / {} / {}: {:+.4f} -> {}".format(modo, cond, dif, "PASA" if ok else "NO PASA"))
+                print("- flag / {} / {}: {:+.4f}{} -> {}".format(
+                    modo, cond, dif, intervalo("flag", modo, cond), "PASA" if ok else "NO PASA"))
         print("\n**Condición 1: {}. Condición 3: {}.** Falta la 2 (SkillCorner) y la 4 (entrega de prueba).".format(
             "PASA" if all(uno) else "NO PASA", "PASA" if all(tres) else "NO PASA"))
     return 0

@@ -4245,7 +4245,8 @@ Un candidato de ese tipo entra si se cumple todo, frente a `main`:
    Si toca el `D`, con el `D` propio y en los dos modos del balón en los `D` (tapado y a la vista).
 2. **SkillCorner:** gana en la mitad de entrenamiento y lo confirma **una sola vez** en la de examen
    (`lector.EXAMEN`), con +0,005 o más y ganando en 7 de 10. El umbral se escribe antes de abrirla y cada uso del
-   examen se apunta aquí. Ismael dio el permiso para abrirlo el 16/11; todavía no se ha usado.
+   examen se apunta aquí. Ismael dio el permiso para abrirlo el 16/11. **Usado el 16/11 con «cortas a `D`» y el
+   corte de 125 frames** (ver la entrada «la idea 1.3 se desaparca»): ya no queda ningún uso.
 3. **DFL con el flag:** no pierde más de 0,005 en ninguna celda (condición × modo del `D`).
 4. **Entrega de prueba** frente a la vigente, con criterios de daño escritos antes de generarla.
 
@@ -4300,7 +4301,20 @@ Quién: Manuel, por encargo de Ismael (16/11). **Reglas escritas antes de medir 
 
 **Ojo con el estado anterior:** la entrada «el flag pasa de veto a límite de daño» de hoy dice que la idea 1.3
 «queda aparcada (Ismael, 16/11)». Este encargo la desaparca y la lleva hasta la entrega de prueba con esa misma
-regla de límite de daño. El permiso para abrir el examen de SkillCorner es del mismo día y sigue sin usarse.
+regla de límite de daño. El permiso para abrir el examen de SkillCorner es del mismo día.
+
+> **Estado al cerrar esta entrada:** las cuatro condiciones del límite de daño pasan y la variante se queda
+> **apagada**; la entrega sigue siendo `equipo_v8`. **El único uso del examen de SkillCorner se gastó el 16/11
+> con el corte de 125 frames** (ver «El examen de SkillCorner: USADO» más abajo): no queda otro. Antes de
+> encender nada, leer también el apartado «El corte de 125 frames no es el único que pasaría».
+
+**`possession/temporal.py` es la pieza de David,** así que la PR le pide la revisión a `ortegafer`. El cambio es
+solo aditivo: `decode`, `decode_min`, `decode_prune`, `prune`, `runs`, `viterbi`, `viterbi_min`, `_prepare` y
+las constantes de antes quedan idénticas, y `pipeline.PIECES` no se toca. Conviene que lo sepa porque ahí vive
+lo que él está midiendo. **No se ha comparado «cortas a `D`» con su `decode_prune`,** que también quita
+posesiones cortas: son reglas distintas (la poda pasa la racha corta al otro equipo si lo tiene al lado; esta la
+pasa a `D` solo si acaba en parada), pero medirlas juntas no se ha hecho y sería lo siguiente si al equipo le
+interesa.
 
 Qué se ha hecho: `temporal.cortas_a_d` y `temporal.decode_cortas_a_d(score, allowed, blocks, params=None,
 corte=125)` en `possession/temporal.py`, **apagadas**: no están en `pipeline.PIECES` y la entrega no cambia.
@@ -4399,9 +4413,11 @@ que votan allí. Se ejecuta **una sola vez**, con el permiso que dio Ismael el 1
    (la prueba lo comprueba); si sale otra cosa, hay un error y se para.
 3. **Dentro de la banda del plan** (§3, 15/11): del 15 al 60 % de `D` en lo evaluado y 250 paradas como mucho.
 4. **Cuántas posesiones quita:** se apunta el número. No hay umbral, pero se lee con cuidado, porque el punto
-   débil conocido del pipeline es que predice **menos** posesiones de las que hay (219 en `equipo_v8`, 3,7 por
-   minuto vivo, frente a los 4,11 de SkillCorner y los 4,26–4,29 de la DFL con nuestro `D`), y esta regla solo
-   puede quitar más.
+   débil conocido del pipeline es que predice **menos** posesiones de las que hay (219 en `equipo_v8`, frente a
+   los 4,11 por minuto vivo de SkillCorner y los 4,26–4,29 de la DFL con nuestro `D`), y esta regla solo puede
+   quitar más. **Corregido después de medir:** aquí se escribió «3,7 por minuto vivo» para `equipo_v8`, y ese
+   3,70 es de `equipo_v3` (215 posesiones; `validation/resultados/2026-11-15_posesiones_cortas.md`).
+   `equipo_v8` va a 3,79. La errata no cambia el criterio, que era apuntar el número y leerlo con cuidado.
 5. **Cuántas de las posesiones que quita caen en los 5 primeros segundos de una «Attacking Transition» del
    Smart Tagging** (la capa de los contraataques, encendida en la entrega):
    `validation/partido/cortas_en_contraataques.py`. **Si son más de 2, se para y se avisa,** porque la regla
@@ -4428,14 +4444,21 @@ Lo ejecutó Claude (son datos abiertos): `validation/scripts/cortas_a_d_dfl.py` 
 
 (en SkillCorner las dos columnas son «detectado» y «detectado, suavizado»)
 
-- **Las diez cifras coinciden con S9**, así que la regla de parada del paso 3 no se activa. Es además la
-  confirmación empírica de que la puerta `allowed` es inerte en datos abiertos: si no lo fuera, estos números
-  habrían bajado.
+- **Las diez cifras coinciden con S9**, así que la regla de parada del paso 3 no se activa.
+- **Que la puerta `allowed` sea inerte en datos abiertos está [medido por inspección]**, no por estas cifras:
+  el único sitio de `possession/` que recorta `allowed` es `dead_ball.py`, que solo opina con las rutas del
+  partido, y `pipeline.combine` solo relaja conflictos. Que las cifras cuadren es coherente con eso, pero por sí
+  solo sería [inferencia]: podrían cuadrar por compensación.
 - **Se cierra lo que quedaba «por comprobar»:** el recuento por partido de las dos celdas de control con el
-  balón tapado, que S9 no publicaba, es **6 de 7 en las dos**. Suman 7+7+6+6 = 26 de 28, que es el agregado que
-  daba S9. **La condición 1 pasa de verdad**, no solo «no se contradice».
-- **Se cierra la [inferencia] del «5 de 7»:** las dos celdas del flag con el balón a la vista dan 5 de 7 cada
-  una, como se había supuesto.
+  balón tapado es **6 de 7 en las dos**. Suman 7+7+6+6 = 26 de 28, que es el agregado que daba S9. **La
+  condición 1 pasa.**
+  - **Matiz, para no vender esto como más de lo que es:** la *tabla de S9* no traía esos recuentos, pero la
+    salida de S5 que ya está en `main` (`validation/investigacion_1116/salidas/
+    2026-11-16_s5_cambio_antes_de_parada.md`) sí los publicaba, y dice lo mismo: 6 de 7 en las dos de control
+    con el balón tapado y 5 de 7 en las dos del flag con el balón a la vista. Así que lo nuevo aquí no es el
+    número, sino que sale **ejecutando `temporal.decode_cortas_a_d`**, la pieza de verdad, y no la copia de la
+    lógica que vive en el sondeo.
+- **La [inferencia] del «5 de 7»** del flag con el balón a la vista queda confirmada: 5 de 7 en las dos.
 - **Condición 1 (control): PASA.** Las cuatro celdas dan +0,0072, +0,0087, +0,0185 y +0,0192, todas por encima
   de +0,005, con 6 o 7 de 7.
 - **Condición 3 (flag): PASA.** La peor celda pierde 0,0024, menos de los 0,005 del límite.
@@ -4489,6 +4512,14 @@ temporal=temporal.decode_cortas_a_d --contra equipo_v8`, con el código de `1fcf
    Transition» con equipo), y 0 empiezan dentro. El criterio pedía 2 como mucho. **Cumple con holgura:** la
    regla no está borrando lo que crea la capa de los contraataques.
 
+**Las dos comprobaciones de rutina que `probar_entrega.py` no hace** (las ejecutó Claude; los dos scripts leen
+solo la entrega y la GT pública) [medido]:
+- **El validador oficial la da por válida:** 199.319 filas, frames 0..199318, y 201 posesiones de 17,0 s de
+  media.
+- **En la ventana pública no se rompe nada:** spellF1 0,658 → **0,680** y macroF1 0,865 → **0,874** frente a
+  `equipo_v8`. **No elige nada:** la ventana tiene 17 posesiones y una diferencia de hasta 0,39 es ruido
+  (`CLAUDE.md`); solo dice que la variante no rompe la alineación ni el formato.
+
 Además [medido]:
 - **Los 1.167 frames que cambian están todos a más de 250 frames del borde de un tramo evaluado,** y 0 cambian
   fuera de los tramos: no es un efecto de borde.
@@ -4498,9 +4529,10 @@ Además [medido]:
 
 **El punto en contra, que estaba apuntado antes de medir (criterio 4) y se confirma:** el pipeline ya predice
 **menos** posesiones de las que hay, y esta regla quita más. Pasa de 3,79 a **3,53 por minuto de juego vivo**
-[calculado aquí dividiendo las posesiones por los frames de `H` y `A`; para `equipo_v8` estaba apuntado ~3,7,
-así que el 3,79 es la misma cifra con otro redondeo, no un dato nuevo], cuando las referencias en datos
-abiertos con nuestro `D` son 4,11 en SkillCorner y 4,26–4,29 en la DFL. Es
+[calculado aquí dividiendo las posesiones por los frames de `H` y `A`: 219/57,8 min y 201/57,0 min], cuando las
+referencias en datos abiertos con nuestro `D` son 4,11 en SkillCorner y 4,26–4,29 en la DFL. El 3,70 que
+aparece en `validation/resultados/2026-11-15_posesiones_cortas.md` **no es de `equipo_v8`**: es de `equipo_v3`,
+que tenía 215 posesiones. `equipo_v8` va a 3,79, así que el ritmo baja de 3,79 a 3,53 y no de 3,7 a 3,53. Es
 decir: **el harness y SkillCorner dicen que sube el `spellF1`, y a la vez el recuento de posesiones se aleja de
 las referencias.** No es una contradicción —se gana emparejando mejor las posesiones que quedan, no teniendo
 más— pero es el riesgo que hay que pesar si la GT se parece al flag, donde la regla da −0,002.
@@ -4530,3 +4562,76 @@ reproducción «desde `main` y en otra máquina» en sentido estricto, esto no l
 huella ya había aguantado numpy 2.3.4 ↔ 2.5.4; ahora aguanta también un cambio de versión de Python. No cambia
 lo fijado (`requirements-entrega.txt` sigue mandando para el congelado), pero es una prueba más de que la
 entrega no depende de la máquina.
+
+### El corte de 125 frames no es el único que pasaría, y el examen ya está gastado en él
+
+Lo encontró el agente `revisor` en la tercera pasada, **después** de abrir el examen. Es el punto que el equipo
+tiene que discutir antes de encender nada.
+
+**Por qué 125 y no otro:** porque es el corte que la regla de S5 fijó antes de medir (5 s) y el que midió S9.
+No se eligió comparando cortes: se heredó. Esta rama no lo ha tocado.
+
+**Pero la tabla de sensibilidad de S5 ya estaba en `main`** (`validation/investigacion_1116/salidas/
+2026-11-16_s5_cambio_antes_de_parada.md`) y dice que **el corte de 3 s (75 frames) de la misma variante «a D»
+también pasaría las condiciones 1 y 3**, y en algunos sitios mejor [medido, S5, no reproducido en esta rama]:
+
+| celda | 75 frames (3 s) | 125 frames (5 s), lo medido aquí |
+|---|---|---|
+| control / tapado / como el ATD | +0,008 (7 de 7) | +0,007 (6 de 7) |
+| control / tapado / sin bloques | +0,009 (7 de 7) | +0,009 (6 de 7) |
+| control / a la vista / como el ATD | +0,014 (7 de 7) | +0,018 (7 de 7) |
+| control / a la vista / sin bloques | +0,015 (7 de 7) | +0,019 (7 de 7) |
+| flag / tapado / como el ATD | +0,000 (3 de 7) | **−0,002** (2 de 7) |
+| flag / tapado / sin bloques | +0,001 (3 de 7) | **−0,002** (2 de 7) |
+| flag / a la vista / como el ATD | +0,004 (5 de 7) | +0,004 (5 de 7) |
+| flag / a la vista / sin bloques | +0,004 (5 de 7) | +0,004 (5 de 7) |
+
+Lectura honesta, sin exagerar en ninguna dirección:
+- **75 no pierde nada con el flag** (+0,000 a +0,004), y 125 pierde 0,002 en las dos celdas de «tapado». Como el
+  riesgo de toda esta idea es justo «¿y si la GT se parece al flag?», ahí 75 es más seguro.
+- **75 gana en 7 de 7 en las cuatro celdas de control**, frente a los 6 de 7 de 125 en las de «tapado».
+- **125 gana más con el control y el balón a la vista** (+0,018 / +0,019 frente a +0,014 / +0,015). En las celdas
+  de «tapado», que es el modo que más se parece al ATD según `2026-11-14_perfil_atd.md`, 75 va igual o mejor.
+- **No es una dominación limpia:** depende de qué celda se considere la que manda.
+
+**El problema de proceso, que es mío:** el examen de SkillCorner solo se podía abrir una vez y se abrió con 125,
+sin haber mirado antes esta tabla de sensibilidad, que ya estaba en el repo. **Un candidato a 75 frames no
+puede confirmar su condición 2:** no queda examen. Lo que se puede hacer sin gastar nada es medirlo en la DFL y
+en la mitad de entrenamiento de SkillCorner con `cortas_a_d_dfl.py` y `cortas_a_d_skillcorner.py` (basta cambiar
+`"corte": 75` en el fichero de versiones), pero la confirmación ciega ya no está disponible.
+
+**Qué propongo, y lo decide el equipo:** si se enciende algo, encender lo que pasó la puerta completa, que es
+125. Si Ismael prefiere 75 por su menor riesgo con el flag, hay que decir en el documento técnico que su
+condición 2 se apoya solo en la mitad de entrenamiento.
+
+### Los intervalos de la diferencia (añadidos tras la tercera revisión) [medido]
+
+La regla del 16/11 no pide intervalo —usa el recuento por partido como sustituto—, pero `docs/PLAN_ENTREGA.md`
+§4 sí lo pide para §5.8 y los márgenes aquí son estrechos, así que se midió con `cortas_a_d_dfl.py
+--bootstrap 1000` (pareado sobre las posesiones reales, `puntuar.diferencia_bootstrap`).
+
+| celda | diferencia | intervalo |
+|---|---|---|
+| control / a la vista / como el ATD | +0,0185 | [+0,0154, +0,0216] |
+| control / a la vista / sin bloques | +0,0192 | [+0,0158, +0,0227] |
+| control / tapado / como el ATD | +0,0072 | [+0,0029, +0,0115] |
+| control / tapado / sin bloques | +0,0087 | [+0,0044, +0,0133] |
+| flag / a la vista / como el ATD | +0,0041 | [+0,0014, +0,0068] |
+| flag / a la vista / sin bloques | +0,0042 | [+0,0013, +0,0069] |
+| flag / tapado / como el ATD | −0,0023 | [−0,0057, +0,0008] (incluye el 0) |
+| flag / tapado / sin bloques | −0,0024 | [−0,0060, +0,0012] (incluye el 0) |
+
+**Lo que añaden, y no es menor:**
+- **Las cuatro celdas del control ganan de verdad:** ningún intervalo incluye el 0.
+- **Pero en las dos celdas de «tapado» el intervalo baja por debajo del umbral:** +0,0029 y +0,0044, frente a
+  los +0,005 que pide la condición 1. El valor central pasa; la incertidumbre se solapa con el umbral. Y
+  «tapado» es justo el modo que más se parece al ATD (`2026-11-14_perfil_atd.md`).
+- **La pérdida con el flag no se distingue de cero** en las dos celdas de «tapado», lo cual es bueno para la
+  condición 3; pero el extremo malo del intervalo (−0,0057 y −0,0060) se pasa de los 0,005 que esa condición
+  permite.
+
+**Por la letra de la regla, que se escribió con valores centrales y el recuento por partido como sustituto del
+intervalo, las condiciones 1 y 3 pasan.** Esto no lo cambia: lo matiza, y refuerza el apartado del corte de 75
+frames, que en esas dos celdas de «tapado» da +0,008 / +0,009 con el control y +0,000 / +0,001 con el flag.
+Si Ismael quiere que la regla del 16/11 exija además que el intervalo no cruce el umbral, eso es una decisión
+suya y esta candidata tendría que volver a leerse con ella.

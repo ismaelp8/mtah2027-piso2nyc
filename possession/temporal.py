@@ -343,10 +343,11 @@ def cortas_a_d(codes, allowed, corte):
     equipo (un cambio directo, sin `D` en medio) y cuya racha siguiente es `D`. La primera racha del tramo
     y la última nunca son candidatas: les falta uno de los dos lados.
 
-    Las candidatas se buscan todas sobre `codes` sin tocar y se aplican después, así que convertir una no
-    cambia el vecindario de otra. Con las condiciones de arriba dos candidatas nunca son contiguas ni están
-    a dos rachas (a la segunda le quedaría un `D` por vecino de la izquierda), pero buscarlas antes lo deja
-    fijado y hace la salida independiente del orden.
+    Las rachas se calculan una sola vez, antes de escribir nada, y los vecinos de cada candidata se leen
+    siempre de esa lista: convertir una no cambia el vecindario de otra, aunque se vayan escribiendo dentro
+    del mismo bucle. Con las condiciones de arriba dos candidatas nunca son contiguas ni están a dos rachas
+    (a la segunda le quedaría un `D` por vecino de la izquierda), pero leer los vecinos de la lista deja la
+    salida fijada e independiente del orden.
 
     Una candidata en cuyos frames `D` no esté permitido se queda como está: la evidencia manda sobre la
     regla, como en `prune`. En el partido eso pasa en el frame del saque de cada parte, donde
