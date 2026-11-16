@@ -24,8 +24,7 @@ entrega cambia antes del cierre]
 
 **Qué entregamos.** Un CSV `frame,label` de 199.319 filas que da `H`, `A` o `D` en cada frame de los dos
 tramos evaluados y `X` fuera de ellos. Lo genera un solo comando, solo con numpy, a partir del tracking
-automático (ATD) y del Smart Tagging del partido. [PENDIENTE: si la variante B del balón del vídeo pasa su puerta (§7), el comando añade un
-detector y sus dependencias (§9); si no, borrar esta nota]
+automático (ATD) y del Smart Tagging del partido.
 
 **El método en un párrafo.** Cada pieza da, en cada frame, una puntuación para `H`, `A` y `D`. Las
 puntuaciones se suman y un decodificador de Viterbi elige la secuencia con más puntuación, pagando un coste
@@ -196,8 +195,7 @@ temporada 2024-25.
 ## 5. Datos de entrenamiento
 
 Solo dos piezas están entrenadas, y las dos con el **mismo dataset**. El detector de balón que se probó para la
-línea del vídeo no entra en la entrega (§7). [PENDIENTE: si la variante B pasa, su modelo y su dataset: fuente,
-quién etiquetó, cuánto, licencia y que no tiene imágenes de este partido]
+línea del vídeo no entra en la entrega (§7).
 
 - **Fuente:** Bassek, Rein, Weber y Memmert (2025), *An integrated dataset of spatiotemporal and event data
   in elite soccer*, Scientific Data 12, 195. Licencia CC BY 4.0, con autorización de la DFL.
@@ -352,11 +350,11 @@ En el harness o con agregados del partido, cada uno con su regla escrita antes [
   - en el partido, en una muestra de 10 minutos, el 41 % de sus detecciones cae a más de 5 m del balón del ATD, y la
     regla pedía el 10 % como mucho. Da 2,6 detecciones por frame [medido], y la mayoría no son el balón
     [inferencia]. La línea se paró ahí;
+  - con la confianza mínima a 0,25 en vez de 0,10 (el otro valor medido en datos abiertos), sigue el 36 % lejos
+    [medido]: los falsos positivos tienen tanta confianza como el balón [inferencia]. No se probaron más valores,
+    porque sería elegir el umbral con el partido;
   - aunque hubiera pasado, en la DFL con un balón como el del vídeo, hasta un detector perfecto le daría a B5 del orden
     de +0,01, por debajo del ruido del partido [medido, DFL emulada].
-
-  [PENDIENTE: la variante B, con confianza mínima 0,25 en vez de 0,10 (el otro valor medido en datos abiertos), y su
-  resultado]
 
 ## 8. Limitaciones y qué haríamos con más tiempo
 
@@ -379,7 +377,6 @@ pseudoetiquetas o con seguimiento en el tiempo; §7), y los tiempos de eventos c
 medir mejor dónde cambia la posesión.
 
 **Líneas en marcha que pueden cambiar la entrega antes del cierre:**
-- [PENDIENTE: la variante B del balón del vídeo (§7), solo si pasa su puerta; si no, borrar esta línea]
 - [PENDIENTE: una opción del decodificador que pasa a `D` las posesiones muy cortas]
 - [PENDIENTE: un modelo de equipo pensado para un balón más nítido]
 - [PENDIENTE: una capa de `D` que cierra cada parada en el golpeo del balón visto en el vídeo]
@@ -418,9 +415,7 @@ export MTAH_DATA_DIR=/ruta/al/paquete
 .venv/bin/python evaluation/validate_submission.py evaluation/results/<NOMBRE_EQUIPO>.csv
 ```
 
-[PENDIENTE: cuánto tarda] [PENDIENTE: si entra la variante B del balón del vídeo (§7), el comando único, sus dependencias
-fijadas, la descarga del modelo, el tiempo de la detección en la máquina de referencia, y que la caché de
-detecciones se regenera en local y no se publica]
+[PENDIENTE: cuánto tarda] 
 
 El comando imprime solo agregados: versiones, commit y si hay cambios sin commitear, recuento del ATD,
 posesiones y paradas por tramo, rachas cortas, conflictos y el sha256. Se niega a escribir el CSV si el ATD
