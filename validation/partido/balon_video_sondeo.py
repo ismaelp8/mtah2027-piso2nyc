@@ -108,6 +108,9 @@ UMBRAL_C1 = 70  # % de frames con balón del ATD con una detección a RADIO_ACIE
 UMBRAL_C2 = 10  # % de detecciones a más de RADIO_LEJOS m (o menos)
 UMBRAL_C3 = 10  # toques por minuto (descriptiva desde la corrección del 16/11)
 PERCENTILES = (5, 25, 50, 75, 95)
+# Variante B (bitácora, «Variante B», 16/11, 22:45): la misma 1b con confianza 0,25, el otro umbral que midió la puerta 0.
+# No se admite ningún otro valor.
+CONF_B = 0.25
 
 
 class ErrorSondeo(Exception):
@@ -538,7 +541,7 @@ def medir(fuente_de_frames, trk, matrices, validas, detector, tramos_muestra, ro
         "condicion_5": c5,
     }
     if not variante_fijada:
-        veredictos["global"] = "sin veredicto: no es la variante fijada (roi, 320 px, ×2, confianza 0,10)"
+        veredictos["global"] = "sin veredicto: no es la variante fijada (roi, 320 px, ×2, confianza 0,10 o 0,25)"
     elif decodificados is not None and int(decodificados) != n_total:
         veredictos["global"] = "sin veredicto: el vídeo no decodifica el número de frames esperado"
     elif v1 is None or v2 is None:
@@ -632,7 +635,8 @@ def comprobar_argumentos(args):
         raise ErrorSondeo("x2 (la imagen entera ×2) tarda de 6 a 8 horas con la muestra: solo con --ensayo o --forzar")
     factor = {"nativa": 1.0, "x2": 2.0}.get(args.variante, args.factor if args.factor is not None else det.FACTOR)
     roi = args.variante == "roi"
-    fijada = roi and args.lado == det.LADO and float(factor) == float(det.FACTOR) and float(args.conf) == det.CONF
+    fijada = (roi and args.lado == det.LADO and float(factor) == float(det.FACTOR)
+              and float(args.conf) in (det.CONF, CONF_B))
     return float(factor), roi, fijada
 
 

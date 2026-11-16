@@ -19,6 +19,7 @@ roi; que el progreso no depende del ATD; el mínimo de muestra de `main`; los er
 de la salida es por frame. Si hay cv2, escribe un MP4 diminuto y comprueba el lector secuencial y su recuento.
 """
 
+import argparse
 import contextlib
 import importlib.util
 import io
@@ -232,6 +233,14 @@ def prueba_constantes_y_lectura():
           (bs.UMBRAL_C1, bs.UMBRAL_C2, bs.RADIO_ACIERTO, bs.RADIO_LEJOS, BALL_LEAD) == (70, 10, 3.0, 5.0, 4)
           and bs.DESFASES == tuple(range(-8, 13)))
     check("variante fijada por defecto: 320 px ×2, confianza 0,10", (det.LADO, det.FACTOR, det.CONF) == (320, 2, 0.10))
+
+    def fijada_con(conf, lado=det.LADO):
+        args = argparse.Namespace(factor=None, variante="roi", ensayo=False, tramos=40, largo=375, forzar=False,
+                                  lado=lado, conf=conf)
+        return bs.comprobar_argumentos(args)[2]
+    check("variante B: con confianza 0,25 también es la fijada; con 0,30, 0,50 o 0,20 no; con otro recorte, tampoco",
+          fijada_con(0.10) and fijada_con(0.25) and not any(fijada_con(c) for c in (0.30, 0.50, 0.20))
+          and not fijada_con(0.25, lado=256))
     check("«cumple» con enteros: 6302 de 9003 (69,9989 %) no llega a 70 aunque se imprima 70,0",
           bs.al_menos(6302, 9003, 70) is False and bs._pct(6302, 9003) == 70.0 and bs.al_menos(7, 10, 70) is True
           and bs.como_mucho(1, 10, 10) is True and bs.como_mucho(11, 100, 10) is False)
