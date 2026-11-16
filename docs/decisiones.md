@@ -4550,6 +4550,10 @@ cambios locales en el código de la entrega».
 Es la comprobación que pide el repo cuando una PR toca código que usa la entrega: aunque `decode_cortas_a_d`
 viva ya en el módulo del decodificador, `pipeline.PIECES` sigue con `decode` y no cambia ninguna etiqueta.
 
+La medida se hizo con la rama en `1fcf40f`. Lo único que ha cambiado en `possession/` desde entonces es el
+docstring de `cortas_a_d` (`git diff 1fcf40f..HEAD -- possession/`), que no puede cambiar ninguna etiqueta, así
+que la huella sigue valiendo para el tip de la rama.
+
 ### Añadido: `equipo_v8` reproducida en una segunda máquina [medido]
 
 El mismo sha256 lo sacó **Manuel en su máquina**, que no es la de Ismael: es la segunda máquina que pedía
