@@ -2,10 +2,16 @@
 examen una sola vez.
 
     python validation/scripts/cortas_a_d_skillcorner.py --versiones validation/harness/versiones/cortas_a_d_2026-11-16.json
-    python validation/scripts/cortas_a_d_skillcorner.py --versiones <fichero> --examen
+    python validation/scripts/cortas_a_d_skillcorner.py --versiones <fichero> --examen --confirmo-el-unico-uso
 
 Datos abiertos de otros partidos (A-League 2024/25, licencia MIT; ver `validation/skillcorner/descargar.py`).
-Lo puede ejecutar cualquiera, Claude incluido. Solo imprime agregados.
+Solo imprime agregados. **La mitad de entrenamiento la puede ejecutar cualquiera, Claude incluido. La de
+examen la ejecuta una persona,** porque gasta el único uso permitido: hace falta `--examen` y, además,
+`--confirmo-el-unico-uso`.
+
+El `D` es siempre el propio, como en S9. **Nunca con el `D` oráculo:** en ese modo la puerta `allowed[.., D]`
+de `cortas_a_d` dejaría pasar solo candidatas que ya son `D` de verdad y la regla saldría correcta por
+construcción (ver `validation/scripts/cortas_a_d_dfl.py`).
 
 Por qué hace falta este script: `validation/skillcorner/medir.py` no acepta `--versiones` (sus versiones están
 fijas en el código) y por defecto usa los 20 partidos, **examen incluido**. Aquí la mitad de examen solo se lee
@@ -41,18 +47,31 @@ def main():
     parser.add_argument("--versiones", default=VERSIONES, help="fichero de versiones del harness")
     parser.add_argument("--examen", action="store_true",
                         help="abre la mitad de examen (lector.EXAMEN). Solo con el permiso de Ismael y UNA vez")
+    parser.add_argument("--confirmo-el-unico-uso", action="store_true", dest="confirmado",
+                        help="hace falta junto con --examen: confirma que este es el único uso del examen")
     args = parser.parse_args()
 
     versiones, contenido, huella = puntuar.leer_versiones(args.versiones)
     nombres = [n for n in contenido if versiones[n]["tipo"] != "control"]
-    if len(nombres) < 2:
-        print("hacen falta al menos dos versiones en el fichero (main y la variante)")
+    base_nombre = puntuar.version_de_main(
+        collections.OrderedDict((n, versiones[n]) for n in nombres))
+    if base_nombre is None:
+        print("el fichero de versiones no trae la versión de `main` (una sin `params` ni `piezas`)")
         return 1
-    base_nombre = nombres[0]
+    if len([n for n in nombres if n != base_nombre]) < 1:
+        print("el fichero de versiones no trae ninguna variante además de `main`")
+        return 1
+    nombres = [base_nombre] + [n for n in nombres if n != base_nombre]
 
     mitad = "EXAMEN" if args.examen else "ENTRENAMIENTO"
     ids = list(lc.EXAMEN if args.examen else lc.ENTRENAMIENTO)
     if args.examen:
+        if not args.confirmado:
+            print("El examen de SkillCorner (lector.EXAMEN) se abre UNA sola vez, con el permiso de Ismael")
+            print("(16/11). Si de verdad vas a gastar ese uso, repite el comando añadiendo:")
+            print("    --confirmo-el-unico-uso")
+            print("y apunta el uso en docs/decisiones.md.")
+            return 1
         print("### ATENCION: se esta abriendo la mitad de EXAMEN de SkillCorner.")
         print("Es el unico uso permitido (permiso de Ismael, 16/11). Apuntalo en docs/decisiones.md.\n")
     else:

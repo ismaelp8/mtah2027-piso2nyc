@@ -40,9 +40,9 @@ MIN_LIVE = 12
 MIN_DEAD = 25
 PRUNE = 12
 
-# Corte de `decode_cortas_a_d`, en frames. 125 frames son 5 s a 25 fps, la frecuencia del partido, de la DFL
-# y de SkillCorner (que se interpola de 10 a 25). Es una duración, no un frame concreto de este partido.
-# Escrito antes de medir, en la regla de S5 (`validation/investigacion_1116/BITACORA.md`).
+# Corte de `decode_cortas_a_d`, en frames. Sin ajustar: escrito antes de medir, en la regla de S5
+# (`validation/investigacion_1116/BITACORA.md`). 125 frames son 5 s a 25 fps, la frecuencia del partido, de la
+# DFL y de SkillCorner (que se interpola de 10 a 25). Es una duración, no un frame concreto de este partido.
 CORTE_CORTAS = 125
 
 NEG = float("-inf")

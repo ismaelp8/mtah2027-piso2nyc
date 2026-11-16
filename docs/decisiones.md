@@ -4321,9 +4321,9 @@ de sus frames, como hace `prune`. S9 no mira `allowed`. En el partido eso import
 parte, donde `dead_ball.evidence` prohíbe `D` (PR 16). **Hay que comprobar que no cambia las cifras de la DFL ni
 de SkillCorner;** si las cambia, la reproducción de S9 no vale y se para a explicarlo antes de seguir.
 
-**Comprobado sin datos del partido** [medido]: 753 casos de la prueba en verde; `leer_versiones` del harness
-valida la versión y la ejecuta sobre su partido inventado; las pruebas de David
-(`prueba_decodificador.py`) y `prueba_pipeline.py` siguen en verde. **Sabotajes** (en memoria, fuera del repo):
+**Comprobado sin datos del partido** [medido]: 759 casos en verde de `prueba_cortas_a_d.py` y 20 de
+`prueba_cortas_en_contraataques.py`; `leer_versiones` del harness valida la versión y la ejecuta sobre su
+partido inventado; las pruebas de David (`prueba_decodificador.py`) y `prueba_pipeline.py` siguen en verde. **Sabotajes** (en memoria, fuera del repo):
 17 roturas, una a una (el corte estricto, el límite de largo, que acabe en `D`, el cambio directo, el equipo de
 antes, la primera y la última racha del tramo, `allowed`, pasar al equipo de antes, no copiar, encadenar las
 candidatas, los tramos sin volverse tupla, la validación del corte, los `params`, el corte por defecto y el
@@ -4342,9 +4342,33 @@ valor del corte no se ejercitaba; de ahí la prueba con evidencia forzada.
 | DFL control | tapado | +0,007 | +0,009 |
 | SkillCorner entrenamiento | – | +0,010 (10 de 10) | +0,009 (10 de 10) |
 
-Sobre el papel pasa las tres condiciones medibles en abierto: con el control da +0,005 o más en las cuatro
-celdas (26 de 28 partidos, según S9) y con el flag no pierde más de 0,005 en ninguna. **Si al reproducirlas no
-salen las mismas cifras, se para y se averigua por qué antes de seguir.**
+En la DFL las dos columnas son las dos condiciones que votan, «como el ATD» y «como el ATD, sin bloques». **En
+la fila de SkillCorner son sus dos condiciones, «detectado» y «detectado, suavizado»** (`lector.VOTAN`), no las
+de la DFL: se reproducen con el script de SkillCorner, no con el de la DFL.
+
+Sobre el papel **no contradice** ninguna de las tres condiciones medibles en abierto: con el control da +0,005
+o más en las cuatro celdas y con el flag no pierde más de 0,005 en ninguna. **Pero no se puede decir todavía
+que pase la condición 1,** que pide ganar en 6 de 7 partidos *en cada celda*: S9 solo publica el recuento por
+partido en dos de las cuatro celdas de control (las de «a la vista», 7 de 7), y su «26 de 28» es un agregado
+que no excluye que una celda se quede en 5 de 7. El recuento por celda queda **por comprobar** al reproducirlo.
+**Si al reproducirlas no salen las mismas cifras, se para y se averigua por qué antes de seguir.**
+
+**Las medidas se hacen siempre con el `D` propio, nunca con el oráculo.** Con el `D` oráculo,
+`puntuar.d_oraculo` prohíbe `D` donde las etiquetas tienen juego y `pipeline.combine` cruza los `allowed`, así
+que la puerta `allowed[start:stop, D].all()` de `cortas_a_d` solo dejaría pasar las candidatas que ya son `D`
+de verdad: la regla saldría correcta por construcción y el número vendría del oráculo, no de la señal. El
+harness usa el oráculo **por defecto**, así que se mide con `validation/scripts/cortas_a_d_dfl.py` (que no
+admite oráculo y da los dos modos del balón) y con `cortas_a_d_skillcorner.py`. Lo encontró el agente `revisor`
+antes de medir nada.
+
+**Con qué se mide** (los dos los puede ejecutar Claude; el examen, no):
+- **DFL, las ocho celdas:** `validation/scripts/cortas_a_d_dfl.py`. Hacía falta un script propio porque
+  `validation/harness/puntuar.py --d propio` solo da el modo «tapado» y las condiciones 1 y 3 piden también «a
+  la vista», que vive en `validation/apuesta_b/d_propio.py`; y porque `paquete_control.py` mide su propia copia
+  de la lógica, no `temporal.decode_cortas_a_d`.
+- **SkillCorner:** `validation/scripts/cortas_a_d_skillcorner.py`, que por defecto usa solo la mitad de
+  entrenamiento. `validation/skillcorner/medir.py` no servía: no acepta `--versiones` y por defecto usa los 20
+  partidos, **examen incluido**.
 
 **Umbral del examen de SkillCorner, escrito antes de abrirlo:** entra si en `lector.EXAMEN` (los 10 partidos
 que nadie ha tocado) gana a `main` por **+0,005 o más** y gana en **7 de 10** partidos, en las dos condiciones
