@@ -1,5 +1,9 @@
 # Esta noche (16/11): el ensayo de la entrega y el balón del vídeo
 
+> **Cerrada (16/11, 22:10): la puerta 1b dio «NO SIGUE» y la línea se para.** No se ejecuta nada más de esta
+> guía: ni la detección del partido entero (paso 9) ni la entrega de prueba (paso 10) ni la segunda máquina (paso 11 b).
+> El resultado está en [`BITACORA.md`](BITACORA.md), «Resultados». La entrega vigente es `equipo_v9`.
+
 Es la guía para ejecutar todo en orden en un Windows con los datos del partido. Cada paso dice qué ejecutar en
 PowerShell (tal cual), qué mirar y qué pegarle a Claude.
 - Claude no ve nada del partido: solo lo que le pegues (regla nº 1 de `CLAUDE.md`).

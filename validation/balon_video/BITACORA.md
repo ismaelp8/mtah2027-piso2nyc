@@ -396,6 +396,39 @@ La detección real se apunta aquí cuando se mida:
 
 ## Resultados
 
+### Puerta 1b: «NO SIGUE». La línea se para (16/11, 22:10; lo ejecutó Ismael en su Windows, CPU) [medido, agregados del partido]
+
+**Veredicto, con la regla tal como estaba escrita:** `"global": "NO SIGUE"`. Falla la condición 2. **La línea del
+balón del vídeo se para:** no se lanza la detección del partido entero, no se lee ninguna puerta 2.x y la capa
+`balon_video.ajuste_b5_video` se queda apagada. La entrega sigue siendo la vigente, `equipo_v9`.
+
+- **Cómo:** `balon_video_sondeo.py` con la variante fijada (recorte de 320 px ampliado ×2, confianza 0,10), con
+  `exp/balon-video` y el entorno del detector (Python 3.13.9, numpy 2.5.4, torch 2.15.0+cpu, opencv 5.0.0, ultralytics
+  8.4.215, 4 hilos, FFMPEG). Modelo `fb37942448e7`, revisión `63666b30e2a4`. El vídeo decodifica sus 199.319 frames.
+- **Muestra:** 40 tramos de 375 frames (15.000), con 7.010 frames con balón del ATD en t+4 dentro del campo y 179
+  fuera.
+- **Condición 1, cumple:** el 78,94 % de esos frames tiene una detección a 3 m o menos del balón del ATD (umbral: 70 %).
+- **Condición 2, NO cumple:** el 40,68 % de las detecciones está a más de 5 m del balón del ATD (7.650 de 18.805;
+  umbral: 10 %). Solo con las que caen dentro del campo, 39,66 % (sin voto).
+  - El detector da 2,64 detecciones por frame de media: el 74,4 % de los frames tiene 2 o más y el 1,75 %, ninguna.
+- **Condición 5, cumple:** la celda es p = 0,7, σ = 0,03 y L = 12 (temblor del detector 0,050 m; racha media de fallos
+  6,18 frames), y está «sin decidir».
+- **Descriptivo:**
+  - toques por minuto: 45,9 con el balón del detector y 2,1 con el del ATD; ruido, 17,2 y 2,6;
+  - la detección elegida (la más cercana a 5 m o menos) está a más de 3 m del balón del ATD en el 18,8 % de los
+    frames;
+  - alineación: el desfase con menor mediana de distancia es 0 frames (por parte, −1 y 0), no los 4 que se esperaban;
+  - tiempo: 1,09 ms por frame decodificado y 43,4 ms por detección; 2,46 h estimadas para el partido entero (techo
+    del ensayo: 3,12 h).
+
+**Lectura** [inferencia]: el detector encuentra el balón cerca de donde lo pone el ATD en casi 4 de cada 5 frames, pero
+dentro del recorte ve además muchas otras cosas redondas, y la condición 2 se escribió para pararlo justo en ese caso.
+No se cambia después de ver el resultado. Reabrir la línea sería una decisión nueva, con su propia regla escrita antes
+de medir, y no llegaría al corte.
+
+**Lo que queda de la línea:** el código, las pruebas y esta bitácora siguen en `exp/balon-video`, para el documento
+técnico (lo que se probó y por qué se descartó). No entran en `main`.
+
 ### Puerta 1a y reproducción de `equipo_v8` (16/11, tarde; lo ejecutó Antonio en su Mac M1, macOS, CPU) [medido, agregados del partido]
 
 - **`equipo_v8` reproducida en otra máquina:**
