@@ -1,0 +1,13 @@
+{
+  "main": {
+    "nota": "la entrega: B5 (aprendida.evidence_b5), dead_state y decode_cortas_a_d; el harness deja fuera el partido que puntúa"
+  },
+  "B11: convolucional temporal": {
+    "nota": "docs/decisiones.md, 17/11, «B11 y B12, modelos de secuencia»: canales por frame sin promediar, 7 bloques residuales dilatados (±5,1 s), puntuada como B5",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b11", "dejar_fuera": true}}
+  },
+  "B12: GRU bidireccional": {
+    "nota": "docs/decisiones.md, 17/11, «B11 y B12, modelos de secuencia»: los mismos canales a 5 Hz, GRU de 16 en cada sentido, puntuada como B5",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b12", "dejar_fuera": true}}
+  }
+}

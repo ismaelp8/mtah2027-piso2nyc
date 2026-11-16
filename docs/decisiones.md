@@ -5337,3 +5337,119 @@ falsos, así que añaden posesiones que no existen. Va en la línea de la primer
 no el mecanismo.
 
 Descartado: probar otros umbrales o combinaciones en SkillCorner (sería elegir mirando).
+
+### 2026-11-17 · candidatos · B11 y B12, modelos de secuencia para la evidencia de equipo (candidatos y regla, antes de medir)
+
+Quién: lo pidió Ismael el 16/11 por la noche («deberiamos probar modelos mas potentes [...] Vamos a intentar lo que
+sea»), a través de la sesión planificadora. Lo escribe Claude en la rama `claude/serene-lumiere-16245d` antes de
+entrenar ni medir nada. Lo único que se ha ejecutado antes es una prueba de velocidad con datos inventados, para fijar
+los pasos de entrenamiento.
+
+Qué se prueba: si un modelo que mira la secuencia, con una ventana hacia atrás y otra hacia delante (etiquetamos en
+diferido), encuentra los cambios de posesión que B5 no ve. B5 es una regresión logística por frame.
+
+No repite lo cerrado. La red de una capa (fase 3, 15/11) y B6–B9 miraban los rasgos de un frame, ya promediados en
+ventanas fijas. Aquí el modelo recibe los canales de cada frame sin promediar y aprende sus propios filtros en el
+tiempo. B5 no se toca.
+
+**Lo común a los dos candidatos:**
+- **Canales por frame** (`possession/secuencia.py`, `canales`), calculados por tramo evaluado y a cero fuera:
+  - **9 impares** (local menos visitante; cambian de signo si se cambian los equipos):
+    - los 5 de proximidad al balón de B1 en ventana 1: el signo del más cercano, los núcleos de 1, 2,5 y 6 m y la
+      distancia del más cercano con tope;
+    - el juego en la dirección de ataque;
+    - el balón en la dirección de ataque, en ventana 1;
+    - la velocidad de los jugadores en la dirección de ataque y la diferencia de dispersión, las dos sin promediar (las
+      series de `aprendida._rasgos_forma` antes de sus medias).
+  - **3 pares** (no cambian si se cambian los equipos):
+    - balón visible (0 o 1);
+    - la distancia al jugador más cercano de cualquiera de los dos equipos, con tope de 15 m (15 sin balón);
+    - la velocidad del balón en m/s, por diferencia centrada de ±1 frame, con tope de 40 (0 sin balón).
+  - Cada canal se divide por su raíz cuadrática media en los frames de entrenamiento del pliegue, que se guarda con
+    los pesos.
+- **Antisimetría exacta:** z = ½·(g(impares, pares) − g(−impares, pares)). Si se cambian los equipos, z cambia de
+  signo. Los canales pares solo los puede usar así; una lineal impar como B5, no.
+- **Puntuación, como B5:** el modelo solo da el logit z, y se puntúa con `aprendida.puntuacion_de("b5", z, visible, α,
+  cercano)`: −α·|z| al equipo que pierde y el +1 de N1 donde se ve el balón. Frente al `D`, empuja como B5.
+- **Etiquetas y pérdida, como B5:**
+  - solo cuentan los frames vivos en los que el flag y control coinciden (`H` = 1, `A` = 0);
+  - entropía cruzada sobre el logit;
+  - el resto de frames entra como contexto, pero no en la pérdida;
+  - así ningún candidato es una apuesta de convención.
+- **Datos: solo la DFL.** Cada partido entra con el balón de las dos condiciones que votan (`dfl.tracking_de`: «como el
+  ATD» y «como el ATD, sin bloques»), como dos ejemplos.
+  - SkillCorner no se usa para entrenar. Así su mitad de entrenamiento queda fuera de muestra para el modelo de los 7.
+- **Pliegues:** 8 por candidato, uno sin cada partido de la DFL (el harness, con `dejar_fuera`) y el de los 7 (la
+  entrega y SkillCorner).
+- **Entrenamiento:**
+  - torch 2.15 en CPU (`mtah2027-balon`), float32 y un hilo;
+  - semilla 20261117 más el índice del pliegue;
+  - AdamW con decaimiento 1e-4 y un número de pasos fijo;
+  - sin parada temprana ni validación: nada se elige mirando el partido que queda fuera.
+- **α** se elige de (1/16, 1/8, 1/4, 1/2, 1, 2, 4, 8) como la de B5 (`entrenar.elegir_alfa_d_propio`):
+  - la que da más `spellF1` medio con las dos convenciones y las dos condiciones que votan, en los 6 partidos de
+    entrenamiento del pliegue;
+  - con la pieza de `D` de `main` dentro, sin oráculo, y con el decodificador de `main` (`decode_cortas_a_d`, coste
+    25);
+  - si empatan, la más pequeña.
+  - Es dentro de muestra, como en B5. Una red puede dar logits más afilados en los partidos que vio, así que se enseña,
+    como descripción, el acierto por frame dentro y fuera del pliegue.
+- **La predicción de la entrega:**
+  - va en numpy puro, en float64 y sin BLAS: sumas canal a canal en orden fijo, como `aprendida.logit`;
+  - los pesos van en `possession/secuencia_pesos.npz`;
+  - los envoltorios son `aprendida.evidence_b11` y `aprendida.evidence_b12`, como B6–B9, y quedan apagados;
+  - se comprueba que da lo mismo que torch (con tolerancia, porque torch va en float32) y que la fila `{}` del harness
+    no cambia. La prueba sin datos va en `validation/scripts/prueba_secuencia.py`.
+
+**B11, convolucional temporal:**
+- entrada 1×1 de 12 a 24 canales;
+- 7 bloques residuales `h + conv(ReLU(h))`, con núcleo 3 y dilaciones 1, 2, 4, …, 64;
+- ReLU y salida 1×1;
+- unos 12.600 pesos;
+- ve ±127 frames (±5,1 s), con ceros fuera del tramo;
+- se entrena con trozos de 1.536 frames, 16 por paso, sorteados con semilla fija. Los 128 frames de cada borde del
+  trozo no cuentan en la pérdida;
+- 1.500 pasos, con tasa 1e-3.
+
+**B12, GRU bidireccional:**
+- los canales, en medias de 5 frames (5 Hz, por tramo);
+- una GRU de 16 en cada sentido y una salida lineal de 32 a 1;
+- z vuelve a 25 Hz por interpolación lineal entre los centros de los grupos;
+- unos 2.900 pesos;
+- se entrena con las partes enteras, que es lo que verá en la predicción: 24 secuencias por pliegue, todas en cada paso;
+- 250 pasos, con tasa 3e-3;
+- **si a las 04:00 del 17/11 no ha terminado de entrenar, se cierra sin medir.**
+
+**Regla de entrada.** Es la del «límite de daño» del 16/11, tal cual, frente a `main` (`{}`), para cada candidato:
+1. **DFL con control:** +0,005 o más en las dos condiciones del balón que votan, ganando en 6 de 7 partidos en cada
+   una, con el `D` de las etiquetas y con el `D` propio.
+2. **SkillCorner** (solo si pasan 1 y 3):
+   - **mitad de entrenamiento** (`lector.ENTRENAMIENTO`, con el modelo de los 7): +0,005 o más con los 10 partidos
+     juntos y ganando en 7 de 10, en las cuatro celdas («detectado» y «detectado, suavizado», con el `D` de las
+     etiquetas y con el propio), como el detector de cambios del 16/11. El intervalo se enseña, pero no decide;
+   - **solo entonces** se avisa a la planificadora antes de abrir el examen (`lector.EXAMEN`). Se abre una vez, para
+     un solo candidato, con el mismo umbral: +0,005 o más y 7 de 10, en las cuatro celdas.
+3. **DFL con el flag:** no pierde más de 0,005 en ninguna celda (condición que vota × modo del `D`). Si además gana con
+   el flag, se dice: es lo que más convence.
+4. **Entrega de prueba** frente a `equipo_v9`, con los criterios de daño escritos antes de generarla.
+
+- **Un único candidato llega al examen.** Si pasan los dos, el que más gana con control en la DFL (media de las cuatro
+  celdas); si empatan, B11.
+- **Si ninguno pasa en abierto, se cierra y se apunta,** sin probar más variantes.
+
+Cómo se mide:
+- **DFL:** `validation/harness/puntuar.py --versiones validation/harness/versiones/b11_secuencia_2026-11-17.json`, con
+  `--d oraculo` y con `--d propio`, y bootstrap de 1.000.
+- **SkillCorner:** `validation/secuencia/skillcorner.py`. `main` es la entrega de hoy: B5, `dead_state` y
+  `decode_cortas_a_d`.
+- Siempre se enseñan las posesiones predichas frente a las reales.
+
+Avisado antes de medir:
+- **Los precedentes:** la red de una capa y el detector de cambios encontraron más posesiones, ganaron con el flag,
+  empataron con control y perdieron o empataron en SkillCorner. Si sale el mismo patrón, la regla lo cierra.
+- **Circularidad:** las etiquetas de control salen de una regla de proximidad, y los canales son de proximidad. El
+  número con control puede salir inflado; por eso deciden también el flag (como límite) y SkillCorner.
+- **α dentro de muestra:** si la red se sobreajusta, α sale demasiado grande para el partido que no vio. Eso juega en
+  contra del candidato, no a favor.
+
+Estado: escrita antes de entrenar ni medir. El resultado va en la entrada siguiente.
