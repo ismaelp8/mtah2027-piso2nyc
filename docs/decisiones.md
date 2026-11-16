@@ -4477,4 +4477,43 @@ gana γ = 8 (20 combinaciones con algún efecto). Por qué: con el detector perf
 seguía subiendo en γ = 4, el borde de la rejilla. El techo es descriptivo y elige mirando el resultado; el candidato
 sigue siendo uno, elegido dejando un partido fuera.
 
-Estado: en marcha. `pipeline.PIECES` y la entrega no cambian.
+Estado: medido el 16/11 (entrada siguiente). `pipeline.PIECES` y la entrega no cambian.
+
+### 2026-11-16 · temporal · detector de cambios de posesión: el techo es alto, pero ningún candidato pasa la regla
+
+Quién: David (16/11), con Claude. Salidas: `validation/cambios/salidas/2026-11-16_techo.md` y `2026-11-16_medir.md`.
+
+Cómo se midió: los 7 partidos de la DFL, balón «como el ATD» y «sin bloques», `D` de las etiquetas y propio, con
+`validation/cambios/techo.py` y `medir.py` (código en `1c69918`). `main` repite el harness (0,498 / 0,728 y 0,416 /
+0,616). La emulación del vídeo va en la celda provisional (p = 0,8, σ = 0,06 m, L = 12).
+
+Resultado [medido]:
+- **El techo (detector perfecto, descriptivo, mejor combinación mirando el resultado):** con el `D` de las etiquetas y
+  «como el ATD», de 0,728 a 0,824 con control (+0,096), de 0,498 a 0,716 con el flag (+0,218) y, con los cambios de
+  control puntuados con el flag, a 0,584 (+0,085); 7 de 7 en todo. Con el `D` propio, +0,091 con control. La rebaja del
+  coste sola da +0,007; la capa sola, +0,084. La mejor combinación es el borde de la rejilla (γ = 8, W = 50).
+- **El detector por sí solo** (umbral 0,5): el aprendido ve el 55–63 % de los cambios de control con el balón de
+  respaldo y el 62–71 % con el del vídeo, pero da de 10 a 16 avisos por minuto vivo y solo el 23–25 % es bueno. Las
+  reglas con el balón del vídeo ven lo mismo (61–71 %) con 4,6–5,2 avisos por minuto y el 36–37 % bueno; con el de
+  respaldo, el 31–35 %.
+- **Los cuatro candidatos, con la regla** (diferencia con `main`; control / flag, «como el ATD»):
+
+  | candidato | `D` de las etiquetas | `D` propio | punto 1 | punto 3 |
+  |---|---|---|---|---|
+  | aprendido, respaldo | −0,007 / +0,004 | −0,014 / −0,002 | no pasa | pasa |
+  | aprendido, vídeo | +0,003 / +0,017 | −0,011 / +0,004 | no pasa | pasa |
+  | reglas, respaldo | −0,000 / +0,006 | −0,001 / +0,005 | no pasa | pasa |
+  | reglas, vídeo | +0,003 / +0,024 | +0,006 / +0,023 | no pasa | pasa |
+
+  El que más se acerca es el de reglas con el balón del vídeo: gana con el flag en 6 o 7 partidos de 7 (+0,023 a
+  +0,027) y con control queda en +0,003 a +0,007 en 5 de 7 (se pedían 6).
+
+Decisión y por qué: **ninguno entra.** No se abre SkillCorner ni se escribe la predicción en numpy. El código queda
+apagado (`decode_cambios`, `cambios.capa`, `pipeline.run(cambios=None)`).
+
+Lectura [inferencia]: el mecanismo vale (el techo) y lo que falla es la precisión del detector: tres de cada cuatro
+avisos del aprendido son falsos, y cada uno empuja una posesión que no existe. Con el `D` propio el aprendido pierde
+más, porque la capa empuja a un equipo también frente a `D`. El balón del vídeo sí trae información: dobla los cambios
+que ven las reglas.
+
+Descartado: elegir una combinación de la tabla descriptiva (varias ganan en alguna celda): sería elegir mirando.
