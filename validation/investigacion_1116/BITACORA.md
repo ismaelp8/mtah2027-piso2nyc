@@ -527,6 +527,16 @@ inventado: `validation/scripts/prueba_cambios_entre_fases.py`.
 - La entrega es la vigente cuando Ismael lo ejecute (`equipo_v5` o `equipo_v8`). El script imprime su sha256.
 - Las celdas de 1 a 4 casos salen como «< 5».
 
+**Resultado (16/11; lo ejecutó Ismael con `equipo_v8`, sha256 `d78c514d…ce2b2`)** [medido, agregados del partido]:
+
+- 168 fases de ataque con equipo; 75 cambios de equipo entre fases seguidas. Se apartan 20 por ser contraataques (ya en
+  la capa), 23 por un reinicio y 16 por un hueco del balón. **Cuentan 16.**
+- En 10 de los 16 (62,5 %) la entrega ya iba con el equipo de la fase; «era el otro equipo» en menos de 5 (18,8 %), frente
+  al 25,3 % del placebo.
+- **Con la regla: no sigue** (menos de 30 cambios). Tampoco habría seguido con más: la entrega casi nunca llega tarde ahí.
+- **Lectura [inferencia]:** fuera de los contraataques, cuando el Smart Tagging cambia de equipo entre fases ya lo hemos
+  visto. La idea 1.1 se cierra y no se programa ninguna capa.
+
 **Si sigue, la capa** (antes de generar nada): una función nueva en `possession/transiciones.py`, al lado de
 `evidence_equipo`, con el mismo peso (8) y el mismo tope (5 s), solo a la columna del equipo, apagada, con su prueba
 con datos inventados. La entrega de prueba se lee con los cuatro criterios de los contraataques
@@ -618,3 +628,83 @@ comparación por separado en los frames con balón con un equipo de más de 11 s
   propone es quitar los slots sobrantes (un candidato nuevo), no estandarizar.
 - Si sale fuera también en el resto, se propone estandarizar, como dice P2.
 - En los dos casos se avisa a la sesión principal antes de escribir nada.
+
+### P2. Resultado (16/11; `rasgos_b5.py` lo ejecutó Ismael, con el código de `18f6ff3`) [medido, agregados del partido]
+
+Medianas del valor absoluto, en los frames con balón; entre paréntesis, el rango de los 17 abiertos:
+
+| rasgo (de los diez de más peso) | partido, todos | con un equipo de más de 11 slots (12,8 %) | el resto (87,2 %) |
+|---|---|---|---|
+| velocidad en la dirección de ataque, ventana 25 (1,716–2,512) | 1,722 | **1,478 fuera** | 1,761 |
+| dispersión, ventana 51 (3,703–5,658) | 5,532 | **5,705 fuera** | 5,504 |
+| núcleo de 1 m, ventana 13 (0,176–0,298) | **0,167 fuera** | **0,120 fuera** | **0,176 fuera**, en el borde |
+| los otros siete | dentro | dentro | dentro |
+
+- Fuera de los diez, también salen bajos el núcleo de 1 m de ventana 1 (0,132 frente a 0,166–0,305) y la velocidad de
+  ventana 101 (1,570 frente a 1,599–2,297). El p90 de la dispersión es 12,38, frente a 10,53 como mucho en los abiertos.
+- El signo de B5 coincide con el del más cercano en el 75,6 % de los frames con balón; en los abiertos, del 76,1 al
+  85,1 % (descriptivo).
+
+**Con la regla de P2: «desplazado»,** por el núcleo de 1 m de ventana 13. **Con P2b:**
+
+- **La velocidad del equipo y la dispersión se salen solo en los frames con más de 11 slots** → el arreglo que se
+  propone es quitar los slots sobrantes.
+- **El núcleo de 1 m se sale en los dos grupos,** pero en el resto queda justo en el borde (0,176) y donde de verdad cae
+  es con más de 11 slots (0,120) → estandarizarlo daría poco; lo que pesa es lo mismo, los slots de más [inferencia].
+
+**¿Lo explica el retraso del balón?** No [medido en la DFL; `salidas/2026-11-16_p2_nucleo_y_retraso.md`]. Con el balón
+4 frames tarde, el núcleo de 1 m de ventana 13 **sube** en los 7 partidos (media de 0,207 a 0,248), y el del partido
+está por debajo. Queda sin explicar en los frames sin slots de más; puede ser el ruido de posición del ATD a esa escala
+[sin verificar].
+
+**Siguiente paso: un candidato, que hay que proponer antes a la sesión principal** (no se escribe nada aún):
+1. un agregado del partido que describa los slots de más (dentro o fuera del campo, cerca de una banda, velocidad,
+   cuánto duran, de qué equipo), con su regla;
+2. una degradación de la DFL que los imite, para medir cuánto pierde B5 con ellos;
+3. el arreglo (quitar los sobrantes con una regla fija) medido con esa degradación en el harness, con §5.8.
+
+La sesión principal dio el sí el 16/11, con cuatro condiciones: el paso 1 va en el mismo encargo que P1; el arreglo es
+lo más simple que explique lo que se vea, con una regla fija; se mide también el balón muerto (la pieza de estado usa la
+velocidad y la dispersión de los jugadores); y la degradación se calibra con el agregado del partido entero, nunca con la
+ventana pública.
+
+## P3. Cómo son los slots sobrantes (paso 1 del candidato; regla, antes de ejecutar)
+
+**Script:** `validation/partido/slots_sobrantes.py --entrega <la entrega vigente>` (lo ejecuta Ismael). Prueba con un
+partido inventado: `validation/scripts/prueba_slots_sobrantes.py`.
+
+**Qué es un frame «con sobrantes»:** un frame evaluado en que un equipo tiene más de 11 slots a la vez. **El sobrante**
+es el slot de ese equipo que lleva menos tiempo visto sin cortarse (el más nuevo): el tracker abre un tracklet nuevo
+para lo que acaba de detectar. Si sobran dos o más, se describe solo el más nuevo.
+
+**Qué imprime, solo agregados del partido entero:**
+
+- **Cuántos y cuánto duran:** frames con sobrantes por equipo; cuántos slots tiene el equipo (12, 13, 14 o más); las rachas
+  seguidas de frames con sobrantes por duración (menos de 1 s, de 1 a 5 s, de 5 a 30 s, 30 s o más).
+- **El sobrante, en los frames con sobrantes:** dónde está respecto a las líneas (más de 3 m fuera, de 1 a 3 m fuera, a
+  menos de 1 m de la línea por fuera, a menos de 2 m por dentro, más adentro); su velocidad en 2 s (menos de 0,5 m/s, de
+  0,5 a 2, más de 2, sin dato); la distancia al compañero más cercano (menos de 0,5 m, de 0,5 a 1, de 1 a 3, más de 3); la
+  distancia al jugador más cercano de cualquier equipo (más de 15 m es «lejos de todos»); la distancia al balón (menos
+  de 3 m, de 3 a 10, de 10 a 30, más de 30, sin balón); y cuánto lleva visto (las mismas cuatro duraciones).
+- **Sin elegir quién sobra,** como comprobación: en qué parte de los frames con sobrantes tiene el equipo algún slot a más
+  de 1 m fuera de las líneas, o una pareja de slots a menos de 0,5 m, frente a los frames en que ese equipo tiene de 9 a 11.
+- **El balón muerto:** en qué parte de los frames con sobrantes dice `D` la entrega, frente a todos los frames evaluados.
+
+**Qué arreglo se escribe, decidido antes de ver nada** (el primero que se cumpla):
+
+1. **«Fuera del campo»,** si el sobrante está a más de 1 m fuera de las líneas en el 50 % o más de los frames con
+   sobrantes. El arreglo: cuando un equipo tiene más de 11 slots, se quitan sus slots a más de 2 m fuera de las líneas,
+   empezando por el más alejado, hasta dejarlo en 11. Los 2 m dejan vivo al que saca de banda, que está justo detrás de la
+   línea.
+2. **«Duplicado»,** si el sobrante está a menos de 0,5 m de un compañero en el 50 % o más. El arreglo: cuando un equipo
+   tiene más de 11 slots, de cada pareja a menos de 0,5 m se quita el más nuevo, hasta dejarlo en 11.
+3. **«El más nuevo»,** si no se cumple ninguna. El arreglo: cuando un equipo tiene más de 11 slots, se quitan sus slots más
+   nuevos hasta dejarlo en 11.
+
+En los tres, solo se quitan slots de los frames con sobrantes y solo los que sobran: un frame con 11 o menos no cambia. La
+elección se apunta aquí, en un commit, antes del paso 2.
+
+**Cómo sigue** (pasos 2 y 3, con su regla escrita después de ver la descripción y antes de medir): una degradación de la
+DFL que añade slots como los del partido (la misma proporción de frames, las mismas duraciones, el mismo sitio y la
+misma velocidad), cuánto pierde `main` con ella, y el arreglo frente a `main` con §5.8, con las dos convenciones y con
+`validation/apuesta_b/d_propio.py`. La degradación se calibra solo con este agregado, nunca con la ventana pública.
