@@ -417,14 +417,32 @@ balón del vídeo se para:** no se lanza la detección del partido entero, no se
   - toques por minuto: 45,9 con el balón del detector y 2,1 con el del ATD; ruido, 17,2 y 2,6;
   - la detección elegida (la más cercana a 5 m o menos) está a más de 3 m del balón del ATD en el 18,8 % de los
     frames;
-  - alineación: el desfase con menor mediana de distancia es 0 frames (por parte, −1 y 0), no los 4 que se esperaban;
+  - alineación: el desfase con menor mediana de distancia es 0 frames (por parte, −1 y 0), no los 4 que se esperaban.
+    Solo descriptivo: con tantos falsos positivos no dice gran cosa del retraso del balón del ATD, y
+    `ball.advance_ball` está apagada en la entrega;
   - tiempo: 1,09 ms por frame decodificado y 43,4 ms por detección; 2,46 h estimadas para el partido entero (techo
     del ensayo: 3,12 h).
 
-**Lectura** [inferencia]: el detector encuentra el balón cerca de donde lo pone el ATD en casi 4 de cada 5 frames, pero
-dentro del recorte ve además muchas otras cosas redondas, y la condición 2 se escribió para pararlo justo en ese caso.
-No se cambia después de ver el resultado. Reabrir la línea sería una decisión nueva, con su propia regla escrita antes
-de medir, y no llegaría al corte.
+**Lectura: la mayoría de las detecciones son falsos positivos** [inferencia, con cuentas; la propuso la sesión
+planificadora y aquí se comprueban sus números]:
+- **El recorte:** con el balón de 5,92 px (22 cm, unos 26,9 px por metro), los 320 px son unos 11,9 m de lado. La parte
+  a más de 5 m del centro es el 44,5 % del área, y la parte a 3 m o menos, el 20,0 %.
+- **La condición 2:** el 40,7 % de las detecciones lejos es casi ese 44,5 %. Las detecciones caen casi como si se
+  repartieran al azar por el recorte. Son 2,64 por frame, frente a los 0,25 falsos positivos por imagen de la puerta 0.
+- **La condición 1:** con 2,64 detecciones repartidas al azar por frame, que alguna caiga a 3 m o menos pasa en cerca
+  del 41 % de los frames (Poisson). Parte del 78,9 % no es el balón.
+- **La condición 5 «cumple» porque la emulación no tiene falsos positivos:** solo fallos y temblor gaussiano, no un
+  objeto equivocado a 5 m o menos. La detección elegida está a más de 3 m del balón del ATD en el 18,8 % de los frames.
+- **Límites de la cuenta:**
+  - los píxeles por metro cambian con la perspectiva: con el balón de p5 (4,4 px) el recorte cubre unos 16 m, y con el
+    de p95 (8,9 px), unos 8 m;
+  - los falsos positivos no tienen por qué repartirse al azar: pueden juntarse cerca de los jugadores, que están cerca
+    del balón;
+  - las detecciones elegidas tienen más confianza que el resto (mediana 0,79 frente a 0,56), así que algunas sí serán
+    el balón.
+
+La condición 2 se escribió antes de medir para parar justo un detector así, y no se cambia después de ver el resultado.
+Reabrir la línea sería una decisión nueva, con su propia regla escrita antes de medir, y no llegaría al corte.
 
 **Lo que queda de la línea:** el código, las pruebas y esta bitácora siguen en `exp/balon-video`, para el documento
 técnico (lo que se probó y por qué se descartó). No entran en `main`.
