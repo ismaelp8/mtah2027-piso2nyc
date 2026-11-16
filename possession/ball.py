@@ -153,3 +153,53 @@ def advance_ball(trk, frames=BALL_LEAD):
         shifted.setflags(write=False)
         out.append(shifted)
     return trk._replace(bx=out[0], by=out[1])
+
+
+# -- Los slots sobrantes (16/11). APAGADO: no lo llama la entrega. ---------------------------------------------
+# En el 12,9 % de los frames evaluados del partido un equipo tiene más de 11 slots, y en los datos abiertos nunca; en
+# esos frames la velocidad del equipo y la dispersión de B5 se salen del rango de los abiertos. El sobrante no está
+# fuera del campo ni pegado a un compañero: es un slot nuevo que se mueve como un jugador (agregados del partido,
+# validation/investigacion_1116/BITACORA.md, P2 y P3). El arreglo, elegido con la regla de P3 antes de ver nada: quitar
+# los slots más nuevos del equipo hasta dejarlo en PLAYERS. Se mide con la regla de P4. En el harness entra como la
+# pieza `ball` («"piezas": {"ball": "clean_slots"}»).
+PLAYERS = 11  # por equipo, en el campo (reglamento)
+
+
+def surplus_slots(trk):
+    """Máscara (n, slots) de los slots que sobran: en cada frame en que un equipo tiene más de PLAYERS slots vistos,
+    sus slots más nuevos (los que llevan menos frames seguidos vistos) hasta dejarlo en PLAYERS. En un empate sobra el
+    de índice más alto. Un frame con PLAYERS o menos no tiene ninguno."""
+    present = np.isfinite(np.asarray(trk.px)) & np.isfinite(np.asarray(trk.py))
+    n = len(present)
+    out = np.zeros(present.shape, dtype=bool)
+    team = np.asarray(trk.team)
+    for side in (0, 1):
+        cols = np.flatnonzero(team == side)
+        here = present[:, cols]
+        count = here.sum(axis=1)
+        frames = np.flatnonzero(count > PLAYERS)
+        if not len(frames):
+            continue
+        index = np.arange(n, dtype=np.int64)[:, None]
+        last_absent = np.maximum.accumulate(np.where(~here, index, -1), axis=0)
+        age = (index - last_absent)[frames].astype(np.float64)  # frames seguidos vistos, él incluido
+        age[~here[frames]] = np.inf
+        tie = (len(cols) - 1 - np.arange(len(cols)))[None, :] / float(len(cols) + 1)  # índice alto, antes
+        order = np.argsort(age + tie, axis=1, kind="stable")
+        drop = count[frames] - PLAYERS
+        for rank in range(int(drop.max())):
+            sel = drop > rank
+            out[frames[sel], cols[order[sel, rank]]] = True
+    return out
+
+
+def clean_slots(trk):
+    """El tracking sin los slots sobrantes (`surplus_slots`), puestos a NaN. El balón no se toca y `trk` no cambia."""
+    surplus = surplus_slots(trk)
+    if not surplus.any():
+        return trk
+    px, py = np.array(trk.px, copy=True), np.array(trk.py, copy=True)
+    px[surplus], py[surplus] = np.nan, np.nan
+    px.setflags(write=False)
+    py.setflags(write=False)
+    return trk._replace(px=px, py=py)

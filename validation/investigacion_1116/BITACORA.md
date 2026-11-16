@@ -708,3 +708,93 @@ elección se apunta aquí, en un commit, antes del paso 2.
 DFL que añade slots como los del partido (la misma proporción de frames, las mismas duraciones, el mismo sitio y la
 misma velocidad), cuánto pierde `main` con ella, y el arreglo frente a `main` con §5.8, con las dos convenciones y con
 `validation/apuesta_b/d_propio.py`. La degradación se calibra solo con este agregado, nunca con la ventana pública.
+
+### P3. Resultado y elección del arreglo (16/11; lo ejecutó Ismael con `equipo_v8`) [medido, agregados del partido]
+
+- **Cuántos:** 20.425 frames con sobrantes (12,9 % de los evaluados): 12.896 solo del local, 7.504 solo del visitante y 25 de
+  los dos. El equipo tiene 12 slots en 18.782, 13 en 876 y 14 o más en 767.
+- **Cuánto duran las rachas:** 31 de menos de 1 s (359 frames), 52 de 1 a 5 s (3.041), 42 de 5 a 30 s (11.764) y 5 de 30 s o
+  más (5.261).
+- **El sobrante (el slot más nuevo), en 20.450 muestras:**
+  - dentro del campo: el 84,5 % a más de 2 m de las líneas; solo el 5,5 % a más de 1 m fuera;
+  - andando: el 45,1 % entre 0,5 y 2 m/s, el 16,1 % casi quieto, el 17,6 % a más de 2 m/s (sin dato el 21,2 %);
+  - no es un duplicado: a menos de 0,5 m de un compañero solo el 1,1 %; a más de 3 m, el 78,6 %;
+  - entre los jugadores: el jugador más cercano a menos de 3 m en el 34,1 %, de 3 a 15 m en el 58,8 %, a más de 15 m en el 7,1 %;
+  - lejos del balón: de 10 a 30 m en el 32,0 %, a más de 30 m en el 19,0 %, a menos de 10 m en el 8,2 % (sin balón, el 40,9 %);
+  - nuevo: lleva visto menos de 1 s el 17,3 %, de 1 a 5 s el 34,6 %, de 5 a 30 s el 42,8 % y 30 s o más el 5,3 %.
+- **La comprobación sin elegir quién sobra:** algún slot a más de 1 m fuera en el 6,2 % (2,0 % con 9 a 11 slots); pareja a
+  menos de 0,5 m en el 2,0 % (1,6 %). Ni fuera ni duplicados.
+- **El balón muerto:** `equipo_v8` dice `D` en el 49,7 % de esos frames, frente al 45,4 % de todos.
+- **Con la regla: el arreglo es «el más nuevo».** Cuando un equipo tiene más de 11 slots, se quitan sus slots más nuevos
+  hasta dejarlo en 11.
+- **Lectura [inferencia]:** algo que se mueve como un jugador, dentro del campo y entre los jugadores pero sin pegarse a
+  ninguno, lejos del balón. Encaja con un árbitro asignado a un equipo, o con un jugador del otro equipo con el equipo
+  cambiado. No se puede saber sin mirar, y no hace falta para el arreglo.
+
+## P4. El arreglo «el más nuevo», medido en la DFL con una degradación como la del partido (regla, antes de medir)
+
+**El arreglo:** `possession/ball.py`, `clean_slots(trk)`, una función nueva y apagada (no la llama la entrega). En cada
+frame en que un equipo tiene más de 11 slots, deja a `NaN` los más nuevos (los que llevan menos frames seguidos vistos;
+en un empate, el de índice más alto) hasta dejarlo en 11. No toca el balón, y un frame con 11 o menos no cambia. En el
+harness entra como la pieza `ball` (`"piezas": {"ball": "clean_slots"}`), sin tocar `pipeline.py`. Prueba con datos
+inventados: `validation/scripts/prueba_slots.py`.
+
+**La degradación** (`slots_dfl.py`), calibrada solo con P3 y con el perfil del ATD:
+
+1. **Tracklets cortados:** el slot de cada jugador real se corta en trozos de duración exponencial con mediana 35,5 s (el «tramo
+   p50» del ATD, `validation/resultados/2026-11-14_apuesta_b.md`), y cada trozo pasa a otro slot del mismo equipo. El jugador sigue
+   ahí, pero su slot es nuevo. Sin esto, en la DFL el sobrante sería siempre el más nuevo, y el arreglo no se equivocaría
+   nunca.
+2. **Fantasmas:** rachas de un slot de más hasta cubrir el 12,9 % de los frames de los tramos. La duración de cada racha se
+   sortea con las cuatro clases de P3, en la proporción de su número de rachas (31, 52, 42 y 5), y dentro de cada clase
+   alrededor de su media (de 1 a 22 frames, de 25 a 92, de 125 a 435 y de 750 a 1.354). Son del local con probabilidad
+   0,632 (12.896 frente a 7.504). El fantasma copia la trayectoria de un jugador real de su equipo de entre 3 y 10 minutos
+   antes o después: se mueve como un jugador, dentro del campo y sin pegarse a nadie.
+
+Semilla fija. Como comprobación, sin regla, se imprime la descripción de P3 sobre la DFL degradada junto a la del partido.
+
+**Qué se mide** (7 partidos de la DFL; las dos condiciones que votan; las dos convenciones):
+
+- **A:** `main` con los tracklets cortados, sin fantasmas;
+- **B:** `main` con tracklets cortados y fantasmas;
+- **C:** `main` con `clean_slots`, con tracklets cortados y fantasmas;
+- con el `D` de las etiquetas (como el harness, con §5.8) y con el `D` propio, con el balón tapado y a la vista en los `D`;
+- en qué parte de los frames con sobrantes quita `clean_slots` justo al fantasma;
+- que `clean_slots` no cambia nada sin fantasmas: la DFL sin degradar, la DFL con solo los tracklets cortados y la mitad de
+  entrenamiento de SkillCorner tienen que dar las mismas etiquetas que `main`.
+
+**Regla de lectura, antes de medir:**
+
+- **Los fantasmas hacen daño** si B pierde frente a A 0,010 o más en alguna celda (convención × condición × `D`).
+- **Si no hacen daño en ninguna, se cierra:** el arreglo no tiene nada que recuperar.
+- **El arreglo pasa** si recupera la mitad o más de lo que pierde B en cada celda en que B pierde 0,010 o más, no pierde más
+  de 0,005 frente a B en ninguna celda, y no cambia nada sin fantasmas.
+- **§5.8 de C frente a B** se imprime y se dice tal cual. Si el arreglo pasa pero no llega a §5.8, decide la sesión principal
+  con Ismael si se genera una entrega de prueba.
+- **Si pasa,** la entrega de prueba se compara con `equipo_v8` con criterios escritos antes de generarla: cuántos frames
+  cambian, de qué etiqueta a cuál y cuántos caen en frames con sobrantes. Encenderlo no es de esta sesión.
+
+### P4. Resultado (16/11) [medido; salida en `salidas/2026-11-16_p4_slots_dfl.md`]
+
+| `D` | etiquetas | condición o balón en los `D` | B − A (lo que cuestan los fantasmas) | C − B (lo que recupera el arreglo) |
+|---|---|---|---|---|
+| etiquetas | control | como el ATD / sin bloques | −0,008 / −0,004 | +0,001 / +0,001 |
+| etiquetas | flag | como el ATD / sin bloques | −0,002 / −0,001 | −0,001 / −0,001 |
+| propio | control | balón a la vista / tapado | −0,006 / −0,006 | +0,002 / +0,001 |
+| propio | flag | balón a la vista / tapado | −0,002 / −0,001 | −0,001 / −0,002 |
+
+- **Con la regla: los fantasmas no hacen daño** (ninguna celda pierde 0,010) **y se cierra.** `clean_slots` se queda apagada
+  en `possession/ball.py`, como las demás opciones medidas.
+- **El arreglo, además, apenas ayudaría:** recupera del 15 al 28 % con el control y resta un poco con el flag. Quita al
+  fantasma solo en el 34,1 % de los slots que quita: con los tracklets cortados al ritmo del ATD, el slot más nuevo suele
+  ser un jugador de verdad que acaba de cambiar de slot.
+- **Sin fantasmas no cambia nada** (0 slots en la DFL sin degradar, con los tracklets cortados y en SkillCorner).
+- **La degradación se parece al partido en lo grueso y no en todo** (comprobación, sin regla): frames con sobrantes 12,2 %
+  frente a 12,9 %; el sobrante dentro del campo y lejos de los compañeros en los dos. Pero en la DFL degradada el
+  sobrante es nuevo (menos de 5 s) en el 84,2 % de las muestras, frente al 51,9 % del partido, y está algo más lejos del
+  balón y más quieto. Lectura [inferencia]: los slots del ATD se cortan menos a menudo de lo que supone la mediana de
+  35,5 s, o los sobrantes del partido duran más. Eso perjudica al arreglo, no a la medida del daño: los fantasmas de la
+  degradación cuestan poco porque B5 apenas los nota, no porque se quiten mal.
+- **Lo que no dice:** si los sobrantes del partido son peores que estos fantasmas (por ejemplo, un árbitro asignado a un
+  equipo y siempre cerca de la jugada). La degradación los pone algo más lejos del balón que en el partido (10 a 30 m: 21,5
+  frente a 32,0 %).
