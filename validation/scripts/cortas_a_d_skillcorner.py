@@ -84,7 +84,13 @@ def main():
     rec = collections.defaultdict(list)
     for id_ in ids:
         t0 = time.time()
-        crudo = lc.leer_crudo(id_)
+        try:
+            crudo = lc.leer_crudo(id_)
+        except FileNotFoundError:
+            print("\nNo encuentro los partidos de SkillCorner. Bájalos antes de medir:")
+            print("    python validation/skillcorner/descargar.py")
+            print("Si los tienes en otra carpeta, apunta MTAH_OPEN_DATA_DIR a ella.")
+            return 1
         for cond in lc.VOTAN:
             trk, gt = lc.tracking_de(crudo, cond, id_)
             trk = puntuar.solo_lectura(trk)

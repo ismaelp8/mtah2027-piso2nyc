@@ -10,7 +10,11 @@ incluido. Solo imprime agregados.
 prohíbe `D` en los frames donde las etiquetas tienen juego; `pipeline.combine` cruza los `allowed` con un AND,
 así que la puerta `allowed[start:stop, D].all()` de `cortas_a_d` solo dejaría pasar las candidatas que ya son
 `D` de verdad. La regla saldría correcta por construcción y el número vendría del oráculo, no de la señal.
-`docs/PLAN_ENTREGA.md` §4 ya pone esa fila en «todavía no».
+
+Medir con el `D` propio es una **excepción consciente** al párrafo final de `docs/PLAN_ENTREGA.md` §4 («ningún
+número con `D` propio que dependa del balón se da por bueno»): la condición 1 del límite de daño
+(`docs/decisiones.md`, 16/11) es posterior y pide expresamente el `D` propio en los dos modos del balón, porque
+esta regla toca el `D`.
 
 Por qué hace falta este script y no basta con `validation/harness/puntuar.py --d propio`: ese mide solo el
 modo «tapado», y las condiciones 1 y 3 del límite de daño piden también «a la vista», que vive en
@@ -46,29 +50,41 @@ PERDIDA_MAXIMA_FLAG = 0.005  # condición 3
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--versiones", default=VERSIONES, help="fichero de versiones del harness")
-    parser.add_argument("--partidos", nargs="+", default=list(dfl.PARTIDOS), choices=list(dfl.PARTIDOS))
+    parser.add_argument("--partidos", nargs="+", default=list(dfl.PARTIDOS), choices=list(dfl.PARTIDOS),
+                        help="por defecto, los 7. Con menos, el veredicto sale marcado como parcial")
     args = parser.parse_args()
 
     versiones, contenido, huella = puntuar.leer_versiones(args.versiones)
-    nombres = [n for n in contenido if versiones[n]["tipo"] != "control"]
-    base_nombre = puntuar.version_de_main(collections.OrderedDict((n, versiones[n]) for n in nombres))
+    # `leer_versiones` pone el control delante; va en la tabla, como pide docs/PLAN_ENTREGA.md §7.
+    del_fichero = [n for n in contenido if versiones[n]["tipo"] != "control"]
+    base_nombre = puntuar.version_de_main(
+        collections.OrderedDict((n, versiones[n]) for n in del_fichero))
     if base_nombre is None:
         print("el fichero de versiones no trae la versión de `main` (una sin `params` ni `piezas`)")
         return 1
-    variantes = [n for n in nombres if n != base_nombre]
+    variantes = [n for n in del_fichero if n != base_nombre]
     if not variantes:
         print("el fichero de versiones no trae ninguna variante además de `main`")
         return 1
+    nombres = [puntuar.CONTROL, base_nombre] + variantes
+    completo = len(args.partidos) == len(dfl.PARTIDOS)
 
     print("Fichero de versiones: {}".format(os.path.relpath(args.versiones, ROOT)))
     print("Huella: {}".format(huella))
-    print("DFL, {} partidos. `D` propio (nunca oráculo). `main`: {}. Variantes: {}\n".format(
-        len(args.partidos), base_nombre, ", ".join(variantes)))
+    print("DFL, {} partidos{}. `D` propio (nunca oráculo).".format(
+        len(args.partidos), "" if completo else " (PARCIAL)"))
+    print("`main`: {}. Variantes: {}\n".format(base_nombre, ", ".join(variantes)))
 
     rec = collections.defaultdict(list)
     for partido in args.partidos:
         t0 = time.time()
-        cargado = dfl.cargar(partido)
+        try:
+            cargado = dfl.cargar(partido)
+        except FileNotFoundError:
+            print("\nNo encuentro la caché de la DFL. Bájala antes de medir (paso 1 de validation/PASOS.md):")
+            print("    python validation/scripts/descargar_datos_abiertos.py dfl")
+            print("Si la tienes en otra carpeta, apunta MTAH_OPEN_DATA_DIR a ella.")
+            return 1
         gt = cargado["gt"]
         for modo, hacer in MODOS.items():
             for cond in dfl.VOTAN:
@@ -79,9 +95,20 @@ def main():
                         rec[(conv, modo, cond, nombre)].append(puntuar.contar(gt[conv], pred))
         print("DFL {} en {:.0f} s".format(partido, time.time() - t0), file=sys.stderr, flush=True)
 
+    def f1_de(clave):
+        return puntuar.spell_f1(*puntuar.juntar(rec[clave]))
+
+    print("## `spellF1` de cada versión, con el `D` propio\n")
+    print("| etiquetas | balón en los `D` | condición | " + " | ".join(nombres) + " |")
+    print("|---|---|---|" + "---|" * len(nombres))
+    for conv in dfl.CONVENCIONES:
+        for modo in MODOS:
+            for cond in dfl.VOTAN:
+                fila = ["{:.3f}".format(f1_de((conv, modo, cond, n))) for n in nombres]
+                print("| DFL {} | {} | {} | {} |".format(conv, modo, cond, " | ".join(fila)))
+
     for variante in variantes:
-        print("`spellF1` de «{}» frente a «{}», con el `D` propio. Entre paréntesis, en cuántos partidos "
-              "gana.\n".format(variante, base_nombre))
+        print("\n## «{}» frente a «{}» (como la tabla de S9)\n".format(variante, base_nombre))
         print("| etiquetas | balón en los `D` | " + " | ".join(dfl.VOTAN) + " |")
         print("|---|---|" + "---|" * len(dfl.VOTAN))
         celdas = {}
@@ -91,23 +118,29 @@ def main():
                 for cond in dfl.VOTAN:
                     base = rec[(conv, modo, cond, base_nombre)]
                     r = rec[(conv, modo, cond, variante)]
-                    f0 = puntuar.spell_f1(*puntuar.juntar(base))
-                    f = puntuar.spell_f1(*puntuar.juntar(r))
+                    dif = f1_de((conv, modo, cond, variante)) - f1_de((conv, modo, cond, base_nombre))
                     gana = sum(puntuar.spell_f1(a["flags"], a["n_pred"]) > puntuar.spell_f1(b["flags"], b["n_pred"])
                                for a, b in zip(r, base))
-                    fila.append("{:+.3f} ({} de {})".format(f - f0, gana, len(r)))
-                    celdas[(conv, modo, cond)] = (f - f0, gana, len(r))
+                    fila.append("{:+.3f} ({} de {})".format(dif, gana, len(r)))
+                    celdas[(conv, modo, cond)] = (dif, gana, len(r))
                 print("| DFL {} | {} | {} |".format(conv, modo, " | ".join(fila)))
 
-        print("\n**Condición 1 (control):** +{:.3f} o más y ganar en {} de 7 en cada celda.".format(
-            UMBRAL_CONTROL, GANA_DE))
+        if not completo:
+            print("\n**Veredicto PARCIAL, no vale como puerta de entrada:** se han medido {} de los {} "
+                  "partidos. Las condiciones 1 y 3 se leen solo con los {} completos.".format(
+                      len(args.partidos), len(dfl.PARTIDOS), len(dfl.PARTIDOS)))
+            continue
+
+        # Cuatro decimales: a tres, un +0,0045 se leería «+0,005» y parecería que pasa.
+        print("\n**Condición 1 (control):** +{:.3f} o más y ganar en {} de {} en cada celda.".format(
+            UMBRAL_CONTROL, GANA_DE, len(dfl.PARTIDOS)))
         uno = []
         for modo in MODOS:
             for cond in dfl.VOTAN:
                 dif, gana, total = celdas[("control", modo, cond)]
                 ok = dif >= UMBRAL_CONTROL and gana >= GANA_DE
                 uno.append(ok)
-                print("- control / {} / {}: {:+.3f} y {} de {} -> {}".format(
+                print("- control / {} / {}: {:+.4f} y {} de {} -> {}".format(
                     modo, cond, dif, gana, total, "PASA" if ok else "NO PASA"))
         print("\n**Condición 3 (flag):** no perder más de {:.3f} en ninguna celda.".format(PERDIDA_MAXIMA_FLAG))
         tres = []
@@ -116,8 +149,8 @@ def main():
                 dif, _, _ = celdas[("flag", modo, cond)]
                 ok = dif >= -PERDIDA_MAXIMA_FLAG
                 tres.append(ok)
-                print("- flag / {} / {}: {:+.3f} -> {}".format(modo, cond, dif, "PASA" if ok else "NO PASA"))
-        print("\n**Condición 1: {}. Condición 3: {}.**\n".format(
+                print("- flag / {} / {}: {:+.4f} -> {}".format(modo, cond, dif, "PASA" if ok else "NO PASA"))
+        print("\n**Condición 1: {}. Condición 3: {}.** Falta la 2 (SkillCorner) y la 4 (entrega de prueba).".format(
             "PASA" if all(uno) else "NO PASA", "PASA" if all(tres) else "NO PASA"))
     return 0
 

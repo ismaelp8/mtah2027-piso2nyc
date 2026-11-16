@@ -4318,12 +4318,19 @@ y recibe los mismos tramos, así que hacerlo dentro o fuera es lo mismo.
 
 **Una diferencia a propósito con S9:** `cortas_a_d` no convierte una candidata si `D` está prohibido en alguno
 de sus frames, como hace `prune`. S9 no mira `allowed`. En el partido eso importa en el frame del saque de cada
-parte, donde `dead_ball.evidence` prohíbe `D` (PR 16). **Hay que comprobar que no cambia las cifras de la DFL ni
-de SkillCorner;** si las cambia, la reproducción de S9 no vale y se para a explicarlo antes de seguir.
+parte, donde `dead_ball.evidence` prohíbe `D` (PR 16).
+
+**En datos abiertos la puerta es inerte, así que la reproducción de S9 es exacta** [medido por inspección, lo
+apuntó el `revisor` y se comprobó con `grep allowed\\[ possession/`]: el único sitio de `possession/` que
+restringe `allowed` es `dead_ball.py`, que solo opina con las rutas del partido; `aprendida.evidence_b5` y
+`dead_state.evidence` salen las dos de `no_evidence`, que deja `allowed` entero a `True`, y con el `D` propio no
+se añade la evidencia del oráculo. En la DFL y en SkillCorner `cortas_a_d` es por tanto bit a bit
+`cambio_antes_de_parada.candidatas`, y el riesgo queda acotado al partido: un frame por parte.
 
 **Comprobado sin datos del partido** [medido]: 759 casos en verde de `prueba_cortas_a_d.py` y 20 de
 `prueba_cortas_en_contraataques.py`; `leer_versiones` del harness valida la versión y la ejecuta sobre su
-partido inventado; las pruebas de David (`prueba_decodificador.py`) y `prueba_pipeline.py` siguen en verde. **Sabotajes** (en memoria, fuera del repo):
+partido inventado; las pruebas de David (`prueba_decodificador.py`) y `prueba_pipeline.py` siguen en verde.
+**Sabotajes** (en memoria, fuera del repo):
 17 roturas, una a una (el corte estricto, el límite de largo, que acabe en `D`, el cambio directo, el equipo de
 antes, la primera y la última racha del tramo, `allowed`, pasar al equipo de antes, no copiar, encadenar las
 candidatas, los tramos sin volverse tupla, la validación del corte, los `params`, el corte por defecto y el
@@ -4336,7 +4343,7 @@ valor del corte no se ejercitaba; de ahí la prueba con evidencia forzada.
 
 | etiquetas | balón en los `D` | «como el ATD» | «sin bloques» |
 |---|---|---|---|
-| DFL flag | a la vista | +0,004 (5 de 7) | +0,004 (5 de 7) |
+| DFL flag | a la vista | +0,004 (5 de 7) | +0,004 (5 de 7) |*
 | DFL flag | tapado | −0,002 | −0,002 |
 | DFL control | a la vista | +0,018 (7 de 7) | +0,019 (7 de 7) |
 | DFL control | tapado | +0,007 | +0,009 |
@@ -4345,6 +4352,9 @@ valor del corte no se ejercitaba; de ahí la prueba con evidencia forzada.
 En la DFL las dos columnas son las dos condiciones que votan, «como el ATD» y «como el ATD, sin bloques». **En
 la fila de SkillCorner son sus dos condiciones, «detectado» y «detectado, suavizado»** (`lector.VOTAN`), no las
 de la DFL: se reproducen con el script de SkillCorner, no con el de la DFL.
+
+(*) S9 da ese «5 de 7» una sola vez, para la celda colapsada: el recuento de la segunda condición no está
+publicado por separado, así que repetirlo en las dos columnas es [inferencia]. La reproducción dará los dos.
 
 Sobre el papel **no contradice** ninguna de las tres condiciones medibles en abierto: con el control da +0,005
 o más en las cuatro celdas y con el flag no pierde más de 0,005 en ninguna. **Pero no se puede decir todavía
@@ -4360,6 +4370,12 @@ de verdad: la regla saldría correcta por construcción y el número vendría de
 harness usa el oráculo **por defecto**, así que se mide con `validation/scripts/cortas_a_d_dfl.py` (que no
 admite oráculo y da los dos modos del balón) y con `cortas_a_d_skillcorner.py`. Lo encontró el agente `revisor`
 antes de medir nada.
+
+**Medir con el `D` propio es una excepción consciente al párrafo final de `docs/PLAN_ENTREGA.md` §4**, que dice
+que «ningún número con `D` propio que dependa del balón se da por bueno». La condición 1 del límite de daño
+(16/11) es posterior y pide expresamente el `D` propio en los dos modos del balón, porque esta regla toca el
+`D`: con el `D` oráculo no se puede medir, igual que no se pueden medir en el harness las capas que solo corren
+en el partido. Queda apuntado aquí para que el plan y esta entrada no se lean como una contradicción.
 
 **Con qué se mide** (los dos los puede ejecutar Claude; el examen, no):
 - **DFL, las ocho celdas:** `validation/scripts/cortas_a_d_dfl.py`. Hacía falta un script propio porque
