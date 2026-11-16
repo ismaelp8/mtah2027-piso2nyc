@@ -94,4 +94,51 @@ propia regla y no usa la del «límite de daño» de los cambios pequeños (`doc
 
 ## Resultados
 
-(vacío)
+### Puerta 0 (16/11, sesión aparte; datos abiertos) [medido]
+
+- **Entorno:** CPU Intel Core Ultra 5 225U (12 núcleos, 14 hilos), Python 3.14.7, torch 2.15.0+cpu, ultralytics 8.4.215,
+  opencv-python-headless 5.0.0.93, numpy 2.5.4.
+- **El modelo:** YOLO11n de una sola clase (`ball`), entrenado a imgsz 1280.
+  - Revisión fijada: `63666b30e2a4973e089c982769f146af54530750`. El sha256 del `.pt` coincide con su puntero LFS.
+  - Pesos en fp16.
+- **Escaneo del pickle:** solo referencia `torch`, `ultralytics`, `collections` y `__builtin__.set` (el nombre de
+  Python 2 que escribe el protocolo 2; normalizado a `builtins`). Se carga con `ULTRALYTICS_SAFE_LOAD=1`, es decir,
+  `weights_only` con una lista de permitidos.
+- **Sin conexiones:** `YOLO_OFFLINE=1`, sin autoinstalación y sin `sync`.
+- **El dataset:** imágenes de 1920×1080. El balón mide 12,6 px de mediana (p5–p95: 7,7–20,8 en test, 8,1–19,9 en
+  train).
+- **El montaje es correcto:** con las imágenes tal cual, recall de 0,872 con 0,10 de confianza y de 0,864 con 0,25; a
+  imgsz 1280, 0,840 y 0,760, en línea con la ficha del modelo (0,80).
+
+Recall y falsos positivos por imagen (FP/img), con confianza 0,10 / 0,25, según el diámetro del balón b en la imagen
+reducida. «×2» es reducir a b y ampliar ×2 antes de detectar: la red ve 2b.
+
+| b (px) | tal cual: recall | tal cual: FP/img | ×2: recall | ×2: FP/img |
+|---|---|---|---|---|
+| 3 | 0,160 / 0,120 | 0,37 / 0,16 | 0,720 / 0,536 | 0,22 / 0,07 |
+| 4 | 0,352 / 0,224 | 0,26 / 0,06 | **0,904 / 0,824** | 0,15 / 0,06 |
+| 5 | 0,488 / 0,360 | 0,12 / 0,04 | 0,912 / 0,872 | 0,25 / 0,10 |
+| 6 | 0,608 / 0,496 | 0,12 / 0,02 | 0,912 / 0,864 | 0,48 / 0,24 |
+| 8 | 0,863 / 0,778 | 0,09 / 0,04 | 0,932 / 0,897 | 1,20 / 0,64 |
+| 10 | 0,898 / 0,867 | 0,11 / 0,03 | 0,949 / 0,918 | 2,22 / 1,18 |
+
+- **Lo que falla:** son balones sin ninguna detección, no detecciones mal colocadas.
+- **Los falsos positivos de ×2:** caen lejos del balón (mediana de 22 a 63 radios) y crecen con el área de la imagen.
+- **Tiempo por imagen en CPU** (de 4 a 14 hilos):
+  - entrada de 640×640: de 43 a 72 ms, de 2,4 a 4,0 horas para 199.319 frames;
+  - 1920×1088: de 244 a 375 ms, de 13,5 a 20,8 horas;
+  - 3840×2176: de 1,4 a 2,0 s, de 79 a 113 horas.
+  - Decodificar un 1080p sintético (mp4v): unos 1.000 fps con `read()` y 3.000 con `grab()`. No se probó H.264.
+- **Determinismo:**
+  - con el mismo número de hilos, idéntico bit a bit, en el mismo proceso y entre procesos;
+  - con distinto número de hilos, difiere en el último bit: hasta 0,005 px en las cajas y 3,6e-7 en la confianza;
+  - entre máquinas: sin medir.
+- **Detalles para el código:** ultralytics pone torch a 8 hilos al preparar el predictor, así que los hilos se fijan
+  después del calentamiento. Instalar `ultralytics` arrastra `opencv-python`, que pisa al `-headless`: hay que dejar
+  solo uno.
+- **Límite:** son imágenes del mismo tipo que las de entrenamiento. En nuestro vídeo el acierto será menor
+  [inferencia].
+- **Lectura con la regla:** falta `b_partido` (puerta 1a). Si el balón mide 4 px o más, la variante ×2 pasa con cualquiera
+  de los dos umbrales (recall de 0,82 a 0,90, FP/img de 0,06 a 0,15). Su tiempo cabe en 8 horas solo si se detecta en un
+  recorte alrededor del balón del ATD: uno de 320 px ampliado ×2 es una entrada de 640×640, unas 3 horas en esta CPU; la
+  imagen entera ×2 no cabe. Tal cual solo pasa desde 6 px.
