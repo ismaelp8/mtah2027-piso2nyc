@@ -72,8 +72,12 @@ C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe evaluation\validate_su
 
 **Qué mirar:**
 - La línea de versiones: `python 3.13.9, numpy 2.5.4`.
-- `código: commit …, sin cambios locales en el código de la entrega`. A las 17:10, `main` estaba en `1f84021`. Si
-  dice `CON CAMBIOS SIN COMMITEAR`, para.
+- `código: commit …, sin cambios locales en el código de la entrega`. A las 19:15, `main` estaba en `6c49008`.
+  - Desde `44678d1` solo han cambiado documentos y scripts de validación, nada del código de la entrega, así que el
+    sha256 tiene que ser el de siempre.
+  - Si dice `CON CAMBIOS SIN COMMITEAR`, para.
+- **Si eres la segunda máquina de la detección** (paso 11), no hace falta la puerta 1b en tu máquina: decide la de
+  Antonio. Haz los pasos 3 a 7 y después el 9, solo si su 1b dijo `SIGUE`.
 - `frames con piezas en conflicto: 0`.
 - **`sha256: d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`.** El sha256 es la huella del
   fichero: si cambia un solo byte, sale otra. Esta es la de `equipo_v8`.
