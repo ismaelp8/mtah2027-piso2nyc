@@ -72,9 +72,9 @@ C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe evaluation\validate_su
 
 **Qué mirar:**
 - La línea de versiones: `python 3.13.9, numpy 2.5.4`.
-- `código: commit …, sin cambios locales en el código de la entrega`. A las 19:15, `main` estaba en `6c49008`.
-  - Desde `44678d1` solo han cambiado documentos y scripts de validación, nada del código de la entrega, así que el
-    sha256 tiene que ser el de siempre.
+- `código: commit …, sin cambios locales en el código de la entrega`. A las 20:45, `main` estaba en `c52a746`.
+  - El commit que imprime es nuevo: la PR 20 (`10aadef`) añade a `possession/temporal.py` una opción apagada
+    («cortas a `D`»). `pipeline.PIECES` y `DELIVERY_LAYERS` no cambian, así que el sha256 tiene que ser el de siempre.
   - Si dice `CON CAMBIOS SIN COMMITEAR`, para.
 - **Si eres la segunda máquina de la detección** (paso 11), no hace falta la puerta 1b en tu máquina: decide la de
   Antonio. Haz los pasos 3 a 7 y después el 9, solo si su 1b dijo `SIGUE`.
