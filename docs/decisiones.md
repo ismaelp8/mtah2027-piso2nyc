@@ -4359,3 +4359,39 @@ Descartado (antes de medir):
 - **Usar el balón:** lo mismo que el 14/11; delataría el `D` en la DFL.
 - **Una red o un bosque aleatorio:** con dos candidatos como mucho, se prueba el *boosting*, que es lo que mejor salió
   en Lang et al. (2022) (allí AdaBoost; aquí el *gradient boosting* por histogramas de `scikit-learn`, que entrena rápido).
+
+### 2026-11-16 · `D` · estado con árboles (idea 2.4): ningún candidato gana; se cierra
+
+Quién: Antonio
+
+Qué se probó: G2 y G3, los dos candidatos de la entrada anterior, frente a E2, con su regla.
+
+Cómo se midió (dataset, nº de partidos/posesiones, métrica): los 7 partidos de la DFL dejando uno fuera (713 paradas),
+con `validation/scripts/d_estado/medir_arboles.py`: el criterio del 13/11 con las funciones de `medir.py` y el harness
+con el `D` propio, con el balón tapado y a la vista en los `D`. Detalle en
+`validation/resultados/2026-11-16_d_estado_arboles.md`.
+
+Resultado:
+- **[medido] Harness, regla 1 (+0,010 y 6 de 7 en las ocho celdas):**
+  - **G3 no cumple en 1 de 8:** con el balón tapado, «como el ATD, sin bloques» y el flag, +0,008 y gana en 5 de 7. En
+    las otras siete, de +0,011 a +0,030 y 6 o 7 de 7;
+  - **G2 no cumple en 4 de 8,** las cuatro con el balón tapado (de −0,001 a +0,006). Con el balón a la vista, de +0,011
+    a +0,019.
+- **[medido] Criterio del 13/11, regla 2:** los dos lo mejoran y ninguno empeora nada. G3: inicio y fin a 25 frames o
+  menos en el 47 % y el 54 % de las paradas (E2: 35 % y 40 %), sesgo mediano de +5 y 0 frames (E2: +14 y +17) y 0,16
+  `D` espurios por minuto (E2: 0,26). Ninguno llega al 70 % que pide el criterio.
+- **[medido] Descriptivo:**
+  - con el equipo oráculo, G3 gana a E2 por +0,034 a +0,046 y G2 por +0,023 a +0,028;
+  - placebo: con la puntuación desplazada 60 s, AUC 0,52 y `spellF1` 0,22 a 0,28 por debajo de no opinar;
+  - con un temblor de 0,1 m en los jugadores, los árboles detectan el 46 % de las paradas (E2, el 61 %);
+  - E2 dejando un partido fuera queda a −0,001 o menos de `main`: estar en muestra no le da ventaja.
+
+Decisión y por qué:
+- **Ningún candidato gana con la regla fijada antes de medir. La idea 2.4 se cierra** y `possession/dead_state.py` no
+  cambia. No se escribe la predicción en numpy ni se abre la PR del paso 4.
+- **G3 se queda cerca:** gana en siete de las ocho celdas y mejora los bordes en el criterio del 13/11. La regla no
+  cambia después de medir. Si el equipo quisiera volver sobre G3, sería otra decisión, con su regla escrita antes.
+- **Riesgo apuntado:** los árboles son más frágiles que E2 si los jugadores del ATD tiemblan.
+
+Descartado:
+- **G2 y G3,** por la regla 1. Los parámetros de los árboles no se prueban con otros valores (entrada anterior).
