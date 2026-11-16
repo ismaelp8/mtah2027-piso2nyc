@@ -26,6 +26,8 @@ import time
 import traceback
 import warnings
 
+import numpy as np
+
 AQUI = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(AQUI))
 sys.path.insert(0, ROOT)
@@ -37,9 +39,22 @@ from possession import tracking  # noqa: E402
 FICHEROS = ["atd_raw", "atd_meta"]
 
 
-def comparar(cuantiles, acuerdo, referencia):
-    """Para cada rasgo: (nombre, ¿de los diez?, mediana, p90, rango de la referencia, ¿mediana fuera?, ¿p90 fuera?).
-    Y la regla: los de los diez con la mediana fuera."""
+JUGADORES = 11
+GRUPOS = ("con un equipo de más de 11 slots", "el resto")
+
+
+def mas_de_11(trk):
+    """Por frame: ¿tiene algún equipo más de 11 slots a la vez? (lo mismo que cuenta slots_duplicados.py)"""
+    team = np.asarray(trk.team)
+    salida = np.zeros(len(trk.bx), dtype=bool)
+    for equipo in (0, 1):
+        columnas = np.flatnonzero(team == equipo)
+        hay = np.isfinite(trk.px[:, columnas]) & np.isfinite(trk.py[:, columnas])
+        salida |= hay.sum(axis=1) > JUGADORES
+    return salida
+
+
+def filas_de(cuantiles, referencia):
     filas = []
     for nombre in sorted(referencia["rango"], key=lambda n: -referencia["importancia"][n]):
         mediana, p90 = cuantiles[nombre]
@@ -47,9 +62,25 @@ def comparar(cuantiles, acuerdo, referencia):
         filas.append({"nombre": nombre, "top": nombre in referencia["top"], "mediana": mediana, "p90": p90,
                       "rango": (lo, hi, lo90, hi90), "fuera": not lo <= mediana <= hi,
                       "fuera_p90": not lo90 <= p90 <= hi90})
+    return filas
+
+
+def comparar(cuantiles, acuerdo, referencia, por_grupo=None):
+    """Para cada rasgo: (nombre, ¿de los diez?, mediana, p90, rango de la referencia, ¿mediana fuera?, ¿p90 fuera?).
+    Y la regla: los de los diez con la mediana fuera, en todos los frames.
+
+    `por_grupo` (descriptivo, P2): {grupo: (cuantiles o None, frames)} para los frames con un equipo de más de 11
+    slots y el resto; cada grupo se compara con el mismo rango."""
+    filas = filas_de(cuantiles, referencia)
     acuerdos = list(referencia["acuerdo_b5_mas_cercano"].values())
+    grupos = {}
+    for nombre, (cq, frames) in (por_grupo or {}).items():
+        sub = filas_de(cq, referencia) if cq is not None else []
+        grupos[nombre] = {"frames": frames, "filas": sub,
+                          "desplazados": [f["nombre"] for f in sub if f["top"] and f["fuera"]]}
     return {"filas": filas, "desplazados": [f["nombre"] for f in filas if f["top"] and f["fuera"]],
-            "acuerdo": acuerdo, "acuerdo_rango": (min(acuerdos), max(acuerdos)), "commit": referencia["commit"]}
+            "acuerdo": acuerdo, "acuerdo_rango": (min(acuerdos), max(acuerdos)), "commit": referencia["commit"],
+            "grupos": grupos}
 
 
 def para_imprimir(r):
@@ -78,6 +109,27 @@ def para_imprimir(r):
                       "abiertos (avisar antes a la sesión principal).".format(", ".join(r["desplazados"])))
     else:
         lineas.append("   → NO: los diez caen dentro de lo que se ve en los datos abiertos. Se cierra.")
+    if r["grupos"]:
+        total = sum(g["frames"] for g in r["grupos"].values())
+        lineas += ["", "Separado (descriptivo, P2): los diez de más peso en los frames con un equipo de más de 11 slots "
+                       "y en el resto, frente al mismo rango"]
+        for nombre, g in r["grupos"].items():
+            lineas.append("   {}: {} frames con balón ({:.1f} %)".format(
+                nombre, g["frames"], 100.0 * g["frames"] / total if total else 0.0))
+        cabecera = "| rasgo | " + " | ".join("mediana, {}".format(n) for n in r["grupos"]) + " | abiertos (mín–máx) |"
+        lineas += ["", cabecera, "|---|" + "---|" * (len(r["grupos"]) + 1)]
+        por_nombre = {n: {f["nombre"]: f for f in g["filas"]} for n, g in r["grupos"].items()}
+        for f in r["filas"]:
+            if not f["top"]:
+                continue
+            celdas = []
+            for n in r["grupos"]:
+                g = por_nombre[n].get(f["nombre"])
+                celdas.append("—" if g is None else "{:.3f}{}".format(g["mediana"], " FUERA" if g["fuera"] else ""))
+            lineas.append("| {} | {} | {:.3f}–{:.3f} |".format(f["nombre"], " | ".join(celdas), f["rango"][0],
+                                                               f["rango"][1]))
+        for n, g in r["grupos"].items():
+            lineas.append("   desplazados {}: {}".format(n, ", ".join(g["desplazados"]) or "ninguno"))
     return lineas
 
 
@@ -93,7 +145,18 @@ def medir(data_dir=None):
     referencia = leer_referencia()
     trk = tracking.from_atd(games.asset_paths(game, data_dir), game)
     matriz, acuerdo = ref.resumen_rasgos(trk)
-    return comparar(ref.cuantiles(matriz), acuerdo, referencia)
+    return comparar(ref.cuantiles(matriz), acuerdo, referencia, por_grupo(trk, matriz))
+
+
+def por_grupo(trk, matriz):
+    """{grupo: (cuantiles o None, frames)}: las filas de `matriz` (las de ref.frames_con_balon) con un equipo de más
+    de 11 slots y el resto."""
+    grupo = mas_de_11(trk)[ref.frames_con_balon(ref.ball.clean(trk))]
+    salida = {}
+    for nombre, filas in zip(GRUPOS, (grupo, ~grupo)):
+        n = int(filas.sum())
+        salida[nombre] = (ref.cuantiles(matriz[filas]) if n else None, n)
+    return salida
 
 
 def informe_de_error(error):

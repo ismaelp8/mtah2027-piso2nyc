@@ -94,6 +94,26 @@ def main():
     check("dice que hay uno desplazado", "→ SÍ" in texto and NOMBRES[3] in texto)
     texto = "\n".join(rb.para_imprimir(rb.comparar(dentro, 0.85, referencia())))
     check("y que no lo hay", "→ NO" in texto)
+    print("4. Los frames con un equipo de más de 11 slots, aparte")
+    trk = tracking_inventado()
+    px, py = trk.px.copy(), trk.py.copy()
+    extra = np.full((len(px), 1), np.nan, dtype=np.float32)
+    extra[200:700] = 50.0  # un slot 12.º del local en 500 frames de los tramos con balón
+    trk = trk._replace(px=np.hstack([px, extra]), py=np.hstack([py, extra]),
+                       team=np.concatenate([trk.team, [H]]).astype(np.int8))
+    with sin_ficheros():
+        check("cuenta los frames con más de 11", int(rb.mas_de_11(trk).sum()) == 500, int(rb.mas_de_11(trk).sum()))
+        matriz, acuerdo = rb.ref.resumen_rasgos(trk)
+        grupos = rb.por_grupo(trk, matriz)
+    check("los separa: 500 y 1.800 frames con balón",
+          [grupos[g][1] for g in rb.GRUPOS] == [500, 1800], [grupos[g][1] for g in rb.GRUPOS])
+    solo_mas = {rb.GRUPOS[0]: (fuera, 500), rb.GRUPOS[1]: (dentro, 1800)}
+    r = rb.comparar(dentro, 0.85, referencia(), solo_mas)
+    check("la regla sigue mirando todos los frames", r["desplazados"] == [])
+    check("y por separado dice dónde se sale", r["grupos"][rb.GRUPOS[0]]["desplazados"] == [NOMBRES[3]]
+          and r["grupos"][rb.GRUPOS[1]]["desplazados"] == [])
+    texto = "\n".join(rb.para_imprimir(r))
+    check("la salida lo enseña", "más de 11 slots" in texto and "FUERA" in texto)
     print()
     if FALLOS:
         print("FALLAN {}: {}".format(len(FALLOS), "; ".join(FALLOS)))

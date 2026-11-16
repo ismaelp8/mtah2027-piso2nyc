@@ -576,3 +576,45 @@ frames con balón en los 17.
 **Un límite que se ve al calcularla** (no cambia la regla): los cuatro rasgos «sin balón cerca» valen cero en los frames
 con balón, así que esta comparación no los mira. Mirarlos pediría los frames sin balón, que en el partido son sobre
 todo paradas y en los abiertos no, y no serían comparables.
+
+### P2b. Los slots de más (añadido el 16/11, antes de que Ismael ejecute `rasgos_b5.py`)
+
+**`validation/partido/slots_duplicados.py`, ejecutado por Ismael** (16/11; la salida la pasó la sesión principal), tal
+cual:
+
+```
+frames_evaluados: 158857
+pct_frames_con_un_equipo_de_mas_de_11_slots: 12.86
+pct_frames_con_pareja_del_mismo_equipo_a_0.3_m: 1.26
+pct_frames_con_balon_con_esa_pareja_a_0.3_m_del_balon_a_6_m: 0.08
+pct_frames_con_pareja_del_mismo_equipo_a_0.5_m: 3.47
+pct_frames_con_balon_con_esa_pareja_a_0.5_m_del_balon_a_6_m: 0.17
+pct_frames_con_pareja_del_mismo_equipo_a_1_m: 12.26
+pct_frames_con_balon_con_esa_pareja_a_1_m_del_balon_a_6_m: 0.67
+```
+
+**La referencia en datos abiertos** (`slots_abiertos.py`, la misma función `medir`; salida en
+`salidas/2026-11-16_p2_slots_abiertos.md`) [medido]:
+
+| medida | partido | DFL (sin duplicados) | SkillCorner, todos | SkillCorner, solo detectados |
+|---|---|---|---|---|
+| un equipo con más de 11 slots | **12,86 %** | 0,0 % | 0,0 % | 0,0 % |
+| pareja del mismo equipo a 0,3 / 0,5 / 1 m | 1,26 / 3,47 / 12,26 % | 0,86 / 3,33 / 12,26 % | 0,62 / 1,57 / 4,91 % | 0,21 / 0,57 / 2,26 % |
+| esa pareja a 6 m del balón, a 0,3 / 0,5 / 1 m | 0,08 / 0,17 / 0,67 % | 0,02 / 0,10 / 0,67 % | 0,08 / 0,21 / 0,84 % | 0,06 / 0,16 / 0,70 % |
+
+**Lectura** [medido; lo que dice de la causa es inferencia]:
+
+- **Las parejas del partido son, sobre todo, jugadores de verdad juntos:** la DFL, que no tiene duplicados, da casi lo
+  mismo (solo a 0,3 m hay algo más en el partido: 1,26 frente a 0,86 %). Cerca del balón, igual. Los núcleos de B5 casi
+  no se tocan.
+- **Lo que no tiene ningún abierto es un equipo con más de 11 slots** (12,86 % de los frames). Como no van pegados a
+  otro jugador, serán objetos de más asignados a un equipo (alguien fuera del campo, un árbitro, un fantasma)
+  [inferencia]. Mueven los rasgos de forma: centroides, dispersión y dirección de ataque.
+
+**Lo que se añade a `rasgos_b5.py` (descriptivo; la regla de P2 no cambia y se decide con todos los frames):** la misma
+comparación por separado en los frames con balón con un equipo de más de 11 slots y en el resto, frente al mismo rango.
+
+- Si alguno de los diez sale fuera **solo** en los frames con más de 11 slots y dentro en el resto, el arreglo que se
+  propone es quitar los slots sobrantes (un candidato nuevo), no estandarizar.
+- Si sale fuera también en el resto, se propone estandarizar, como dice P2.
+- En los dos casos se avisa a la sesión principal antes de escribir nada.
