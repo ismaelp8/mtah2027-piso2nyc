@@ -240,8 +240,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     media, 116 paradas y el 46,2 % de `D` en lo evaluado. Ismael la generó en el entorno limpio y Manuel en su
     máquina, y sale igual.
   - Frente a `equipo_v8` cambian 1.167 frames, todos de un equipo a `D` (609 de `H` y 558 de `A`).
-  - **Falta que Ismael la regenere con `main` ya encendido:** `python -m possession.pipeline --name equipo_v9`, con
-    el python del entorno limpio, tiene que dar esa huella.
+  - **Regenerada por Ismael con `main` en `1e71d72`** (16/11, entorno limpio, Python 3.13.9 y numpy 2.5.4, sin
+    cambios locales): la misma huella, 0 conflictos, ninguna racha corta y el validador en verde.
   - **En el harness:** con el `D` de las etiquetas, la fila por defecto no cambia (la salida es idéntica antes y
     después). Con el `D` propio, sí: 0,416 → 0,414 con el flag y 0,616 → 0,623 con control («como el ATD»). Quien
     compare con «main» usando el `D` propio fija `main` en `3220707` o vuelve a medir su referencia.

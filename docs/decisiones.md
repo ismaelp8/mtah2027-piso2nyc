@@ -4855,7 +4855,8 @@ Qué cambia:
   código de la entrega.
 - La entrega nueva es `equipo_v9`. Tiene que salir byte a byte igual que `prueba_cortas_a_d` (sha256
   `d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63`), que Ismael generó en el entorno limpio con
-  `main` en `c52a746` y Manuel en su máquina. **Falta regenerarla con `main` ya encendido.**
+  `main` en `c52a746` y Manuel en su máquina. **Regenerada por Ismael con `main` en `1e71d72`: sale esa huella,** con
+  el validador en verde (201 posesiones de 17,0 s de media).
 
 Por qué:
 - Es la primera candidata que pasa entera la regla del límite de daño (16/11), escrita antes de medir: con control en
