@@ -160,6 +160,37 @@ y se arreglaron todos. El sondeo las aplica así:
   - 564 de sus 1.324 eventos caen justo a 18 frames de un `D`, donde la media móvil se queda con un solo lado;
   - lejos de los `D` da 2,44 por minuto, frente a 1,72 del balón limpio.
 
+### Réplicas de la condición 5 (16/11, 18:30, antes de ejecutar nada del partido; la regla no cambia)
+
+**Por qué:** con una sola tirada por celda, el ruido de Monte Carlo del Δ de control (de 0,0006 a 0,0028) era del
+orden de la distancia al +0,01, así que el veredicto de una celda dependía de la semilla. Lo encontró la revisión de
+`emular_dfl.py`.
+
+**Qué se hace:**
+- En las celdas con p ≥ 0,7 se hacen R = 8 réplicas, con la semilla `[SEMILLA, partido, condición, 100p, 1000σ, L, r]`
+  (la réplica 0, sin el último elemento).
+- En cada partido, las R réplicas se juntan con `puntuar.juntar` para «gana en»; el Δ sale de los 7×R recuentos
+  juntos, y el veredicto, de esos dos.
+- El intervalo es el de la réplica 0 y es solo descriptivo.
+
+**«Sin decidir»:** una celda cuyo Δ juntado cae a menos de dos errores estándar del umbral, o cuyo «gana en» de control
+cruza el 6 según la réplica. Se imprime y no vota: vota el veredicto juntado.
+
+**Reconocido:** R y las semillas se fijaron después de ver una rejilla de una sola tirada. No se ha ejecutado nada del
+partido, y el umbral y la regla no cambian.
+
+Salida: `salidas/2026-11-16_emulacion_dfl.md` y `.json` (script `358043bf…`). La calibración del temblor está en
+`salidas/2026-11-16_calibracion_temblor_dfl.*`: con un temblor medido de 0,0947 m o menos, σ = 0,03.
+
+**Lo que dice la rejilla, para saber qué esperar** [medido, DFL, `D` de las etiquetas; Δ frente a `main`, con «como el
+ATD» / «sin bloques»]:
+- **El detector perfecto** (p = 1, σ = 0): +0,010 / +0,012 con el flag y +0,014 / +0,017 con control.
+- **Uno realista** (p = 0,8, σ = 0,06): de +0,007 a +0,009 con el flag y de +0,011 a +0,015 con control.
+- **En casi todas las celdas** gana en 6 o 7 partidos de 7 con las dos convenciones.
+- **Lectura** [inferencia]: con B5 tal cual, el balón del vídeo da como mucho del orden de +0,01, positivo con las dos
+  convenciones pero por debajo del ruido del partido (0,04). Para sacar más hace falta un modelo que aproveche el balón
+  nítido (B10, la tarea de David) o usarlo en los bordes del `D`.
+
 ## Puerta 2: ¿entra en la entrega? (regla de entrada fijada ahora; los detalles, antes de medir)
 
 Es la tercera excepción a «lo que no ha ganado en el harness no entra»: la DFL no tiene vídeo. Esta línea tiene su
