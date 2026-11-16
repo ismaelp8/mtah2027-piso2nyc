@@ -4606,8 +4606,8 @@ que la regla nº 1 no lo impide; el guardarraíl es la autorización y la bander
   que nadie había tocado. La diferencia es de 0,001: no hay señal de que el entrenamiento estuviera inflado.
 
 **Estado de las cuatro condiciones del límite de daño:** 1 PASA, 2 PASA (entrenamiento y examen), 3 PASA.
-**Falta solo la 4, la entrega de prueba,** que lee el partido y la ejecuta una persona. La entrega sigue siendo
-`equipo_v8` y `pipeline.PIECES` no se toca.
+**Faltaba solo la 4, la entrega de prueba,** que lee el partido y la ejecuta una persona; se cerró el mismo día,
+en el apartado siguiente. La entrega sigue siendo `equipo_v8` y `pipeline.PIECES` no se toca.
 
 **Condición 4, la entrega de prueba (16/11, la generó Manuel en su máquina) [medido, solo agregados]: pasa los
 cinco criterios.**
@@ -4686,10 +4686,9 @@ Lo de aquí es **una tercera máquina**, y lo que añade no es cerrar ese pendie
   aporta dos cosas nuevas para `equipo_v8`: **el primer numpy distinto (2.4.4) y el primer Python 3.14**. No
   cambia lo fijado: `requirements-entrega.txt` sigue mandando para el congelado.
 - Con un matiz que conviene que juzgue quien lleve el congelado: se generó desde `1fcf40f`, el commit de esta
-  rama, no desde
-  `main`. Como el sha256 es el mismo, eso no debilita la reproducción y además prueba lo del apartado anterior;
-  pero si el ensayo del congelado quiere la reproducción «desde `main`» en sentido estricto, esto no la
-  sustituye.
+  rama, no desde `main`. Como el sha256 es el mismo, eso no debilita la reproducción y además prueba lo del
+  apartado anterior; pero si el ensayo del congelado quiere la reproducción «desde `main`» en sentido estricto,
+  esto no la sustituye.
 
 ### El corte de 125 frames no es el único que pasaría
 

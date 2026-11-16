@@ -1,15 +1,16 @@
-"""«Cortas a `D`» (idea 1.3) en SkillCorner: reproduce S9 en la mitad de entrenamiento y, con permiso, abre el
-examen una sola vez.
+"""«Cortas a D» (idea 1.3) en SkillCorner: mide la mitad de entrenamiento y, con autorización, el examen (una vez por candidato).
 
     python validation/scripts/cortas_a_d_skillcorner.py --versiones validation/harness/versiones/cortas_a_d_2026-11-16.json
     python validation/scripts/cortas_a_d_skillcorner.py --versiones <fichero> --examen --confirmo-el-unico-uso
 
+La primera línea de este docstring es la que imprime `--help`, así que se deja completa y autocontenida.
+
 Datos abiertos de otros partidos (A-League 2024/25, licencia MIT; ver `validation/skillcorner/descargar.py`).
 Solo imprime agregados. **Lo puede ejecutar cualquiera, Claude incluido, las dos mitades:** son datos abiertos
 y la regla nº 1 no está en juego. Lo que la mitad de examen exige no es una persona, sino una **autorización
-explícita del equipo en el momento**, porque gasta el único uso de **este candidato**: hacen falta
-`--examen` y `--confirmo-el-unico-uso`, y el uso se apunta en `docs/decisiones.md` y en
-`validation/skillcorner/BITACORA.md`.
+explícita del equipo en el momento**, porque gasta el único uso de **este candidato**: hacen falta `--examen` y
+`--confirmo-el-unico-uso`. Cada uso se apunta en `validation/skillcorner/BITACORA.md`, sección «Usos del
+examen», y en `docs/decisiones.md`.
 
 El `D` es siempre el propio, como en S9. **Nunca con el `D` oráculo:** en ese modo la puerta `allowed[.., D]`
 de `cortas_a_d` dejaría pasar solo candidatas que ya son `D` de verdad y la regla saldría correcta por
@@ -19,11 +20,9 @@ Por qué hace falta este script: `validation/skillcorner/medir.py` no acepta `--
 fijas en el código) y por defecto usa los 20 partidos, **examen incluido**. Aquí la mitad de examen solo se lee
 con `--examen`, y el `D` es siempre el propio, como en S9.
 
-**El examen (`lector.EXAMEN`) se abre con una autorizacion explicita del equipo, y `CLAUDE.md` lo permite una
-vez por candidato.** Cada uso se apunta en `validation/skillcorner/BITACORA.md`, seccion «Usos del examen», y
-en `docs/decisiones.md`. El umbral esta
-escrito antes en `docs/decisiones.md` (16/11, «la idea 1.3 se desaparca»): entra si gana a `main` por +0,005 o
-más y gana en 7 de 10 partidos, en las dos condiciones que votan. Cada uso se apunta en ese fichero.
+**El examen (`lector.EXAMEN`) se abre con una autorización explícita del equipo, y `CLAUDE.md` lo permite una
+vez por candidato.** Su umbral está escrito antes en `docs/decisiones.md` (16/11, «la idea 1.3 se desaparca»):
+entra si gana a `main` por +0,005 o más y gana en 7 de 10 partidos, en las dos condiciones que votan.
 """
 
 import argparse
@@ -50,9 +49,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--versiones", default=VERSIONES, help="fichero de versiones del harness")
     parser.add_argument("--examen", action="store_true",
-                        help="abre la mitad de examen (lector.EXAMEN). Con autorizacion del equipo; una vez por candidato")
+                        help="abre la mitad de examen (lector.EXAMEN). Con autorización del equipo; una vez por candidato")
     parser.add_argument("--confirmo-el-unico-uso", action="store_true", dest="confirmado",
-                        help="hace falta junto con --examen: confirma que es el unico uso del examen para este candidato")
+                        help="hace falta junto con --examen: confirma que es el único uso del examen para este candidato")
     args = parser.parse_args()
 
     versiones, contenido, huella = puntuar.leer_versiones(args.versiones)
@@ -71,15 +70,15 @@ def main():
     ids = list(lc.EXAMEN if args.examen else lc.ENTRENAMIENTO)
     if args.examen:
         if not args.confirmado:
-            print("El examen de SkillCorner (lector.EXAMEN) se abre con una autorizacion explicita del equipo,")
-            print("y CLAUDE.md lo permite una vez POR CANDIDATO. Mira antes la seccion «Usos del examen» de")
-            print("validation/skillcorner/BITACORA.md: si este candidato ya lo gasto, no se vuelve a abrir.")
-            print("Si tienes la autorizacion y es su primer uso, repite el comando anadiendo:")
+            print("El examen de SkillCorner (lector.EXAMEN) se abre con una autorización explícita del equipo,")
+            print("y CLAUDE.md lo permite una vez POR CANDIDATO. Mira antes la sección «Usos del examen» de")
+            print("validation/skillcorner/BITACORA.md: si este candidato ya lo gastó, no se vuelve a abrir.")
+            print("Si tienes la autorización y es su primer uso, repite el comando añadiendo:")
             print("    --confirmo-el-unico-uso")
             return 1
-        print("### ATENCION: se esta abriendo la mitad de EXAMEN de SkillCorner.")
-        print("Gasta el uso de ESTE candidato. Apuntalo en validation/skillcorner/BITACORA.md («Usos del")
-        print("examen») y en docs/decisiones.md, con la fecha, el candidato y quien lo autorizo.\n")
+        print("### ATENCIÓN: se está abriendo la mitad de EXAMEN de SkillCorner.")
+        print("Gasta el uso de ESTE candidato. Apúntalo en validation/skillcorner/BITACORA.md («Usos del")
+        print("examen») y en docs/decisiones.md, con la fecha, el candidato y quién lo autorizó.\n")
     else:
         lc.exigir_solo_entrenamiento(ids)
 
@@ -124,7 +123,7 @@ def main():
         print("| {} | {} |".format(cond, " | ".join(celdas)))
 
     if args.examen:
-        print("\n**Umbral escrito antes de abrir el examen:** +{:.3f} o mas y ganar en {} de 10.".format(
+        print("\n**Umbral escrito antes de abrir el examen:** +{:.3f} o más y ganar en {} de 10.".format(
             UMBRAL, GANA_DE))
         for cond, nombre, dif, gana, total in veredicto:
             ok = dif >= UMBRAL and gana >= GANA_DE
@@ -136,4 +135,6 @@ def main():
 
 
 if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     sys.exit(main())
