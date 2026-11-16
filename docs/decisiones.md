@@ -4517,3 +4517,40 @@ más, porque la capa empuja a un equipo también frente a `D`. El balón del ví
 que ven las reglas.
 
 Descartado: elegir una combinación de la tabla descriptiva (varias ganan en alguna celda): sería elegir mirando.
+
+### 2026-11-16 · temporal · detector de cambios, segunda ronda: cuatro familias contra la falta de precisión (antes de medir)
+
+Quién: David (16/11, «haz la segunda ronda»), con Claude. Escrita antes de medir nada de esta ronda.
+
+Qué se prueba: la primera ronda dijo que el mecanismo vale (techo de +0,096 con control) y que falla la precisión del
+detector (10–16 avisos por minuto, el 23–25 % buenos) y el efecto de la capa sobre el `D` propio. Cuatro familias, todas
+sobre las probabilidades y los modelos de la primera ronda (no se reentrena la primera etapa):
+
+- **C, la capa contra el otro equipo:** `cambios.capa(..., contra_d=True)` suma lo mismo a la columna `D`, así que solo
+  empuja contra el otro equipo. Se aplica a los cuatro detectores de la primera ronda, sin tocarlos.
+- **A, avisos:** la probabilidad del aprendido se corrige por el submuestreo de «sin cambio» (1 de cada 5) y se queda en
+  avisos: el máximo de cada racha con p ≥ u, separados 25 frames o más (gana el más alto). La capa y la rebaja reciben
+  1 a 12 frames o menos de cada aviso. u ∈ {0,5, 0,7, 0,85}.
+- **B, confirmación:** un segundo modelo mira cada aviso de la primera etapa (los de A con u = 0,3) y dice si es un
+  cambio real. Rasgos, solo aquí con más de 25 frames: en los 50 y 75 frames siguientes, la fracción de frames con
+  balón en que el equipo nuevo es el más cercano, la mediana de la distancia de cada equipo y la fracción sin balón; en
+  los 50 anteriores, la fracción en que el más cercano era el otro equipo; los toques de cada equipo (`cambios.toques`)
+  en los 75 siguientes y en los 50 anteriores; y la p del aviso. Mismo `HistGradientBoostingClassifier` (con 20 muestras
+  por hoja, porque hay pocos avisos), un modelo por partido dejado fuera. Quedan los avisos con p₂ ≥ v, v ∈ {0,3, 0,5,
+  0,7}. No está anidado del todo: los avisos de los partidos de entrenamiento salen de modelos de la primera etapa que
+  sí vieron el partido que se puntúa.
+- **D, las reglas afinadas:** `GIRO_TOQUE` ∈ {20, 30, 45}, `CAMBIO_VELOCIDAD` ∈ {0,3, 0,4, 0,6} y `CONFIRMA` ∈ {12, 20,
+  30} (27 juegos; el de hoy es 30 / 0,4 / 20).
+
+La rejilla del decodificador de esta ronda: w ∈ {0, 25}, γ ∈ {4, 8, 16}, W ∈ {50, 100} y la capa de las dos formas
+(`contra_d` sí o no): 24 combinaciones. Para D, solo cuatro (w = 0, W = 50, γ ∈ {4, 8}, las dos formas), por tiempo.
+
+Un candidato por familia y balón (10 en total: C × 4 detectores, A × 2 balones, B × 2 y D × 2). Cada uno elige todo lo
+suyo (u, v o el juego de umbrales, y la combinación del decodificador) dejando un partido fuera: lo que más saca en los
+otros seis, con la media del spellF1 de control en las dos condiciones que votan **y los dos modos del `D`** (con el `D`
+de las etiquetas, `contra_d` no cambia nada, así que no se podría elegir).
+
+Regla de entrada: la misma de la primera ronda (el límite de daño; puntos 1 y 3 aquí). Son 10 candidatos y ya hubo 4:
+si pasa uno solo y por poco, se dice. La emulación del vídeo sigue en la celda provisional.
+
+Estado: en marcha.

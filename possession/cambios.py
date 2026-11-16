@@ -116,16 +116,16 @@ def rasgos(trk, fuente=None, ks=K):
 
 # -- la línea base con reglas ---------------------------------------------------------------------------
 
-def toques(trk):
-    """(frames, equipos) de los toques: el balón gira más de `GIRO_TOQUE` o cambia su velocidad más de
-    `CAMBIO_VELOCIDAD` entre los `PASO_TOQUE` frames de antes y los de después, con un jugador a menos de `RADIO`.
+def toques(trk, giro_toque=GIRO_TOQUE, cambio_velocidad=CAMBIO_VELOCIDAD):
+    """(frames, equipos) de los toques: el balón gira más de `giro_toque` o cambia su velocidad más de
+    `cambio_velocidad` entre los `PASO_TOQUE` frames de antes y los de después, con un jugador a menos de `RADIO`.
     De cada racha de frames seguidos que lo cumplen queda el del medio. El equipo es el del más cercano."""
     bx, by = np.asarray(trk.bx, dtype=float), np.asarray(trk.by, dtype=float)
     d, _ = distancias(trk)
     antes, despues, giro = _movimiento(bx, by, PASO_TOQUE, float(trk.fps))
     with np.errstate(invalid="ignore", divide="ignore"):
         relativo = np.abs(despues - antes) / np.maximum(antes, despues)
-        es = ((giro > GIRO_TOQUE) | (relativo > CAMBIO_VELOCIDAD)) & (np.fmin(d[:, H], d[:, A]) < RADIO)
+        es = ((giro > giro_toque) | (relativo > cambio_velocidad)) & (np.fmin(d[:, H], d[:, A]) < RADIO)
     es = np.where(np.isnan(antes) | np.isnan(despues), False, es)
     bordes = np.flatnonzero(np.diff(np.concatenate(([0], es.astype(np.int8), [0]))))
     frames = (bordes[0::2] + bordes[1::2] - 1) // 2
@@ -134,15 +134,15 @@ def toques(trk):
     return frames.astype(np.int64), equipos.astype(np.int8)
 
 
-def p_reglas(trk):
+def p_reglas(trk, giro_toque=GIRO_TOQUE, cambio_velocidad=CAMBIO_VELOCIDAD, confirma=CONFIRMA):
     """La línea base: `p` (n, 2) con 1 a `SEMIANCHO` frames o menos de cada cambio que ven las reglas.
 
     Hay cambio hacia X en un toque de X si el toque anterior era del otro equipo y, además, el toque siguiente es
-    de X o X es el más cercano al balón en todos los frames con balón de los `CONFIRMA` siguientes (y hay alguno).
+    de X o X es el más cercano al balón en todos los frames con balón de los `confirma` siguientes (y hay alguno).
     """
     n = len(trk.bx)
     p = np.zeros((n, 2))
-    frames, equipos = toques(trk)
+    frames, equipos = toques(trk, giro_toque, cambio_velocidad)
     d, _ = distancias(trk)
     for i in range(1, len(frames)):
         t, x = int(frames[i]), int(equipos[i])
@@ -150,7 +150,7 @@ def p_reglas(trk):
             continue
         sigue = i + 1 < len(frames) and equipos[i + 1] == x
         if not sigue:
-            tramo = d[t + 1:t + 1 + CONFIRMA]
+            tramo = d[t + 1:t + 1 + int(confirma)]
             con = ~np.isnan(tramo).any(axis=1)
             sigue = bool(con.any() and np.all(tramo[con, x] < tramo[con, 1 - x]))
         if sigue:
@@ -176,12 +176,13 @@ def rebaja(p, w):
     return float(w) * _comprobar(p)
 
 
-def capa(p, gamma, ventana, retraso=SEMIANCHO):
+def capa(p, gamma, ventana, retraso=SEMIANCHO, contra_d=False):
     """Evidencia `(score, allowed)`: `score_X(t) = gamma · max de p_X(τ)` con τ en [t − retraso − ventana, t − retraso].
 
     Empuja hacia el equipo nuevo durante `ventana` frames después de un cambio. `retraso` es el semiancho de la
     clase: con un detector perfecto (`p` = 1 a `SEMIANCHO` frames o menos del cambio), el empujón empieza en el
-    cambio y no antes. No prohíbe nada y no puntúa `D`.
+    cambio y no antes. No prohíbe nada y no puntúa `D`, salvo con `contra_d` (candidato de la segunda ronda):
+    entonces suma a `D` lo mismo que al equipo que más recibe, y así solo empuja contra el otro equipo.
     """
     p = _comprobar(p)
     if gamma < 0 or ventana < 0 or retraso < 0:
@@ -192,4 +193,6 @@ def capa(p, gamma, ventana, retraso=SEMIANCHO):
         relleno = np.concatenate((np.zeros((int(ventana) + int(retraso), 2)), p))
         ventanas = np.lib.stride_tricks.sliding_window_view(relleno, int(ventana) + 1, axis=0)
         score[:, :2] = float(gamma) * ventanas[:n].max(axis=2)
+        if contra_d:
+            score[:, 2] = score[:, :2].max(axis=1)
     return score, np.ones((n, N_STATES), dtype=bool)
