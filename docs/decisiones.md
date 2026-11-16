@@ -4293,3 +4293,69 @@ Riesgos apuntados antes de empezar:
 - el tiempo de cálculo.
 
 `equipo_v8` no cambia mientras no pase la puerta 2.
+
+### 2026-11-16 · `D` · estado con árboles (idea 2.4): candidatos y regla de entrada, escritos antes de medir
+
+Quién: Antonio, con la tarea asignada el 16/11 (idea 2.4 de `docs/investigacion_2026-11-16.md`). La pieza
+(`possession/dead_state.py`) es de Ana: no se toca salvo que un candidato gane, y entonces solo con una función nueva
+apagada.
+
+Qué se probó: todavía nada. Esta entrada fija los candidatos, lo que queda fijo y la regla, antes de entrenar ni medir.
+
+- **Candidatos (dos):**
+  - **G2:** árboles con *boosting* con los 11 rasgos de E2;
+  - **G3:** lo mismo con los 19 rasgos de E3 (E2 más las ventanas solo hacia atrás y solo hacia delante, de 2 y 4 s).
+- **Referencia:** E2, el modelo de `main` (la regresión logística de la entrada del 14/11).
+- **Lo que queda fijo y no se ajusta:**
+  - `HistGradientBoostingClassifier` de `scikit-learn` 1.7.2 con `learning_rate` 0,1, 200 árboles, 15 hojas por árbol,
+    200 frames por hoja como mínimo, `l2_regularization` 1, sin parada temprana y `random_state` 0, entrenado con un
+    solo hilo para que dos ejecuciones den lo mismo. Son valores comunes fijados ahora; no se prueba ningún otro;
+  - las muestras de E2: uno de cada 5 frames con etiqueta y con todos los rasgos, `D` frente a juego;
+  - la salida, como E2: el logaritmo de la razón de probabilidades en la columna `D`, cero donde falta algún rasgo,
+    recortado a ±8 y redondeado a la rejilla de `SCORE_GRID`; escala 1;
+  - el decodificador y sus costes, los de `main`.
+- **Entorno:** uno aparte (`scikit-learn` 1.7.2, numpy 2.4.6, Python 3.11) que no entra en `requirements-entrega.txt`.
+  Reproduce el `MODEL` de E2 bit a bit (`entrenar.py --comprobar`).
+
+Cómo se medirá (dataset, nº de partidos/posesiones, métrica): los 7 partidos de la DFL (Bassek et al., 2025, CC BY 4.0).
+Cada candidato puntúa un partido con los árboles entrenados en los otros seis.
+
+1. **Harness con el `D` propio:** el pipeline de `main` con su `dead_state` cambiado por el candidato. Ocho celdas: las
+   dos convenciones (flag y control) × las dos condiciones que votan («como el ATD» y «como el ATD, sin bloques») × el
+   balón en los `D` tapado (como `puntuar.py --d propio`) y a la vista (como `con_balon_en_d` de
+   `validation/apuesta_b/d_propio.py`).
+2. **El criterio del 13/11** de `validation/scripts/d_estado/medir.py`, con E2 medido en la misma ejecución, también
+   dejando un partido fuera.
+
+Decisión y por qué (la regla de entrada, fijada antes de medir):
+- **Un candidato gana si cumple las dos cosas:**
+  1. **Harness:** frente a `main`, +0,010 o más de `spellF1` con los 7 partidos juntos y gana en 6 de 7 partidos, **en
+     cada una de las ocho celdas**. El intervalo del bootstrap se enseña pero no decide.
+  2. **No empeora el criterio del 13/11** frente a E2:
+     - sigue cumpliendo las dos condiciones que E2 cumple: 0,3 `D` espurios o menos por minuto de juego y ninguna racha
+       de menos de 25 frames;
+     - el inicio y el fin a 25 frames o menos no bajan más de 1 punto (lo que redondea la tabla);
+     - el sesgo mediano de cada borde, en valor absoluto, no sube más de 1 frame.
+- **Si ganan los dos, entra G2,** salvo que G3 le gane con la regla 1 en las ocho celdas.
+- **Si gana,** la predicción de los árboles pasa a numpy en `dead_state.py` como función nueva **apagada** (los árboles
+  como arrays en el módulo), determinista y redondeada a la rejilla de `SCORE_GRID`, con su prueba en
+  `validation/scripts/`, y PR. Encenderla es otra decisión, con su entrega de prueba.
+- **Si no gana ninguno,** se apunta lo medido y la idea 2.4 se cierra. Nada de lo de arriba se vuelve a probar con otros
+  valores.
+
+Descriptivo, sin voto: AUC por frame, paradas detectadas y `spellF1` con equipo oráculo de `medir.py`; el placebo
+(desplazada 60 s); la escala a la mitad y al doble; un temblor de 0,1 y 0,2 m en los jugadores; las condiciones del
+balón sin voto; y una fila de E2 dejando un partido fuera en el harness.
+
+Avisos, escritos antes de medir:
+- **`main` está en muestra en el harness:** su `MODEL` se entrenó con los 7 partidos, y el candidato deja fuera el que
+  se puntúa. Eso juega en contra del candidato. La fila de E2 dejando un partido fuera dice cuánto.
+- **E2 ya es frágil con un temblor en los jugadores** (detecta el 61 % de las paradas con 0,1 m; entrada del 14/11).
+  Si los árboles lo son más, se apunta como riesgo y lo decide el equipo; no cambia la regla.
+- **La regla pide ganar también con el flag.** Es más estricta que la del límite de daño del 16/11.
+
+Descartado (antes de medir):
+- **Probar otros valores de los árboles** (más árboles, más hojas, otra tasa): sería ajustar mirando la medida.
+- **Usar el balón:** lo mismo que el 14/11; delataría el `D` en la DFL.
+- **Una red o un bosque aleatorio:** con dos candidatos como mucho, se prueba el *boosting*, que es lo que mejor salió
+  en Lang et al. (2022) (allí AdaBoost; aquí el *gradient boosting* por histogramas de `scikit-learn`, que entrena rápido).
