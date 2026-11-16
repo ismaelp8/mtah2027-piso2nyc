@@ -298,6 +298,31 @@ la 1b de Antonio puede estar ya ejecutada. El umbral y la regla no cambian.
 - `main` lleva ya la PR 20 («cortas a `D`», apagada): no cambia la entrega.
 - Los agregados se los pegó Ismael a la sesión planificadora, que los pasó a esta.
 
+### La rejilla de la 2.1 con el `D` propio y réplicas (16/11, 21:20; datos abiertos, antes de leer ninguna cifra del partido) [medido]
+
+Salida: `salidas/2026-11-16_emulacion_dfl_propio.md` y `.json` (script `emular_dfl_propio.py`, `1d7f4765…`; 37 minutos
+con 10 procesos en la máquina de Ismael, Python 3.13.9 y numpy 2.5.4).
+
+- **La comprobación pasa:** la réplica 0 da las cifras del `D` propio del JSON de la emulación en 48 de 48 celdas
+  (tolerancia 1e-12). Esta máquina reproduce las cuentas del ordenador donde se hizo la rejilla.
+- **La tirada única no bastaba:** con 8 réplicas, el veredicto del `D` propio cambia en 12 de las 48 celdas.
+- **Cuántas celdas pasan la 2.1** (con los dos `D`), de las 12 de cada cobertura:
+
+  | p | pasan con el `D` propio | pasan con los dos |
+  |---|---|---|
+  | 0,7 | 7 | 6 |
+  | 0,8 | 8 | 8 |
+  | 0,9 | 11 | 11 |
+  | 1 | 12 | 12 |
+
+  En total, 38 pasan con el `D` propio, 42 con el de las etiquetas y 37 con los dos.
+- **Lo que gana, con el `D` propio:** con control, de +0,009 a +0,017; con el flag, de +0,004 a +0,010. Nunca pierde.
+- **Casi todo queda «sin decidir»:** 38 de 48 celdas están a menos de dos errores estándar del umbral, o su «gana en»
+  cruza el 6 según la réplica. No vota, pero dice lo que hay: lo que da B5 tal cual con el balón del vídeo está justo en
+  el +0,01 que pide la regla.
+- **Lectura** [inferencia]: que la 2.1 pase o no en la celda del partido depende de milésimas. Pase o no, la ganancia
+  esperada con B5 tal cual es de +0,01, por debajo del ruido del partido (0,04).
+
 ### Puerta 0 (16/11, sesión aparte; datos abiertos) [medido]
 
 - **Entorno:** CPU Intel Core Ultra 5 225U (12 núcleos, 14 hilos), Python 3.14.7, torch 2.15.0+cpu, ultralytics 8.4.215,
