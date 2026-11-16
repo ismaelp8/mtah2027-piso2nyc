@@ -773,3 +773,28 @@ Semilla fija. Como comprobación, sin regla, se imprime la descripción de P3 so
   con Ismael si se genera una entrega de prueba.
 - **Si pasa,** la entrega de prueba se compara con `equipo_v8` con criterios escritos antes de generarla: cuántos frames
   cambian, de qué etiqueta a cuál y cuántos caen en frames con sobrantes. Encenderlo no es de esta sesión.
+
+### P4. Resultado (16/11) [medido; salida en `salidas/2026-11-16_p4_slots_dfl.md`]
+
+| `D` | etiquetas | condición o balón en los `D` | B − A (lo que cuestan los fantasmas) | C − B (lo que recupera el arreglo) |
+|---|---|---|---|---|
+| etiquetas | control | como el ATD / sin bloques | −0,008 / −0,004 | +0,001 / +0,001 |
+| etiquetas | flag | como el ATD / sin bloques | −0,002 / −0,001 | −0,001 / −0,001 |
+| propio | control | balón a la vista / tapado | −0,006 / −0,006 | +0,002 / +0,001 |
+| propio | flag | balón a la vista / tapado | −0,002 / −0,001 | −0,001 / −0,002 |
+
+- **Con la regla: los fantasmas no hacen daño** (ninguna celda pierde 0,010) **y se cierra.** `clean_slots` se queda apagada
+  en `possession/ball.py`, como las demás opciones medidas.
+- **El arreglo, además, apenas ayudaría:** recupera del 15 al 28 % con el control y resta un poco con el flag. Quita al
+  fantasma solo en el 34,1 % de los slots que quita: con los tracklets cortados al ritmo del ATD, el slot más nuevo suele
+  ser un jugador de verdad que acaba de cambiar de slot.
+- **Sin fantasmas no cambia nada** (0 slots en la DFL sin degradar, con los tracklets cortados y en SkillCorner).
+- **La degradación se parece al partido en lo grueso y no en todo** (comprobación, sin regla): frames con sobrantes 12,2 %
+  frente a 12,9 %; el sobrante dentro del campo y lejos de los compañeros en los dos. Pero en la DFL degradada el
+  sobrante es nuevo (menos de 5 s) en el 84,2 % de las muestras, frente al 51,9 % del partido, y está algo más lejos del
+  balón y más quieto. Lectura [inferencia]: los slots del ATD se cortan menos a menudo de lo que supone la mediana de
+  35,5 s, o los sobrantes del partido duran más. Eso perjudica al arreglo, no a la medida del daño: los fantasmas de la
+  degradación cuestan poco porque B5 apenas los nota, no porque se quiten mal.
+- **Lo que no dice:** si los sobrantes del partido son peores que estos fantasmas (por ejemplo, un árbitro asignado a un
+  equipo y siempre cerca de la jugada). La degradación los pone algo más lejos del balón que en el partido (10 a 30 m: 21,5
+  frente a 32,0 %).

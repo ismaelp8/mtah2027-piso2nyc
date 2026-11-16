@@ -47,9 +47,10 @@
 >
 > **Resultados (16/11):**
 > - **1.1, cerrada:** solo 16 cambios entre fases cuentan (se pedían 30), y en 10 la entrega ya iba con ese equipo.
-> - **1.2, abre un candidato:** un equipo tiene más de 11 slots en el 12,8 % de los frames con balón (0 % en los datos
->   abiertos), y ahí la velocidad del equipo, la dispersión y el núcleo de 1 m se salen de rango. Se sigue con «quitar
->   los slots sobrantes» (P3 de la bitácora).
+> - **1.2, abrió un candidato y se cerró:** un equipo tiene más de 11 slots en el 12,8 % de los frames con balón (0 % en
+>   los datos abiertos), y ahí la velocidad del equipo, la dispersión y el núcleo de 1 m se salen de rango. El sobrante
+>   está dentro del campo y se mueve como un jugador (P3). Imitado en la DFL, le cuesta a `main` como mucho 0,008, por
+>   debajo del 0,010 de la regla, y quitar el slot más nuevo apenas lo recupera (P4). `ball.clean_slots` se queda apagada.
 
 ### 1.1 Los cambios de equipo entre fases del Smart Tagging (ficha 2.2)
 
