@@ -136,12 +136,16 @@ medida de la sección 7, que es anterior a este corte.
 
 ### Usos del examen
 
-Cada vez que se abre `EXAMEN`, se apunta aquí. **No queda ningún uso disponible.**
+Cada vez que se abre `EXAMEN`, se apunta aquí. **`CLAUDE.md` lo permite una vez por candidato**, así que esta
+tabla lleva la cuenta por candidato, no un único uso global.
 
 | fecha | candidato | quién lo autorizó | resultado |
 |---|---|---|---|
 | 16/11/2026 | «cortas a `D`» (idea 1.3), corte de 125 frames, con `validation/scripts/cortas_a_d_skillcorner.py --examen --confirmo-el-unico-uso` | Ismael dio el permiso el 16/11; Manuel lo autorizó en el momento | **Pasa:** +0,009 (10 de 10) con «detectado» y +0,008 (10 de 10) con «detectado, suavizado», sobre un umbral escrito antes de +0,005 y 7 de 10 |
 
-El detalle está en `docs/decisiones.md`, entrada «la idea 1.3 («cortas a `D`») se desaparca». Un candidato
-nuevo —por ejemplo el mismo con el corte de 75 frames— **ya no puede confirmarse en el examen**: se mide en la
-DFL y en la mitad de entrenamiento, y eso se dice al presentarlo.
+El detalle está en `docs/decisiones.md`, entrada «la idea 1.3 («cortas a `D`») se desaparca».
+
+**Pendiente de que lo decida el equipo:** si cambiar un parámetro de una idea ya examinada (por ejemplo el
+mismo «cortas a `D`» con el corte de 75 frames) cuenta como **candidato nuevo**, con su propio uso, o como
+**ajuste del mismo**, que es la fuga de la que el examen protege. Hasta que se decida, no se abre el examen
+para una variante de un candidato ya examinado.

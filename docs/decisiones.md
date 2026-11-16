@@ -4245,8 +4245,9 @@ Un candidato de ese tipo entra si se cumple todo, frente a `main`:
    Si toca el `D`, con el `D` propio y en los dos modos del balón en los `D` (tapado y a la vista).
 2. **SkillCorner:** gana en la mitad de entrenamiento y lo confirma **una sola vez** en la de examen
    (`lector.EXAMEN`), con +0,005 o más y ganando en 7 de 10. El umbral se escribe antes de abrirla y cada uso del
-   examen se apunta aquí. Ismael dio el permiso para abrirlo el 16/11. **Usado el 16/11 con «cortas a `D`» y el
-   corte de 125 frames** (ver la entrada «la idea 1.3 se desaparca»): ya no queda ningún uso.
+   examen se apunta aquí. Ismael dio el permiso para abrirlo el 16/11. **Usado el 16/11 por el candidato
+   «cortas a `D`» con el corte de 125 frames** (ver la entrada «la idea 1.3 se desaparca»). `CLAUDE.md` lo lee
+   como una vez **por candidato**, así que esto no agota el examen para otros candidatos.
 3. **DFL con el flag:** no pierde más de 0,005 en ninguna celda (condición × modo del `D`).
 4. **Entrega de prueba** frente a la vigente, con criterios de daño escritos antes de generarla.
 
@@ -4405,9 +4406,10 @@ Quién: Manuel, por encargo de Ismael (16/11). **Reglas escritas antes de medir 
 regla de límite de daño. El permiso para abrir el examen de SkillCorner es del mismo día.
 
 > **Estado al cerrar esta entrada:** las cuatro condiciones del límite de daño pasan y la variante se queda
-> **apagada**; la entrega sigue siendo `equipo_v8`. **El único uso del examen de SkillCorner se gastó el 16/11
-> con el corte de 125 frames** (ver «El examen de SkillCorner: USADO» más abajo): no queda otro. Antes de
-> encender nada, leer también el apartado «El corte de 125 frames no es el único que pasaría».
+> **apagada**; la entrega sigue siendo `equipo_v8`. **El examen de SkillCorner se abrió el 16/11 para este
+> candidato, con el corte de 125 frames** (ver «El examen de SkillCorner» más abajo). `CLAUDE.md` lo permite
+> una vez **por candidato**, así que no queda agotado para otros. Antes de encender nada, leer también el
+> apartado «El corte de 125 frames no es el único que pasaría».
 
 **`possession/temporal.py` es la pieza de David,** así que la PR le pide la revisión a `ortegafer`. El cambio es
 solo aditivo: `decode`, `decode_min`, `decode_prune`, `prune`, `runs`, `viterbi`, `viterbi_min`, `_prepare` y
@@ -4468,21 +4470,21 @@ En la DFL las dos columnas son las dos condiciones que votan, «como el ATD» y 
 la fila de SkillCorner son sus dos condiciones, «detectado» y «detectado, suavizado»** (`lector.VOTAN`), no las
 de la DFL: se reproducen con el script de SkillCorner, no con el de la DFL.
 
-(*) S9 da ese «5 de 7» una sola vez, para la celda colapsada: el recuento de la segunda condición no está
-publicado por separado, así que repetirlo en las dos columnas era [inferencia]. **La reproducción lo confirma:
-5 de 7 en las dos** (ver el resultado al final de esta entrada).
+(*) **La tabla de la bitácora** de S9 da ese «5 de 7» una sola vez, para una celda que colapsa las dos
+condiciones. Pero **su salida sí los publica por separado** (`validation/investigacion_1116/salidas/
+2026-11-16_s9_paquete_control.md`), y son 5 de 7 en las dos, igual que sale al reproducirlo: no era ninguna
+inferencia, solo una lectura incompleta de la bitácora.
 
 Sobre el papel **no contradice** ninguna de las tres condiciones medibles en abierto: con el control da +0,005
-o más en las cuatro celdas y con el flag no pierde más de 0,005 en ninguna. **Lo que no se podía decir antes de
-reproducirlo era que pasara la condición 1,** que pide ganar en 6 de 7 partidos *en cada celda*: S9 solo
-publica el recuento por partido en dos de las cuatro celdas de control (las de «a la vista», 7 de 7), y su «26
-de 28» es un agregado que no excluye que una celda se quede en 5 de 7. **Si al reproducirlas no salen las
-mismas cifras, se para y se averigua por qué antes de seguir.**
+o más en las cuatro celdas y con el flag no pierde más de 0,005 en ninguna. La condición 1 pide además ganar en
+6 de 7 partidos *en cada celda*, y **la tabla de la bitácora** de S9 solo trae el recuento por partido en dos de
+las cuatro celdas de control (las de «a la vista», 7 de 7), con un «26 de 28» agregado que no excluye que una
+celda se quede en 5 de 7. **Si al reproducirlas no salen las mismas cifras, se para y se averigua por qué antes
+de seguir.**
 
-(Dos avisos añadidos después, para no dejar esto más fuerte de lo que es: **esa frase valía solo para la tabla
-de la bitácora**; las salidas de S5 y de S9 que ya estaban en `main` sí publicaban los cuatro recuentos. Y
-reproducido el mismo día sale 6 de 7 en las dos celdas, así que la condición 1 pasa. Ver el resultado más
-abajo.)
+(Corregido después, porque se escribió mal dos veces: lo que faltaba estaba solo en **la tabla** de la bitácora.
+Las **salidas** de S5 y de S9 que ya estaban en `main` publican los cuatro recuentos, así que la condición 1 no
+estaba «por comprobar»: ya se podía leer en el repo. Reproducido sale lo mismo, 6 de 7 en las dos celdas.)
 
 **Las medidas se hacen siempre con el `D` propio, nunca con el oráculo.** Con el `D` oráculo,
 `puntuar.d_oraculo` prohíbe `D` donde las etiquetas tienen juego y `pipeline.combine` cruza los `allowed`, así
@@ -4511,7 +4513,8 @@ equipo en el momento y la bandera `--confirmo-el-unico-uso`, para que no se gast
 
 **Umbral del examen de SkillCorner, escrito antes de abrirlo:** entra si en `lector.EXAMEN` (los 10 partidos
 que nadie ha tocado) gana a `main` por **+0,005 o más** y gana en **7 de 10** partidos, en las dos condiciones
-que votan allí. Se ejecuta **una sola vez**, con el permiso que dio Ismael el 16/11, y el uso se apunta aquí.
+que votan allí. Se ejecuta **una sola vez para este candidato** (`CLAUDE.md`: una vez por candidato), con el
+permiso que dio Ismael el 16/11, y el uso se apunta aquí y en `validation/skillcorner/BITACORA.md`.
 
 **Criterios de daño de la entrega de prueba, escritos antes de generarla** (`prueba_cortas_a_d` frente a
 `equipo_v8`):
@@ -4581,8 +4584,10 @@ Lo ejecutó Claude (son datos abiertos): `validation/scripts/cortas_a_d_dfl.py` 
 **Lo que falta:** la condición 2 en el examen (una sola vez) y la condición 4 (entrega de prueba). La entrega
 sigue siendo `equipo_v8`.
 
-**El examen de SkillCorner: USADO el 16/11 (Manuel, con la rama en `846a305`). Queda gastado: no se puede
-volver a abrir.** [medido]
+**El examen de SkillCorner: abierto el 16/11 para este candidato (Manuel, con la rama en `846a305`).** [medido]
+
+`CLAUDE.md` dice que el examen «se puede abrir una vez **por candidato**», así que esto gasta el uso de «cortas
+a `D`» con el corte de 125 frames, no el examen entero.
 
 Lo autorizó Ismael el 16/11 y el umbral estaba escrito y commiteado antes de bajar los datos (+0,005 o más y
 ganar en 7 de 10, en las dos condiciones). **Lo ejecutó Claude, con la autorización de Manuel en el momento**
@@ -4674,16 +4679,17 @@ que la huella sigue valiendo para el tip de la rama.
 Antonio la reprodujo el mismo 16/11 en un Mac M1 (macOS, ARM) con Python 3.13.7, y está apuntado en `CLAUDE.md`.
 Lo de aquí es **una tercera máquina**, y lo que añade no es cerrar ese pendiente, sino el entorno:
 
-- **Windows con Python 3.14.4 y numpy 2.4.4**, en vez de los 3.13.9 y 2.5.4 fijados. La huella ya había
-  aguantado numpy 2.3.4 ↔ 2.5.4 y, con Antonio, un cambio de sistema y de arquitectura con Python 3.13.7; esta
-  es la primera vez que aguanta **Python 3.14**. No cambia lo fijado: `requirements-entrega.txt` sigue mandando
-  para el congelado.
+- **Windows con Python 3.14.4 y numpy 2.4.4**, en vez de los 3.13.9 y 2.5.4 fijados. Ojo con no mezclar
+  huellas: el rango numpy 2.3.4 ↔ 2.5.4 es de `equipo_v3`/`equipo_v5`. **La huella de `equipo_v8` solo se había
+  visto con numpy 2.5.4** (Python 3.13.9 en Windows y 3.13.7 en el Mac de Antonio), así que esta ejecución
+  aporta dos cosas nuevas para `equipo_v8`: **el primer numpy distinto (2.4.4) y el primer Python 3.14**. No
+  cambia lo fijado: `requirements-entrega.txt` sigue mandando para el congelado.
 - Con un matiz que conviene que Ismael juzgue: se generó desde `1fcf40f`, el commit de esta rama, no desde
   `main`. Como el sha256 es el mismo, eso no debilita la reproducción y además prueba lo del apartado anterior;
   pero si el ensayo del congelado quiere la reproducción «desde `main`» en sentido estricto, esto no la
   sustituye.
 
-### El corte de 125 frames no es el único que pasaría, y el examen ya está gastado en él
+### El corte de 125 frames no es el único que pasaría
 
 Lo encontró el agente `revisor` en la tercera pasada, **después** de abrir el examen. Es el punto que el equipo
 tiene que discutir antes de encender nada.
@@ -4711,18 +4717,37 @@ Lectura honesta, sin exagerar en ninguna dirección:
   riesgo de toda esta idea es justo «¿y si la GT se parece al flag?», ahí 75 es más seguro.
 - **75 gana en 7 de 7 en las cuatro celdas de control**, frente a los 6 de 7 de 125 en las de «tapado».
 - **125 gana más con el control y el balón a la vista** (+0,018 / +0,019 frente a +0,014 / +0,015). En las celdas
-  de «tapado», que es el modo que más se parece al ATD según `2026-11-14_perfil_atd.md`, 75 va igual o mejor.
+  de «tapado», 75 va igual o mejor.
 - **No es una dominación limpia:** depende de qué celda se considere la que manda.
 
-**El problema de proceso, que es mío:** el examen de SkillCorner solo se podía abrir una vez y se abrió con 125,
-sin haber mirado antes esta tabla de sensibilidad, que ya estaba en el repo. **Un candidato a 75 frames no
-puede confirmar su condición 2:** no queda examen. Lo que se puede hacer sin gastar nada es medirlo en la DFL y
-en la mitad de entrenamiento de SkillCorner con `cortas_a_d_dfl.py` y `cortas_a_d_skillcorner.py` (basta cambiar
-`"corte": 75` en el fichero de versiones), pero la confirmación ciega ya no está disponible.
+**Y cuál manda no está cerrado en el repo,** así que conviene decirlo antes de apoyarse en ello: la lectura de
+que «tapado» es el modo que más se parece al ATD sale de que en **los 10 s antes de un `SET PIECES`** el ATD ve
+el balón en el 27,6 % de los frames (`2026-11-14_perfil_atd.md`), y es la que usa
+`docs/investigacion_2026-11-16.md` §2.1. Pero el mismo fichero da un 68 % mirando **las ventanas `SET PIECES`
+enteras**, y con esa cifra S5 concluye lo contrario («con el balón a la vista… que es lo que pasa en el ATD»).
+Con «a la vista» como modo que manda, 125 es mejor que 75. **Esta rama no resuelve cuál es la ventana correcta;**
+solo avisa de que el argumento de «75 es más seguro» y la lectura de los intervalos dependen de esa elección.
 
-**Qué propongo, y lo decide el equipo:** si se enciende algo, encender lo que pasó la puerta completa, que es
-125. Si Ismael prefiere 75 por su menor riesgo con el flag, hay que decir en el documento técnico que su
-condición 2 se apoya solo en la mitad de entrenamiento.
+**Lo que es mío como fallo de proceso:** se abrió el examen con 125 sin haber mirado antes esta tabla de
+sensibilidad, que ya estaba en el repo. Si la hubiera leído, lo honesto habría sido plantear al equipo qué corte
+llevar al examen **antes** de gastar nada.
+
+**Lo que no es tan grave como escribí al principio** (lo corrigió el `revisor` en la quinta pasada):
+`CLAUDE.md` dice que el examen «se puede abrir una vez **por candidato**», y el precedente de B9
+(`docs/decisiones.md`, la regla de B9, paso 5) le reservaba su propia ejecución única. Así que **un candidato a
+75 frames no se queda necesariamente sin confirmación ciega.**
+
+**La pregunta que decide el equipo, no esta rama:** ¿un cambio de corte de la misma idea es un **candidato
+nuevo**, con derecho a su propio uso del examen, o un **ajuste del mismo candidato**, que es justo la fuga de la
+que el examen protege? No la resuelvo aquí: es la diferencia entre poder confirmar 75 a ciegas o no, y afecta a
+un recurso de todos.
+- Si cuenta como candidato nuevo: se mide 75 en la DFL y en entrenamiento (basta `"corte": 75` en el fichero de
+  versiones) y, si pasa, se lleva al examen con su umbral escrito antes.
+- Si cuenta como el mismo: 75 solo puede apoyarse en la DFL y en la mitad de entrenamiento, y eso hay que
+  decirlo en el documento técnico.
+
+**Y mientras eso no se decida,** lo que ha pasado la puerta completa es 125, que es lo único que esta rama
+propone como medido.
 
 ### Los intervalos de la diferencia (añadidos tras la tercera revisión) [medido]
 

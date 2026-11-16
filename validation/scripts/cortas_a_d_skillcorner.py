@@ -18,7 +18,9 @@ Por qué hace falta este script: `validation/skillcorner/medir.py` no acepta `--
 fijas en el código) y por defecto usa los 20 partidos, **examen incluido**. Aquí la mitad de examen solo se lee
 con `--examen`, y el `D` es siempre el propio, como en S9.
 
-**El examen (`lector.EXAMEN`) solo se abre con el permiso de Ismael y se usa una sola vez.** El umbral está
+**El examen (`lector.EXAMEN`) se abre con una autorizacion explicita del equipo, y `CLAUDE.md` lo permite una
+vez por candidato.** Cada uso se apunta en `validation/skillcorner/BITACORA.md`, seccion «Usos del examen», y
+en `docs/decisiones.md`. El umbral esta
 escrito antes en `docs/decisiones.md` (16/11, «la idea 1.3 se desaparca»): entra si gana a `main` por +0,005 o
 más y gana en 7 de 10 partidos, en las dos condiciones que votan. Cada uso se apunta en ese fichero.
 """
@@ -47,7 +49,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--versiones", default=VERSIONES, help="fichero de versiones del harness")
     parser.add_argument("--examen", action="store_true",
-                        help="abre la mitad de examen (lector.EXAMEN). Solo con el permiso de Ismael y UNA vez")
+                        help="abre la mitad de examen (lector.EXAMEN). Con autorizacion del equipo; una vez por candidato")
     parser.add_argument("--confirmo-el-unico-uso", action="store_true", dest="confirmado",
                         help="hace falta junto con --examen: confirma que este es el único uso del examen")
     args = parser.parse_args()
@@ -68,13 +70,15 @@ def main():
     ids = list(lc.EXAMEN if args.examen else lc.ENTRENAMIENTO)
     if args.examen:
         if not args.confirmado:
-            print("El examen de SkillCorner (lector.EXAMEN) se abre UNA sola vez, con el permiso de Ismael")
-            print("(16/11). Si de verdad vas a gastar ese uso, repite el comando añadiendo:")
+            print("El examen de SkillCorner (lector.EXAMEN) se abre con una autorizacion explicita del equipo,")
+            print("y CLAUDE.md lo permite una vez POR CANDIDATO. Mira antes la seccion «Usos del examen» de")
+            print("validation/skillcorner/BITACORA.md: si este candidato ya lo gasto, no se vuelve a abrir.")
+            print("Si tienes la autorizacion y es su primer uso, repite el comando anadiendo:")
             print("    --confirmo-el-unico-uso")
-            print("y apunta el uso en docs/decisiones.md.")
             return 1
         print("### ATENCION: se esta abriendo la mitad de EXAMEN de SkillCorner.")
-        print("Es el unico uso permitido (permiso de Ismael, 16/11). Apuntalo en docs/decisiones.md.\n")
+        print("Gasta el uso de ESTE candidato. Apuntalo en validation/skillcorner/BITACORA.md («Usos del")
+        print("examen») y en docs/decisiones.md, con la fecha, el candidato y quien lo autorizo.\n")
     else:
         lc.exigir_solo_entrenamiento(ids)
 
