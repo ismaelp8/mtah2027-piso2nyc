@@ -40,6 +40,11 @@
 
 ## 1. Las tres que haría primero
 
+> **Actualización (16/11, mañana):** la sesión principal decidió hacer la 1.1 y la 1.2, y dejar la 1.3 en espera. Los
+> dos agregados del partido están escritos, con sus reglas antes (P1 y P2 de
+> `validation/investigacion_1116/BITACORA.md`): `validation/partido/cambios_entre_fases.py` y
+> `validation/partido/rasgos_b5.py`. Los ejecuta Ismael.
+
 ### 1.1 Los cambios de equipo entre fases del Smart Tagging (ficha 2.2)
 
 - **Qué hacer hoy, lunes:**

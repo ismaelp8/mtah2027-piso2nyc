@@ -1,0 +1,2326 @@
+{
+ "acuerdo_b5_mas_cercano": {
+  "DFL J03WMX": 0.7962,
+  "DFL J03WN1": 0.7606,
+  "DFL J03WOH": 0.7669,
+  "DFL J03WOY": 0.7769,
+  "DFL J03WPY": 0.7955,
+  "DFL J03WQQ": 0.7854,
+  "DFL J03WR9": 0.8197,
+  "SkillCorner 1874553": 0.8089,
+  "SkillCorner 1899585": 0.7891,
+  "SkillCorner 1927964": 0.8507,
+  "SkillCorner 1959846": 0.7996,
+  "SkillCorner 1996435": 0.8025,
+  "SkillCorner 2006229": 0.8054,
+  "SkillCorner 2007448": 0.8115,
+  "SkillCorner 2010085": 0.8113,
+  "SkillCorner 2013725": 0.7798,
+  "SkillCorner 2016236": 0.7682
+ },
+ "commit": "58d51e4",
+ "conjunto": "b2 (los rasgos de B5)",
+ "frames": "tramos evaluados con el balón visible",
+ "importancia": {
+  "balón en la dirección de ataque, ventana 1": 0.135166,
+  "balón en la dirección de ataque, ventana 51": 1.971523,
+  "dispersión, ventana 51": 1.381695,
+  "dispersión, ventana 51, sin balón cerca": 0.0,
+  "distancia del más cercano, ventana 1": 0.142158,
+  "distancia del más cercano, ventana 13": 0.106593,
+  "distancia del más cercano, ventana 151": 0.214592,
+  "distancia del más cercano, ventana 51": 0.546854,
+  "juego en la dirección de ataque": 0.749995,
+  "juego en la dirección de ataque, sin balón cerca": 0.0,
+  "núcleo 1.0 m, ventana 1": 0.044279,
+  "núcleo 1.0 m, ventana 13": 0.509961,
+  "núcleo 1.0 m, ventana 151": 0.854711,
+  "núcleo 1.0 m, ventana 51": 0.403061,
+  "núcleo 2.5 m, ventana 1": 0.05502,
+  "núcleo 2.5 m, ventana 13": 0.400012,
+  "núcleo 2.5 m, ventana 151": 0.311108,
+  "núcleo 2.5 m, ventana 51": 0.799804,
+  "núcleo 6.0 m, ventana 1": 0.053078,
+  "núcleo 6.0 m, ventana 13": 0.247039,
+  "núcleo 6.0 m, ventana 151": 0.195819,
+  "núcleo 6.0 m, ventana 51": 0.604548,
+  "signo del más cercano, ventana 1": 0.037443,
+  "signo del más cercano, ventana 13": 0.001865,
+  "signo del más cercano, ventana 151": 0.927586,
+  "signo del más cercano, ventana 51": 0.026405,
+  "velocidad en la dirección de ataque, ventana 101": 0.065144,
+  "velocidad en la dirección de ataque, ventana 101, sin balón cerca": 0.0,
+  "velocidad en la dirección de ataque, ventana 25": 1.595833,
+  "velocidad en la dirección de ataque, ventana 25, sin balón cerca": 0.0
+ },
+ "por_partido": {
+  "DFL J03WMX": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.382408,
+    0.785324
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.372598,
+    0.762162
+   ],
+   "dispersión, ventana 51": [
+    3.826324,
+    8.207135
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    2.74272,
+    9.106632
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.570602,
+    8.973843
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.334467,
+    6.821483
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.308319,
+    8.132735
+   ],
+   "juego en la dirección de ataque": [
+    0.425991,
+    1.018151
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.216114,
+    0.855553
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.222174,
+    0.820153
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.253734,
+    0.490927
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.262497,
+    0.639096
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.446691,
+    0.950282
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.421222,
+    0.938026
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.34675,
+    0.648466
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.385223,
+    0.825676
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.525215,
+    1.158615
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.516134,
+    1.143477
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.372803,
+    0.847715
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.461811,
+    1.062861
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.602649,
+    0.960265
+   ],
+   "signo del más cercano, ventana 51": [
+    0.764706,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.884001,
+    5.258168
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.073183,
+    5.664454
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "DFL J03WN1": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.402949,
+    0.816427
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.388186,
+    0.78806
+   ],
+   "dispersión, ventana 51": [
+    3.702503,
+    8.391677
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    2.358165,
+    10.05493
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.205542,
+    9.906469
+   ],
+   "distancia del más cercano, ventana 151": [
+    1.717285,
+    7.801614
+   ],
+   "distancia del más cercano, ventana 51": [
+    1.877577,
+    9.184804
+   ],
+   "juego en la dirección de ataque": [
+    0.502317,
+    1.110344
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.192759,
+    0.866306
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.197242,
+    0.834311
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.21367,
+    0.53521
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.216847,
+    0.700402
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.429389,
+    0.973066
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.402778,
+    0.962095
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.294561,
+    0.728006
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.346308,
+    0.89396
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.560298,
+    1.410288
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.55183,
+    1.390541
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.393404,
+    1.064257
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.508827,
+    1.310364
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.523179,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.72549,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    2.297109,
+    5.598539
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.455,
+    6.064409
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "DFL J03WOH": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.39331,
+    0.815954
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.381172,
+    0.785501
+   ],
+   "dispersión, ventana 51": [
+    4.124681,
+    8.176383
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    2.656634,
+    10.202362
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.48265,
+    10.06484
+   ],
+   "distancia del más cercano, ventana 151": [
+    1.951099,
+    7.452915
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.130505,
+    9.137708
+   ],
+   "juego en la dirección de ataque": [
+    0.430805,
+    1.032402
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.175574,
+    0.811354
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.187173,
+    0.777716
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.207388,
+    0.463404
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.213714,
+    0.637615
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.410714,
+    0.941744
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.386503,
+    0.929316
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.292972,
+    0.654021
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.341623,
+    0.836602
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.526939,
+    1.169755
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.517061,
+    1.155908
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.3586,
+    0.895565
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.464012,
+    1.08218
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.523179,
+    0.97351
+   ],
+   "signo del más cercano, ventana 51": [
+    0.72549,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    2.293992,
+    5.655581
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.512273,
+    6.123727
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "DFL J03WOY": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.372579,
+    0.795337
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.351914,
+    0.768625
+   ],
+   "dispersión, ventana 51": [
+    4.296598,
+    7.531303
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    2.532484,
+    9.613378
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.365347,
+    9.476082
+   ],
+   "distancia del más cercano, ventana 151": [
+    1.877153,
+    7.198244
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.030584,
+    8.781291
+   ],
+   "juego en la dirección de ataque": [
+    0.4311,
+    1.007927
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.165586,
+    0.824563
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.1756,
+    0.791639
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.199214,
+    0.492872
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.208183,
+    0.649533
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.399326,
+    0.947809
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.377422,
+    0.936544
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.291281,
+    0.659992
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.342551,
+    0.836519
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.544946,
+    1.222894
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.533813,
+    1.209249
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.391591,
+    0.912554
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.482674,
+    1.104275
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.569536,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.764706,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    2.234024,
+    5.587826
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.454092,
+    5.976637
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "DFL J03WPY": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.359634,
+    0.78291
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.346332,
+    0.755404
+   ],
+   "dispersión, ventana 51": [
+    4.176376,
+    7.433197
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    2.784595,
+    10.019677
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.644486,
+    9.868149
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.369129,
+    7.495505
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.426793,
+    8.944279
+   ],
+   "juego en la dirección de ataque": [
+    0.400087,
+    1.11929
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.197464,
+    0.827905
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.206173,
+    0.799231
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.235346,
+    0.50398
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.23593,
+    0.668216
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.444206,
+    0.952192
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.419744,
+    0.94212
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.360898,
+    0.667137
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.386859,
+    0.856081
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.543703,
+    1.229828
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.534898,
+    1.217508
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.396863,
+    0.957829
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.48579,
+    1.139899
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.615894,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.803922,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.987174,
+    5.842462
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.205455,
+    6.319546
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "DFL J03WQQ": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.405242,
+    0.841859
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.394449,
+    0.814672
+   ],
+   "dispersión, ventana 51": [
+    4.577685,
+    8.634909
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    3.036,
+    10.148984
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.853804,
+    10.007183
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.375855,
+    7.843877
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.463096,
+    9.207057
+   ],
+   "juego en la dirección de ataque": [
+    0.468779,
+    1.132797
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.204486,
+    0.819649
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.211133,
+    0.793307
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.237948,
+    0.488885
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.246251,
+    0.65861
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.466308,
+    0.95458
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.433978,
+    0.945538
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.341747,
+    0.687423
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.383101,
+    0.876574
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.535801,
+    1.201954
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.528678,
+    1.189696
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.397042,
+    0.927178
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.481351,
+    1.118426
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.576159,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.764706,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    2.059293,
+    5.602554
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.292274,
+    6.005455
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "DFL J03WR9": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.378834,
+    0.777064
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.368781,
+    0.756855
+   ],
+   "dispersión, ventana 51": [
+    4.666226,
+    8.010764
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    3.769075,
+    12.503361
+   ],
+   "distancia del más cercano, ventana 13": [
+    3.617914,
+    12.399102
+   ],
+   "distancia del más cercano, ventana 151": [
+    3.430618,
+    10.481737
+   ],
+   "distancia del más cercano, ventana 51": [
+    3.323058,
+    11.719658
+   ],
+   "juego en la dirección de ataque": [
+    0.42381,
+    1.042043
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.252227,
+    0.848242
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.248468,
+    0.826389
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.266482,
+    0.558202
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.260686,
+    0.728736
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.536286,
+    0.964639
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.508831,
+    0.959443
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.422128,
+    0.764113
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.446206,
+    0.928024
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.647144,
+    1.24591
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.636563,
+    1.234728
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.4856,
+    1.048651
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.586466,
+    1.173353
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.695364,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.921569,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.861499,
+    5.057493
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.032273,
+    5.468273
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 1874553": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.386971,
+    0.839128
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.37337,
+    0.792005
+   ],
+   "dispersión, ventana 51": [
+    4.99612,
+    10.216014
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    3.297532,
+    10.087975
+   ],
+   "distancia del más cercano, ventana 13": [
+    3.133748,
+    9.916705
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.873596,
+    7.252671
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.899594,
+    8.957012
+   ],
+   "juego en la dirección de ataque": [
+    0.5279,
+    1.177536
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.260902,
+    0.835611
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.256975,
+    0.798574
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.269112,
+    0.499343
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.277529,
+    0.647993
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.517828,
+    0.960483
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.48672,
+    0.94995
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.379001,
+    0.701382
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.439569,
+    0.877784
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.603514,
+    1.236285
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.59176,
+    1.222881
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.430191,
+    0.910072
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.534536,
+    1.140196
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.642384,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.843137,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.899843,
+    5.573762
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.027909,
+    6.073145
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 1899585": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.411731,
+    0.823962
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.394229,
+    0.779764
+   ],
+   "dispersión, ventana 51": [
+    5.35757,
+    10.52491
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    2.690193,
+    8.427467
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.540091,
+    8.248273
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.085487,
+    6.145116
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.261938,
+    7.495259
+   ],
+   "juego en la dirección de ataque": [
+    0.58579,
+    1.221916
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.233349,
+    0.847429
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.231777,
+    0.806583
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.229438,
+    0.506344
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.25017,
+    0.649004
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.472655,
+    0.961871
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.443472,
+    0.950618
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.327181,
+    0.679293
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.393302,
+    0.874411
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.587587,
+    1.282306
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.576627,
+    1.259687
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.418668,
+    0.899008
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.529224,
+    1.158365
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.576159,
+    0.960265
+   ],
+   "signo del más cercano, ventana 51": [
+    0.764706,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.771895,
+    5.395747
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    1.953637,
+    5.767636
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 1927964": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.34899,
+    0.764571
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.339833,
+    0.738256
+   ],
+   "dispersión, ventana 51": [
+    4.592565,
+    9.279194
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    3.80151,
+    10.759373
+   ],
+   "distancia del más cercano, ventana 13": [
+    3.666422,
+    10.590546
+   ],
+   "distancia del más cercano, ventana 151": [
+    3.552026,
+    8.138109
+   ],
+   "distancia del más cercano, ventana 51": [
+    3.547146,
+    9.642525
+   ],
+   "juego en la dirección de ataque": [
+    0.490462,
+    1.06236
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.305287,
+    0.850559
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.2982,
+    0.817551
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.303471,
+    0.524735
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.317353,
+    0.6576
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.574037,
+    0.966739
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.544625,
+    0.958423
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.45973,
+    0.737163
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.501207,
+    0.894524
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.644276,
+    1.243909
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.635796,
+    1.231462
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.49332,
+    0.993995
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.592381,
+    1.161435
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.741722,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.960784,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.598875,
+    4.990909
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    1.716364,
+    5.413619
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 1959846": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.420906,
+    0.845283
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.406676,
+    0.809515
+   ],
+   "dispersión, ventana 51": [
+    5.023889,
+    9.977627
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    3.051981,
+    9.824224
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.878291,
+    9.650991
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.447089,
+    7.34946
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.52824,
+    8.71651
+   ],
+   "juego en la dirección de ataque": [
+    0.568576,
+    1.194237
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.234565,
+    0.820692
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.234522,
+    0.784223
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.239242,
+    0.479786
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.250989,
+    0.620859
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.504184,
+    0.960913
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.476059,
+    0.949433
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.346131,
+    0.702909
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.427453,
+    0.865055
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.607547,
+    1.333469
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.597075,
+    1.315596
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.439609,
+    0.986026
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.545319,
+    1.221008
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.615894,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.803922,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.80549,
+    5.633731
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    1.936728,
+    6.029823
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 1996435": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.428267,
+    0.84781
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.41427,
+    0.793196
+   ],
+   "dispersión, ventana 51": [
+    4.195467,
+    9.190162
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    2.901582,
+    9.393472
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.733866,
+    9.188937
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.349213,
+    6.589671
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.484493,
+    8.331625
+   ],
+   "juego en la dirección de ataque": [
+    0.586303,
+    1.129448
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.267809,
+    0.84595
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.262637,
+    0.813393
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.269646,
+    0.501319
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.28677,
+    0.653742
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.518521,
+    0.961632
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.488849,
+    0.949259
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.366551,
+    0.682588
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.429828,
+    0.863055
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.574841,
+    1.368972
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.562911,
+    1.344025
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.389768,
+    0.975786
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.504599,
+    1.246572
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.602649,
+    0.940397
+   ],
+   "signo del más cercano, ventana 51": [
+    0.764706,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.965598,
+    5.747603
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.165818,
+    6.141036
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 2006229": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.360838,
+    0.800648
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.347609,
+    0.774997
+   ],
+   "dispersión, ventana 51": [
+    4.763547,
+    9.217596
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    3.142289,
+    9.610834
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.988023,
+    9.459002
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.614968,
+    6.9408
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.639379,
+    8.498598
+   ],
+   "juego en la dirección de ataque": [
+    0.497669,
+    1.115782
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.213654,
+    0.801399
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.218098,
+    0.761637
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.231801,
+    0.465554
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.236681,
+    0.596313
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.501076,
+    0.942695
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.470568,
+    0.928688
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.358263,
+    0.660336
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.402779,
+    0.844874
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.538208,
+    1.210289
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.52796,
+    1.191926
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.382861,
+    0.860648
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.477078,
+    1.097463
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.629139,
+    0.97351
+   ],
+   "signo del más cercano, ventana 51": [
+    0.803922,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.717912,
+    4.967507
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    1.879272,
+    5.437345
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 2007448": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.405029,
+    0.859924
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.392659,
+    0.810461
+   ],
+   "dispersión, ventana 51": [
+    5.657996,
+    10.438798
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    3.202874,
+    10.092711
+   ],
+   "distancia del más cercano, ventana 13": [
+    3.051939,
+    9.92335
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.7123,
+    7.151109
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.796246,
+    8.972103
+   ],
+   "juego en la dirección de ataque": [
+    0.577461,
+    1.188561
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.196228,
+    0.818505
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.203555,
+    0.77921
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.233016,
+    0.474861
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.239373,
+    0.623314
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.482524,
+    0.959284
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.456196,
+    0.948127
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.34815,
+    0.682741
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.408416,
+    0.870131
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.57247,
+    1.196898
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.560136,
+    1.182307
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.395464,
+    0.901695
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.500189,
+    1.100534
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.629139,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.843137,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.940999,
+    5.30549
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.082545,
+    5.725091
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 2010085": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.35434,
+    0.786226
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.343354,
+    0.737721
+   ],
+   "dispersión, ventana 51": [
+    5.307262,
+    10.069814
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    3.341316,
+    10.051839
+   ],
+   "distancia del más cercano, ventana 13": [
+    3.165488,
+    9.93213
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.987362,
+    7.534584
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.94797,
+    9.106086
+   ],
+   "juego en la dirección de ataque": [
+    0.517238,
+    1.135565
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.219369,
+    0.827279
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.222893,
+    0.787816
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.247093,
+    0.491347
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.245914,
+    0.627152
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.520668,
+    0.9543
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.487663,
+    0.943537
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.404402,
+    0.698693
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.436779,
+    0.877921
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.572209,
+    1.192242
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.561655,
+    1.179079
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.429813,
+    0.905259
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.511329,
+    1.088953
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.662252,
+    1.0
+   ],
+   "signo del más cercano, ventana 51": [
+    0.843137,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.737129,
+    4.877822
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    1.876909,
+    5.322108
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 2013725": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.415509,
+    0.868981
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.403758,
+    0.822729
+   ],
+   "dispersión, ventana 51": [
+    4.182762,
+    10.16147
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    2.790501,
+    9.629997
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.619041,
+    9.425226
+   ],
+   "distancia del más cercano, ventana 151": [
+    1.962209,
+    6.959296
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.243758,
+    8.587269
+   ],
+   "juego en la dirección de ataque": [
+    0.535132,
+    1.213557
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.205441,
+    0.822215
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.210432,
+    0.778059
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.207968,
+    0.468528
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.23165,
+    0.613825
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.483582,
+    0.972155
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.452403,
+    0.960799
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.324521,
+    0.694672
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.391249,
+    0.895182
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.610687,
+    1.293391
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.600062,
+    1.27777
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.418257,
+    0.974297
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.545375,
+    1.189009
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.549669,
+    0.960265
+   ],
+   "signo del más cercano, ventana 51": [
+    0.764706,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.848031,
+    5.804856
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.030182,
+    6.252181
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  },
+  "SkillCorner 2016236": {
+   "balón en la dirección de ataque, ventana 1": [
+    0.385094,
+    0.83717
+   ],
+   "balón en la dirección de ataque, ventana 51": [
+    0.368278,
+    0.799888
+   ],
+   "dispersión, ventana 51": [
+    5.217659,
+    9.448132
+   ],
+   "dispersión, ventana 51, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "distancia del más cercano, ventana 1": [
+    2.649136,
+    8.949392
+   ],
+   "distancia del más cercano, ventana 13": [
+    2.470465,
+    8.760468
+   ],
+   "distancia del más cercano, ventana 151": [
+    2.017491,
+    6.199294
+   ],
+   "distancia del más cercano, ventana 51": [
+    2.225157,
+    7.843695
+   ],
+   "juego en la dirección de ataque": [
+    0.559292,
+    1.138057
+   ],
+   "juego en la dirección de ataque, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "núcleo 1.0 m, ventana 1": [
+    0.166782,
+    0.788249
+   ],
+   "núcleo 1.0 m, ventana 13": [
+    0.17811,
+    0.745871
+   ],
+   "núcleo 1.0 m, ventana 151": [
+    0.189426,
+    0.44894
+   ],
+   "núcleo 1.0 m, ventana 51": [
+    0.199647,
+    0.583693
+   ],
+   "núcleo 2.5 m, ventana 1": [
+    0.431702,
+    0.94089
+   ],
+   "núcleo 2.5 m, ventana 13": [
+    0.403912,
+    0.926251
+   ],
+   "núcleo 2.5 m, ventana 151": [
+    0.297287,
+    0.634788
+   ],
+   "núcleo 2.5 m, ventana 51": [
+    0.360704,
+    0.821017
+   ],
+   "núcleo 6.0 m, ventana 1": [
+    0.535871,
+    1.202183
+   ],
+   "núcleo 6.0 m, ventana 13": [
+    0.526089,
+    1.185959
+   ],
+   "núcleo 6.0 m, ventana 151": [
+    0.367451,
+    0.848697
+   ],
+   "núcleo 6.0 m, ventana 51": [
+    0.472419,
+    1.095418
+   ],
+   "signo del más cercano, ventana 1": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 13": [
+    1.0,
+    1.0
+   ],
+   "signo del más cercano, ventana 151": [
+    0.549669,
+    0.933775
+   ],
+   "signo del más cercano, ventana 51": [
+    0.745098,
+    1.0
+   ],
+   "velocidad en la dirección de ataque, ventana 101": [
+    1.872153,
+    5.566044
+   ],
+   "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+    0.0,
+    0.0
+   ],
+   "velocidad en la dirección de ataque, ventana 25": [
+    2.097635,
+    6.014
+   ],
+   "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "rango": {
+  "balón en la dirección de ataque, ventana 1": [
+   0.34899,
+   0.428267,
+   0.764571,
+   0.868981
+  ],
+  "balón en la dirección de ataque, ventana 51": [
+   0.339833,
+   0.41427,
+   0.737721,
+   0.822729
+  ],
+  "dispersión, ventana 51": [
+   3.702503,
+   5.657996,
+   7.433197,
+   10.52491
+  ],
+  "dispersión, ventana 51, sin balón cerca": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "distancia del más cercano, ventana 1": [
+   2.358165,
+   3.80151,
+   8.427467,
+   12.503361
+  ],
+  "distancia del más cercano, ventana 13": [
+   2.205542,
+   3.666422,
+   8.248273,
+   12.399102
+  ],
+  "distancia del más cercano, ventana 151": [
+   1.717285,
+   3.552026,
+   6.145116,
+   10.481737
+  ],
+  "distancia del más cercano, ventana 51": [
+   1.877577,
+   3.547146,
+   7.495259,
+   11.719658
+  ],
+  "juego en la dirección de ataque": [
+   0.400087,
+   0.586303,
+   1.007927,
+   1.221916
+  ],
+  "juego en la dirección de ataque, sin balón cerca": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "núcleo 1.0 m, ventana 1": [
+   0.165586,
+   0.305287,
+   0.788249,
+   0.866306
+  ],
+  "núcleo 1.0 m, ventana 13": [
+   0.1756,
+   0.2982,
+   0.745871,
+   0.834311
+  ],
+  "núcleo 1.0 m, ventana 151": [
+   0.189426,
+   0.303471,
+   0.44894,
+   0.558202
+  ],
+  "núcleo 1.0 m, ventana 51": [
+   0.199647,
+   0.317353,
+   0.583693,
+   0.728736
+  ],
+  "núcleo 2.5 m, ventana 1": [
+   0.399326,
+   0.574037,
+   0.94089,
+   0.973066
+  ],
+  "núcleo 2.5 m, ventana 13": [
+   0.377422,
+   0.544625,
+   0.926251,
+   0.962095
+  ],
+  "núcleo 2.5 m, ventana 151": [
+   0.291281,
+   0.45973,
+   0.634788,
+   0.764113
+  ],
+  "núcleo 2.5 m, ventana 51": [
+   0.341623,
+   0.501207,
+   0.821017,
+   0.928024
+  ],
+  "núcleo 6.0 m, ventana 1": [
+   0.525215,
+   0.647144,
+   1.158615,
+   1.410288
+  ],
+  "núcleo 6.0 m, ventana 13": [
+   0.516134,
+   0.636563,
+   1.143477,
+   1.390541
+  ],
+  "núcleo 6.0 m, ventana 151": [
+   0.3586,
+   0.49332,
+   0.847715,
+   1.064257
+  ],
+  "núcleo 6.0 m, ventana 51": [
+   0.461811,
+   0.592381,
+   1.062861,
+   1.310364
+  ],
+  "signo del más cercano, ventana 1": [
+   1.0,
+   1.0,
+   1.0,
+   1.0
+  ],
+  "signo del más cercano, ventana 13": [
+   1.0,
+   1.0,
+   1.0,
+   1.0
+  ],
+  "signo del más cercano, ventana 151": [
+   0.523179,
+   0.741722,
+   0.933775,
+   1.0
+  ],
+  "signo del más cercano, ventana 51": [
+   0.72549,
+   0.960784,
+   1.0,
+   1.0
+  ],
+  "velocidad en la dirección de ataque, ventana 101": [
+   1.598875,
+   2.297109,
+   4.877822,
+   5.842462
+  ],
+  "velocidad en la dirección de ataque, ventana 101, sin balón cerca": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "velocidad en la dirección de ataque, ventana 25": [
+   1.716364,
+   2.512273,
+   5.322108,
+   6.319546
+  ],
+  "velocidad en la dirección de ataque, ventana 25, sin balón cerca": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ "top": [
+  "balón en la dirección de ataque, ventana 51",
+  "velocidad en la dirección de ataque, ventana 25",
+  "dispersión, ventana 51",
+  "signo del más cercano, ventana 151",
+  "núcleo 1.0 m, ventana 151",
+  "núcleo 2.5 m, ventana 51",
+  "juego en la dirección de ataque",
+  "núcleo 6.0 m, ventana 51",
+  "distancia del más cercano, ventana 51",
+  "núcleo 1.0 m, ventana 13"
+ ]
+}

@@ -483,3 +483,96 @@ balón fuera ya se probó en el partido (D7, dos versiones apagadas).
 - S26 acierta el 14–16 % en el juego en general: el balón dentro del bloque de un equipo suele ser de ese equipo, al
   revés de lo previsto. Dentro de Z1 va al revés de B5, pero tampoco suma.
 - S25 casi nunca opina.
+
+---
+
+# Agregados del partido (los ejecuta Ismael; reglas escritas antes)
+
+Encargo de la sesión principal (16/11): hacer las ideas 1.1 y 1.2 del informe. Los scripts leen el partido, así que
+**los ejecuta una persona**, y solo imprimen agregados. Claude no ve más que lo que se pegue.
+
+## P1. Los cambios de equipo entre fases del Smart Tagging (idea 1.1; regla, antes de ejecutar)
+
+**Script:** `validation/partido/cambios_entre_fases.py --entrega <la entrega vigente>`. Prueba con un partido
+inventado: `validation/scripts/prueba_cambios_entre_fases.py`.
+
+**Qué cuenta:**
+
+- **Las fases de ataque** con `Team` `H` o `A` que empiezan en un tramo evaluado: `BUILD UP`, `PROGRESSION`,
+  `CREATING CHANCES`, `LONG BALL` y `ATTACKING TRANSITION`. Las de zona (`BALL IN FINAL THIRD`, `BALL IN THE BOX`,
+  `PLAYERS IN THE BOX`) no entran: se solapan con equipos distintos. Las de defensa no hacen falta: salen a pares con
+  las de ataque.
+- **Un cambio entre fases:** ordenadas por su inicio, una fase de ataque cuyo equipo no es el de la fase de ataque
+  anterior del mismo tramo.
+- **Se apartan, y se cuentan aparte:**
+  - las que son `ATTACKING TRANSITION`: ya las cubre la capa de los contraataques;
+  - las de un reinicio: si la fase empieza dentro de una ventana `SET PIECES` o `GOALS`, o si alguna de esas ventanas
+    empieza entre 5 s antes del final de la fase anterior (o del inicio de la nueva, si se solapan) y el inicio de la
+    nueva;
+  - las que tienen, en ese mismo intervalo, un hueco del balón de 5 s o más (125 frames): probable parada.
+- **Para cada cambio que queda:** la clase de la entrega en su inicio, como en el §4 de `fases_smart_tagging.py`
+  (cambio a ese equipo a ±2 s; ya era ese equipo; era el otro equipo; era `D` o `X`), y cuánto tarda la entrega en
+  pasar a ese equipo.
+- **Placebo:** los mismos inicios desplazados −480, −360, −240, +240, +360 y +480 s, con el mismo equipo.
+
+**Regla de lectura:**
+
+- **Sigue** (se programa la capa, apagada) si hay **30 cambios o más**, en el **50 % o más** la entrega va con el
+  otro equipo y no cambia en 2 s («era el otro equipo»), y en el placebo esa proporción es **la mitad o menos** que en
+  los reales.
+- **Con menos de 30 no sigue,** pase lo que pase con lo demás. La cota de la DFL con marcas perfectas en el 16 % de los
+  cambios dio de +0,013 a +0,016 si caen al azar (`validation/posesiones_cortas/BITACORA.md` §13); con menos marcas, y
+  no perfectas, se queda por debajo de +0,01, que no se distingue del ruido. Se apunta el recuento y se cierra.
+- **Si no se cumple lo demás, tampoco sigue,** y se apunta qué falló.
+- La entrega es la vigente cuando Ismael lo ejecute (`equipo_v5` o `equipo_v8`). El script imprime su sha256.
+- Las celdas de 1 a 4 casos salen como «< 5».
+
+**Si sigue, la capa** (antes de generar nada): una función nueva en `possession/transiciones.py`, al lado de
+`evidence_equipo`, con el mismo peso (8) y el mismo tope (5 s), solo a la columna del equipo, apagada, con su prueba
+con datos inventados. La entrega de prueba se lee con los cuatro criterios de los contraataques
+(`docs/decisiones.md`, 15/11), frente a la entrega vigente, escritos antes de generarla. Encenderla lo deciden la
+sesión principal e Ismael.
+
+## P2. Los rasgos de B5 en el partido frente a los datos abiertos (idea 1.2; regla, antes de ejecutar)
+
+**Por qué.** B5 se entrenó en la DFL y aguanta en SkillCorner, pero sus rasgos de forma nunca se han mirado en el ATD.
+Si un rasgo de peso estuviera desplazado en el partido, B5 empujaría hacia un equipo sin motivo, y ningún sondeo de
+datos abiertos lo vería.
+
+**Dos scripts:**
+
+- `validation/investigacion_1116/referencia_rasgos_b5.py` (datos abiertos; lo ejecuta Claude **antes** de que Ismael
+  mida el partido y su salida, `referencia_rasgos_b5.json`, se sube con esta regla):
+  - los 30 rasgos de B5 (`aprendida.rasgos(trk, "b2")`) en los 7 partidos de la DFL («como el ATD», la condición con
+    que se entrenó B5) y en los 10 de `lector.ENTRENAMIENTO` de SkillCorner («detectado»);
+  - en los frames de los tramos evaluados con el balón visible en ese frame (así casi todos son de juego en los tres
+    conjuntos: en la DFL el balón va tapado en los `D`, en SkillCorner las paradas casi no tienen tracking y en el ATD la
+    mayor parte del balón que falta es balón muerto);
+  - de cada rasgo, en cada partido, la mediana y el p90 de su **valor absoluto** (los rasgos son «local menos
+    visitante»: con el signo, la mediana diría qué equipo domina el partido, no si el tracking es raro);
+  - **los diez rasgos de más peso:** los de mayor |peso de B5| × desviación típica del rasgo en la DFL.
+- `validation/partido/rasgos_b5.py` (**lo ejecuta Ismael**): lo mismo en el partido, y la comparación con la referencia.
+  Imprime, de cada rasgo, la mediana y el p90 del partido frente al mínimo y el máximo de los 17 abiertos. Además, como
+  descripción, cuánto coincide el signo de B5 con el del más cercano, en el partido y en los abiertos.
+
+**Regla de lectura:**
+
+- **«Desplazado»:** la mediana del valor absoluto de alguno de los diez rasgos de más peso cae fuera del rango
+  (mínimo–máximo) de las medianas de los 17 partidos abiertos.
+- **Si hay alguno desplazado,** el siguiente paso es un candidato: estandarizar ese rasgo por partido, medido en datos
+  abiertos con su regla antes. Se avisa a la sesión principal antes de escribirlo.
+- **Si no hay ninguno,** se apunta que los rasgos de B5 en el partido caen dentro de lo que se ve en los datos abiertos,
+  y se cierra.
+- **Lo que no separa:** un rasgo puede salir fuera porque el tracking es raro o porque el partido es raro (un equipo que
+  domina mucho). Por eso el siguiente paso se mide en datos abiertos y no se decide con esto solo.
+
+**La referencia, calculada antes de que Ismael mida el partido** (`referencia_rasgos_b5.json` y
+`salidas/2026-11-16_p2_referencia_rasgos_b5.md`). Los diez de más peso, por este orden: el balón en la dirección de
+ataque (ventana 51), la velocidad en la dirección de ataque (25), la dispersión (51), el signo del más cercano (151), el
+núcleo de 1 m (151), el de 2,5 m (51), el juego en la dirección de ataque, el núcleo de 6 m (51), la distancia del más
+cercano (51) y el núcleo de 1 m (13). El signo de B5 coincide con el del más cercano entre el 76,1 y el 85,1 % de los
+frames con balón en los 17.
+
+**Un límite que se ve al calcularla** (no cambia la regla): los cuatro rasgos «sin balón cerca» valen cero en los frames
+con balón, así que esta comparación no los mira. Mirarlos pediría los frames sin balón, que en el partido son sobre
+todo paradas y en los abiertos no, y no serían comparables.
