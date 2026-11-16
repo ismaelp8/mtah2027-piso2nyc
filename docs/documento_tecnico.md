@@ -24,8 +24,8 @@ entrega cambia antes del cierre]
 
 **Qué entregamos.** Un CSV `frame,label` de 199.319 filas que da `H`, `A` o `D` en cada frame de los dos
 tramos evaluados y `X` fuera de ellos. Lo genera un solo comando, solo con numpy, a partir del tracking
-automático (ATD) y del Smart Tagging del partido. [PENDIENTE: si entra el balón del vídeo, el comando añade
-un detector y sus dependencias (§9)]
+automático (ATD) y del Smart Tagging del partido. [PENDIENTE: si la variante B del balón del vídeo pasa su puerta (§7), el comando añade un
+detector y sus dependencias (§9); si no, borrar esta nota]
 
 **El método en un párrafo.** Cada pieza da, en cada frame, una puntuación para `H`, `A` y `D`. Las
 puntuaciones se suman y un decodificador de Viterbi elige la secuencia con más puntuación, pagando un coste
@@ -167,8 +167,8 @@ El ATD se comprueba al leerlo y cualquier línea rara para la entrega.
 | Smart Tagging | `SET PIECES` para el hueco antes del reinicio; «Attacking Transition» con su `Team` para los contraataques. Nunca prohíbe nada ni se copia como etiqueta, pero en los 5 primeros segundos de cada contraataque el empujón (8 por frame, 1.000 frente a un coste de cambio de 25) fuerza el cambio al equipo de la fase, salvo que B5 diga con mucha fuerza lo contrario [inferencia, por construcción] |
 | constantes de saque (`starter/load_smart_tagging.py`) | anclas de `D` (§2) |
 | GT pública (5 min) | comprobar formato y alineación y, como pide `CHALLENGE.md` («Use it to understand what is expected»), entender qué significan las etiquetas (§6.5 y §10). No entrenó, no fijó ningún parámetro y no eligió ninguna versión |
-| vídeo táctico | lo miraron personas para entender el juego y la GT pública (§10). [PENDIENTE: si entra el balón del vídeo, lo procesa además un detector automático, en local] |
-| homografía | no se usa [PENDIENTE: la usaría la línea del balón del vídeo] |
+| vídeo táctico | lo miraron personas para entender el juego y la GT pública (§10). Además, un detector de balón automático lo procesó en local, en una muestra de 10 minutos, para la línea del balón del vídeo, que se descartó (§7) |
+| homografía | no la usa la entrega. La usó la línea del balón del vídeo, descartada (§7), para llevar las detecciones al campo y medir el balón en píxeles |
 | broadcast | descartado: no está sincronizado, no hay herramienta pública para alinearlo y su homografía solo vale en el 65,8 % |
 | audio (silbato) | sondeado y descartado: no pasó su criterio porque la señal sale sucia [sin verificar: el resultado no quedó escrito en `validation/silbato/`] |
 
@@ -187,6 +187,7 @@ constants tied to specific frames of the game». Lo declaramos para que la organ
 | Bundesliga, Bassek et al. (2025), 7 partidos | entrenamiento de B5 y E2 y harness (§5, §6) |
 | SkillCorner Open Data, 20 partidos de la A-League 2024/25 | solo validación. La medida de §6.3 usa los 20; después se apartaron 10 como examen, que el 16/11 aún no se había usado [PENDIENTE: decir si alguna decisión posterior lo usa] |
 | Metrica sample-data, 3 partidos | solo validación |
+| dataset del detector de balón (Roboflow, clips de la Bundesliga, CC BY 4.0) | solo para medir el detector de la línea del vídeo (125 imágenes de su parte de test; §7). No entrena nada nuestro |
 | StatsBomb, Wyscout, SoccerNet, PFF FC y otros | inventariados o descartados: licencia dudosa, sin balón medido o sin aportar nada a lo anterior |
 
 No se usa ningún dato humano de este partido (Opta, StatsBomb, Wyscout, LaLiga…), ni agregados de la
@@ -194,9 +195,9 @@ temporada 2024-25.
 
 ## 5. Datos de entrenamiento
 
-Solo dos piezas están entrenadas, y las dos con el **mismo dataset**. [PENDIENTE: si entra el balón del
-vídeo, el detector público y su dataset: fuente, quién etiquetó, cuánto, licencia y que no tiene imágenes de
-este partido]
+Solo dos piezas están entrenadas, y las dos con el **mismo dataset**. El detector de balón que se probó para la
+línea del vídeo no entra en la entrega (§7). [PENDIENTE: si la variante B pasa, su modelo y su dataset: fuente,
+quién etiquetó, cuánto, licencia y que no tiene imágenes de este partido]
 
 - **Fuente:** Bassek, Rein, Weber y Memmert (2025), *An integrated dataset of spatiotemporal and event data
   in elite soccer*, Scientific Data 12, 195. Licencia CC BY 4.0, con autorización de la DFL.
@@ -342,6 +343,20 @@ En el harness o con agregados del partido, cada uno con su regla escrita antes [
 - **Anclas fijas para el `D`** (del gol al saque, el instante del reinicio, el equipo que reanuda): o no hay
   un instante fijo, o pasan juego vivo a `D`.
 - **Doce sondeos más, el 16/11** (un coste por parte, el encuadre de la cámara, señales nuevas): ninguno gana.
+- **El balón sacado del vídeo táctico** (16/11). La idea era darle a B5 un balón sin el suavizado de casi 1 s del
+  ATD. Se usó un detector público (YOLO11n afinado para balones, AGPL-3.0), en local y en CPU, sobre un recorte de
+  320 px alrededor del balón del ATD, ampliado ×2. Sus reglas se escribieron antes de medir
+  (`validation/balon_video/BITACORA.md`, rama `exp/balon-video`):
+  - en datos abiertos ve balones de 4–5 px en el 82–91 % de las imágenes, y en nuestro vídeo el balón mide 5,9 px de
+    mediana [medido];
+  - en el partido, en una muestra de 10 minutos, el 41 % de sus detecciones cae a más de 5 m del balón del ATD, y la
+    regla pedía el 10 % como mucho. Da 2,6 detecciones por frame [medido], y la mayoría no son el balón
+    [inferencia]. La línea se paró ahí;
+  - aunque hubiera pasado, en la DFL con un balón como el del vídeo, hasta un detector perfecto le daría a B5 del orden
+    de +0,01, por debajo del ruido del partido [medido, DFL emulada].
+
+  [PENDIENTE: la variante B, con confianza mínima 0,25 en vez de 0,10 (el otro valor medido en datos abiertos), y su
+  resultado]
 
 ## 8. Limitaciones y qué haríamos con más tiempo
 
@@ -358,16 +373,13 @@ En el harness o con agregados del partido, cada uno con su regla escrita antes [
   defecto.
 - **La convención de la GT no está medida.**
 
-Con más tiempo: un balón más nítido sacado del vídeo táctico, y los tiempos de eventos corregidos a mano
+Con más tiempo: un detector de balón que no confunda otras cosas con el balón en nuestro vídeo (afinado con
+pseudoetiquetas o con seguimiento en el tiempo; §7), y los tiempos de eventos corregidos a mano
 (mediana de tres anotadores, según su README) que publica ELASTIC para 3 de los 7 partidos de la DFL, para
 medir mejor dónde cambia la posesión.
 
 **Líneas en marcha que pueden cambiar la entrega antes del cierre:**
-- [PENDIENTE: balón del vídeo. Un detector de balón público (YOLO11n, AGPL-3.0), en local y en CPU, cuyo
-  balón solo ve B5. Entra si cumple los criterios escritos antes de medir: mejora en la DFL con un balón como
-  el del vídeo, entrega de prueba sin daños y reproducción exacta en menos de 8 h. En la DFL emulada, con el
-  `D` oráculo, un detector realista daría de +0,007 a +0,015, y uno perfecto hasta +0,017: por debajo del
-  ruido del partido (rama `exp/balon-video`, `validation/balon_video/BITACORA.md`) [medido, DFL emulada]]
+- [PENDIENTE: la variante B del balón del vídeo (§7), solo si pasa su puerta; si no, borrar esta línea]
 - [PENDIENTE: una opción del decodificador que pasa a `D` las posesiones muy cortas]
 - [PENDIENTE: un modelo de equipo pensado para un balón más nítido]
 - [PENDIENTE: una capa de `D` que cierra cada parada en el golpeo del balón visto en el vídeo]
@@ -406,7 +418,7 @@ export MTAH_DATA_DIR=/ruta/al/paquete
 .venv/bin/python evaluation/validate_submission.py evaluation/results/<NOMBRE_EQUIPO>.csv
 ```
 
-[PENDIENTE: cuánto tarda] [PENDIENTE: si entra el balón del vídeo, el comando único, sus dependencias
+[PENDIENTE: cuánto tarda] [PENDIENTE: si entra la variante B del balón del vídeo (§7), el comando único, sus dependencias
 fijadas, la descarga del modelo, el tiempo de la detección en la máquina de referencia, y que la caché de
 detecciones se regenera en local y no se publica]
 
@@ -488,8 +500,9 @@ constantes ligadas a frames del partido, y las publica la organización.
 
 **Licencias.** Bundesliga: CC BY 4.0. SkillCorner Open Data: MIT. Metrica sample-data: sin fichero de
 licencia; su README pide citar la fuente. Código y GT pública del reto: MIT (Metrica Sports). [PENDIENTE:
-licencia del código propio; si entra el detector del vídeo, su licencia AGPL-3.0 y la de su dataset de
-entrenamiento]
+licencia del código propio] El detector de balón que se probó (§7) no entra en la entrega: el modelo
+(`martinjolif/yolo-football-ball-detection`) y `ultralytics` son AGPL-3.0, y su dataset de entrenamiento (Roboflow),
+CC BY 4.0. Los scripts que lo usan están en la rama `exp/balon-video` y no redistribuyen el modelo.
 
 **Referencias.**
 - Bassek, Rein, Weber y Memmert (2025). An integrated dataset of spatiotemporal and event data in elite
