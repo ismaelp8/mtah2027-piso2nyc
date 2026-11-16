@@ -63,6 +63,12 @@ Test-Path $env:MTAH_DATA_DIR
 
 Regenera la entrega vigente con el entorno limpio. Tiene que salir igual, byte a byte, que `equipo_v8`.
 
+**Hecho el 16/11 por la noche** (Ismael, con `main` en `c6a3dee`): salió `d78c514d…e2b2`, el de `equipo_v8`.
+
+**Ojo desde entonces:** Ismael ha decidido encender «cortas a `D`» en `main`. Con eso encendido, este paso en `main`
+da `equipo_v9`, que tiene que salir con `d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63`, y no con
+el sha256 de abajo. La rama `exp/balon-video` no lleva ese cambio: en ella sigue saliendo `equipo_v8`.
+
 ```powershell
 git checkout main
 git pull
@@ -72,9 +78,9 @@ C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe evaluation\validate_su
 
 **Qué mirar:**
 - La línea de versiones: `python 3.13.9, numpy 2.5.4`.
-- `código: commit …, sin cambios locales en el código de la entrega`. A las 19:15, `main` estaba en `6c49008`.
-  - Desde `44678d1` solo han cambiado documentos y scripts de validación, nada del código de la entrega, así que el
-    sha256 tiene que ser el de siempre.
+- `código: commit …, sin cambios locales en el código de la entrega`. A las 20:45, `main` estaba en `c52a746`.
+  - El commit que imprime es nuevo: la PR 20 (`10aadef`) añade a `possession/temporal.py` una opción apagada
+    («cortas a `D`»). `pipeline.PIECES` y `DELIVERY_LAYERS` no cambian, así que el sha256 tiene que ser el de siempre.
   - Si dice `CON CAMBIOS SIN COMMITEAR`, para.
 - **Si eres la segunda máquina de la detección** (paso 11), no hace falta la puerta 1b en tu máquina: decide la de
   Antonio. Haz los pasos 3 a 7 y después el 9, solo si su 1b dijo `SIGUE`.
@@ -332,9 +338,19 @@ C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe evaluation\run_evaluat
   1. genera la entrega de prueba;
   2. cuenta el balón fuera;
   3. la compara con `equipo_v8`.
+- **La rama no lleva «cortas a `D`».** Su entrega de prueba se compara con `equipo_v8`, y la 2.2 se lee tal cual: es
+  la parte A de la bitácora. No traigas `main` a la rama antes de generarla.
 - **Si el `Test-Path` de `equipo_v8.csv` da `False`,** no lances `probar_entrega.py` con `--contra equipo_v8`: genera
   la entrega y cuenta el balón fuera, y solo al final dice «No encuentro una de las entregas…», sin parar. Lánzalo
   desde el principio con `--contra ensayo_16nov`, que vale solo si el paso 1 dio el sha256 de `equipo_v8`.
+  - Un ensayo hecho en `main` después de encender «cortas a `D`» ya no vale de base: es `equipo_v9`.
+  - Si no tienes ninguna base con el sha256 de `equipo_v8`, genérala desde esta misma rama y compara con ella:
+
+    ```powershell
+    C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe -m possession.pipeline --name base_v8
+    ```
+
+    Tiene que dar `d78c514d…e2b2`. Después, `--contra base_v8`.
 
 **Qué mirar:** los criterios de daño de la puerta 2.2, escritos antes de generarla. Pasa si se cumplen todos:
 - `frames con piezas en conflicto: 0` y, en los dos tramos, ninguna racha de menos de 25 frames: ni posesiones, ni de
@@ -379,6 +395,11 @@ py -3.13 -m venv <entorno limpio>
 Tiene que dar `sha256: d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`, con
 `python 3.13.x, numpy 2.5.4`. Pega a Claude la salida de los dos últimos comandos.
 
+- **Hecho con `equipo_v8`:** Antonio la reprodujo en su Mac el 16/11 por la tarde, e Ismael en Windows por la noche.
+- **Con «cortas a `D`» encendida en `main`,** la entrega vigente es `equipo_v9` y este mismo paso tiene que dar
+  `sha256: d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63`. Esa es la que falta reproducir en una
+  segunda máquina.
+
 **b) Solo si la 1b pasó: la detección del partido entero en su máquina.** Es la puerta 2.3, que la bitácora escribe
 así: «el comando único regenera la entrega byte a byte dos veces en una máquina y una en otra (con la detección
 dentro)». Necesita el vídeo táctico en su carpeta de datos (`tactical\BAR-ATH_tactical.mp4`, 4,9 GB).
@@ -397,6 +418,7 @@ dentro)». Necesita el vídeo táctico en su carpeta de datos (`tactical\BAR-ATH
 4. El paso 9, de noche si hace falta. Pega el JSON del final.
 5. Solo si la 2.1 pasó (como en el paso 10): con su caché y el entorno limpio, la entrega de prueba del paso 10
    (solo el primer comando de Python, el de `probar_entrega.py`, con `--contra ensayo_antonio`), y pega su `sha256`.
+   `ensayo_antonio` vale de base solo si salió con el sha256 de `equipo_v8`; si no, usa la `base_v8` del paso 10.
 
 Y en la máquina de Ismael, la segunda ejecución: repetir el paso 9 con `--forzar` (rehace la caché) y regenerar la
 entrega de prueba del paso 10. Tienen que salir la misma huella de la caché y el mismo sha256 de la entrega.

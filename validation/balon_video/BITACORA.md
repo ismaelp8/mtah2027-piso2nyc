@@ -227,6 +227,68 @@ propia regla y no usa la del «límite de daño» de los cambios pequeños (`doc
    apuntarlo en `possession/tracking.py`, en `docs/PLAN_ENTREGA.md` §2 y en `CLAUDE.md`, y la detección tiene que ir en
    el comando de la entrega (punto 3).
 
+### Precisión de la puerta 2.1: el `D` propio, con réplicas (16/11, 20:40, antes de leer ninguna cifra del partido)
+
+La escribe la sesión que lee las puertas en la máquina de Ismael. A esta hora no ha visto ni el JSON de la 1b ni el de
+la detección del partido entero.
+
+**Por qué:** la 2.1 pide pasar «con el `D` de las etiquetas y con el propio». En la rejilla de `emular_dfl.py`, el `D`
+propio va con una sola tirada por celda (la réplica 0), porque para la 1b era solo descriptivo. Es el problema que las
+réplicas de las 18:30 arreglaron para el `D` de las etiquetas: el ruido de una tirada es del orden de la distancia al
++0,01. En la 2.1 el `D` propio sí decide.
+
+**Qué se hace:**
+- El `D` propio se calcula con R = 8 réplicas en las celdas con p ≥ 0,7: las mismas semillas, el mismo balón emulado y
+  la misma forma de juntar que a las 18:30. Con p < 0,7 sigue habiendo una sola tirada con los dos `D`, como entonces.
+- Lo calcula `emular_dfl_propio.py`, con las funciones de `emular_dfl.py` y sin tocarlo. Escribe en
+  `salidas/2026-11-16_emulacion_dfl_propio.*`. El JSON de la emulación no se regenera: lo leen por su nombre el sondeo y
+  la detección.
+- Se calculan todas las celdas con p ≥ 0,7 ahora, antes de saber cuál se leerá.
+- **Comprobación:** la réplica 0 tiene que dar, celda a celda, las cifras del `D` propio del JSON de la emulación
+  (script `358043bf…`). Si no las da, no se lee nada con este fichero y se avisa.
+
+**Cómo se lee la 2.1:** en la celda (p, σ, L) que dé la detección del partido entero (`condicion_5_descriptiva.celda`,
+leída con la regla de la 1b). Pasa si pasan los dos:
+- con el `D` de las etiquetas, el veredicto juntado del JSON de la emulación (`cumple`);
+- con el `D` propio, el veredicto juntado de `…_emulacion_dfl_propio.json`. El `propio_pasa` que imprime la detección
+  sale de una sola tirada y se queda como descriptivo.
+
+En cada `D`, el veredicto es el de siempre: con control, +0,01 o más y 6 de 7 en las dos condiciones que votan; con el
+flag, no pierde más de 0,005 en ninguna de las dos. «Sin decidir» se imprime y no vota.
+
+**Reconocido:** la rejilla del `D` propio con una tirada ya estaba a la vista (`salidas/2026-11-16_emulacion_dfl.md`), y
+la 1b de Antonio puede estar ya ejecutada. El umbral y la regla no cambian.
+
+### La entrega pasa a `equipo_v9`: contra qué se leen la 2.1 y la 2.2 (16/11, 21:25, antes de generar ninguna entrega de prueba)
+
+**Qué cambia:** Ismael ha decidido encender «cortas a `D`» en `main` (`temporal.decode_cortas_a_d`, PR 20). La entrega
+vigente pasa a ser `equipo_v9`: 201 posesiones, 116 paradas y 1.167 frames más de `D` que `equipo_v8` [medido por Ismael
+con la entrega de prueba; lo pasa la sesión planificadora]. `exp/balon-video` sale de antes y no lleva ese cambio.
+
+**La 2.1** está medida contra el pipeline de `equipo_v8`: el `possession/` de esta rama, que es el de `main` en `3220707`,
+antes del cambio.
+- Con el `D` de las etiquetas, «cortas a `D`» no debería cambiar nada [inferencia]: la regla no convierte donde `D` no
+  está permitido.
+- Con el `D` propio y el decodificador de `equipo_v9` no está medida. Si la capa se fuera a encender sobre
+  `equipo_v9`, antes se repite la rejilla del `D` propio con ese decodificador y con la misma regla.
+
+**La 2.2** tiene ahora dos partes, y para encender la capa tienen que pasar las dos:
+- **Parte A, la de siempre, frente a `equipo_v8`.** Dice si la capa rompe algo por sí sola. La entrega de prueba se
+  genera con el decodificador de `equipo_v8`: desde `exp/balon-video` sin traer `main` o, con `main` dentro, añadiendo
+  `--pieza temporal=temporal.decode`. Los criterios de las 17:20 no cambian.
+- **Parte B, frente a `equipo_v9`,** solo si la capa se fuera a encender. Con `main` dentro y el decodificador de la
+  entrega: `probar_entrega.py prueba_balon_video_v9 --capa balon_video.ajuste_b5_video --contra equipo_v9`. Pasa si se
+  cumple todo:
+  - 0 frames con piezas en conflicto, y ninguna racha de menos de 25 frames en los dos tramos;
+  - las paradas, entre 110 y 122. «Cortas a `D`» no crea ni quita paradas: alarga hacia atrás la que ya hay [por el
+    código de `temporal.cortas_a_d`];
+  - las posesiones, entre 201 y 301 (las de `equipo_v9`, ×1,5);
+  - los frames que cambian de un equipo al otro, como mucho 15.886, el 10 % de los evaluados;
+  - entre los frames evaluados que pasan de `D` a juego y los que pasan de juego a `D`, como mucho 2.167: los 1.000 de
+    siempre más los 1.167 que mueve «cortas a `D`» entera. Con este decodificador la capa sí puede mover el `D`, porque
+    cambia qué posesiones cortas acaban en una parada;
+  - la ventana pública se imprime y no decide.
+
 **Dónde va lo que sale del partido:** la caché de detecciones es dato del partido derivado. Va en
 `MTAH_DATA_DIR/tactical/` con un nombre que empiece por `BAR-ATH_tactical_` (lo cubre el bloqueo de
 `.claude/settings.json`), nunca en el repo ni en `~/mtah2027-salidas/`.
@@ -356,6 +418,41 @@ La detección real se apunta aquí cuando se mida:
   - las pruebas sin datos, todas en verde;
   - el ensayo corto de la 1b, correcto.
 - **Pendiente:** la 1b de verdad (en marcha a las 18:50).
+
+### Ensayo de la entrega en `main` (16/11, noche; lo ejecutó Ismael en Windows, con el entorno limpio) [medido, agregados del partido]
+
+- **Qué:** el paso 1 de `ESTA_NOCHE.md`: `python -m possession.pipeline --name ensayo_16nov`, con Python 3.13.9 y numpy
+  2.5.4, en `main` (`c6a3dee`) y sin cambios locales en el código de la entrega.
+- **Sale el sha256 de `equipo_v8`:** `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`.
+- El validador la da por válida: 219 posesiones de 15,8 s de media. Hay 0 frames con piezas en conflicto y ninguna
+  racha de menos de 25 frames.
+- `main` lleva ya la PR 20 («cortas a `D`», apagada): no cambia la entrega.
+- Los agregados se los pegó Ismael a la sesión planificadora, que los pasó a esta.
+
+### La rejilla de la 2.1 con el `D` propio y réplicas (16/11, 21:20; datos abiertos, antes de leer ninguna cifra del partido) [medido]
+
+Salida: `salidas/2026-11-16_emulacion_dfl_propio.md` y `.json` (script `emular_dfl_propio.py`, `1d7f4765…`; 37 minutos
+con 10 procesos en la máquina de Ismael, Python 3.13.9 y numpy 2.5.4).
+
+- **La comprobación pasa:** la réplica 0 da las cifras del `D` propio del JSON de la emulación en 48 de 48 celdas
+  (tolerancia 1e-12). Esta máquina reproduce las cuentas del ordenador donde se hizo la rejilla.
+- **La tirada única no bastaba:** con 8 réplicas, el veredicto del `D` propio cambia en 12 de las 48 celdas.
+- **Cuántas celdas pasan la 2.1** (con los dos `D`), de las 12 de cada cobertura:
+
+  | p | pasan con el `D` propio | pasan con los dos |
+  |---|---|---|
+  | 0,7 | 7 | 6 |
+  | 0,8 | 8 | 8 |
+  | 0,9 | 11 | 11 |
+  | 1 | 12 | 12 |
+
+  En total, 38 pasan con el `D` propio, 42 con el de las etiquetas y 37 con los dos.
+- **Lo que gana, con el `D` propio:** con control, de +0,009 a +0,017; con el flag, de +0,004 a +0,010. Nunca pierde.
+- **Casi todo queda «sin decidir»:** 38 de 48 celdas están a menos de dos errores estándar del umbral, o su «gana en»
+  cruza el 6 según la réplica. No vota, pero dice lo que hay: lo que da B5 tal cual con el balón del vídeo está justo en
+  el +0,01 que pide la regla.
+- **Lectura** [inferencia]: que la 2.1 pase o no en la celda del partido depende de milésimas. Pase o no, la ganancia
+  esperada con B5 tal cual es de +0,01, por debajo del ruido del partido (0,04).
 
 ### Puerta 0 (16/11, sesión aparte; datos abiertos) [medido]
 
