@@ -423,6 +423,24 @@ def evidence_b9(trk, fuera=None):
     return _evidencia(trk, "b9", fuera)
 
 
+def evidence_b11(trk, fuera=None):
+    """B11: convolucional temporal sobre canales por frame, puntuada como B5 (17/11; possession/secuencia.py).
+
+    Apagada: no está en `pipeline.PIECES`. Se importa aquí dentro para que B1–B9 no dependan de ese módulo.
+    """
+    from possession import secuencia
+    return secuencia.evidencia(trk, "b11", fuera)
+
+
+def evidence_b12(trk, fuera=None):
+    """B12: GRU bidireccional sobre los mismos canales a 5 Hz, puntuada como B5 (17/11; possession/secuencia.py).
+
+    Apagada, como B11.
+    """
+    from possession import secuencia
+    return secuencia.evidencia(trk, "b12", fuera)
+
+
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------
 # >>> COEFICIENTES
 # Los escribe validation/apuesta_b/entrenar.py. «todos»: los 7 partidos de la DFL (la entrega); cada
