@@ -4293,3 +4293,77 @@ Riesgos apuntados antes de empezar:
 - el tiempo de cálculo.
 
 `equipo_v8` no cambia mientras no pase la puerta 2.
+
+### 2026-11-16 · decodificador · la idea 1.3 («cortas a `D`») se desaparca y se implementa apagada
+
+Quién: Manuel, por encargo de Ismael (16/11). **Reglas escritas antes de medir nada con ellas.**
+
+**Ojo con el estado anterior:** la entrada «el flag pasa de veto a límite de daño» de hoy dice que la idea 1.3
+«queda aparcada (Ismael, 16/11)». Este encargo la desaparca y la lleva hasta la entrega de prueba con esa misma
+regla de límite de daño. El permiso para abrir el examen de SkillCorner es del mismo día y sigue sin usarse.
+
+Qué se ha hecho: `temporal.cortas_a_d` y `temporal.decode_cortas_a_d(score, allowed, blocks, params=None,
+corte=125)` en `possession/temporal.py`, **apagadas**: no están en `pipeline.PIECES` y la entrega no cambia.
+Es el Viterbi de `decode` y después, en cada tramo, las posesiones de menos de `corte` frames que vienen de un
+cambio directo desde el otro equipo y acaban en `D` pasan a `D`. `corte` es una duración (125 frames son 5 s a
+25 fps, la frecuencia del partido, de la DFL y de SkillCorner), no un frame de este partido.
+
+**Es la misma lógica que S9** [medido, sin datos]: `validation/scripts/prueba_cortas_a_d.py` comprueba en 400
+casos inventados que, con `D` permitido en todas partes, da exactamente lo mismo que la variante «a D» de
+`validation/investigacion_1116/paquete_control.py` (las candidatas de `cambio_antes_de_parada.candidatas`
+puestas a `D`). La prueba compara además el AST de `candidatas` con la copia que usa, así que si alguien cambia
+la referencia, falla y hay que repetir la medida. Es lícito meterla dentro del decodificador porque
+`pipeline.run` acaba en `return decode(score, allowed, trk.blocks, params)`: el decodificador es el último paso
+y recibe los mismos tramos, así que hacerlo dentro o fuera es lo mismo.
+
+**Una diferencia a propósito con S9:** `cortas_a_d` no convierte una candidata si `D` está prohibido en alguno
+de sus frames, como hace `prune`. S9 no mira `allowed`. En el partido eso importa en el frame del saque de cada
+parte, donde `dead_ball.evidence` prohíbe `D` (PR 16). **Hay que comprobar que no cambia las cifras de la DFL ni
+de SkillCorner;** si las cambia, la reproducción de S9 no vale y se para a explicarlo antes de seguir.
+
+**Comprobado sin datos del partido** [medido]: 753 casos de la prueba en verde; `leer_versiones` del harness
+valida la versión y la ejecuta sobre su partido inventado; las pruebas de David
+(`prueba_decodificador.py`) y `prueba_pipeline.py` siguen en verde. **Sabotajes** (en memoria, fuera del repo):
+17 roturas, una a una (el corte estricto, el límite de largo, que acabe en `D`, el cambio directo, el equipo de
+antes, la primera y la última racha del tramo, `allowed`, pasar al equipo de antes, no copiar, encadenar las
+candidatas, los tramos sin volverse tupla, la validación del corte, los `params`, el corte por defecto y el
+corte por tramos): **las 17 se cazan.** Dos escapaban al principio porque el sabotaje caía en las líneas
+idénticas de `decode_prune`, y una tercera porque con evidencia al azar las rachas no llegan a 125 frames y el
+valor del corte no se ejercitaba; de ahí la prueba con evidencia forzada.
+
+**Puerta de entrada: la regla del límite de daño de hoy.** Las cifras que tiene que reproducir son las de S9
+(columna «cortas a `D`», `D` propio, diferencia de `spellF1` frente a `main`):
+
+| etiquetas | balón en los `D` | «como el ATD» | «sin bloques» |
+|---|---|---|---|
+| DFL flag | a la vista | +0,004 (5 de 7) | +0,004 (5 de 7) |
+| DFL flag | tapado | −0,002 | −0,002 |
+| DFL control | a la vista | +0,018 (7 de 7) | +0,019 (7 de 7) |
+| DFL control | tapado | +0,007 | +0,009 |
+| SkillCorner entrenamiento | – | +0,010 (10 de 10) | +0,009 (10 de 10) |
+
+Sobre el papel pasa las tres condiciones medibles en abierto: con el control da +0,005 o más en las cuatro
+celdas (26 de 28 partidos, según S9) y con el flag no pierde más de 0,005 en ninguna. **Si al reproducirlas no
+salen las mismas cifras, se para y se averigua por qué antes de seguir.**
+
+**Umbral del examen de SkillCorner, escrito antes de abrirlo:** entra si en `lector.EXAMEN` (los 10 partidos
+que nadie ha tocado) gana a `main` por **+0,005 o más** y gana en **7 de 10** partidos, en las dos condiciones
+que votan allí. Se ejecuta **una sola vez**, con el permiso que dio Ismael el 16/11, y el uso se apunta aquí.
+
+**Criterios de daño de la entrega de prueba, escritos antes de generarla** (`prueba_cortas_a_d` frente a
+`equipo_v8`):
+1. **0 frames evaluados con piezas en conflicto** y ninguna racha de menos de 25 frames en ningún tramo.
+2. **El 100 % de los frames que cambian pasa de `H` o `A` a `D`.** Por construcción no puede cambiar nada más
+   (la prueba lo comprueba); si sale otra cosa, hay un error y se para.
+3. **Dentro de la banda del plan** (§3, 15/11): del 15 al 60 % de `D` en lo evaluado y 250 paradas como mucho.
+4. **Cuántas posesiones quita:** se apunta el número. No hay umbral, pero se lee con cuidado, porque el punto
+   débil conocido del pipeline es que predice **menos** posesiones de las que hay (219 en `equipo_v8`, 3,7 por
+   minuto vivo, frente a los 4,11 de SkillCorner y los 4,26–4,29 de la DFL con nuestro `D`), y esta regla solo
+   puede quitar más.
+5. **Cuántas de las posesiones que quita caen en los 5 primeros segundos de una «Attacking Transition» del
+   Smart Tagging** (la capa de los contraataques, encendida en la entrega):
+   `validation/partido/cortas_en_contraataques.py`. **Si son más de 2, se para y se avisa,** porque la regla
+   estaría borrando lo que esa capa acaba de crear.
+
+Lo que no cambia: la entrega sigue siendo `equipo_v8` y `pipeline.PIECES` no se toca. Que entre o no lo decide
+el equipo con estos números.

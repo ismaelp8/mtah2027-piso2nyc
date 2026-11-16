@@ -1,0 +1,7 @@
+{
+  "main: B5 y coste 25": {},
+  "cortas a D (5 s)": {
+    "nota": "idea 1.3 de docs/investigacion_2026-11-16.md §2.1; la variante «a D» de los sondeos S5 y S9, con el corte de 125 frames",
+    "piezas": {"temporal": {"funcion": "decode_cortas_a_d", "opciones": {"corte": 125}}}
+  }
+}

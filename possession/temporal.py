@@ -10,7 +10,10 @@ Variantes para el harness (candidatos del 15/11 en docs/decisiones.md), con la m
 
 - `decode_min`: el mismo Viterbi con una duración mínima por racha, como restricción dura (b);
 - `decode_prune`: el Viterbi de `decode` y después la poda de las posesiones cortas (c, T7 sin el ajuste de
-  fronteras).
+  fronteras);
+- `decode_cortas_a_d`: el Viterbi de `decode` y después las posesiones cortas que vienen de un cambio
+  directo desde el otro equipo y acaban en `D` pasan a `D` (idea 1.3 de
+  `docs/investigacion_2026-11-16.md` §2.1; la variante «a D» de los sondeos S5 y S9).
 
 La entrega usa `decode` (`pipeline.PIECES`). Las variantes solo entran si ganan en el harness.
 """
@@ -36,6 +39,11 @@ DEFAULTS = {
 MIN_LIVE = 12
 MIN_DEAD = 25
 PRUNE = 12
+
+# Corte de `decode_cortas_a_d`, en frames. 125 frames son 5 s a 25 fps, la frecuencia del partido, de la DFL
+# y de SkillCorner (que se interpola de 10 a 25). Es una duración, no un frame concreto de este partido.
+# Escrito antes de medir, en la regla de S5 (`validation/investigacion_1116/BITACORA.md`).
+CORTE_CORTAS = 125
 
 NEG = float("-inf")
 
@@ -325,4 +333,48 @@ def decode_prune(score, allowed, blocks, params=None, min_len=PRUNE):
     codes = decode(score, allowed, blocks, params)
     for start, stop in blocks:
         codes[start:stop] = prune(codes[start:stop], allowed[start:stop], int(min_len))
+    return codes
+
+
+def cortas_a_d(codes, allowed, corte):
+    """Idea 1.3: las posesiones cortas que acaban en una parada nuestra pasan a `D`. Devuelve una copia.
+
+    Una candidata es una racha de `H` o `A` de menos de `corte` frames cuya racha anterior es del otro
+    equipo (un cambio directo, sin `D` en medio) y cuya racha siguiente es `D`. La primera racha del tramo
+    y la última nunca son candidatas: les falta uno de los dos lados.
+
+    Las candidatas se buscan todas sobre `codes` sin tocar y se aplican después, así que convertir una no
+    cambia el vecindario de otra. Con las condiciones de arriba dos candidatas nunca son contiguas ni están
+    a dos rachas (a la segunda le quedaría un `D` por vecino de la izquierda), pero buscarlas antes lo deja
+    fijado y hace la salida independiente del orden.
+
+    Una candidata en cuyos frames `D` no esté permitido se queda como está: la evidencia manda sobre la
+    regla, como en `prune`. En el partido eso pasa en el frame del saque de cada parte, donde
+    `dead_ball.evidence` prohíbe `D`.
+    """
+    out = np.array(codes, copy=True)
+    pieces = runs(out)
+    for k in range(1, len(pieces) - 1):
+        label, start, stop = pieces[k]
+        before = pieces[k - 1][0]
+        if label not in (H, A) or pieces[k + 1][0] != D:
+            continue
+        if before not in (H, A) or before == label:
+            continue
+        if stop - start >= corte:
+            continue
+        if not allowed[start:stop, D].all():
+            continue
+        out[start:stop] = D
+    return out
+
+
+def decode_cortas_a_d(score, allowed, blocks, params=None, corte=CORTE_CORTAS):
+    """Candidato (idea 1.3): el Viterbi de `decode` y después `cortas_a_d` en cada tramo evaluado."""
+    if int(corte) < 1:
+        raise ValueError("el corte de las posesiones cortas es de 1 frame o más")
+    blocks = tuple(blocks)  # se recorre dos veces: en `decode` y aquí
+    codes = decode(score, allowed, blocks, params)
+    for start, stop in blocks:
+        codes[start:stop] = cortas_a_d(codes[start:stop], allowed[start:stop], int(corte))
     return codes
