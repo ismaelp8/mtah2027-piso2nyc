@@ -4293,3 +4293,181 @@ Riesgos apuntados antes de empezar:
 - el tiempo de cálculo.
 
 `equipo_v8` no cambia mientras no pase la puerta 2.
+
+### 2026-11-16 · `D` · el final de cada parada en el golpeo del balón del vídeo: candidatos y criterios, escritos antes de medir
+
+Quién: Ana, con su sesión de Claude. Es su tarea de la tarde del 16/11 («En marcha» de `CLAUDE.md`: «el final de cada
+parada en el golpeo del balón del vídeo, como capa nueva de `D`»), encargada por la sesión planificadora. **Escrita
+antes de ejecutar nada del partido:** ni el script del golpeo ni ninguna entrega de prueba.
+
+Por qué:
+- Los dos bordes de las paradas detectadas valen como mucho +0,05/+0,07 en la DFL (diagnóstico de errores, 15/11). La
+  idea 2.4 de Antonio (los árboles para el estado de `D`) se cerró el 16/11.
+- En la DFL, el modelo de estado acaba los saques de puerta 114,5 frames antes del fin real (4,6 s), y los saques de
+  banda y los córners, 20 y 16,5 frames tarde [medido en la DFL por Ana, 15/11; entrada «el instante del reinicio»]. Da el
+  juego por reanudado cuando los jugadores se mueven, no cuando se golpea el balón.
+- El instante fijo por tipo no entró (15/11). Su cierre deja abierta «una señal por ventana» como regla nueva, escrita
+  antes de medir: es esta.
+- El golpeo solo se ve con el balón, y el del ATD viene suavizado cerca de 1 s. El balón del vídeo se ve: mide 5,9 px de
+  mediana (puerta 1a) y la variante fijada del detector lo encuentra desde 3 px en datos abiertos (puerta 0).
+- **La DFL no lo puede medir:** su balón va tapado en los `D`. Como D7, los contraataques y el balón del vídeo, sería otra
+  excepción a «lo que no ha ganado en el harness no entra». La deciden los criterios de daño de abajo, y si entra, lo
+  decide el equipo con esos números.
+
+Qué se mide, en dos pasos:
+1. `validation/partido/balon_video_golpeo.py` (lo ejecuta Ana; solo agregados) busca el golpeo de cada reinicio y lo
+   guarda en `MTAH_DATA_DIR/tactical/BAR-ATH_tactical_golpeos.npz`.
+2. Una entrega de prueba por candidato, frente a `equipo_v8`, con `probar_entrega.py` y `comparar_paradas.py`.
+
+**El golpeo de cada reinicio** (todas las constantes, fijadas aquí y sin ajustar; el código y su docstring dicen lo
+mismo):
+- **Las ventanas:** las `SET PIECES` del Smart Tagging que no son saques iniciales y empiezan en un tramo evaluado
+  (`dead_ball.restart_windows`, 53 en el partido). El golpeo tiene que caer en [inicio, límite), con el límite en el fin
+  de la ventana menos 5 s (`MARGEN_FIN` = 125 frames: el 14/11, el detector de golpeo con el balón del ATD daba la
+  reanudación más de 5 s antes del fin en las 53), el inicio del siguiente `GOALS` o `SET PIECES` o el fin del tramo, lo
+  que llegue antes.
+- **El detector:** la variante fijada de la línea del balón del vídeo (`validation/balon_video/detector.py`): recorte de
+  320 px ampliado ×2, confianza 0,10, 4 hilos y CPU. Cada detección se lleva al campo con la inversa de la homografía de
+  su frame.
+- **El seguidor de cada ventana** recorre hacia delante desde la última posición del balón del ATD antes de la ventana
+  (en t+4, el adelanto de `ball.advance_ball`), si está a 60 s o menos (`HUECO_MAX` = 1.500 frames, el tope de la capa
+  del hueco) y en el mismo tramo evaluado que el inicio de la ventana; si no, desde el inicio. Acaba en el límite más 22
+  frames, para poder confirmar un golpeo justo antes del límite, sin pasar del fin de ese tramo. En cada frame:
+  - centra el recorte en la última detección aceptada si tiene 5 frames o menos (`RECENTRAR`); si no, en el balón del
+    ATD en t+4 si lo ve; si no, en la última detección aceptada si tiene 25 frames o menos (`PERDIDO`); si no, no
+    detecta;
+  - siguiendo, acepta la detección más cercana en píxeles a la última aceptada, a 40 px por frame desde ella como mucho
+    (`SALTO_PX`) y nunca a más de 120 px (`SALTO_MAX`); captando, la más cercana en metros al balón del ATD, a 3 m o menos
+    (`RADIO_CAPTAR`, el radio de acierto de la puerta 1b). Empates: el orden del detector (más confianza, menor x, menor
+    y);
+  - cada vez que capta el balón sin tenerlo (la primera vez, o tras más de 25 frames sin aceptar ninguna), vuelve hacia
+    atrás desde ese frame con las reglas de seguir, hasta 250 frames (`ATRAS`, 10 s), sin pasar de la última detección
+    aceptada ni de 250 frames antes del arranque, y se para tras 25 frames sin aceptar. Así se cubren los dos arranques
+    del encargo: la última posición del ATD antes del hueco (el primer frame) y su reaparición (la captura de después
+    del hueco), con el recorte siempre en la última detección.
+- **Un evento** es un par de detecciones aceptadas seguidas, la última quieta y la primera en movimiento, con:
+  1. **quieto:** en los 25 frames que acaban en la última quieta hay 13 detecciones o más (`QUIETO`, `MIN_QUIETO`), todas
+     a 0,5 m o menos de su mediana (`RADIO_QUIETO`);
+  2. **arranca:** entre las dos hay 12 frames sin detección como mucho (`HUECO_FECHA`), y la primera en movimiento está a
+     más de 0,5 m de la mediana;
+  3. **se mueve:** en los 10 frames desde la primera en movimiento (`MOVER`) hay 3 detecciones o más (`MIN_MOVER`), todas a
+     más de 0,5 m de la mediana, y la más lejana a 2 m o más (`RADIO_MOVER`; un pase a 5 m/s recorre 2 m en 0,4 s);
+  4. **el sitio es posible para el tipo** (reglamento, no el partido): córner, a 3 m o menos de una esquina; saque de
+     puerta, en el área pequeña (5,5 m de fondo y 18,32 m de ancho) más 2 m; saque de banda, a 5 m o menos de una banda,
+     a un lado u otro (el balón va en las manos y su proyección en el césped se aparta de la línea), y entre las dos
+     líneas de fondo con 2 m de margen; falta y otros tipos, en el campo más 2 m. Los eventos que cumplen 1 a 3 y no el
+     sitio se descartan y se cuentan.
+- **El golpeo** del evento es la última quieta + 1: el primer frame en que el balón, quieto 1 s o más, empieza a moverse.
+- **Qué se hace con cada ventana,** con todos sus eventos:
+  - ninguno antes del límite: «sin golpeo» («fuera de plazo» si lo hay después, «sin balón» si no se aceptó ninguna
+    detección);
+  - el primero cae antes del inicio de la ventana: «antes de la ventana». No se busca otro: el reinicio puede haber sido
+    ese;
+  - dos o más entre el inicio y el límite: «ambiguo» (un pase antes de sacar, o un portero que la para después);
+  - uno entre el inicio y el límite: **«golpeo». Solo estos los usa la capa.**
+
+**Los dos candidatos de la capa** (en `possession/balon_video.py`, apagados), con los mismos pesos, sin ajustar:
+- en cada ventana con golpeo, +5 en `D` (`PESO_D`, la escala de `dead_ball.BALL_OUT_SCORE`: en el juego vivo típico de
+  la DFL, con el estado en −3,42 y el +1 de N1, cada frame gana para `D`) desde el arranque hasta el golpeo, y −5 en `D`
+  (`PESO_JUEGO`) durante los 75 frames siguientes (`TRAS_GOLPEO`, los 3 s de la regla del instante del reinicio), sin
+  pasar del siguiente reinicio ni del fin del tramo. No toca `H` ni `A` ni prohíbe nada;
+- **G1, `golpeo_desde_hueco`** (el encargo): el arranque es el inicio del hueco de la capa del hueco, si la ventana lo tiene;
+  si no, el inicio de la ventana;
+- **G2, `golpeo_desde_ventana`**: el arranque es siempre el inicio de la ventana. No toca el hueco, que sigue con la capa del
+  hueco. Por qué hace falta: el hueco empieza cuando el ATD pierde el balón, y eso puede ser antes de que salga (el ATD lo
+  pierde en las áreas llenas y en los balones aéreos). Con +5, G1 puede adelantar el principio de la parada. La ventana,
+  en cambio, empezaba entre 2 y más de 20 s después de la salida en las 16 salidas que se vieron el 14/11 [medido;
+  `2026-11-14_agregados_balon_muerto.md`, sección 3].
+
+**Los criterios de daño de cada entrega de prueba frente a `equipo_v8`** (se leen por separado para G1 y para G2):
+0. **Procedencia:** la salida del pipeline dice el commit de esta rama, «sin cambios locales en el código de la entrega»,
+   «capa añadida balon_video.golpeo_desde_hueco» (o `_ventana`) y las versiones de Python y numpy. La de antes es
+   `equipo_v8` (sha256 `d78c514d…e2b2`, que `comparar_paradas.py` imprime). Si en la máquina de Ana `equipo_v8` no sale con
+   esa huella, la de antes es la entrega sin capa añadida generada con el mismo entorno y el mismo commit, y se apunta.
+1. 0 frames con piezas en conflicto, y en los dos tramos ninguna racha de menos de 25 frames: ni posesiones, ni de juego,
+   ni paradas.
+2. **Los cambios, solo en los bordes de las paradas que ya existen:** ningún frame evaluado que cambie a 250 frames (10 s)
+   o más de un borde (inicio o fin) de una parada de `equipo_v8`.
+3. **Ninguna parada nueva:** ninguna sin solape con una de `equipo_v8`, ninguna de `equipo_v8` que desaparezca, que se
+   parta o que se junte con otra.
+4. **Las paradas que cambian, contadas:** como mucho tantas como ventanas con «golpeo» (cada golpeo mueve, como mucho, su
+   parada).
+5. La banda del plan: del 15 al 60 % de `D` en lo evaluado y 250 paradas como mucho.
+6. El validador oficial da `Valid.`.
+
+Las celdas «< 5» de los frames (de 1 a 4) cuentan como 4 si van en contra de un criterio y como 1 si van a favor. **La
+ventana pública** (`run_evaluation.py --bootstrap 1000`) se imprime y no decide nada: solo dice si algo está roto.
+
+**Qué entra:**
+- Si pasan los dos, se proponen los dos con sus números, y la recomendación por defecto es **G2**: llega al mismo final de
+  parada y deja el principio a la capa del hueco, que ya pasó su regla. G1 además adelanta principios.
+- Si pasa uno, se propone ese. Si no pasa ninguno, no entra nada y las dos capas se quedan apagadas.
+- Si solo pasa G1, antes de proponerla se mira cuánto adelanta los principios de las paradas (el desplazamiento del inicio
+  de `comparar_paradas.py`): ningún criterio ve un principio adelantado menos de 10 s.
+- Con estas salidas no se reajusta nada: ni las constantes del golpeo, ni los pesos, ni los criterios.
+- **Si el equipo enciende una,** va al final de `pipeline.DELIVERY_LAYERS`, detrás de `dead_ball.ball_out`, para que salga
+  la huella de la entrega de prueba. Antes de la entrega definitiva hace falta lo mismo que en la puerta 2 de la línea
+  del vídeo: el script del golpeo dentro del comando único (la caché es dato del partido y no se puede publicar), la
+  reproducción byte a byte de la caché en dos máquinas, y apuntar la excepción a la interfaz en `possession/tracking.py`,
+  `docs/PLAN_ENTREGA.md` §2 y `CLAUDE.md`. Las licencias (el modelo y `ultralytics`, AGPL-3.0) ya van con la línea del
+  vídeo.
+
+Descriptivo, no decide (salida del script del golpeo, con «< 5» en las celdas de 1 a 4 ventanas de las tablas; los
+totales por estado van exactos, porque el criterio 4 necesita el número de «golpeo»): cuántas ventanas de cada tipo hay y
+en qué estado quedan; dónde cae el golpeo dentro de la ventana; frente a la reaparición del balón del ATD; frente al final
+de nuestro `D` en `equipo_v8` (más de 5 s antes, de 1 a 5 s antes, a 1 s o menos, de 1 a 5 s después, más de 5 s
+después, o sin `D`); cuánto dura el reposo (la racha quieta antes del golpeo, cortada en el primer hueco de más de 12
+frames sin detección); la precisión de la fecha; los eventos descartados por el sitio; las detecciones y los tiempos. Con `--resumen --entrega prueba_golpeo_…` se ve, además, dónde acaba el `D` de cada entrega de
+prueba frente a los golpeos. Y `comparar_paradas.py` da cuánto se mueve el fin y el inicio de las paradas que cambian.
+
+Lo que no comprueba [sin verificar]:
+- **Que el golpeo fechado sea el reinicio de verdad.** No hay etiquetas. Lo apoyan el sitio por tipo, que caiga dentro de
+  la ventana, que sea el único y que haya 1 s de reposo antes. La ventana pública solo puede enseñar un error grueso.
+- **Si mejora el `spellF1`:** ni la DFL (balón tapado en los `D`) ni la ventana pública lo pueden decir.
+- **Riesgos del seguidor:** si se queda en un objeto quieto lejos del balón, se pierde el golpeo, y eso es conservador.
+  Pero si el objeto está junto al balón (el banderín del córner, por ejemplo), el seguidor puede fechar el golpeo cuando
+  deja de ver el objeto y pasa al balón, no cuando sale el balón. También sale mal si se va a un balón de repuesto que
+  alguien coge, o si el único evento es un pase antes de sacar. Lo acotan el sitio, el «ambiguo» y los criterios 2 a 4,
+  pero un golpeo mal fechado a menos de 10 s del borde no lo ve ningún criterio.
+- **El retraso relativo** del balón del ATD (unos 4 frames) solo afecta a dónde se centra el recorte, no a la fecha, que
+  sale del vídeo. Si el vídeo y la GT estuvieran desfasados un frame, el golpeo también.
+- **La reproducción entre máquinas** de las detecciones (la puerta 0 midió diferencias en el último bit con distinto
+  número de hilos): hace falta comprobarla si entra.
+- El margen de 5 s del límite sale de agregados de este partido (14/11), sin etiquetas; el resto de constantes son a
+  priori o del reglamento.
+
+Cómo se comprobó (sin datos del partido; lo ejecuta cualquiera):
+- `validation/scripts/prueba_balon_video_golpeo.py`, con un partido, un vídeo y un detector inventados (la «imagen» lleva
+  su frame, así que pasar la de otro frame se nota): ocho reinicios, uno por caso (córner con hueco visto volviendo hacia
+  atrás desde la reaparición, falta sin hueco con el balón tapado en el golpeo y un objeto quieto en el recorte, saque de
+  banda sin reposo, saque de puerta en un sitio imposible, dos golpeos, golpeo antes de la ventana, golpeo fuera de
+  plazo y reaparición más de 10 s después del golpeo); la vuelta hacia atrás en sus límites; dónde va el recorte; las
+  reglas del evento y del sitio en sus bordes exactos; la caché, el determinismo, los agregados sin frames y `main` de
+  punta a punta;
+- `validation/scripts/prueba_golpeo_capa.py`: los tramos exactos de G1 y G2, que con el decodificador de la entrega una
+  parada que acababa 110 frames antes y otra 20 después acaban en el golpeo, las copias de las constantes y los errores
+  sin valores;
+- `validation/scripts/prueba_comparar_paradas.py`: los recuentos de los criterios 2 a 5 en sus bordes;
+- **sabotajes** (una vez, en una copia fuera del repo): 15 roturas, una a una (el margen de la fecha, el tope de la vuelta
+  atrás, el «ambiguo», el «antes de la ventana», el tope de la puerta, el borde de la banda, recentrar en el ATD, vaciar
+  la memoria, exigir quieto, el arranque de G2, el corte del empuje, los ambiguos en la capa, el golpeo fuera de su
+  ventana, el «lejos» de 10 s y las paradas juntadas). Las pruebas detectan 14. La que no, no cambia nada: vaciar la
+  memoria en un salto de la lista de frames, porque el tope de la vuelta hacia atrás ya impide usar frames de otro tramo.
+
+**Revisión antes de ejecutar nada (16/11, agente `revisor`):** ningún bloqueante. Se arregló todo antes de subir la
+regla:
+- tres cosas que el código hacía y el texto no decía, ahora escritas arriba: el saque de banda, entre las dos líneas de
+  fondo con 2 m de margen; la última posición del ATD, solo del mismo tramo evaluado, y el recorrido, sin pasar de su fin;
+  y «ambiguo», contado entre el inicio y el límite;
+- la prueba del script ya no puede leer `evaluation/results/equipo_v8.csv` ni por defecto: apunta la carpeta de
+  resultados a la temporal y pasa siempre la entrega inventada (antes no llegaba a leerla, pero solo por el orden de
+  `main`);
+- en el código, las constantes dicen «sin ajustar» y `MARGEN_FIN` dice que sale de agregados de este partido;
+- `--resumen` comprueba que la caché se hizo con las constantes, el modelo y la variante actuales;
+- la capa lee los golpeos por posición, no por el frame de inicio de la ventana;
+- el «reposo antes del golpeo» (descriptivo) es una racha: se corta en el primer hueco de más de 12 frames;
+- si solo pasa G1, se mira antes cuánto adelanta los principios (en «Qué entra»).
+
+Pendiente para cuando haya PR: esta rama sale de `exp/balon-video`, que aún no está en `main` (las capas van en
+`possession/balon_video.py`, de esa línea). La PR va contra `exp/balon-video`, o contra `main` cuando esa rama entre. Al
+juntarla con `main`, `docs/decisiones.md` choca con las entradas que `main` añadió al final el 16/11: se conservan todas.

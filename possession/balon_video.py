@@ -36,6 +36,14 @@ da error sin valores.
 bitácora: la 2.1 (la emulación en la DFL con las cifras del partido entero), la 2.2 (los criterios de daño de la
 entrega de prueba frente a `equipo_v8`, escritos antes de generarla), la reproducción byte a byte (2.3), el tiempo
 (2.4) y las licencias (2.5).
+
+**El final de cada parada en el golpeo** (16/11, pieza de `D`; regla en docs/decisiones.md, «el final de cada parada en
+el golpeo del balón del vídeo»): `golpeo_desde_hueco` y `golpeo_desde_ventana`, dos capas APAGADAS, una por candidato.
+Leen la caché de golpeos que escribe `validation/partido/balon_video_golpeo.py` (`BAR-ATH_tactical_golpeos.npz`, junto al
+ATD) y el Smart Tagging, solo con `paths`; sin `paths`, ceros. En cada ventana `SET PIECES` con golpeo suman `PESO_D` a
+`D` desde el arranque (el inicio del hueco o el de la ventana) hasta el golpeo, y restan `PESO_JUEGO` a `D` durante los
+`TRAS_GOLPEO` frames siguientes. No tocan B5 ni prohíben nada. Si se encienden, son la misma excepción nueva a la
+interfaz que `ajuste_b5_video`.
 """
 
 import hashlib
@@ -45,9 +53,9 @@ import os
 import numpy as np
 
 import games
-from possession import aprendida
+from possession import aprendida, dead_ball
 from possession.ball import BALL_LEAD, advance_ball
-from possession.tracking import N_STATES, no_evidence
+from possession.tracking import D, N_STATES, no_evidence
 
 NOMBRE_CACHE = "BAR-ATH_tactical_balon_video.npz"
 RADIO = 5.0  # m: la detección tiene que estar a esta distancia o menos del balón del ATD en t+4 (bitácora)
@@ -170,3 +178,173 @@ def ajuste_b5_video(trk, paths=None, game=games.GAME):
     con_video, _ = aprendida.evidence_b5(balon_del_video(trk, frames, offsets, valores))
     sin_video, _ = aprendida.evidence_b5(trk)
     return con_video - sin_video, np.ones((n, N_STATES), dtype=bool)
+
+
+# -- El final de cada parada en el golpeo del balón del vídeo (16/11). DOS CAPAS APAGADAS. ---------------------------
+# Regla, candidatos y criterios de daño: docs/decisiones.md, 16/11, «el final de cada parada en el golpeo del balón del
+# vídeo», escritos antes de ejecutar nada del partido. Son capas de `D`: no tocan B5. Para probarlas:
+#     python validation/partido/probar_entrega.py prueba_golpeo_hueco --capa balon_video.golpeo_desde_hueco
+#     python validation/partido/probar_entrega.py prueba_golpeo_ventana --capa balon_video.golpeo_desde_ventana
+
+NOMBRE_GOLPEOS = "BAR-ATH_tactical_golpeos.npz"
+FORMATO_GOLPEOS = 1
+# Copias de validation/partido/balon_video_golpeo.py (possession/ no importa nada de validation/; la prueba comprueba
+# que son las mismas). La capa solo acepta una caché hecha con estas constantes y la variante fijada del detector. Todas
+# sin ajustar; MARGEN_FIN (5 s antes del fin de la ventana) sale de este partido, de agregados sin etiquetas (14/11).
+CONSTANTES_GOLPEO = {
+    "QUIETO": 25, "MIN_QUIETO": 13, "RADIO_QUIETO": 0.5, "HUECO_FECHA": 12, "MOVER": 10, "MIN_MOVER": 3,
+    "RADIO_MOVER": 2.0, "PERDIDO": 25, "SALTO_PX": 40, "SALTO_MAX": 120, "RECENTRAR": 5, "RADIO_CAPTAR": 3.0,
+    "ATRAS": 250, "MARGEN_FIN": 125, "HUECO_MAX": 1500, "RADIO_CORNER": 3.0, "AREA_CHICA_FONDO": 5.5,
+    "AREA_CHICA_MEDIO_ANCHO": 9.16, "MARGEN_AREA": 2.0, "BANDA": 5.0, "MARGEN_CAMPO": 2.0,
+}
+ENTEROS_GOLPEO = ("inicio", "fin", "corte", "limite", "desde", "hasta", "reaparicion", "golpeo", "ultimo_quieto",
+                  "primer_movimiento", "inicio_quieto", "intentos", "aceptadas", "capturas", "atras",
+                  "descartados_por_sitio")
+REALES_GOLPEO = ("x_m", "y_m")
+TEXTOS_GOLPEO = ("tipo", "estado", "estado_hueco")
+ESTADO_GOLPEO = "golpeo"  # el único estado que usa la capa
+# Los pesos de las dos capas, fijados antes de generar ninguna entrega de prueba (sin ajustar):
+# - PESO_D, en `D` desde el arranque hasta el golpeo: la escala de dead_ball.BALL_OUT_SCORE (5). En el juego vivo típico
+#   (dead_state −3,42 de mediana en la DFL, y el +1 de N1 en B5) cada frame gana 5 − 3,42 − 1 > 0 para `D`;
+# - PESO_JUEGO, restado a `D` durante los TRAS_GOLPEO frames que siguen al golpeo (3 s, el PUSH_AFTER_S de la regla del
+#   instante del reinicio, 15/11), para que la parada no siga después del golpeo.
+PESO_D = 5.0
+PESO_JUEGO = 5.0
+TRAS_GOLPEO = 75
+
+
+def ruta_golpeos(paths):
+    """La caché de golpeos, junto al ATD del partido (en `MTAH_DATA_DIR/tactical/`)."""
+    return os.path.join(os.path.dirname(paths["atd_raw"]), NOMBRE_GOLPEOS)
+
+
+def huella_golpeos(arrays):
+    """sha256 de las columnas de la caché de golpeos. Copia de `balon_video_golpeo.huella` (la prueba lo comprueba)."""
+    h = hashlib.sha256()
+    for nombre in ENTEROS_GOLPEO + REALES_GOLPEO:
+        tipo = "<i8" if nombre in ENTEROS_GOLPEO else "<f8"
+        a = np.ascontiguousarray(np.asarray(arrays[nombre], dtype=tipo))
+        if a.dtype.kind == "f":
+            a = np.ascontiguousarray(np.where(np.isnan(a), np.nan, a + 0.0), dtype=tipo)
+        h.update("{}|{}|{}\n".format(nombre, tipo, ",".join(str(s) for s in a.shape)).encode("ascii"))
+        h.update(a.tobytes())
+    for nombre in TEXTOS_GOLPEO:
+        valores = [str(v) for v in np.asarray(arrays[nombre]).tolist()]
+        h.update("{}|texto|{}\n".format(nombre, len(valores)).encode("ascii"))
+        h.update("".join(v + "\n" for v in valores).encode("utf-8"))
+    return h.hexdigest()
+
+
+def ventanas_golpeo(events, blocks):
+    """Las ventanas de la capa: las de `dead_ball.restart_windows` que empiezan en un tramo evaluado, en su orden."""
+    return [w for w in dead_ball.restart_windows(events) if any(a <= w["start"] < b for a, b in blocks)]
+
+
+def huella_ventanas_golpeo(ventanas):
+    """sha256 de la lista (inicio, fin, tipo). Copia de `balon_video_golpeo.huella_ventanas` (la prueba lo comprueba)."""
+    texto = "".join("{},{},{}\n".format(int(w["start"]), int(w["end"]), w["type"]) for w in ventanas)
+    return hashlib.sha256(texto.encode("utf-8")).hexdigest()
+
+
+def leer_golpeos(ruta, n, pitch, ventanas, game=games.GAME):
+    """[golpeo o None] para cada ventana de `ventanas`, en su orden: el golpeo si su estado es «golpeo»; si no, None.
+
+    Comprueba el formato, el partido, el modelo, la variante, las constantes, los frames del vídeo, el campo, que las
+    ventanas son las de `ventanas` (las del Smart Tagging de `paths`), la forma y la huella. Error sin valores si falta
+    o no cuadra (`ErrorCache`)."""
+    if not os.path.isfile(ruta):
+        raise ErrorCache("falta la caché de golpeos ({}): la escribe validation/partido/balon_video_golpeo.py".format(
+            NOMBRE_GOLPEOS))
+    try:
+        with np.load(ruta, allow_pickle=False) as z:
+            arrays = {k: np.asarray(z[k]) for k in ENTEROS_GOLPEO + REALES_GOLPEO + TEXTOS_GOLPEO}
+            meta = json.loads(str(z["metadatos"]))
+            guardada = str(z["huella"])
+        variante = meta["variante"]
+        no_cuadra = [nombre for nombre, ok in (
+            ("formato", meta["formato"] == FORMATO_GOLPEOS),
+            ("partido", meta["partido"] == game),
+            ("modelo", meta["modelo_sha256"] == MODELO_SHA256),
+            ("recorte", int(variante["recorte_px"]) == LADO),
+            ("ampliación", float(variante["factor"]) == FACTOR),
+            ("confianza", float(variante["conf"]) == CONF),
+            ("adelanto del balón del ATD", int(variante["adelanto_atd"]) == BALL_LEAD),
+            ("constantes del golpeo", meta["constantes"] == CONSTANTES_GOLPEO),
+            ("frames del vídeo", int(meta["frames_del_video"]) == int(n)),
+            ("campo", [float(v) for v in meta["campo"]] == [float(v) for v in pitch]),
+            ("ventanas del Smart Tagging", int(meta["ventanas"]["n"]) == len(ventanas)
+             and meta["ventanas"]["sha256"] == huella_ventanas_golpeo(ventanas))) if not ok]
+    except Exception:
+        # `from None`: sin la excepción original, que podría llevar valores de la caché en su mensaje.
+        raise ErrorCache("no se puede leer la caché de golpeos ({}) o le falta algo".format(NOMBRE_GOLPEOS)) from None
+    if no_cuadra:
+        raise ErrorCache("la caché de golpeos no es de la variante fijada, de estas constantes o de este partido; no "
+                         "cuadra: {}".format(", ".join(no_cuadra)))
+    largos = {len(arrays[k]) for k in arrays}
+    if largos != {len(ventanas)} or any(arrays[k].ndim != 1 for k in arrays) or [
+            int(v) for v in arrays["inicio"]] != [int(w["start"]) for w in ventanas]:
+        raise ErrorCache("la caché de golpeos no tiene la forma esperada")
+    if huella_golpeos(arrays) != guardada:
+        raise ErrorCache("la huella de la caché de golpeos no cuadra con sus arrays")
+    return [int(arrays["golpeo"][i]) if str(arrays["estado"][i]) == ESTADO_GOLPEO else None
+            for i in range(len(ventanas))]
+
+
+def tramos_golpeo(trk, events, golpeos, desde_hueco, game=games.GAME):
+    """[(desde, golpeo, hasta)] de la capa: +PESO_D en `D` en [desde, golpeo) y −PESO_JUEGO en [golpeo, hasta).
+
+    `golpeos` es la lista de `leer_golpeos`, una entrada por ventana de `ventanas_golpeo(events, trk.blocks)`, en su
+    orden (por posición: dos ventanas con el mismo inicio no se pisan).
+
+    - `desde` es el inicio de la ventana; con `desde_hueco`, el inicio del hueco de la capa del hueco si la ventana lo
+      tiene (`dead_ball.gaps_before_restarts`, con el balón de `trk`). Nunca antes del tramo evaluado.
+    - `hasta` es el golpeo más TRAS_GOLPEO, sin pasar del siguiente `GOALS` o `SET PIECES` ni del fin del tramo.
+    - Un golpeo fuera de [inicio, límite) da error: la caché no es de este tracking o de este Smart Tagging. El límite
+      es el del script: el fin de la ventana menos MARGEN_FIN, el siguiente reinicio o el fin del tramo.
+    """
+    fps = games.GAMES[game]["fps"]
+    huecos = {id(w): span for w, _, span in dead_ball.gaps_before_restarts(trk.bx, trk.by, events, fps)}
+    margen = CONSTANTES_GOLPEO["MARGEN_FIN"]
+    ventanas = ventanas_golpeo(events, trk.blocks)
+    if len(golpeos) != len(ventanas):
+        raise ErrorCache("la caché de golpeos no tiene una fila por ventana")
+    tramos = []
+    for w, k in zip(ventanas, golpeos):
+        inicio = int(w["start"])
+        if k is None:
+            continue
+        a, b = [(a, b) for a, b in trk.blocks if a <= inicio < b][0]
+        corte = dead_ball.next_restart(events, w)
+        if not inicio <= k < min(int(w["end"]) - margen, corte, b):
+            raise ErrorCache("la caché de golpeos tiene un golpeo fuera de su ventana: no es de este partido")
+        desde = inicio
+        span = huecos.get(id(w))
+        if desde_hueco and span is not None:
+            desde = min(desde, int(span[0]))
+        tramos.append((max(desde, a), k, int(min(k + TRAS_GOLPEO, corte, b))))
+    return tramos
+
+
+def _golpeo(trk, paths, game, desde_hueco):
+    n = len(trk.bx)
+    score, allowed = no_evidence(n)
+    if paths is None:
+        return score, allowed
+    events = dead_ball.smart_tagging_events(paths["smart_tagging"], games.GAMES[game]["fps"])
+    golpeos = leer_golpeos(ruta_golpeos(paths), n, trk.pitch, ventanas_golpeo(events, trk.blocks), game)
+    for desde, k, hasta in tramos_golpeo(trk, events, golpeos, desde_hueco, game):
+        score[desde:k, D] += PESO_D
+        score[k:hasta, D] -= PESO_JUEGO
+    return score, allowed
+
+
+def golpeo_desde_hueco(trk, paths=None, game=games.GAME):
+    """(score, allowed) del candidato «desde el hueco»: `D` desde el inicio del hueco (o de la ventana, si no tiene)
+    hasta el golpeo, y juego después. Sin `paths`, ceros (no abre nada). APAGADA."""
+    return _golpeo(trk, paths, game, desde_hueco=True)
+
+
+def golpeo_desde_ventana(trk, paths=None, game=games.GAME):
+    """(score, allowed) del candidato «desde la ventana»: `D` desde el inicio de la ventana hasta el golpeo, y juego
+    después. No toca el hueco antes de la ventana. Sin `paths`, ceros (no abre nada). APAGADA."""
+    return _golpeo(trk, paths, game, desde_hueco=False)
