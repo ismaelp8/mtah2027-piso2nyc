@@ -5095,3 +5095,13 @@ Lo que hay que decir con el número:
 - Sigue muy lejos del techo (+0,096): el detector ve una parte de los cambios.
 
 Descartado: A (avisos) y B (confirmación) con estos umbrales; el detector aprendido como candidato.
+
+**Añadido el 16/11, tras traer `main` (`032d4d8`):** la segunda ronda se midió con `temporal.decode`, y desde `1e71d72`
+la entrega decodifica con `decode_cortas_a_d` (`equipo_v9`). El candidato se repitió con el decodificador de la entrega
+(`validation/cambios/confirmar.py`, salida en `salidas/2026-11-16_confirmar.md`), sin elegir nada: reglas 45° / 60 % /
+30 frames, γ = 8, W = 50, contra el otro equipo. **Sigue pasando los puntos 1 y 3** [medido]: con control, +0,014 y
++0,020 con el `D` de las etiquetas (6 de 7) y +0,021 y +0,019 con el propio (7 y 6 de 7); con el flag, de +0,044 a
++0,054 (7 de 7). Predice más posesiones: de 1.661 a 1.859 con el `D` de las etiquetas (1.736 reales con control) y de
+1.538 a 1.647 con el propio. Como w = 0, el candidato es solo una capa de estados: no necesita `decode_cambios` ni
+tocar `pipeline.run`, y se suma con `--capa` como las demás. Un partido se puntúa con una combinación que su pliegue no
+eligió (eligió la misma sin «contra el otro»).
