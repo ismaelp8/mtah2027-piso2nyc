@@ -552,7 +552,11 @@ def prueba_cargar_condicion_5(carpeta):
             check("emulación «{}»: error ({})".format(nombre, texto), texto in str(e), str(e))
     if os.path.isfile(bs.EMULACION):
         c5 = bs.cargar_condicion_5(bs.EMULACION, temblor)
-        check("carga la emulación de verdad (salidas/2026-11-16_emulacion_dfl.json)", len(c5["celdas"]) == 72)
+        # Sin contar celdas: el JSON puede traer celdas de referencia además de las de la rejilla (p. ej. p=0 y p=1).
+        rej = c5["rejilla"]
+        check("carga la emulación de verdad (salidas/2026-11-16_emulacion_dfl.json): rejilla de 6×4×3 y sus celdas",
+              (len(rej["p"]), len(rej["sigma"]), len(rej["L"])) == (6, 4, 3)
+              and all((p, s, l) in c5["celdas"] for p in rej["p"] for s in rej["sigma"] for l in rej["L"]))
     else:
         print("  [SALTA] la emulación de verdad: todavía no está en salidas/")
     return rutas["buena"]

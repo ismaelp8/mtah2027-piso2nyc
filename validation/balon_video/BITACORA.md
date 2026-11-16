@@ -222,6 +222,10 @@ propia regla y no usa la del «límite de daño» de los cambios pequeños (`doc
 4. **Tiempo:** el comando entero cabe en 8 horas en la máquina de referencia que se documente.
 5. **Licencias:** el modelo y `ultralytics` son AGPL-3.0; se declara en el documento técnico, con el dataset
    (CC BY 4.0) y sus autores.
+6. **Si se enciende** (`possession/balon_video.py`, `ajuste_b5_video`, en `pipeline.DELIVERY_LAYERS`), es una excepción
+   NUEVA a la interfaz: la capa lee `BAR-ATH_tactical_balon_video.npz`, en la carpeta de `paths["atd_raw"]`. Hay que
+   apuntarlo en `possession/tracking.py`, en `docs/PLAN_ENTREGA.md` §2 y en `CLAUDE.md`, y la detección tiene que ir en
+   el comando de la entrega (punto 3).
 
 **Dónde va lo que sale del partido:** la caché de detecciones es dato del partido derivado. Va en
 `MTAH_DATA_DIR/tactical/` con un nombre que empiece por `BAR-ATH_tactical_` (lo cubre el bloqueo de
