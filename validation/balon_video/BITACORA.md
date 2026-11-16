@@ -227,6 +227,38 @@ propia regla y no usa la del «límite de daño» de los cambios pequeños (`doc
    apuntarlo en `possession/tracking.py`, en `docs/PLAN_ENTREGA.md` §2 y en `CLAUDE.md`, y la detección tiene que ir en
    el comando de la entrega (punto 3).
 
+### Precisión de la puerta 2.1: el `D` propio, con réplicas (16/11, 20:45, antes de leer ninguna cifra del partido)
+
+La escribe la sesión que lee las puertas en la máquina de Ismael. A esta hora no ha visto ni el JSON de la 1b ni el de
+la detección del partido entero.
+
+**Por qué:** la 2.1 pide pasar «con el `D` de las etiquetas y con el propio». En la rejilla de `emular_dfl.py`, el `D`
+propio va con una sola tirada por celda (la réplica 0), porque para la 1b era solo descriptivo. Es el problema que las
+réplicas de las 18:30 arreglaron para el `D` de las etiquetas: el ruido de una tirada es del orden de la distancia al
++0,01. En la 2.1 el `D` propio sí decide.
+
+**Qué se hace:**
+- El `D` propio se calcula con R = 8 réplicas en las celdas con p ≥ 0,7: las mismas semillas, el mismo balón emulado y
+  la misma forma de juntar que a las 18:30. Con p < 0,7 sigue habiendo una sola tirada con los dos `D`, como entonces.
+- Lo calcula `emular_dfl_propio.py`, con las funciones de `emular_dfl.py` y sin tocarlo. Escribe en
+  `salidas/2026-11-16_emulacion_dfl_propio.*`. El JSON de la emulación no se regenera: lo leen por su nombre el sondeo y
+  la detección.
+- Se calculan todas las celdas con p ≥ 0,7 ahora, antes de saber cuál se leerá.
+- **Comprobación:** la réplica 0 tiene que dar, celda a celda, las cifras del `D` propio del JSON de la emulación
+  (script `358043bf…`). Si no las da, no se lee nada con este fichero y se avisa.
+
+**Cómo se lee la 2.1:** en la celda (p, σ, L) que dé la detección del partido entero (`condicion_5_descriptiva.celda`,
+leída con la regla de la 1b). Pasa si pasan los dos:
+- con el `D` de las etiquetas, el veredicto juntado del JSON de la emulación (`cumple`);
+- con el `D` propio, el veredicto juntado de `…_emulacion_dfl_propio.json`. El `propio_pasa` que imprime la detección
+  sale de una sola tirada y se queda como descriptivo.
+
+En cada `D`, el veredicto es el de siempre: con control, +0,01 o más y 6 de 7 en las dos condiciones que votan; con el
+flag, no pierde más de 0,005 en ninguna de las dos. «Sin decidir» se imprime y no vota.
+
+**Reconocido:** la rejilla del `D` propio con una tirada ya estaba a la vista (`salidas/2026-11-16_emulacion_dfl.md`), y
+la 1b de Antonio puede estar ya ejecutada. El umbral y la regla no cambian.
+
 **Dónde va lo que sale del partido:** la caché de detecciones es dato del partido derivado. Va en
 `MTAH_DATA_DIR/tactical/` con un nombre que empiece por `BAR-ATH_tactical_` (lo cubre el bloqueo de
 `.claude/settings.json`), nunca en el repo ni en `~/mtah2027-salidas/`.
