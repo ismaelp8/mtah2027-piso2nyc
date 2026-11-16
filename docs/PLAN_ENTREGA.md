@@ -92,7 +92,9 @@ reciben el tracking con el balón ya limpio.
 - **Funciones puras sobre arrays.** Ninguna pieza abre ficheros, salvo `dead_ball.py` y, desde el 15/11,
   `transiciones.py`, que usan los del partido (el Smart Tagging) solo con las rutas que les pasa
   `pipeline.build`. Así el mismo código corre en el partido y en la DFL: lo que valida el harness es lo que
-  se entrega, salvo esas dos capas del partido, que el harness no puede ver.
+  se entrega, salvo esas dos capas del partido, que el harness no puede ver. Desde el 16/11 la entrega suma
+  además `dead_ball.ball_out` (`pipeline.DELIVERY_LAYERS`): no abre ficheros, pero tampoco corre en el
+  harness, porque en la DFL el balón está tapado en los `D` (docs/decisiones.md, 16/11).
 - **Un slot no es un jugador.** Su índice no identifica a nadie a lo largo del partido. El harness
   baraja los slots para que un código que dependa de eso falle allí y no en el partido.
 - **Determinista:** sin azar o con semilla fija, y con los empates resueltos siempre igual.

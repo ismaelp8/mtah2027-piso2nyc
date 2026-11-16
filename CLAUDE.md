@@ -234,13 +234,24 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
+- **Entrega vigente: `equipo_v8`** (Ismael, 16/11, con `main` en `44678d1`): `equipo_v5` más la capa del balón
+  fuera (D7, más abajo). El entorno está [sin verificar], porque no se pegó la línea de versiones, pero la
+  huella es la de `prueba_d7_v5`, que salió con Python 3.13.9 y numpy 2.5.4. Es válida, con 219 posesiones de 15,8 s de media, 116 paradas, el
+  45,4 % de `D` en lo evaluado y sha256 `d78c514d…e2b2`.
+  - Sale byte a byte igual que `prueba_d7_v5`, la entrega de prueba.
+  - Frente a `equipo_v5` cambian 574 frames, todos de un equipo a `D` (331 de `H` y 243 de `A`), con 3 paradas
+    más. Los 817 cambios de la capa de los contraataques siguen enteros.
+  - En la ventana pública, el spellF1 no cambia (0,658) y el macroF1 sube de 0,851 a 0,865. No elige nada: con 17
+    posesiones, una diferencia de hasta 0,39 es ruido.
+  - Falta reproducirla en otra máquina. El ensayo de esta noche tiene que dar `d78c514d…e2b2`.
+- **Entrega anterior: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
   más la capa de los contraataques (más abajo). Es válida, con 219 posesiones de 15,9 s de media, 113
   paradas, el mismo `D` que `equipo_v3` y sha256 `27dc8aa8…efb7`.
   - Sale byte a byte igual que `prueba_transiciones2`, que se generó con numpy 2.3.4.
   - Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro.
-  - Falta reproducirla en otra máquina.
-- **Entrega anterior: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
+  - Con `main` en `b027409` (después de las PR 15, 10 y 16), `equipo_v7` sale igual.
+  - **Reproducida en otra máquina:** sale lo mismo (Ismael, 16/11).
+- **Antes: `equipo_v3`.** La generó Ismael el 15/11, con `main` en `6e8fb27`: válida, con el 45,1 % de `D`
   en los frames evaluados, 113 paradas, 215 posesiones de 16,2 s de media y sha256 `9539ce42…cc17a`.
   - Es la misma, byte a byte, que sacó Manuel en su máquina: reproducida en dos máquinas.
   - La PR 9 no la cambia: regenerada con `main` en `86ddcbb`, sale el mismo sha256.
@@ -271,7 +282,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     si quiere; arreglarlo sería un cuarto candidato.
 - **La evidencia de equipo está reabierta** (Ismael, 15/11): «Es claro que tenemos un problema en que
   predecimos muchas menos posesiones de las que hay, sobretodo cuando son posesiones cortas.»
-  - **B5 sigue en la entrega** y `equipo_v3` sigue vigente hasta que algo gane.
+  - **B5 sigue en la entrega** como evidencia de equipo; la entrega vigente es la de arriba.
   - **El estudio de las posesiones cortas está en `main`** (`4305576`;
     `validation/resultados/2026-11-15_posesiones_cortas.md` y `validation/posesiones_cortas/BITACORA.md`).
     La rama `claude/posesiones-cortas-5e84f8` se conserva en GitHub, porque sus commits prueban que las reglas
@@ -338,23 +349,29 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - las paradas no se mueven y hay 4 posesiones más.
   - **Encendida desde el 15/11** (Ismael: «Sí, enciéndela»): `pipeline.DELIVERY_LAYERS`. Es una excepción a la
     regla del harness, porque la DFL no tiene Smart Tagging.
-  - **La entrega cambia:** es `equipo_v5` (arriba), igual byte a byte que `prueba_transiciones2`.
-  - Si se enciende, hay que añadir en `possession/tracking.py` y en el plan (§2) la excepción de que abre
-    ficheros del partido, como `dead_ball.py`.
-- **D7, el balón fuera del campo como señal de `D`** (`docs/decisiones.md`; capas apagadas en
-  `possession/dead_ball.py`):
+  - **La entrega cambia:** es `equipo_v5` (arriba), igual byte a byte que `prueba_transiciones2`. La excepción
+    de que abre ficheros del partido está en `possession/tracking.py` y en el plan (§2).
+- **D7, el balón fuera del campo como señal de `D`** (`docs/decisiones.md`; capas en `possession/dead_ball.py`):
   - **El recuento del partido la deja abierta:** con `equipo_v3` llegamos tarde en 23 de 47 rachas en que el
     ATD ve el balón fuera. En SkillCorner, un balón visto fuera es `D` el 93–94 % de las veces.
   - **Primera versión, `ball_out`: se queda apagada.** Con ella llegamos tarde en 12 de 47 (25,5 %), y el
     criterio pedía menos del 15 %. No hace daño: los 574 frames que cambia pasan todos de `H` o `A` a `D`.
   - **Segunda versión, `ball_out_hold`** (`0043a3c`): mantiene la parada hasta que el balón vuelve a verse
     dentro. Su entrega de prueba sale byte a byte igual que la de la primera, así que tampoco cumple el
-    criterio 1. **D7 se cierra:** las dos capas quedan apagadas.
+    criterio 1. Sigue apagada.
+  - **`ball_out` encendida desde el 16/11** (`pipeline.DELIVERY_LAYERS`, detrás de la de los contraataques;
+    `docs/decisiones.md`, 16/11). Falló su criterio 1 y pasó los dos de daño.
+    - **Ismael decidió encenderla igualmente:** ese criterio mide si el problema queda resuelto, no si la capa
+      hace daño.
+    - Es la segunda excepción a «lo que no ha ganado en el harness no entra»: en la DFL el balón está tapado
+      en los `D` y no se puede medir.
+    - `pipeline.build` da error si `--capa` repite una capa que ya va en la entrega. El harness no cambia,
+      porque `pipeline.run` no usa `DELIVERY_LAYERS`.
 - **Entregas de prueba sin tocar `PIECES`:**
   - `python -m possession.pipeline --name <prueba> --pieza nombre=modulo.funcion --capa modulo.funcion`. Con
     el nombre de la entrega da error, y la salida dice qué se ha cambiado.
   - `python validation/partido/probar_entrega.py <prueba> --capa ...` hace la prueba entera en un solo comando:
-    genera la entrega, cuenta el balón fuera y la compara con `equipo_v3`.
+    genera la entrega, cuenta el balón fuera y la compara con la vigente (`--contra`, hoy `equipo_v8`).
   - Lo ejecuta una persona (regla nº 1).
 - **`D` de estado: tareas 1 a 3 de Ana en `main`** (PR 12, `98c38ca`; `docs/decisiones.md`).
   - Las ventanas de `dead_state` ya no cruzan el principio ni el final de los tramos evaluados.
@@ -367,7 +384,21 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - `equipo_v4` se regeneró en el entorno limpio con `main` en `8f90dea` y sale byte a byte igual que
       `equipo_v3` (`9539ce42…cc17a`);
     - `validation/partido/comparar_entregas.py` da 0 frames distintos, y el validador da `Valid`.
-- **Sin entrar todavía en `main`:** la PR 10 de David. Ismael le ha pedido que antes termine su tarea 1.
+- **El decodificador de David, al día** (15/11; ya no tiene PR abiertas):
+  - **PR 15** (`8cc59e3`): los tramos pasan a tupla al entrar en `temporal._prepare`. Con un generador salía
+    todo `X` sin error. Tiene prueba propia, `validation/scripts/prueba_decodificador.py`. La entrega ya
+    pasaba los tramos como tupla.
+  - **PR 10** (`1ffa7db`): los costes de `D` medidos con el `D` propio. Todo empata, así que se quedan los 25 y
+    25 de `main`.
+  - Le queda, si quiere, repetir la medida con la escala de Ana a 0,5.
+- **El `D` de Manuel y Ana, PR 16** (`5176355`):
+  - **El instante del reinicio:** no entra ninguna capa, porque ningún tipo de reinicio tiene un instante fijo.
+  - **El juego vivo en el saque de cada parte:** entra en `dead_ball.evidence`. En ese frame no se permite
+    `D`. No cambia ningún frame: `equipo_v6` sale con el mismo sha256 que `equipo_v5`.
+- **Ninguna de las tres PR cambia la entrega** [medido por Ismael]:
+  - `equipo_v7` se regeneró en el entorno limpio con `main` en `b027409` y sale con el sha256 de `equipo_v5`,
+    `27dc8aa8…efb7`;
+  - el validador la da por válida.
 - **Versiones fijadas para el congelado** (15/11, `docs/decisiones.md`): `requirements-entrega.txt`, con
   numpy 2.5.4, pandas 3.1.1 y Python 3.13. `requirements.txt` es oficial y no se toca.
   - numpy 2.5.4 pide Python 3.12 o más, así que la reproducción con Python 3.11 queda descartada.

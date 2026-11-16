@@ -22,12 +22,17 @@ Qué hace:
 - a cada tramo le pone una etiqueta: «borde» si la GT y la entrega tienen las mismas posesiones y paradas
   y solo se mueve algún borde, y «equipo» o «D» según dónde difieren;
 - escribe una página HTML, fuera del repo, con el vídeo, la lista de tramos, las dos etiquetas del frame
-  que se ve y una tira de colores por tramo. Se abre con doble clic; no necesita internet ni instalar nada.
+  que se ve y una tira de colores por tramo. Se abre con doble clic; no necesita internet ni instalar nada;
+- si encuentra el ATD, sus metadatos y la homografía (en `MTAH_DATA_DIR`), dibuja el ATD encima del vídeo,
+  proyectado con la homografía de cada frame: los jugadores con el color de su equipo, el balón con su
+  estela y las líneas del campo, que tienen que caer sobre las pintadas. También lo enseña visto desde
+  arriba, en un minimapa. Lleva solo los frames de la ventana y 10 s de margen. `--sin-atd` lo quita.
 
 El vídeo sale de `games.video_path()` (la ruta de `MTAH_DATA_DIR`) o de `--video`. Si el navegador no lo
 abre, la página deja elegirlo a mano.
 
-- Por pantalla solo imprime cuántos tramos hay y dónde ha escrito. Ni etiquetas ni tiempos.
+- Por pantalla solo imprime cuántos tramos hay, si lleva el ATD (cuántos frames) y dónde ha escrito. Ni
+  etiquetas ni tiempos.
 - No escribe en el repo: la página va a `~/mtah2027-salidas/` (o donde diga `--salida`).
 - Si falla, imprime solo el tipo de error y la línea del código.
 """
@@ -163,14 +168,65 @@ def tramos(gt, pred, margen_s=MARGEN_S):
 
 # -- página --------------------------------------------------------------------------------------
 
+# -- el ATD, para dibujarlo encima del vídeo -------------------------------------------------------
+
+ATD_MARGEN_S = 10          # segundos de ATD antes y después de lo que enseña la página
+ATD_MAX_FRAMES = 30000     # con más, la página pesaría demasiado: se dibuja sin ATD
+ESCALA = 10000             # coordenadas 0–1 del campo guardadas como enteros (1/10.000 ≈ 1 cm)
+COLUMNAS_H = ["h{}{}".format(fila, col) for fila in range(3) for col in range(3)]  # como starter/load_homography
+
+
+def rango_atd(gt, lista, margen=ATD_MARGEN_S * FPS):
+    """[f0, f1): los frames de los que la página lleva el ATD (los tramos evaluados y los de la lista, con margen)."""
+    runs = pm.valid_runs(gt)
+    inicio = min([runs[0][0]] + [t["a"] for t in lista]) - margen
+    fin = max([runs[-1][1]] + [t["b"] for t in lista]) + margen
+    return max(0, inicio), min(len(gt), fin)
+
+
+def entero(valor):
+    return int(round(float(valor) * ESCALA)) if np.isfinite(valor) else None
+
+
+def datos_atd(paths, f0, f1, game=games.GAME):
+    """El balón, los jugadores y la homografía de [f0, f1), en coordenadas 0–1 del campo (las del ATD).
+
+    Lee el ATD con el lector del pipeline (`tracking.from_atd`, que da metros y el equipo de cada slot) y la
+    homografía con las columnas de `starter/load_homography.py`, buscando cada fila por su `frame`.
+    """
+    import pandas as pd
+    from possession import tracking
+
+    trk = tracking.from_atd(paths, game)
+    largo, ancho = trk.pitch
+    balon, jugadores = [], []
+    for f in range(f0, f1):
+        balon.append(None if not (np.isfinite(trk.bx[f]) and np.isfinite(trk.by[f]))
+                     else [entero(trk.bx[f] / largo), entero(trk.by[f] / ancho)])
+        fila = []
+        for slot in np.flatnonzero(np.isfinite(trk.px[f]) & np.isfinite(trk.py[f])).tolist():
+            fila += [slot, entero(trk.px[f, slot] / largo), entero(trk.py[f, slot] / ancho)]
+        jugadores.append(fila)
+    tabla = pd.read_csv(paths["homography"])
+    tabla = tabla[(tabla["frame"] >= f0) & (tabla["frame"] < f1)]
+    matrices = [None] * (f1 - f0)
+    for frame, valido, valores in zip(tabla["frame"].tolist(), tabla["valid"].tolist(),
+                                      tabla[COLUMNAS_H].values.tolist()):
+        if valido and all(np.isfinite(valores)):
+            matrices[int(frame) - f0] = [float("{:.7g}".format(v)) for v in valores]
+    return {"f0": f0, "n": f1 - f0, "escala": ESCALA, "campo": [largo, ancho],
+            "equipo": [int(t) for t in trk.team], "balon": balon, "jug": jugadores, "hom": matrices}
+
+
 def rle(codes):
     """[[primer frame, código], …] de cada racha, para buscar la etiqueta de un frame en la página."""
     inicios = np.concatenate(([0], np.flatnonzero(codes[1:] != codes[:-1]) + 1))
     return [[int(i), int(codes[i])] for i in inicios]
 
 
-def pagina(gt, pred, lista, nombre, video_uri):
+def pagina(gt, pred, lista, nombre, video_uri, atd=None):
     datos = {
+        "atd": atd,
         "fps": FPS,
         "n": int(len(gt)),
         "nombre": nombre,
@@ -185,6 +241,25 @@ def pagina(gt, pred, lista, nombre, video_uri):
     return PLANTILLA.replace("__NOMBRE__", nombre).replace("__DATOS__", texto)
 
 
+def leer_atd(gt, lista):
+    """(datos del ATD para la página, o None; qué imprimir). Si no se puede, la página va sin ATD.
+
+    El aviso lleva solo recuentos, o el tipo de error y la línea del código, nunca valores de datos.
+    """
+    paths = games.asset_paths()
+    faltan = [nombre for nombre in ("atd_raw", "atd_meta", "homography") if not os.path.isfile(paths[nombre])]
+    if faltan:
+        return None, "no (no encuentro {} en MTAH_DATA_DIR)".format(", ".join(faltan))
+    f0, f1 = rango_atd(gt, lista)
+    if f1 - f0 > ATD_MAX_FRAMES:
+        return None, "no ({} frames: más de {}, la página pesaría demasiado)".format(f1 - f0, ATD_MAX_FRAMES)
+    try:
+        return datos_atd(paths, f0, f1), "sí, {} frames alrededor de la ventana".format(f1 - f0)
+    except Exception as error:  # sin el mensaje: podría llevar valores de datos
+        ultimo = traceback.extract_tb(sys.exc_info()[2])[-1]
+        return None, "no ({} en {}:{})".format(type(error).__name__, os.path.basename(ultimo.filename), ultimo.lineno)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Página con los tramos en que la entrega y la GT pública "
                                                  "difieren, para verlos junto al vídeo en el navegador.")
@@ -193,6 +268,7 @@ def main():
     parser.add_argument("--video", default=None, help="vídeo táctico (por defecto, el de MTAH_DATA_DIR)")
     parser.add_argument("--margen", type=float, default=MARGEN_S, help="segundos a cada lado de cada tramo")
     parser.add_argument("--salida", default=None, help="ruta de la página (por defecto, en ~/mtah2027-salidas)")
+    parser.add_argument("--sin-atd", action="store_true", help="no dibujar el ATD encima del vídeo")
     args = parser.parse_args()
 
     ruta = args.entrega if os.path.isfile(args.entrega) else os.path.join(RESULTADOS, args.entrega + ".csv")
@@ -207,7 +283,11 @@ def main():
         if len(gt) != len(pred):
             raise ValueError("la GT y la entrega no tienen el mismo número de filas")
         lista = tramos(gt, pred, args.margen)
-        html = pagina(gt, pred, lista, nombre, pathlib.Path(os.path.abspath(video)).as_uri() if hay_video else "")
+        atd, aviso_atd = None, "no (--sin-atd)"
+        if not args.sin_atd:
+            atd, aviso_atd = leer_atd(gt, lista)
+        html = pagina(gt, pred, lista, nombre, pathlib.Path(os.path.abspath(video)).as_uri() if hay_video else "",
+                      atd)
         carpeta = os.path.dirname(os.path.abspath(salida))
         if not os.path.isdir(carpeta):
             os.makedirs(carpeta)
@@ -219,6 +299,7 @@ def main():
     de_borde = sum(t["borde"] for t in lista)
     print("tramos: {} ({} solo de borde, {} con posesiones o paradas distintas)".format(
         len(lista), de_borde, len(lista) - de_borde))
+    print("ATD encima del vídeo: {}".format(aviso_atd))
     if not hay_video:
         print("aviso: no encuentro el vídeo táctico (MTAH_DATA_DIR o --video); la página te dejará elegirlo")
     print("página escrita en {}".format(salida))
@@ -271,6 +352,11 @@ PLANTILLA = r"""<!doctype html>
   .elegir { display:none; background:#3a2a10; border:1px solid var(--a); padding:8px; border-radius:4px; margin-bottom:8px; }
   .aviso { color:var(--a); }
   .teclas { color:var(--suave); font-size:12px; margin-top:10px; }
+  .marco { position:relative; }
+  #capa { position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none; }
+  #mapa { width:100%; display:block; border-radius:4px; margin-bottom:6px; }
+  .mapaPie { color:var(--suave); font-size:12px; margin:0 4px 10px; min-height:1.4em; }
+  body:not(.con-atd) .atd { display:none; }
   kbd { border:1px solid var(--borde); border-radius:3px; padding:0 4px; font-family:inherit; }
 </style>
 </head>
@@ -286,12 +372,13 @@ PLANTILLA = r"""<!doctype html>
       El navegador no ha podido abrir el vídeo solo. Elige el vídeo táctico (<code>BAR-ATH_tactical.mp4</code>):
       <input type="file" id="fichero" accept="video/*">
     </div>
-    <video id="v" preload="auto" controls playsinline></video>
+    <div class="marco"><video id="v" preload="auto" controls playsinline></video><canvas id="capa"></canvas></div>
     <div class="vivo">
       <span class="reloj" id="reloj">–</span>
       <span>GT <span class="eti" id="etiGT">–</span></span>
       <span>nuestra <span class="eti" id="etiPred">–</span></span>
       <span id="tramoActual" class="reloj"></span>
+      <span id="atdInfo" class="atd" style="color:var(--suave); font-size:14px"></span>
     </div>
     <div class="botones">
       <button id="bAnt" title="tramo anterior (P)">◀ tramo</button>
@@ -305,6 +392,12 @@ PLANTILLA = r"""<!doctype html>
       <button id="bTodo" title="la ventana entera, sin parar en los tramos">ventana entera</button>
       <button id="bSaque" title="comprobar la alineación: el saque inicial">saque inicial</button>
     </div>
+    <div class="botones atd">
+      <span>ATD:</span>
+      <label><input type="checkbox" id="cATD" checked> encima del vídeo (T)</label>
+      <label><input type="checkbox" id="cLineas" checked> líneas del campo (C)</label>
+      <label><input type="checkbox" id="cSlots"> número de slot (S)</label>
+    </div>
     <div class="nota" id="nota"></div>
     <div class="tira"><div class="rot">GT<br>nuestra<br>difieren</div><canvas id="cTramo" height="54"></canvas></div>
     <div class="tira"><div class="rot">ventana</div><canvas id="cVentana" height="40"></canvas></div>
@@ -312,9 +405,13 @@ PLANTILLA = r"""<!doctype html>
       <kbd>espacio</kbd> reproducir/parar · <kbd>←</kbd><kbd>→</kbd> un frame · <kbd>Mayús</kbd>+<kbd>←</kbd><kbd>→</kbd> un segundo ·
       <kbd>N</kbd>/<kbd>P</kbd> tramo siguiente/anterior · <kbd>R</kbd> repetir · <kbd>L</kbd> bucle · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> velocidad ¼, ½, 1.
       Clic en una tira para saltar a ese momento. Colores: azul H, naranja A, gris D, blanco X; rojo, donde difieren.
+      ATD: jugadores con el color de su equipo, balón en amarillo con su estela; si el ATD no lo ve, círculo
+      discontinuo donde se vio por última vez. Para pantalla completa, usa la del navegador (F11): la del
+      reproductor no enseña la capa.
     </div>
   </section>
   <aside>
+    <div class="atd"><h2>ATD visto desde arriba</h2><canvas id="mapa"></canvas><div class="mapaPie" id="mapaPie"></div></div>
     <h2>Tramos en que la entrega y la GT difieren</h2>
     <ol id="lista"></ol>
   </aside>
@@ -407,6 +504,152 @@ $("fichero").addEventListener("change", (e) => {
 });
 if (DATOS.video) v.src = DATOS.video; else pedirVideo("");
 
+// -- ATD encima del vídeo y visto desde arriba --
+const ATD = DATOS.atd;
+const ESC = ATD ? ATD.escala : 1;
+let verATD = true, verLineas = true, verSlots = false, orientacion = { invX: false, invY: false };
+function atdIndice(f) { if (!ATD) return null; const i = f - ATD.f0; return i >= 0 && i < ATD.n ? i : null; }
+function proyectar(h, x, y) {           // coordenadas 0–1 del campo -> píxeles del vídeo (starter/load_homography.py)
+  const w = h[6] * x + h[7] * y + h[8];
+  if (!(w > 1e-9)) return null;
+  return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w];
+}
+function balonDe(i) { const b = ATD.balon[i]; return b ? [b[0] / ESC, b[1] / ESC] : null; }
+function jugadoresDe(i) {
+  const fila = ATD.jug[i], out = [];
+  for (let k = 0; k < fila.length; k += 3) out.push([fila[k], fila[k + 1] / ESC, fila[k + 2] / ESC]);
+  return out;
+}
+function ultimoBalon(i, max) {          // [posición, hace cuántos frames] del último balón visto
+  for (let k = 1; k <= max && i - k >= 0; k++) { const b = balonDe(i - k); if (b) return [b, k]; }
+  return null;
+}
+function lineasCampo() {                // las líneas del campo, como polilíneas en coordenadas 0–1
+  if (!ATD) return [];
+  const L = ATD.campo[0], W = ATD.campo[1], out = [];
+  const seg = (x0, y0, x1, y1) => { const p = []; for (let k = 0; k <= 30; k++) p.push([x0 + (x1 - x0) * k / 30, y0 + (y1 - y0) * k / 30]); return p; };
+  const caja = (x0, x1, mitad) => { const y0 = 0.5 - mitad / W, y1 = 0.5 + mitad / W; return [seg(x0, y0, x1, y0), seg(x1, y0, x1, y1), seg(x1, y1, x0, y1)]; };
+  out.push(seg(0, 0, 1, 0), seg(1, 0, 1, 1), seg(1, 1, 0, 1), seg(0, 1, 0, 0), seg(0.5, 0, 0.5, 1));
+  const c = []; for (let k = 0; k <= 64; k++) { const t = 2 * Math.PI * k / 64; c.push([0.5 + 9.15 / L * Math.cos(t), 0.5 + 9.15 / W * Math.sin(t)]); }
+  out.push(c);
+  out.push(...caja(0, 16.5 / L, 20.16), ...caja(1, 1 - 16.5 / L, 20.16), ...caja(0, 5.5 / L, 9.16), ...caja(1, 1 - 5.5 / L, 9.16));
+  return out;
+}
+const LINEAS = lineasCampo();
+if (ATD) {                              // el minimapa, orientado como lo ve la cámara
+  for (const h of ATD.hom) {
+    if (!h) continue;
+    const a = proyectar(h, 0.5, 0), b = proyectar(h, 0.5, 1), c = proyectar(h, 0, 0.5), d = proyectar(h, 1, 0.5);
+    if (a && b && c && d) { orientacion = { invY: a[1] > b[1], invX: c[0] > d[0] }; break; }
+  }
+  document.body.classList.add("con-atd");
+}
+function rectVideo() {                  // dónde pinta el navegador la imagen dentro del <video>
+  const ew = v.clientWidth, eh = v.clientHeight, vw = v.videoWidth, vh = v.videoHeight;
+  if (!vw || !vh || !ew || !eh) return null;
+  const s = Math.min(ew / vw, eh / vh);
+  return { s: s, x: (ew - vw * s) / 2, y: (eh - vh * s) / 2 };
+}
+function pintarCapa() {
+  const capa = $("capa"), dpr = window.devicePixelRatio || 1;
+  const w = Math.round(v.clientWidth * dpr), h = Math.round(v.clientHeight * dpr);
+  if (capa.width !== w || capa.height !== h) { capa.width = w; capa.height = h; }
+  const g = capa.getContext("2d");
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.clearRect(0, 0, capa.width, capa.height);
+  const i = atdIndice(actual), r = rectVideo();
+  if (!ATD || !verATD || i === null || !r || !ATD.hom[i]) return;
+  const H = ATD.hom[i], px = 1 / r.s;  // px: un píxel de pantalla, en píxeles del vídeo
+  g.setTransform(dpr * r.s, 0, 0, dpr * r.s, dpr * r.x, dpr * r.y);
+  const poli = (pts) => {
+    g.beginPath(); let sigue = false;
+    for (const [x, y] of pts) {
+      const p = proyectar(H, x, y);
+      if (!p) { sigue = false; continue; }
+      if (sigue) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]);
+      sigue = true;
+    }
+    g.stroke();
+  };
+  if (verLineas) { g.strokeStyle = "rgba(255,255,0,0.55)"; g.lineWidth = 1.5 * px; LINEAS.forEach(poli); }
+  g.font = (12 * px) + "px sans-serif";
+  for (const [slot, x, y] of jugadoresDe(i)) {
+    const p = proyectar(H, x, y);
+    if (!p) continue;
+    g.beginPath(); g.arc(p[0], p[1], 7 * px, 0, 2 * Math.PI);
+    g.fillStyle = COLOR[ATD.equipo[slot]]; g.fill();
+    g.lineWidth = 1.5 * px; g.strokeStyle = "#fff"; g.stroke();
+    if (verSlots) { g.fillStyle = "#fff"; g.fillText(String(slot + 1), p[0] + 9 * px, p[1] - 9 * px); }
+  }
+  g.lineWidth = 2 * px;                 // estela: los 12 frames anteriores del balón
+  for (let k = 12; k >= 1; k--) {
+    if (i - k < 0) continue;
+    const a = balonDe(i - k), b = balonDe(i - k + 1);
+    if (!a || !b) continue;
+    const pa = proyectar(H, a[0], a[1]), pb = proyectar(H, b[0], b[1]);
+    if (!pa || !pb) continue;
+    g.strokeStyle = "rgba(255,235,59," + (1 - k / 13).toFixed(2) + ")";
+    g.beginPath(); g.moveTo(pa[0], pa[1]); g.lineTo(pb[0], pb[1]); g.stroke();
+  }
+  const b = balonDe(i);
+  if (b) {
+    const p = proyectar(H, b[0], b[1]);
+    if (p) { g.beginPath(); g.arc(p[0], p[1], 6 * px, 0, 2 * Math.PI); g.fillStyle = "#ffeb3b"; g.fill(); g.strokeStyle = "#000"; g.stroke(); }
+  } else {
+    const u = ultimoBalon(i, 250), p = u && proyectar(H, u[0][0], u[0][1]);
+    if (p) {
+      g.setLineDash([4 * px, 3 * px]); g.strokeStyle = "rgba(255,235,59,0.85)";
+      g.beginPath(); g.arc(p[0], p[1], 9 * px, 0, 2 * Math.PI); g.stroke(); g.setLineDash([]);
+    }
+  }
+}
+function pintarMapa() {
+  if (!ATD) return;
+  const mapa = $("mapa"), dpr = window.devicePixelRatio || 1;
+  const ancho = mapa.clientWidth || 340, m = 8;
+  const alto = Math.round((ancho - 2 * m) * ATD.campo[1] / ATD.campo[0]) + 2 * m;
+  if (mapa.width !== Math.round(ancho * dpr) || mapa.height !== Math.round(alto * dpr)) {
+    mapa.width = Math.round(ancho * dpr); mapa.height = Math.round(alto * dpr); mapa.style.height = alto + "px";
+  }
+  const g = mapa.getContext("2d");
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const X = (x) => m + (orientacion.invX ? 1 - x : x) * (ancho - 2 * m);
+  const Y = (y) => m + (orientacion.invY ? 1 - y : y) * (alto - 2 * m);
+  g.fillStyle = "#1d4d2b"; g.fillRect(0, 0, ancho, alto);
+  g.strokeStyle = "rgba(255,255,255,0.55)"; g.lineWidth = 1;
+  LINEAS.forEach((pts) => { g.beginPath(); pts.forEach(([x, y], k) => (k ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)))); g.stroke(); });
+  const i = atdIndice(actual);
+  if (i === null) { $("mapaPie").textContent = "fuera del tramo con ATD"; return; }
+  for (const [slot, x, y] of jugadoresDe(i)) {
+    g.beginPath(); g.arc(X(x), Y(y), 4.5, 0, 2 * Math.PI);
+    g.fillStyle = COLOR[ATD.equipo[slot]]; g.fill(); g.strokeStyle = "#fff"; g.lineWidth = 1; g.stroke();
+    if (verSlots) { g.fillStyle = "#fff"; g.font = "10px sans-serif"; g.fillText(String(slot + 1), X(x) + 5, Y(y) - 5); }
+  }
+  const b = balonDe(i);
+  let pie = "";
+  if (b) {
+    g.beginPath(); g.arc(X(b[0]), Y(b[1]), 4, 0, 2 * Math.PI); g.fillStyle = "#ffeb3b"; g.fill(); g.strokeStyle = "#000"; g.stroke();
+  } else {
+    const u = ultimoBalon(i, 250);
+    if (u) {
+      g.setLineDash([3, 2]); g.strokeStyle = "#ffeb3b";
+      g.beginPath(); g.arc(X(u[0][0]), Y(u[0][1]), 6, 0, 2 * Math.PI); g.stroke(); g.setLineDash([]);
+      pie = "sin balón: visto por última vez hace " + (u[1] / FPS).toFixed(1).replace(".", ",") + " s";
+    } else pie = "sin balón en los últimos 10 s";
+  }
+  $("mapaPie").textContent = pie;
+}
+function infoATD() {
+  if (!ATD) return "";
+  const i = atdIndice(actual);
+  if (i === null) return "ATD: fuera del tramo cargado";
+  const b = balonDe(i), cuenta = [0, 0];
+  jugadoresDe(i).forEach(([slot]) => cuenta[ATD.equipo[slot]]++);
+  let texto = "ATD: " + (b ? "balón visto" : "sin balón");
+  if (b && (b[0] < 0 || b[0] > 1 || b[1] < 0 || b[1] > 1)) texto += " · fuera del campo";
+  return texto + " · jugadores " + cuenta[0] + " H, " + cuenta[1] + " A";
+}
+
 // -- pintar --
 function pintarTira(canvas, a, b, filas, marcas) {
   const ancho = canvas.clientWidth || 600;
@@ -456,6 +699,7 @@ function pintar() {
       gx.strokeRect(x(tr.a) + 0.5, 0.5, Math.max(2, x(tr.b) - x(tr.a)), alto - 1);
     });
   });
+  if (ATD) { $("atdInfo").textContent = infoATD(); pintarCapa(); pintarMapa(); }
 }
 
 // -- lista --
@@ -492,6 +736,10 @@ $("bBucle").onclick = () => { bucle = !bucle; $("bBucle").classList.toggle("acti
 $("bTodo").onclick = () => { idx = -1; marcarLista(); ir(DATOS.runs[0][0]); v.playbackRate = velocidad; v.play().catch(() => {}); };
 $("bSaque").onclick = () => { idx = -1; marcarLista(); v.pause(); ir(DATOS.saque); };
 $("ocultarBorde").onchange = (e) => { ocultarBorde = e.target.checked; hacerLista(); };
+$("cATD").onchange = (e) => { verATD = e.target.checked; pintar(); };
+$("cLineas").onchange = (e) => { verLineas = e.target.checked; pintar(); };
+$("cSlots").onchange = (e) => { verSlots = e.target.checked; pintar(); };
+function alternar(id) { const c = $(id); c.checked = !c.checked; c.onchange({ target: c }); }
 function ponerVelocidad(x) {
   velocidad = x; v.playbackRate = x;
   document.querySelectorAll("[data-vel]").forEach((b) => b.classList.toggle("activo", Number(b.dataset.vel) === x));
@@ -522,6 +770,9 @@ document.addEventListener("keydown", (e) => {   // en captura, para que mande so
   else if (k === "1") ponerVelocidad(0.25);
   else if (k === "2") ponerVelocidad(0.5);
   else if (k === "3") ponerVelocidad(1);
+  else if (ATD && (k === "t" || k === "T")) alternar("cATD");
+  else if (ATD && (k === "c" || k === "C")) alternar("cLineas");
+  else if (ATD && (k === "s" || k === "S")) alternar("cSlots");
   else return;
   e.stopPropagation();
 }, true);

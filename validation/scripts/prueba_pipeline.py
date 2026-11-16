@@ -378,15 +378,37 @@ def check_build_requires(folder):
         with no_files():
             pipeline.build(data_dir=folder, pieces={"candidates": candidates.evidence},
                            layers=[layer, layer_with_paths])
-            seen["extra"][3]("tracking limpio")
+            seen["extra"][4]("tracking limpio")
     finally:
         games.require, games.asset_paths, tracking.from_atd, pipeline.run = real
-    check("build pasa a run la pieza cambiada y las capas, además de las anclas de dead_ball",
-          seen.get("pieces") == {"candidates": candidates.evidence} and len(seen.get("extra", [])) == 4
-          and seen["extra"][2] is layer)
-    check("la entrega suma la capa de los contraataques (transiciones.evidence_equipo), sin abrir nada aquí",
-          pipeline.DELIVERY_LAYERS == (transiciones.evidence_equipo,) and callable(seen["extra"][1])
-          and seen["extra"][1] is not transiciones.evidence_equipo)
+    # extra: las anclas de dead_ball, las dos capas de la entrega (DELIVERY_LAYERS) y las dos añadidas (--capa).
+    check("build pasa a run la pieza cambiada y las capas añadidas, detrás de las anclas de dead_ball y de las capas "
+          "de la entrega",
+          seen.get("pieces") == {"candidates": candidates.evidence} and len(seen.get("extra", [])) == 5
+          and seen["extra"][3] is layer)
+    check("la entrega suma la capa de los contraataques y, detrás, la del balón fuera (dead_ball.ball_out), en ese "
+          "orden (el de la entrega de prueba prueba_d7_v5), sin abrir nada aquí",
+          pipeline.DELIVERY_LAYERS == (transiciones.evidence_equipo, dead_ball.ball_out)
+          and callable(seen["extra"][1]) and seen["extra"][1] is not transiciones.evidence_equipo
+          and seen["extra"][2] is dead_ball.ball_out)
+    check("la segunda versión de D7 (dead_ball.ball_out_hold) no va en la entrega",
+          dead_ball.ball_out_hold not in pipeline.DELIVERY_LAYERS)
+    # Una capa que ya va en la entrega, añadida otra vez con --capa, se sumaría dos veces sin avisar.
+    asked = []
+    real_require = games.require
+    games.require = lambda *args, **kwargs: asked.append(args)
+    try:
+        with no_files():
+            twice = raises(ValueError, lambda: pipeline.build(data_dir=folder, layers=[dead_ball.ball_out]))
+            message = ""
+            try:
+                pipeline.build(data_dir=folder, layers=[layer, transiciones.evidence_equipo])
+            except ValueError as error:
+                message = str(error)
+    finally:
+        games.require = real_require
+    check("build da error, antes de pedir ningún fichero, si --capa repite una capa de la entrega, y dice cuál",
+          twice and "transiciones.evidence_equipo" in message and "dead_ball" not in message and not asked)
     check("a una capa con `paths` (como dead_ball.evidence) le pasa las rutas del partido y el juego",
           received == [({"smart_tagging": "inventado"}, GAME)], "{}".format(received))
     check("--capa admite cualquier módulo de possession/, y nada de fuera",

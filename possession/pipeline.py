@@ -33,11 +33,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS_DIR = os.path.join(ROOT, "evaluation", "results")
 DEFAULT_NAME = "equipo_v0"
 
-# Las capas del partido que la entrega suma a las piezas, además de las anclas de `dead_ball.evidence`. Reciben
-# las rutas del partido (`with_paths`), así que no corren en el harness. Desde el 15/11, el empujón al equipo de
-# cada «Attacking Transition» del Smart Tagging (`transiciones.evidence_equipo`): pasó sus cuatro criterios
-# escritos antes y el equipo decidió encenderlo (docs/decisiones.md, «se enciende la capa de los contraataques»).
-DELIVERY_LAYERS = (transiciones.evidence_equipo,)
+# Las capas del partido que la entrega suma a las piezas, además de las anclas de `dead_ball.evidence`. Solo las
+# suma `build`, con las rutas del partido (`with_paths`) a las que las piden, así que no corren en el harness:
+# - desde el 15/11, el empujón al equipo de cada «Attacking Transition» del Smart Tagging
+#   (`transiciones.evidence_equipo`): pasó sus cuatro criterios escritos antes y el equipo decidió encenderlo
+#   (docs/decisiones.md, «se enciende la capa de los contraataques»);
+# - desde el 16/11, el balón visto fuera del campo (`dead_ball.ball_out`, D7): Ismael decidió encenderlo aunque
+#   falló su criterio 1, porque pasó los dos de daño (docs/decisiones.md, «se enciende la capa del balón fuera»).
+#   Va la última: es el orden de suma de la entrega de prueba `prueba_d7_v5`, para que salga su misma huella.
+DELIVERY_LAYERS = (transiciones.evidence_equipo, dead_ball.ball_out)
 
 # Las piezas que `run` deja cambiar por otra función (argumento `pieces`) y la función de cada una que va
 # en la entrega: «funcion» de su módulo o «modulo.funcion». El harness de la DFL las usa para comparar
@@ -292,9 +296,14 @@ def build(game=games.GAME, data_dir=None, params=None, pieces=None, layers=()):
     él no hay entrega: el error dice qué falta y dónde se esperaba. Si el ATD tiene alguna línea saltada o
     repetida, o algún frame sin línea, también da error (`check_atd`).
 
-    Suma las anclas de `dead_ball.evidence` y las capas de DELIVERY_LAYERS, con las rutas del partido.
-    `pieces` y `layers` son para entregas de prueba (`overrides`): sin ellos, la entrega.
+    Suma las anclas de `dead_ball.evidence` y las capas de DELIVERY_LAYERS, con las rutas del partido a las que
+    las piden (`with_paths`). `pieces` y `layers` son para entregas de prueba (`overrides`): sin ellos, la
+    entrega. Una capa de `layers` que ya está en DELIVERY_LAYERS da error: se sumaría dos veces sin avisar.
     """
+    repeated = [layer for layer in layers if layer in DELIVERY_LAYERS]
+    if repeated:
+        raise ValueError("la capa {} ya va en la entrega (DELIVERY_LAYERS): con --capa se sumaría dos veces".format(
+            ", ".join(layer.__module__.split(".")[-1] + "." + layer.__name__ for layer in repeated)))
     games.require(["atd_meta", "atd_raw", "smart_tagging"], game, data_dir)
     paths = games.asset_paths(game, data_dir)
     report = {}

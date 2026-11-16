@@ -3270,7 +3270,9 @@ Resultado (15/11) [medido por Ismael]: **`equipo_v5`, la entrega vigente.**
 - Frente a `equipo_v3` cambian 817 frames, todos de un equipo al otro. Las paradas siguen en 113, y las
   posesiones pasan de 215 a 219.
 - El validador oficial la da por válida.
-- Falta reproducirla en otra máquina.
+- Con `main` en `b027409` (PR 15 y PR 10 de David y PR 16 de Manuel y Ana), `equipo_v7` sale con el mismo
+  sha256, en el entorno limpio y validada [medido por Ismael].
+- Reproducida en otra máquina con el mismo resultado (Ismael, 16/11: «ha dado lo mismo»).
 
 ### 2026-11-15 · `D` · el instante del reinicio: regla escrita antes de medir
 
@@ -4075,3 +4077,156 @@ Lo que no cambia: la entrega. Esta entrada y los retoques de la misma PR no toca
 Descartado:
 - **Repetir el instante con cada cambio del modelo de Ana:** sería buscar hasta que salga.
 - **Una PR de registro para `feat/d-equipo-reanuda`:** no cambia la entrega y la rama ya guarda el registro.
+
+### 2026-11-16 · `D` · se enciende la capa del balón fuera (`dead_ball.ball_out`), con una entrega de prueba antes
+
+Quién: Ismael. Sus palabras (16/11): «vamos a encender la primera capa del balón. Crea otra sesión para
+implementarla». La implementa Claude, en una sesión aparte.
+
+**Qué se decide:** la entrega suma `dead_ball.ball_out`, la primera versión de D7, si pasa la lectura de abajo.
+- El peso (5) y la cola (16 frames) no se tocan.
+- La segunda versión, `ball_out_hold`, sigue apagada: salió byte a byte igual que la primera.
+
+**Por qué, contra la regla escrita:**
+- La capa tenía tres criterios, escritos antes de generar `prueba_d7` (entrada «D7, el balón fuera del campo», 15/11).
+  **Falló el 1 y pasó el 2 y el 3** [medido por Ismael]:
+  1. llegamos tarde en 12 de 47 rachas de balón fuera (25,5 %); sin la capa, en 23 (48,9 %). Se pedía menos del
+     15 %;
+  2. hay 116 paradas, 3 más que en `equipo_v3`, y el `D` ocupa el 45,4 % de los frames evaluados;
+  3. cambian 574 frames evaluados, todos de un equipo a `D` (331 de `H` y 243 de `A`). Las posesiones siguen en 215.
+- Por la regla escrita, la capa se quedaba apagada. La entrada «D7, segunda versión» cerró D7.
+- **Ismael decide encenderla igualmente.** El criterio 1 mide si el problema queda resuelto del todo, no si la capa
+  hace daño. Los dos criterios de daño se cumplieron.
+- Es la segunda excepción a «lo que no ha ganado en el harness no entra» (plan §4), después de la capa de los
+  contraataques.
+
+**Lo que no se puede medir:**
+- **En la DFL, nada:** allí el balón se queda quieto mientras está muerto y va tapado en los `D`, así que «fuera es
+  `D`» se cumple por construcción. Con la capa cambian 23 frames de 2.012.288.
+- Lo único que la apoya fuera del partido es descriptivo: en SkillCorner, un balón visto fuera es `D` el 93–94 % de
+  las veces.
+- Cuánto mueve el `spellF1` del partido no se sabe.
+
+**La lectura de la entrega de prueba, fijada antes de generarla.**
+
+Por qué hace falta otra prueba: las de ayer se hicieron sobre `equipo_v3`. Desde entonces está encendida la capa de
+los contraataques (`transiciones.evidence_equipo`), y nadie ha generado la entrega con las dos capas.
+- Donde se solapan (los 5 primeros segundos de un contraataque con el balón visto fuera), la de los contraataques
+  suma 8 a un equipo y esta suma 5 a `D`. Ahí el resultado no tiene por qué ser la suma de las dos pruebas.
+- Por eso los umbrales dejan margen sobre lo de ayer.
+
+Lo que espero: casi lo mismo que `prueba_d7` [inferencia]. `equipo_v5` tiene el mismo `D` que `equipo_v3` en los
+frames evaluados [medido: los 817 frames que cambian son de un equipo al otro y las dos tienen 113 paradas, entrada
+«se enciende la capa de los contraataques»], y la capa de los contraataques no suma a la columna `D`. Unos 574 frames
+de un equipo a `D`, 116 paradas, 219 posesiones y 12 de 47 rachas en que llegamos tarde.
+
+Cómo se genera (lo ejecuta Ismael, desde `C:\dev\mtah2027-piso2nyc`, con `main` al día y el python del entorno
+limpio):
+1. `validation/partido/probar_entrega.py prueba_d7_v5 --capa dead_ball.ball_out --contra equipo_v5`: genera la
+   entrega de prueba, cuenta el balón fuera y la compara con `equipo_v5`;
+2. `validation/partido/comparar_entregas.py equipo_v3 prueba_d7_v5`: la compara con la de antes de las dos capas.
+
+**Pasa si se cumple todo esto:**
+0. **Procedencia:** la salida del paso 1 dice un commit de `main` desde `f733af5` (el que sube esta entrada) que
+   **todavía no lleva `dead_ball.ball_out` en `pipeline.DELIVERY_LAYERS`**, «sin cambios locales en el código de la
+   entrega», «capa añadida dead_ball.ball_out», y las versiones de Python y numpy. Con la capa ya encendida,
+   `--capa` la sumaría dos veces (peso 10) y la salida no lo diría; por eso el commit que la enciende hace que
+   `build` dé error en ese caso. Además, la columna «antes» de cada comparación tiene que ser la de la entrega
+   apuntada: 219 posesiones y 113 paradas (`equipo_v5`, paso 1) y 215 y 113 (`equipo_v3`, paso 2). Si algo de esto
+   no se cumple, esa salida no vale y se repite.
+1. **Sin conflictos ni rachas cortas:** 0 frames con piezas en conflicto. En los dos tramos, 0 posesiones, 0 rachas
+   de juego y 0 paradas de menos de 25 frames.
+2. **La banda del plan:** el `D` no pasa del 60 % de los frames evaluados y las paradas no pasan de 250. El `D` se
+   lee en «frames por etiqueta» del resumen y se divide entre 158.857: fuera de los tramos evaluados la entrega
+   escribe `X`.
+3. **Frente a `equipo_v5`** (paso 1, la comparación):
+   - a. **cambia algo, y no mucho:** de 1 a 1.000 frames evaluados. Ayer cambiaron 574. Con el balón fuera y `H` o
+     `A` en `equipo_v3` había 843 frames; lo demás es margen para el arrastre del decodificador. Si no cambia
+     ninguno, la capa no se ha aplicado;
+   - b. el 90 % o más de los frames que cambian pasan de `H` o `A` a `D`. Ayer, el 100 %;
+   - c. de `D` a `H` o `A`, 25 frames o menos (1 s). La capa solo suma a `D`: esto solo puede venir del arrastre del
+     decodificador;
+   - d. de un equipo al otro (`H → A` más `A → H`), 82 frames o menos, el 10 % de 817. Acota el arrastre del
+     decodificador entre equipos: frames de los 817 que vuelven al equipo de `equipo_v3`, más cambios de equipo
+     nuevos. Lo que esta capa puede quitarle a la de los contraataques por la vía principal (de un equipo a `D`) no
+     lo ve este criterio, sino el 4;
+   - e. las paradas suben 6 como mucho (de 113 a 119 o menos). Ayer subieron 3, y el doble deja margen al solape.
+     Cada parada nueva tendría que salir de una racha en que nuestro `D` no llegaba en 10 s, y eran 10;
+   - f. las posesiones no suben más que las paradas: cada posesión nueva tiene que venir de una parada nueva que
+     parte una posesión.
+4. **La capa de los contraataques no pierde lo que arregló:** (`H → A` más `A → H` del paso 2, frente a `equipo_v3`)
+   menos (`H → A` más `A → H` del paso 1, frente a `equipo_v5`) da 736 o más, el 90 % de los 817 de `equipo_v5` (274
+   de `H` a `A` y 543 de `A` a `H`).
+   - Por qué la resta: fuera de los 817, `equipo_v3` y `equipo_v5` son iguales. Si de los 817 se conservan C, vuelven
+     al equipo de antes V y pasan a `D` los demás, y hay N cambios de equipo nuevos fuera de ellos, el paso 2 cuenta
+     C + N y el paso 1, V + N. La resta da C − V, una cota inferior de los que se conservan.
+   - Contar solo el paso 2 dejaría pasar cambios nuevos como si fueran arreglos conservados.
+
+Descriptivo, no decide: el recuento del balón fuera (paso 1). Espero unas 12 rachas tarde de 47, como ayer. No es un
+criterio: es el que falló ayer y Ismael ha decidido no exigirlo.
+
+Las celdas «< 5» de las comparaciones (de 1 a 4 frames) cuentan como 4 si van en contra de un criterio y como 1 si
+van a favor.
+
+Corregido el 16/11, antes de generar nada, tras una revisión de esta lectura: el criterio 0 exige un commit sin la
+capa encendida y las bases de cada comparación; el 4 pasa a contarse con la resta (antes contaba solo el paso 2, en
+neto); y el porqué de 3d dice lo que mide. Los umbrales no han cambiado.
+
+**Si falla alguna:** no se enciende nada. No se retocan ni la capa ni los umbrales. Se para, se le cuenta a Ismael con
+la salida y se apunta aquí.
+
+**Si pasan todas:**
+- se añade `dead_ball.ball_out` **al final** de `pipeline.DELIVERY_LAYERS`, detrás de la de los contraataques. Es el
+  mismo orden de suma que en la prueba, para que salga la misma huella;
+- el harness no cambia: `pipeline.run` no usa `DELIVERY_LAYERS`;
+- se pasan las pruebas y se sube a `main`;
+- Ismael regenera la entrega sin opciones, en el entorno limpio. Tiene que dar, byte a byte, el sha256 de
+  `prueba_d7_v5`. Después se valida.
+
+**Resultado de `prueba_d7_v5`** (16/11; la generó Ismael en el entorno limpio con `main` en `4b666f4`) [medido, solo
+agregados]: **pasa todos los criterios.** La salida entera se pegó en la sesión que la implementa.
+0. Se cumple. Python 3.13.9 y numpy 2.5.4; commit `4b666f4`, sin cambios locales en el código de la entrega y sin la capa
+   en `DELIVERY_LAYERS` (sigue siendo solo la de los contraataques); «capa añadida dead_ball.ball_out». Las bases
+   cuadran: 219 posesiones y 113 paradas en `equipo_v5`, y 215 y 113 en `equipo_v3`.
+1. Se cumple: 0 frames en conflicto y ninguna racha de menos de 12 ni de 25 frames en los dos tramos.
+2. Se cumple: el `D` ocupa el 45,4 % de los frames evaluados (72.199 de 158.857), y hay 116 paradas (54 y 62).
+3. Frente a `equipo_v5`, se cumplen las seis:
+   - a. cambian 574 frames evaluados (0,361 %), todos a más de 250 frames de un borde;
+   - b. todos pasan de un equipo a `D`: 331 de `H` y 243 de `A`;
+   - c. ninguno pasa de `D` a juego;
+   - d. ninguno pasa de un equipo al otro;
+   - e. las paradas pasan de 113 a 116, 3 más;
+   - f. las posesiones no se mueven (219 y 219).
+4. Se cumple: 817 − 0 = 817. Frente a `equipo_v3` cambian 1.391 frames: 274 de `H` a `A` y 543 de `A` a `H`, los mismos
+   de `equipo_v5`, y 331 y 243 a `D`, los mismos de `prueba_d7`.
+
+Descriptivo: llegamos tarde en 12 de 47 rachas de balón fuera (25,5 %), y en 7 nuestro `D` no llega en 10 s. Es lo mismo
+que con `prueba_d7`.
+
+Lectura: las dos capas no se tocan [inferencia, por los recuentos]. Lo que cambia esta capa sobre `equipo_v5` tiene los
+mismos recuentos que lo que cambiaba sobre `equipo_v3` (331 y 243 a `D`, 3 paradas más), y los 817 cambios de equipo
+siguen enteros [medido]. El validador oficial la da por válida (199.319 filas, 219 posesiones de 15,8 s de
+media). Su sha256 es `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`.
+
+**Se enciende:** `pipeline.DELIVERY_LAYERS = (transiciones.evidence_equipo, dead_ball.ball_out)`. `build` da error si
+`--capa` repite una capa de la entrega. La entrega nueva será `equipo_v8`, y tiene que dar el sha256 de `prueba_d7_v5`.
+
+**Resultado (16/11) [medido]: `equipo_v8`, la entrega vigente.**
+- Ismael la regeneró con el comando del entorno limpio (`python -m possession.pipeline --name equipo_v8`) y `main` en
+  `44678d1`, sin cambios locales en el código de la entrega y sin capas añadidas. La línea de las versiones no se pegó,
+  así que el entorno queda [sin verificar]. `prueba_d7_v5`, con la misma huella, sí salió con Python 3.13.9 y numpy
+  2.5.4; y esta huella ya ha aguantado otras veces un cambio de numpy, así que coincidir no lo prueba.
+- Falta reproducirla en otra máquina. En el ensayo de esta noche tiene que salir `d78c514d…e2b2`, no la de `equipo_v5`.
+- **Sale byte a byte igual que `prueba_d7_v5`:** sha256 `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`.
+- 0 frames en conflicto y ninguna racha corta; 219 posesiones (103 y 116) y 116 paradas (54 y 62).
+- El validador oficial la da por válida: 199.319 filas, 219 posesiones de 15,8 s de media.
+- Frente a `equipo_v5`: 574 frames de un equipo a `D`, ningún otro cambio.
+
+**En la ventana pública** (lo pidió Ismael; comprobación, no elige) [medido con `evaluation/run_evaluation.py
+--bootstrap 1000`, sobre `prueba_d7_v5`, que es el mismo fichero]:
+- spellF1 igual: 0,658 en `equipo_v5` y en la nueva. El scorer dice que, con 17 posesiones, una diferencia de hasta
+  0,39 es ruido.
+- macroF1 de 0,851 a 0,865, y transF1 (±25 frames) de 0,263 a 0,308. Los frames que pasan a `D` dentro de la ventana
+  coinciden con `D` en la GT más de lo que no coinciden [inferencia, por el macroF1].
+- Lectura: no rompe nada en la ventana. Si mejora el `spellF1` del partido no se puede saber: ni la ventana ni la DFL lo
+  miden.

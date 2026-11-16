@@ -28,8 +28,9 @@ Capas, en el orden de docs/decisiones.md (14/11, «fronteras y anclas»):
   frames de saque que el tramo antes del saque, así que las dos anclas se tocan sin pisarse: el tramo acaba en
   el frame anterior.
 - **D7, el balón visto fuera del campo** (Ismael, 15/11; la tarea 2 del plan): `ball_out` y `ball_out_hold`,
-  dos capas apagadas que `evidence` no llama. Se probaron con sus reglas y se quedaron apagadas
-  (docs/decisiones.md, 15/11, «D7»).
+  dos capas que `evidence` no llama. Se probaron con sus reglas y se quedaron apagadas (docs/decisiones.md,
+  15/11, «D7»). Desde el 16/11, `ball_out` va en la entrega (`pipeline.DELIVERY_LAYERS`), por decisión de
+  Ismael (docs/decisiones.md, 16/11, «se enciende la capa del balón fuera»); `ball_out_hold` sigue apagada.
 
 **En `evidence` van la primera y la del saque** (anclas duras: en el tramo antes del saque solo se permite `D`,
 y en el frame del saque, `D` no) **y la tercera** (GAP_SCORE en la columna `D`, sin ajustar), que pasó la regla
@@ -288,9 +289,11 @@ def evidence(trk, paths=None, game=games.GAME):
     return score, allowed
 
 
-# -- D7: el balón visto fuera del campo (15/11). Capa APAGADA: no la llama `evidence` ni la entrega. -------
-# Se prueba con `python -m possession.pipeline --name prueba_d7 --capa dead_ball.ball_out`. Reglas, peso y
-# criterios para encenderla, fijados antes de generar esa entrega: docs/decisiones.md, 15/11, «D7».
+# -- D7: el balón visto fuera del campo (15/11). ENCENDIDA desde el 16/11 en `pipeline.DELIVERY_LAYERS` ------
+# (docs/decisiones.md, 16/11, «se enciende la capa del balón fuera»). No la llama `evidence`: la suma la entrega,
+# así que no corre en el harness. Reglas, peso y criterios, fijados antes de generar la primera entrega de
+# prueba: docs/decisiones.md, 15/11, «D7». Las cuatro constantes van sin ajustar: se fijaron antes de medir y
+# no se han tocado después.
 
 BALL_OUT_MARGIN = 1.0  # m fuera de las líneas (docs/PLAN_ENTREGA.md §3, tarea 2 de Manuel)
 BALL_OUT_MIN_RUN = 5  # frames: una racha más corta es temblor (como validation/partido/balon_fuera.py)
@@ -329,8 +332,9 @@ def ball_out(trk):
 
 # -- D7, segunda versión (15/11): mantener la parada hasta que el balón vuelva a verse dentro. APAGADA. -----
 # Diseñada después de ver la primera (prueba_d7: tarde en 12 de 47 rachas, y en 7 nuestro `D` no llega).
-# Se prueba con `--capa dead_ball.ball_out_hold`. Reglas fijadas antes de generar la entrega: docs/decisiones.md,
-# 15/11, «D7, segunda versión».
+# Ojo: con `ball_out` ya en la entrega (16/11), `--capa dead_ball.ball_out_hold` la sumaría dos veces, porque esta
+# la lleva dentro. Para probarla habría que quitar antes `ball_out` de `pipeline.DELIVERY_LAYERS`. Reglas fijadas
+# antes de generar la entrega: docs/decisiones.md, 15/11, «D7, segunda versión».
 
 # Racha visible mínima para mantener la parada en el hueco que la sigue: con 1 s, en SkillCorner (mitad de
 # entrenamiento) hay 0,7 rachas por partido enteras en juego, menos de una aunque todas acabaran con el balón
