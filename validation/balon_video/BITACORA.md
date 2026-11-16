@@ -259,7 +259,7 @@ flag, no pierde más de 0,005 en ninguna de las dos. «Sin decidir» se imprime 
 **Reconocido:** la rejilla del `D` propio con una tirada ya estaba a la vista (`salidas/2026-11-16_emulacion_dfl.md`), y
 la 1b de Antonio puede estar ya ejecutada. El umbral y la regla no cambian.
 
-### La entrega pasa a `equipo_v9`: contra qué se leen la 2.1 y la 2.2 (16/11, 21:30, antes de generar ninguna entrega de prueba)
+### La entrega pasa a `equipo_v9`: contra qué se leen la 2.1 y la 2.2 (16/11, 21:25, antes de generar ninguna entrega de prueba)
 
 **Qué cambia:** Ismael ha decidido encender «cortas a `D`» en `main` (`temporal.decode_cortas_a_d`, PR 20). La entrega
 vigente pasa a ser `equipo_v9`: 201 posesiones, 116 paradas y 1.167 frames más de `D` que `equipo_v8` [medido por Ismael
