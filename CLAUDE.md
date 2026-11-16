@@ -119,7 +119,7 @@ Qué tiene que hacer cada uno hasta la entrega: [`docs/PLAN_ENTREGA.md`](docs/PL
 
 ---
 
-## Dónde estamos (actualizado el 15/11/2026)
+## Dónde estamos (actualizado el 16/11/2026)
 
 Lee esto para saber en qué punto está el equipo. El detalle está en los ficheros enlazados.
 
@@ -243,7 +243,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     más. Los 817 cambios de la capa de los contraataques siguen enteros.
   - En la ventana pública, el spellF1 no cambia (0,658) y el macroF1 sube de 0,851 a 0,865. No elige nada: con 17
     posesiones, una diferencia de hasta 0,39 es ruido.
-  - Falta reproducirla en otra máquina. El ensayo de esta noche tiene que dar `d78c514d…e2b2`.
+  - **Reproducida en otra máquina** (Antonio, 16/11): el mismo sha256 en un Mac M1 (macOS, ARM), con Python 3.13.7
+    y numpy 2.5.4, tres veces y sin cambios locales. El ensayo de Ismael en Windows con `main` sigue en pie.
 - **Entrega anterior: `equipo_v5`** (Ismael, 15/11, en el entorno limpio con `main` en `2f34a7f`): `equipo_v3`
   más la capa de los contraataques (más abajo). Es válida, con 219 posesiones de 15,9 s de media, 113
   paradas, el mismo `D` que `equipo_v3` y sha256 `27dc8aa8…efb7`.
@@ -278,8 +279,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     recuperaciones y los duelos con cambio, y gana +0,012 y +0,015 con el flag, pero no llega al +0,03 de
     §5.8 y con el control no se mueve.
   - **Sus coeficientes quedan en `possession/aprendida.py`.** Los de B1 a B5 no cambian.
-  - **`validation/partido/slots_duplicados.py`** dice si el ATD duplica a algún jugador. Lo ejecuta Ismael,
-    si quiere; arreglarlo sería un cuarto candidato.
+  - **`validation/partido/slots_duplicados.py`** dice si el ATD duplica a algún jugador. Se ejecutó el 16/11
+    (punto «16/11», más abajo).
 - **La evidencia de equipo está reabierta** (Ismael, 15/11): «Es claro que tenemos un problema en que
   predecimos muchas menos posesiones de las que hay, sobretodo cuando son posesiones cortas.»
   - **B5 sigue en la entrega** como evidencia de equipo; la entrega vigente es la de arriba.
@@ -442,6 +443,38 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Cada uno prueba sus versiones sin tocar `puntuar.py`:** con un JSON en
     `validation/harness/versiones/` y `--versiones` (README del harness). `--eventos` añade los eventos
     humanos de la DFL, como referencia descriptiva.
+
+- **16/11: la investigación, los cierres y la línea del balón del vídeo.**
+  - **La investigación del 16/11** (`docs/investigacion_2026-11-16.md`; `validation/investigacion_1116/`):
+    - doce sondeos en datos abiertos; ninguno gana a `main` con §5.8;
+    - la idea 1.1 (cambios de equipo entre fases del Smart Tagging) se cierra: cuentan 16 cambios y se pedían 30;
+    - la 1.2, también: en el 12,9 % de los frames un equipo tiene más de 11 slots (0 % en los abiertos), pero imitado
+      en la DFL le cuesta a `main` como mucho 0,008. `ball.clean_slots` se queda apagada;
+    - la 1.3, «cortas a `D`», la está implementando Manuel con la regla nueva (punto siguiente).
+  - **Decisión de Ismael:** en los cambios pequeños hacia control, el flag pasa de veto a límite de daño
+    (`docs/decisiones.md`, 16/11). El examen de SkillCorner se puede abrir una vez por candidato.
+  - **Cierres:**
+    - PR 17 (Manuel): el instante del reinicio y la tarea 3 de la pieza de `D`;
+    - PR 18 (Antonio): los árboles para el estado de `D` (idea 2.4) no ganan. G3 falla en 1 de las 8 celdas y mejora
+      los bordes en el criterio del 13/11, pero es más frágil con temblor.
+  - **La línea del balón del vídeo** (rama `exp/balon-video`; reglas y resultados en
+    `validation/balon_video/BITACORA.md`).
+    - **Qué es:** un detector de balón público (YOLO11n, AGPL-3.0), en local y en CPU, en un recorte de 320 px
+      alrededor del balón del ATD ampliado ×2. Solo lo vería B5, con una capa apagada (`balon_video.ajuste_b5_video`).
+    - **Puerta 0 (datos abiertos):** con el balón de 4–5 px, encuentra el balón en el 82–91 % de las imágenes.
+    - **Puerta 1a (Antonio):** en nuestro vídeo el balón mide 5,9 px de mediana [medido].
+    - **Lo que cabe esperar** [medido, DFL emulada, `D` de las etiquetas]: con B5 tal cual, hasta un detector perfecto
+      da solo +0,010/+0,012 con el flag y +0,014/+0,017 con control, y uno realista, +0,007–0,009 y +0,011–0,015.
+      Positivo con las dos convenciones, pero pequeño.
+    - **Si pasa la puerta 1b:** la detección del partido entero (unas 3 h de CPU), la entrega de prueba, la
+      reproducción en dos máquinas y el comando único (`regenerar.py`, de Antonio). Todos los pasos:
+      `validation/balon_video/ESTA_NOCHE.md`.
+  - **En marcha (16/11, tarde):**
+    - David: B10, un modelo de equipo pensado para el balón nítido, en la DFL emulada;
+    - Manuel: la idea 1.3 como opción del decodificador, con el examen de SkillCorner;
+    - Ana: el final de cada parada en el golpeo del balón del vídeo, como capa nueva de `D`;
+    - Antonio: la puerta 1b, la detección y `regenerar.py`;
+    - Claude (sesión de Ismael): la línea del vídeo y el borrador del documento técnico.
 
 **Lo siguiente: el plan hasta la entrega** ([`docs/PLAN_ENTREGA.md`](docs/PLAN_ENTREGA.md), decidido por
 Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal para el final.
