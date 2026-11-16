@@ -135,6 +135,31 @@ toques de temblor sin la 4.
 **Si la 1b pasa,** se lanza de noche la detección del partido entero. La puerta 2 no cambia: la 2.1 se repite con la
 cobertura, el temblor y las rachas del partido entero, y después vienen la 2.2, la 2.3, la 2.4 y la 2.5.
 
+### Precisiones de la puerta 1b (16/11, 17:00, antes de ejecutar nada del partido)
+
+Salen de la revisión del sondeo (`validation/partido/balon_video_sondeo.py`): cinco revisores encontraron 29 problemas
+y se arreglaron todos. El sondeo las aplica así:
+- **La variante fijada incluye la confianza mínima de 0,10.** Con otra variante o con otra confianza, el sondeo no da
+  veredicto.
+- **Muestra mínima: 10 tramos y 3.000 frames.** Por defecto son 40 tramos de 375 frames, que empiezan en el saque de
+  cada parte (antes del de la 2ª parte todo es `D`).
+- **La condición 2 cuenta todas las detecciones del recorte.** También las que caen fuera del campo o no se pueden
+  proyectar, que cuentan como lejos.
+- **La base son los frames con balón del ATD dentro del campo.** Los que lo tienen fuera se cuentan aparte.
+- **Si el vídeo no decodifica 199.319 frames, no hay veredicto.**
+- **Fuera de la rejilla no pasa:** cobertura por debajo de 0,5, temblor mayor que el de σ = 0,25, o una racha de fallos
+  más larga que la mayor de la emulación.
+- **Corrección a la regla de las 15:50 sobre la longitud de las rachas:**
+  - Se compara con la racha media **real** de fallos de cada celda de la emulación, en esa p y esa σ, y se toma la
+    menor L cuya racha real es igual o mayor que la medida.
+  - Con L = 1 los fallos son independientes y su racha media es 1/p (1,43 con p = 0,7). Con la regla literal
+    («redondeada hacia arriba a la rejilla») nunca salía L = 1.
+  - La lectura literal se imprime al lado, sin voto.
+- **El «4,1 de ruido sin temblor» del balón «como el ATD» es en buena parte un artefacto** [medido,
+  `salidas/2026-11-16_calibracion_toques_dfl.md`]:
+  - 564 de sus 1.324 eventos caen justo a 18 frames de un `D`, donde la media móvil se queda con un solo lado;
+  - lejos de los `D` da 2,44 por minuto, frente a 1,72 del balón limpio.
+
 ## Puerta 2: ¿entra en la entrega? (regla de entrada fijada ahora; los detalles, antes de medir)
 
 Es la tercera excepción a «lo que no ha ganado en el harness no entra»: la DFL no tiene vídeo. Esta línea tiene su
