@@ -4787,3 +4787,33 @@ intervalo, las condiciones 1 y 3 pasan.** Esto no lo cambia: lo matiza, y refuer
 frames, que en esas dos celdas de «tapado» da +0,008 / +0,009 con el control y +0,000 / +0,001 con el flag.
 Si el equipo quiere que la regla del 16/11 exija además que el intervalo no cruce el umbral, eso es una decisión
 suya y esta candidata tendría que volver a leerse con ella.
+
+### 2026-11-16 · decodificador · «cortas a `D`»: la entrega de prueba, reproducida en el entorno limpio de Ismael
+
+Quién: la ejecutó Ismael; lo apunta la sesión planificadora (Claude), que revisó y mergeó la PR 20. Solo agregados.
+
+Cómo se generó: `python validation/partido/probar_entrega.py prueba_cortas_a_d --pieza
+temporal=temporal.decode_cortas_a_d --contra equipo_v8`, en el entorno limpio (Python 3.13.9, numpy 2.5.4), con `main`
+en `c52a746` y sin cambios locales en el código de la entrega.
+
+Resultado [medido]:
+- **sha256 `d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63`.** Es la huella entera, que faltaba.
+  Coincide con lo que apuntó Manuel (`d9706dfb…be63`, generada con `1fcf40f`, Python 3.14.4 y numpy 2.4.4) y con todos
+  sus recuentos: la entrega de prueba sale igual en dos máquinas, con dos Python y dos numpy.
+- 0 frames con piezas en conflicto y ninguna racha de menos de 25 frames en los dos tramos.
+- Frente a `equipo_v8` cambian 1.167 frames evaluados (el 0,735 %), todos de un equipo a `D` (609 de `H` y 558 de
+  `A`), y ninguno a 250 frames o menos de un borde de tramo.
+- Las posesiones pasan de 219 a 201 y las paradas siguen en 116. El `D` es el 46,18 % de lo evaluado.
+- El balón fuera (D7) no se mueve: llegamos tarde en 12 de 47 rachas, como con `equipo_v8`. «Cortas a `D`» no arregla
+  ese problema: son casos distintos.
+- Validador oficial: `Valid`, 199.319 filas, 201 posesiones de 17,0 s de media.
+- Ventana pública: spellF1 de 0,658 a 0,680 y macroF1 de 0,865 a 0,874. No elige nada: solo dice que no se rompe.
+
+Estado: **sigue apagada.** `pipeline.PIECES` no cambia y la entrega es `equipo_v8`.
+
+Para encenderla, si el equipo lo decide:
+1. Antes, el ensayo de `equipo_v8` con `main` como está: tiene que dar `d78c514d…e2b2`.
+2. `pipeline.PIECES["temporal"] = "decode_cortas_a_d"`. La entrega regenerada en el entorno limpio tiene que dar la
+   huella de arriba.
+3. Lo que quede escrito contra `equipo_v8` (la puerta 2.2 del balón del vídeo) reescribe sus límites contra la base
+   nueva antes de generar nada.
