@@ -28,17 +28,22 @@ SALIDA = os.path.join(AQUI, "referencia_rasgos_b5.json")
 TOP = 10
 
 
+def frames_con_balon(trk):
+    """Máscara de los frames de los tramos evaluados con el balón visible: los que mira la comparación."""
+    en_tramos = np.zeros(len(trk.bx), dtype=bool)
+    for a, b in trk.blocks:
+        en_tramos[a:b] = True
+    return en_tramos & np.isfinite(np.asarray(trk.bx, dtype=float)) & np.isfinite(np.asarray(trk.by, dtype=float))
+
+
 def resumen_rasgos(trk):
-    """(matriz de rasgos en los frames de los tramos con el balón visible, signo de B5 frente al del más cercano).
+    """(matriz de rasgos en los frames de `frames_con_balon`, signo de B5 frente al del más cercano).
 
     Es la función que usa también validation/partido/rasgos_b5.py, para que el partido y la referencia se calculen
     igual."""
     trk = ball.clean(trk)
     rasgos = aprendida.rasgos(trk, "b2")
-    en_tramos = np.zeros(len(trk.bx), dtype=bool)
-    for a, b in trk.blocks:
-        en_tramos[a:b] = True
-    visible = en_tramos & np.isfinite(np.asarray(trk.bx, dtype=float)) & np.isfinite(np.asarray(trk.by, dtype=float))
+    visible = frames_con_balon(trk)
     z = aprendida.logit(rasgos, aprendida.coeficientes("b5")["pesos"])
     cercano = aprendida.equipo_mas_cercano(trk)
     signo = np.where(z > 0, 0, np.where(z < 0, 1, -1))

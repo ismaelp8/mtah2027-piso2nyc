@@ -185,6 +185,10 @@ la convención y no pasó sus reglas.
   2. **Los rasgos de B5 en el partido frente a la DFL y SkillCorner.** Los de forma (centroides, dispersión, velocidad
      hacia la portería) no están comprobados en el ATD: la regla de traslado del 14/11 era de la pieza de estado
      (revisión externa, punto 10).
+- **Actualización (16/11): ya hay un dato** [medido; BITACORA P2b]. Ismael ejecutó `slots_duplicados.py`. Las parejas
+  del mismo equipo muy juntas salen como en la DFL, que no tiene duplicados (12,26 % a 1 m en los dos), así que los
+  núcleos de B5 casi no se tocan. Pero **un equipo tiene más de 11 slots en el 12,86 % de los frames**, y en los 17
+  partidos abiertos, en el 0,0 %. Eso mueve los rasgos de forma. `rasgos_b5.py` separa ahora esos frames del resto.
 - **Qué fallo arregla.** Ninguno medido: es lo que el harness no puede ver. Si un rasgo de peso estuviera desplazado
   en el partido, B5 empujaría hacia un equipo sin motivo, y ningún sondeo de datos abiertos lo diría.
 - **En qué me apoyo:**
