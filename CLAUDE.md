@@ -582,7 +582,9 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       (`validation/conjunto/detalle_abiertos.py`): vemos pocos cambios, pero bien puestos (de los directos entre
       equipos en la DFL con control, `main` ve el 35 %, K2 el 48 % y K3 el 44 %); predecimos menos posesiones de las
       que hay; y las de menos de 2 s no las encuentra ninguna versión.
-    - Si algo de esa rama sigue adelante, antes hay que repetir el criterio C0 desde ella: añade un envoltorio a
+    - **Pendiente: la entrega de prueba de K3 frente a `equipo_v10`** (la pidió Ismael el 17/11). Sus criterios de
+      daño están escritos antes de generarla (`docs/decisiones.md`, 17/11) y los pasos para quien la ejecute, en
+      `validation/conjunto/COMPROBAR_K3.md`. Empieza por C0 desde esa rama, que añade un envoltorio a
       `possession/aprendida.py`.
   - **Lo que sale para la fase siguiente:** lo que cojea ahora es el cambio de proveedor, no la arquitectura. El
     instrumento para medirlo es dejar un proveedor fuera (`entrenar.py --solo` y `medir.py --alfa`).

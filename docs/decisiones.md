@@ -6343,3 +6343,73 @@ por encima.
 
 Estado: descriptivo. Con esto están medidos los dos sentidos del otro proveedor. `pipeline.PIECES`, `DELIVERY_LAYERS`
 y la entrega no cambian.
+
+### 2026-11-17 · candidatos · K3: la entrega de prueba frente a `equipo_v10`, con los criterios de daño escritos antes de generarla
+
+Quién: Ismael (17/11): «quiero una entrega de prueba de K3 frente a `equipo_v10`». Lo escribe Claude en la rama
+`exp/k2-refinar`, antes de que nadie genere `prueba_k3`. La ejecuta una persona, con los datos del partido y el entorno
+limpio; Claude solo lee los agregados que se peguen.
+
+Dónde está cada cosa:
+- **`equipo_v10`** es la entrega con K2 que encendió David en `feat/encender-k2` (sha256
+  `784e65e5825a7fe52f7fe5f3a51c9f5e1bccf2c9f89a1372b7b344a3f882acbc`, la misma que `prueba_k2`): 203 posesiones de
+  16,9 s de media, 115 paradas y el 45,9 % de `D` en lo evaluado [medido por Ismael y por David].
+- **Esta rama sale de antes de encender K2:** su `pipeline.PIECES` lleva B5, así que sin opciones genera `equipo_v9`.
+  Entre las dos ramas, `possession/` solo difiere en esa línea de `pipeline.py` [medido: `git diff`], así que desde
+  esta rama `--pieza candidates=aprendida.evidence_k2` tiene que dar los bytes de `equipo_v10`.
+
+Los comandos, con el python del entorno limpio y desde la carpeta del repo en esta rama
+(`git fetch origin` y `git switch --detach origin/exp/k2-refinar`):
+
+    python -m possession.pipeline --name equipo_v9_rama
+    python -m possession.pipeline --name prueba_k2_rama --pieza candidates=aprendida.evidence_k2
+    python validation/partido/probar_entrega.py prueba_k3 --pieza candidates=aprendida.evidence_k3 --contra prueba_k2_rama
+    python evaluation/validate_submission.py evaluation/results/prueba_k3.csv
+    python evaluation/run_evaluation.py
+
+Lo que cabe esperar de K2 a K3 [medido en datos abiertos con `validation/conjunto/cuanto_cambia_k3.py`, `D` propio, sin
+las capas del partido]:
+
+| datos | frames evaluados que cambian | de un equipo al otro | entre un equipo y `D` | posesiones | paradas | frames `D` | posesiones de menos de 12 / de 25 frames |
+|---|---|---|---|---|---|---|---|
+| DFL (7 partidos, 4 celdas) | 2,0–2,5 % | 1,4–1,6 % | 0,5–0,9 % | de −2,3 a −4,6 % | de −0,1 a +0,1 % | de −0,3 a 0,0 puntos | 0 / 1 en los 7 partidos |
+| SkillCorner (10 partidos, 2 celdas) | 3,3 % | 1,6–1,7 % | 1,6–1,7 % | de −4,0 a −4,2 % | −0,6 % | de −0,6 a −0,7 puntos | 0 / 2 en los 10 partidos |
+
+Con K2, el partido salió como la DFL (cambió el 4,8 % de los frames frente a `equipo_v9`; en la DFL, del 4,4 al 5,3 %).
+
+K3 pasa su entrega de prueba si se cumple todo:
+- **C0, la rama no cambia las entregas conocidas:** `equipo_v9_rama` sale con el sha256 de `equipo_v9`
+  (`d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63`) y `prueba_k2_rama`, con el de `equipo_v10`
+  (`784e65e5…acbc`). La segunda es la referencia con la que se compara K3.
+- **C1, es una entrega:** `prueba_k3` es válida y sale con 0 frames en conflicto.
+- **C3, cambia lo que cabe esperar** frente a `prueba_k2_rama`: como mucho el 7 % de los frames evaluados; de un equipo
+  al otro, como mucho el 3,5 %; y entre un equipo y `D`, en los dos sentidos, como mucho el 3,5 %.
+- **C4, no cambia el ritmo ni el `D`:** entre 183 y 213 posesiones (`equipo_v10` tiene 203), entre 108 y 122 paradas
+  (tiene 115) y entre el 44,4 y el 47,4 % de `D` en lo evaluado (tiene el 45,9 %).
+- **C5, no fragmenta:** ninguna posesión de menos de 12 frames y como mucho 4 de menos de 25.
+- **C6, no se rompe en la ventana pública:** frente a `equipo_v10`, el macroF1 no baja más de 0,03 ni el spellF1 más
+  de 0,10. Una subida no cuenta: la ventana no elige (17 posesiones; por debajo de 0,42 todo es ruido).
+
+Lo que no se repite: el criterio C2 de K2 (lo que el modelo ve en el ATD frente a los datos abiertos). K3 no trae
+ningún modelo nuevo: usa los pesos de K2 que ya pasaron C2 y el B5 de la entrega.
+
+Sin voto, para apuntar: de qué a qué cambian los frames, y el recuento del balón fuera (D7), que con `equipo_v9` y con
+`equipo_v10` da 12 rachas tarde de 47.
+
+Qué significa cada resultado:
+- **Si pasa todo,** K3 ha hecho en el partido lo que se le puede pedir sin etiquetas: no rompe nada y cambia lo
+  esperado. No dice que K3 gane a K2 en el partido; eso no se puede medir. La elección entre `equipo_v10` y K3 sigue
+  siendo del equipo, con lo medido en datos abiertos: K3 falla menos partido a partido y es más prudente en los
+  cambios de posesión; K2 gana más donde funciona.
+- **Si falla C0,** no se sigue: algo de esta rama cambia una entrega y hay que mirarlo antes.
+- **Si falla C3, C4 o C5,** K3 no se enciende sin mirar antes por qué.
+
+Si el equipo decide entregar con K3: `pipeline.PIECES["candidates"]` pasa a `"aprendida.evidence_k3"`, la entrega se
+regenera y tiene que salir byte a byte igual que `prueba_k3`; **hay que reproducirla en una segunda máquina** (K3
+hereda el `np.exp` de los rasgos de B5); y el documento técnico tiene que contarla.
+
+Pendiente aparte, y no bloquea la entrega de prueba: el punto 2 de la regla de K3 sigue sin leer. Lo haría legible
+medir K3 con los pesos del modelo de solo la DFL del 17/11, que están en la máquina donde se entrenó K2
+(`<datos abiertos>/conjunto_cache/pesos/solo_dfl_todos.pt`).
+
+Estado: criterios escritos antes de generar `prueba_k3`. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
