@@ -5976,3 +5976,38 @@ Si el equipo decide encenderlo:
 Descartado: decidir con la ventana pública; añadir más comprobaciones sin etiquetas (la que había ya ha contestado).
 
 Estado: K2 apagado, con su regla cumplida. Pendiente de que el equipo decida si lo enciende.
+
+### 2026-11-17 · temporal · detector de cambios con el balón del ATD, encima de K2 y de `main` (candidatos y regla, antes de medir)
+
+Quién: David (17/11, «haz los 3»), con Claude, en la rama `exp/cambios-sobre-k2`, que sale de `exp/modelo-conjunto`
+en `2b187b9`. Escrita antes de medir nada de esta entrada.
+
+Por qué: el balón del vídeo no se puede usar (la línea está parada y su detector se equivoca en el 18 % de los
+frames), así que queda la variante «respaldo» del detector de cambios, con el balón del ATD. En la segunda ronda se
+quedó cerca (+0,006 a +0,009 con control, 5–6 de 7) frente a un `main` que ya no es el de hoy: entonces decodificaba
+con `decode` y hoy con `decode_cortas_a_d`, y puede que la evidencia de equipo pase a ser K2.
+
+Candidatos, con la configuración fija que eligió la segunda ronda (no se elige nada aquí):
+- **R1:** reglas con giro de 20°, cambio de velocidad del 60 % y 20 frames de confirmación; capa con γ = 4,
+  W = 50, contra el otro equipo; sin rebaja (lo elegido para «D reglas · respaldo» en 6 de 7 pliegues).
+- **R2:** las reglas sin afinar (30°, 40 %, 20 frames); γ = 4, W = 100, contra el otro equipo (lo elegido para «C
+  reglas · respaldo» en los 7 pliegues).
+
+Cada uno se mide sobre dos bases, con el decodificador de la entrega (`decode_cortas_a_d`):
+- **sobre `main`:** B5, la entrega de hoy;
+- **sobre K2:** `aprendida.evidence_k2` en lugar de B5, con el pliegue que no vio el partido.
+
+Son cuatro comparaciones: cada candidato frente a su base (no frente a la otra base).
+
+Regla de entrada, la del límite de daño del 16/11 en la DFL (los 7 partidos, «como el ATD» y «sin bloques», con el
+`D` de las etiquetas y con el propio):
+1. con control, +0,005 o más en las cuatro celdas, ganando en 6 de 7 en cada una;
+2. con el flag, no pierde más de 0,005 en ninguna.
+Si un candidato pasa sobre una base, sigue a SkillCorner (`validation/cambios/medir_skillcorner.py`, mitad de
+entrenamiento; +0,005 y 7 de 10 en las cuatro celdas) y, si pasa, al examen, una sola vez y para un solo candidato, y a
+la entrega de prueba. Sobre K2 solo tiene sentido si el equipo enciende K2.
+
+Avisado: son 2 configuraciones elegidas antes, más 14 candidatos de las rondas anteriores; con la regla de 6 de 7 en
+cuatro celdas, un candidato que no aporta nada pasaría pocas veces, pero no ninguna.
+
+Estado: en marcha. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
