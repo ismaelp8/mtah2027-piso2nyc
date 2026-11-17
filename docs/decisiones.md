@@ -5745,4 +5745,18 @@ Son tres comprobaciones **descriptivas**: no cambian la regla de K2 ni abren un 
    pierde más de 0,005 frente a `main` en la condición que vota con el `D` de las etiquetas, se apunta como otro aviso
    de proveedor; si gana, no prueba nada por sí solo.
 
+**Añadido después de ver los puntos 1 y 4, y antes de ejecutar lo que sigue.** El punto 1 dice que con un solo
+proveedor el modelo no se traslada al otro, y el 4, que el modelo de los dos proveedores gana en Metrica. Para saber
+cuánto vale lo segundo y cuánto protege el criterio C2, dos medidas más, también descriptivas:
+
+5. **Los modelos de un solo proveedor, en Metrica** (`metrica.py --pesos`). Si también ganan a `main` allí, Metrica no
+   distingue nada (su balón va pegado al jugador) y la ganancia del modelo de los dos proveedores no dice que
+   generalice. Si pierden o empatan y el de los dos gana, es una señal a favor de que entrenar con dos proveedores sí
+   ayuda en un tercero. Una señal, con 3 partidos: no una prueba.
+6. **¿Habría saltado C2 donde sabemos que el modelo falla?** (`validation/conjunto/potencia_c2.py`). Con cada modelo de
+   un solo proveedor: la referencia son sus seis salidas en las vistas de su proveedor (dentro de muestra, porque no
+   hay otra; se dice) y se mira en cuántas vistas del otro proveedor alguna salida cae fuera del rango ensanchado un
+   cuarto, que es lo que hace C2 con el partido. Si salta en la mayoría de las vistas del otro proveedor, C2 sirve de
+   alarma; si no, pasar C2 no dice que el modelo funcione en el ATD, y se le dice así a quien decida.
+
 Estado: escrita antes de medir. Los resultados van en la entrada siguiente.

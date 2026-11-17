@@ -26,7 +26,7 @@ for _carpeta in (os.path.join(AQUI, "..", "cambios"), os.path.join(AQUI, "..", "
 import comun as cc  # noqa: E402  (validation/cambios/comun.py: pone harness/ y la raíz en el camino)
 import lector as lc  # noqa: E402  (validation/metrica/lector.py)
 from comun import puntuar  # noqa: E402
-from possession import aprendida, pipeline  # noqa: E402
+from possession import aprendida, conjunto, pipeline  # noqa: E402
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -37,7 +37,11 @@ MODOS = ("oraculo", "propio")
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--bootstrap", type=int, default=1000)
+    parser.add_argument("--pesos", default=None, help="otros pesos para K2 (comprobación 5: un solo proveedor)")
     args = parser.parse_args()
+    if args.pesos:
+        conjunto.PESOS = args.pesos
+        conjunto._CACHE.clear()
     ids = lc.partidos()
     if not ids:
         sys.exit("No hay partidos de Metrica bajados, en {}".format(lc.carpeta()))
