@@ -74,10 +74,17 @@ def pasos(ref, k8, pliegue):
     print("Semillas: {} y {} · pasos: {} y {} · λ del CRF: {}".format(
         a["semilla"], b["semilla"], a["config"]["pasos"], b["config"]["pasos"], b["config"].get("lambda_crf")))
     claves = sorted(set(a["pesos"]) | set(b["pesos"]))
-    distintos = [k for k in claves if k not in a["pesos"] or k not in b["pesos"]
-                 or not torch.equal(a["pesos"][k], b["pesos"][k])]
-    print("Tensores comparados: {} · distintos: {}".format(len(claves), ", ".join(distintos) or "ninguno"))
-    return not distintos and a["semilla"] == b["semilla"]
+    if set(a["pesos"]) != set(b["pesos"]):
+        print("Los tensores no son los mismos")
+        return False
+    distintos = [k for k in claves if not torch.equal(a["pesos"][k], b["pesos"][k])]
+    maxima = max(float((a["pesos"][k] - b["pesos"][k]).abs().max()) for k in claves)
+    print("Tensores comparados: {} · distintos bit a bit: {} · diferencia máxima {:.1e}".format(
+        len(claves), len(distintos), maxima))
+    # Cada script se reproduce bit a bit consigo mismo, pero entre dos scripts distintos el último bit puede cambiar
+    # con cómo queda la memoria del proceso (17/11: con 1 paso difieren 4 tensores, con 2 ninguno y con 20 casi todos,
+    # siempre por debajo de 3e-6). Así que se pide lo mismo salvo redondeo: menos de 1e-5 tras 20 pasos.
+    return a["semilla"] == b["semilla"] and maxima < 1e-5
 
 
 def main():

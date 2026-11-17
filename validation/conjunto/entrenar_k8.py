@@ -11,6 +11,10 @@ proveedores, aumentos, lotes y pérdida) con un término más: λ · (−log p d
 centro del trozo, con el CRF de `crf.py` (w = 5·α con α = 4, coste de cambio 25, λ = 1). Con `--lambda-crf 0` es
 `entrenar.py` paso a paso: es la comprobación del instrumento (`comprobar_k8.py pasos`).
 
+**Puntos de control** (`puntos.py`): cada `--cada` pasos (500) guarda todo lo necesario para reanudar, y al lanzarlo
+otra vez con la misma etiqueta y el mismo pliegue sigue desde el último, con los mismos pesos bit a bit que sin pararse
+(`comprobar_puntos.py`). `--desde-cero` lo ignora.
+
 Escribe los pesos y las salidas fuera de muestra como `entrenar.py` (`cj_comun.fichero_pesos` y
 `cj_comun.fichero_salida`), así que `juntar.py --alfa 4` y `paridad.py` los leen igual. `entrenar.py`, `red.py`,
 `possession/conjunto.py` y los pesos de K2 no cambian.
@@ -28,6 +32,7 @@ import torch
 import cj_comun as cj
 import crf
 import entrenar as en
+import puntos
 import red
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -48,6 +53,9 @@ def main():
     parser.add_argument("--hilos", type=int, default=None)
     parser.add_argument("--semilla", type=int, default=None, help="por defecto, la del pliegue en `entrenar.py`")
     parser.add_argument("--columnas", type=int, default=en.SLOTS)
+    parser.add_argument("--cada", type=int, default=500, help="pasos entre puntos de control (0: ninguno)")
+    parser.add_argument("--hasta", type=int, default=None, help="para comprobar: se para tras este paso, con su punto")
+    parser.add_argument("--desde-cero", action="store_true", help="no reanuda aunque haya un punto de control")
     args = parser.parse_args()
     cfg = dict(en.CONFIG)
     if args.config:
@@ -91,7 +99,14 @@ def main():
     mitad = cfg["lote"] // 2
     reparto_del_lote = [("dfl", mitad), ("sc", cfg["lote"] - mitad)]
     acumulado, cuenta = {}, 0
-    for paso in range(cfg["pasos"]):
+    firma = {"script": "entrenar_k8", "etiqueta": args.etiqueta, "pliegue": args.pliegue, "semilla": semilla,
+             "config": cfg, "lambda_crf": args.lambda_crf, "dispositivo": device.type, "columnas": args.columnas}
+    punto = puntos.ruta(args.etiqueta, args.pliegue)
+    primero = 0
+    if punto.is_file() and not args.desde_cero:
+        primero = puntos.cargar(punto, firma, modelo, opt, plan, rng, gen)
+        print("Reanuda desde el punto de control del paso {}.".format(primero), flush=True)
+    for paso in range(primero, cfg["pasos"]):
         modelo.train()
         elegidos = []
         for dominio, cuantos in reparto_del_lote:
@@ -109,6 +124,11 @@ def main():
             secuencia = suma / max(n, 1)
             total = total + args.lambda_crf * secuencia
             terminos["crf"] = float(secuencia.detach())
+            del z
+        # Sin esta línea, las salidas seguirían vivas durante el `backward`, la memoria se repartiría de otra forma y,
+        # en la CPU, algunas sumas irían en otro orden: con λ = 0 los pesos diferían de los de `entrenar.py` en 1e-8 a
+        # 3e-6 tras 20 pasos (comprobar_k8.py pasos, 17/11).
+        del salidas
         opt.zero_grad(set_to_none=True)
         total.backward()
         torch.nn.utils.clip_grad_norm_(modelo.parameters(), 5.0)
@@ -122,12 +142,19 @@ def main():
                 paso + 1, *(acumulado.get(k, 0.0) / cuenta for k in ("z", "cambios", "flag", "crf")),
                 time.time() - inicio), flush=True)
             acumulado, cuenta = {}, 0
+        hecho = paso + 1
+        if hecho < cfg["pasos"] and ((args.cada and hecho % args.cada == 0) or hecho == args.hasta):
+            puntos.guardar(punto, firma, hecho, modelo, opt, plan, rng, gen)
+        if hecho == args.hasta and hecho < cfg["pasos"]:
+            print("Parado en el paso {} (--hasta), con su punto de control.".format(hecho))
+            return
 
     destino = cj.fichero_pesos(args.etiqueta, args.pliegue)
     destino.parent.mkdir(parents=True, exist_ok=True)
     cfg_guardada = dict(cfg, lambda_crf=args.lambda_crf, alfa_crf=ALFA, coste_crf=COSTE)
     torch.save({"pesos": modelo.state_dict(), "config": cfg_guardada, "pliegue": args.pliegue, "semilla": semilla},
                destino)
+    puntos.borrar(punto)
     fuera = ([en.cargar("dfl", p, device, args.columnas) for p in fuera_dfl]
              + [en.cargar("sc", p, device, args.columnas) for p in fuera_sc])
     if fuera:

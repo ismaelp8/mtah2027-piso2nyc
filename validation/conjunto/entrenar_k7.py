@@ -26,6 +26,10 @@ sin balón crudo (sin balón en «tal cual») no cuentan en la pérdida de z ni 
 eventos, no casan con el balón en los bordes de las paradas: K2 acierta el signo ahí el 44,7 %, frente al 89,0 % en la
 DFL «como el ATD».
 
+**Puntos de control** (`puntos.py`): cada `--cada` pasos (500) guarda todo lo necesario para reanudar, y al lanzarlo
+otra vez con la misma etiqueta sigue desde el último, con los mismos pesos bit a bit que sin pararse
+(`comprobar_puntos.py`). `--desde-cero` lo ignora.
+
 Con `c --parte-metrica 0` es `entrenar.py todos --solo dfl`, paso a paso: es la comprobación del instrumento
 (`comprobar_k7.py pasos`).
 
@@ -44,6 +48,7 @@ import torch.nn as nn
 
 import cj_comun as cj
 import entrenar as en
+import puntos
 import red
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -107,6 +112,9 @@ def main():
     parser.add_argument("--columnas", type=int, default=en.SLOTS)
     parser.add_argument("--sin-describir", action="store_true", help="no enseña la tabla de SkillCorner al final")
     parser.add_argument("--config", default=None, help="JSON con los valores de CONFIG que se cambian (para comprobar)")
+    parser.add_argument("--cada", type=int, default=500, help="pasos entre puntos de control (0: ninguno)")
+    parser.add_argument("--hasta", type=int, default=None, help="para comprobar: se para tras este paso, con su punto")
+    parser.add_argument("--desde-cero", action="store_true", help="no reanuda aunque haya un punto de control")
     args = parser.parse_args()
     cfg = dict(en.CONFIG)
     if args.config:
@@ -154,7 +162,15 @@ def main():
     de_metrica = int(round(cfg["lote"] * args.parte_metrica))
     reparto_del_lote = [(d, c) for d, c in (("dfl", cfg["lote"] - de_metrica), ("metrica", de_metrica)) if c]
     acumulado, cuenta = {}, 0
-    for paso in range(cfg["pasos"]):
+    firma = {"script": "entrenar_k7", "variante": args.variante, "etiqueta": args.etiqueta, "pliegue": "todos",
+             "semilla": semilla, "config": cfg, "parte_metrica": args.parte_metrica, "dispositivo": device.type,
+             "columnas": args.columnas}
+    punto = puntos.ruta(args.etiqueta, "todos")
+    primero = 0
+    if punto.is_file() and not args.desde_cero:
+        primero = puntos.cargar(punto, firma, modelo, opt, plan, rng, gen)
+        print("Reanuda desde el punto de control del paso {}.".format(primero), flush=True)
+    for paso in range(primero, cfg["pasos"]):
         modelo.train()
         elegidos = []
         for dominio, cuantos in reparto_del_lote:
@@ -177,6 +193,12 @@ def main():
                 paso + 1, *(acumulado[k] / cuenta for k in ("z", "cambios", "flag")), time.time() - inicio),
                 flush=True)
             acumulado, cuenta = {}, 0
+        hecho = paso + 1
+        if hecho < cfg["pasos"] and ((args.cada and hecho % args.cada == 0) or hecho == args.hasta):
+            puntos.guardar(punto, firma, hecho, modelo, opt, plan, rng, gen)
+        if hecho == args.hasta and hecho < cfg["pasos"]:
+            print("Parado en el paso {} (--hasta), con su punto de control.".format(hecho))
+            return
     if args.variante == "s":
         modelo.proveedor = None  # fuera de sus dos proveedores, la media de las dos z
 
@@ -185,6 +207,7 @@ def main():
     cfg_guardada = dict(cfg, variante=args.variante, proveedores=list(PROVEEDORES), parte_metrica=args.parte_metrica)
     torch.save({"pesos": modelo.state_dict(), "config": cfg_guardada, "pliegue": "todos", "semilla": semilla,
                 "solo": "dfl+metrica"}, destino)
+    puntos.borrar(punto)
     print("\nPesos en {}.".format(destino.name))
 
     if not args.sin_describir:

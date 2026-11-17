@@ -6747,3 +6747,28 @@ Lo que no cambia: `entrenar.py`, `red.py`, `possession/conjunto.py`, los pesos d
 `DELIVERY_LAYERS` y la entrega. Lo nuevo es `crf.py`, `entrenar_k8.py`, `comprobar_k8.py` y `piloto_k8.py`.
 
 Estado: escrita antes de entrenar.
+
+**K7c se cortó, y los entrenamientos de K7 y K8 guardan ahora puntos de control** (17/11, 15:10–15:40):
+- **Qué pasó:** el primer entrenamiento de K7c se cortó en el paso 2.500 de 3.000, sin guardar los pesos. Claude Code lo
+  paró porque la máquina se quedaba sin memoria. La pérdida bajaba con normalidad (z 0,103 en el paso 2.500), sin NaN.
+  La memoria la ocupaban otros procesos ajenos a este trabajo. No se relanza hasta que haya al menos 4 GB disponibles y
+  lo diga Ismael.
+- **Qué se cambia:** `entrenar_k7.py` y `entrenar_k8.py` guardan cada 500 pasos un punto de control (`puntos.py`). Lleva
+  los pesos, el optimizador, el plan de la tasa, el paso y el estado de los tres generadores de azar, y si se lanzan otra
+  vez con la misma etiqueta reanudan desde él. Un punto de otro entrenamiento (otra etiqueta, semilla, configuración o λ)
+  no se carga. No cambia nada de lo que se entrena.
+- **Comprobado** (`comprobar_puntos.py`, 6 pasos, parado en el 3 y reanudado): en K7s y en K8, los 20 tensores de pesos
+  salen iguales bit a bit que sin pararse, y el punto se borra al terminar. [medido: pasa en los dos]
+
+**La comprobación de K8 con λ = 0 (`comprobar_k8.py pasos`): igual salvo redondeo, no bit a bit** [medido]:
+- Tras 20 pasos, 19 de los 20 tensores difieren de los de `entrenar.py` en el último bit, con una diferencia máxima de
+  3,3e-6. La pérdida del primer paso es idéntica (z 0,6954, cambios 1,4895, flag 0,6972).
+- **Cada script se reproduce bit a bit consigo mismo** (dos veces `entrenar.py` y dos veces `entrenar_k8.py`: iguales).
+  Entre los dos, el último bit cambia sin un patrón de método: con 1 paso difieren 4 tensores, con 2 ninguno y con 20 casi
+  todos. Es redondeo que depende de cómo queda la memoria de cada proceso en la CPU [inferencia]; en K7 coincidió bit a
+  bit.
+- **Así que la comprobación pide lo mismo salvo redondeo:** una diferencia máxima de menos de 1e-5 tras 20 pasos.
+  [medido: pasa] Sigue diciendo lo que tenía que decir: el andamiaje de K8 (datos, azar, optimizador y plan) es el de K2.
+- **Lo que significa para el piloto:** K8 y la K2 de la CPU empiezan con los mismos pesos y ven los mismos trozos y
+  aumentos. Pero un entrenamiento amplifica cualquier diferencia, así que «pareado» quiere decir eso, no que el resto del
+  camino sea el mismo. El ruido entre entrenamientos lo da la K2 de la GPU, como estaba escrito.
