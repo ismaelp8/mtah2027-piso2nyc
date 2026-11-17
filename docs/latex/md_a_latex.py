@@ -108,7 +108,7 @@ class EnLinea:
         texto = re.sub(
             r"doi:(10\.[^\s,;]+[^\s.,;])",
             lambda m: guardar(
-                r"\href{https://doi.org/" + m.group(1) + "}{\\code{doi:" + m.group(1) + "}}"
+                r"\href{https://doi.org/" + m.group(1) + r"}{\nolinkurl{doi:" + m.group(1) + "}}"
             ),
             texto,
         )
@@ -438,7 +438,14 @@ def convertir(md: str) -> tuple[str, dict]:
     else:
         principal, subtitulo = titulo, ""
 
-    cuerpo = escritor.bloques(cuerpo_bloques)
+    # La primera sección del .md fija desde qué número cuenta LaTeX (0 o 1, por ejemplo).
+    primera_seccion = next(
+        (int(re.match(r"\d+", b[2]).group(0)) for b in cuerpo_bloques
+         if b[0] == "titulo" and b[1] == 2 and re.match(r"\d+", b[2])),
+        1,
+    )
+    escritor.numero = [primera_seccion - 1, 0]
+    cuerpo = f"\\setcounter{{section}}{{{primera_seccion - 1}}}\n" + escritor.bloques(cuerpo_bloques)
 
     plantilla = PLANTILLA.read_text(encoding="utf-8")
     sustituciones = {

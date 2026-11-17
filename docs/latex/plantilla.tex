@@ -5,7 +5,7 @@
 % aquí; el texto se cambia en el .md y se regenera. Las marcas %%ASÍ%% las sustituye el script.
 %
 % Compila con pdflatex (TeX Live, MiKTeX u Overleaf), sin nada más que los paquetes estándar.
-\documentclass[11pt,a4paper]{article}
+\documentclass[10pt,a4paper]{article}
 
 % --- Letra e idioma --------------------------------------------------------------------------
 \usepackage[T1]{fontenc}
@@ -30,9 +30,9 @@
 \DeclareUnicodeCharacter{00A0}{~}
 
 % --- Página -----------------------------------------------------------------------------------
-\usepackage[a4paper,left=2.4cm,right=2.4cm,top=2.6cm,bottom=2.6cm,headheight=14pt]{geometry}
+\usepackage[a4paper,left=2.1cm,right=2.1cm,top=2.3cm,bottom=2.3cm,headheight=14pt]{geometry}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{0.55em plus 0.2em}
+\setlength{\parskip}{0.45em plus 0.2em}
 \setlength{\emergencystretch}{3em}
 \raggedbottom
 
@@ -104,11 +104,12 @@
 \usepackage[unicode]{hyperref}
 \usepackage{bookmark}
 \usepackage{xurl}             % las URL largas pueden partirse en cualquier carácter
+\Urlmuskip=0mu\relax          % sin estirar las letras de las URL al justificar
 \hypersetup{colorlinks=true,linkcolor=acento,urlcolor=acento!75!black,citecolor=acento,
   pdftitle={%%TITULO_PDF%%},pdfauthor={%%EQUIPO%%},pdflang={es-ES}}
 \urlstyle{tt}
 
-% El documento numera desde la sección 0, como el .md.
+% La numeración de las secciones sale del .md (md_a_latex.py fija el contador de la primera).
 \setcounter{secnumdepth}{2}
 \setcounter{tocdepth}{2}
 
@@ -116,23 +117,18 @@
 
 \thispagestyle{portada}
 {\sffamily\small\color{gris}\MakeUppercase{%%CONCURSO%%}\par}
-\vspace{1.4em}
-{\sffamily\bfseries\fontsize{25}{30}\selectfont\color{acento}%%TITULO%%\par}
-\vspace{0.5em}
-{\sffamily\Large\color{gris}%%SUBTITULO%%\par}
-\vspace{0.9em}
-{\color{acento}\rule{\linewidth}{0.9pt}}\par
-\vspace{0.2em}
-{\sffamily\large\bfseries %%EQUIPO%%}\hfill{\sffamily\color{gris}%%FECHA%%}\par
 \vspace{0.6em}
+{\sffamily\bfseries\fontsize{21}{25}\selectfont\color{acento}%%TITULO%%\par}
+\vspace{0.2em}
+{\sffamily\large\color{gris}%%SUBTITULO%%\par}
+\vspace{0.5em}
+{\color{acento}\rule{\linewidth}{0.9pt}}\par
+\vspace{0.1em}
+{\sffamily\bfseries %%EQUIPO%%}\hfill{\sffamily\color{gris}%%FECHA%%}\par
+\vspace{0.3em}
 
 %%PORTADA%%
 
-\newpage
-{\hypersetup{linkcolor=black}\tableofcontents}
-\vspace{1em}
-
-\setcounter{section}{-1}
 %%CUERPO%%
 
 \end{document}

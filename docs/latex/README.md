@@ -22,7 +22,7 @@ Deja el PDF en `docs/latex/build/<equipo>.pdf`, con el nombre que diga la línea
 
 Sin LaTeX instalado: `python3 docs/latex/md_a_latex.py` solo regenera el `.tex`. Ese fichero se sube a
 Overleaf (proyecto vacío, compilador pdfLaTeX) y compila tal cual. El documento solo lleva agregados, así
-que subirlo no choca con la regla nº 1 de `CLAUDE.md`.
+que subirlo no choca con la regla del concurso sobre los datos del partido.
 
 ## Al cambiar el documento
 
