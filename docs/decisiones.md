@@ -6647,3 +6647,103 @@ Estado: escrita antes de entrenar. La medida del signo sin balón se apunta deba
   torch, con una diferencia máxima de 4e-7 (`comprobar_k7.py paridad`).
 
 Estado: la limpieza queda fijada antes de entrenar. Se entrena K7c.
+
+### 2026-11-17 · candidatos · modelo conjunto: K8, una pérdida por secuencia con la energía del decodificador, y su piloto en el pliegue de `J03WMX` (candidato y regla, antes de entrenar)
+
+Quién: Claude, en otra sesión de Ismael (17/11), con la revisión de la sesión que coordina. Rama `exp/k2-siguiente`.
+Escrita antes de entrenar K8 ni la K2 de la CPU con la que se compara.
+
+**Por qué.** Lo que más falla [medido, `detalle_abiertos.py`]:
+- de los cambios directos entre equipos, en la DFL con control `main` ve el 35 % y K2 el 48 %;
+- las posesiones de menos de 2 s no las encuentra ninguna versión, y de las de 2 a 5 s K2 encuentra el 39 %.
+
+K2 aprende z frame a frame con la entropía cruzada, en la que una posesión de 2 s pesa lo que 50 frames de una larga.
+El decodificador, en cambio, decide con un coste por cambio. K8 entrena z con la energía de ese decodificador.
+
+**Qué es K8** (`validation/conjunto/crf.py` y `entrenar_k8.py`). Es la pérdida de K2 entera (z, cambios y flag) más un
+término por secuencia: un CRF lineal de dos estados (`H` y `A`) sobre los grupos vivos del centro del trozo (5 Hz).
+- **Emisión:** la diferencia entre `H` y `A` por grupo es 5·α·z, con α = 4. Es la del decodificador: −α|z| al equipo que
+  pierde, por frame, y 5 frames por grupo.
+- **Coste:** cada cambio entre dos grupos vivos seguidos cuesta 25, el de `main`.
+- **Grupos que no están vivos** (`D`, `X` o fuera del centro): la cadena se corta sin coste, como un `H → D → A` del
+  decodificador.
+- **El término** es −log p(camino de la etiqueta) por grupo vivo, con peso λ = 1.
+- λ, α y el coste quedan fijados desde ahora y no se retocan.
+
+Por qué esta escala y no la natural: en unidades naturales (emisión z por grupo, coste 1,25) ese CRF sería casi la
+entropía cruzada. Lo que lo hace distinto es justo la escala del decodificador, que deja la pérdida a cero donde el
+decodificador ya acertaría y la concentra en lo que decodificaría mal, dure lo que dure la posesión. Castiga a la vez el
+cambio que no se ve y el que sobra.
+- K8p (la entropía cruzada pesada por 1/√duración de la posesión) queda como variante, sin entrenar.
+- Más peso cerca de los cambios ya lo probó B7 con B5.
+
+**Lo que el CRF deja fuera del decodificador de verdad:** el +1 de N1 donde se ve el balón, los costes de entrar y salir
+de `D` y «cortas a `D`». Es una aproximación, la misma para todos los trozos.
+
+**El riesgo, escrito antes:** donde el camino va mal, el gradiente sobre z es hasta 20 veces el de la entropía cruzada.
+Con etiquetas cuyo borde baila un grupo, el modelo puede aprender a aplanar z cerca de los cambios en vez de afinar.
+- Para verlo, sin voto, en los 3 partidos y frente a la K2 de la CPU: la pérdida y el acierto de z por frame, y la media
+  de |z| a ±5 grupos de un cambio real y lejos de ellos.
+- Si el entrenamiento diverge (NaN o una pérdida que no baja), se para y se dice. No se retoca λ ni la escala sobre la
+  marcha.
+
+**El piloto** (en la CPU, pliegue de `J03WMX`):
+- **K2, CPU:** `entrenar.py J03WMX --semilla 20261126`.
+- **K8:** `entrenar_k8.py J03WMX --semilla 20261126`. Con la misma semilla, los pesos iniciales, los trozos y los aumentos
+  son idénticos, y solo cambia la pérdida. K8 frente a la K2 de la CPU es una comparación pareada.
+- **La K2 de la GPU,** el pliegue de `possession/conjunto_pesos.npz`, es la otra referencia. **El ruido** de cada medida es
+  N_x = |x(K2, CPU) − x(K2, GPU)|: lo que baila un pliegue de un entrenamiento a otro, que dentro del proveedor no estaba
+  medido.
+- La K2 de la CPU sirve además de primera semilla nueva para el piloto de K6.
+
+**Comprobaciones del instrumento, antes del piloto:**
+- **La función de partición del CRF** es igual a la enumeración de todos los caminos, en 200 secuencias al azar con
+  grupos que no están vivos. Además, `gradcheck` (`comprobar_k8.py crf`). [medido: diferencia máxima 5,7e-14 y gradcheck
+  pasa]
+- **Con `--lambda-crf 0`,** `entrenar_k8.py` da los pesos de `entrenar.py` bit a bit, en 20 pasos
+  (`comprobar_k8.py pasos`).
+- **Paridad de numpy con torch** de los pesos de K8 y de la K2 de la CPU (`paridad.py`), por debajo de 0,01.
+
+**Cómo se mide** (`validation/conjunto/piloto_k8.py`):
+- **Los partidos:** los que el pliegue no vio, `J03WMX` en la DFL (con control) y `1874553` y `2010085` en SkillCorner.
+- El balón es el de la primera condición que vota, y vota el `D` de las etiquetas.
+- **Cada versión** es el logit del pliegue con α = 4, puntuado como K2.
+- **Las cuentas son las de `detalle_abiertos.py`:**
+  - V, los cambios directos entre equipos vistos (a ±1 s) entre los reales;
+  - S, los cambios entre equipos nuestros que sobran;
+  - P, las posesiones reales de 2 a 5 s encontradas.
+
+**Regla.** K8 merece la ronda de 8 pliegues si, frente a la K2 de la CPU, cumple las cuatro a la vez:
+1. V sube al menos max(3 puntos, 2·N_V);
+2. S no sube más que max(5 %, N_S);
+3. P no baja más que max(2 puntos, N_P);
+4. el spellF1 medio de las 4 celdas del piloto (DFL con control y SkillCorner, con los dos `D`) no baja más que
+   max(0,005, N_spell).
+
+«Ve más cambios» solo cuenta si no sobran más: las redes que predicen más posesiones (B11 y B13) ganan con el flag y
+pierden o empatan con control y en SkillCorner.
+
+Sin voto:
+- V, S y P por proveedor: el partido de la DFL por un lado y los dos de SkillCorner por otro. Juntos, SkillCorner pone
+  unos tres cuartos de los cambios y su convención no es la de control. Si K8 pasa solo por SkillCorner y en la DFL
+  empeora, se dice antes de gastar la ronda;
+- el flag, el `D` propio, Metrica (que el pliegue no vio) y las posesiones de menos de 2 s;
+- la z por frame (arriba).
+
+Qué significa cada resultado:
+- **Pasa:** la ronda de 8 pliegues, en la GPU (21 minutos) o aquí (unas 7 horas), con su regla. Será la de K2 frente a K2
+  dentro del proveedor, más `detalle_abiertos.py` en los 17 partidos. El comando queda listo para la GPU.
+- **No pasa:** K8 se para con lo medido, y la lectura dice por qué. Puede ser porque ve lo mismo, porque hace que sobren
+  más, o porque es inestable o aplana z. En ese último caso no se cierra «entrenar por secuencia»: se cierra esta escala,
+  y lo siguiente sería otro candidato con su regla.
+
+Avisado antes de medir:
+- Son 3 partidos, aunque con unos 590 cambios directos entre equipos. Por eso los umbrales llevan el ruido medido, con
+  suelo.
+- El ruido sale de una sola pareja (GPU frente a CPU, que además cambia de 48 a 33 columnas y de versión de torch).
+- **Coste:** dos entrenamientos de un pliegue en la CPU, unas 1,5 horas, después de K7c y K7s.
+
+Lo que no cambia: `entrenar.py`, `red.py`, `possession/conjunto.py`, los pesos de K2, `pipeline.PIECES`,
+`DELIVERY_LAYERS` y la entrega. Lo nuevo es `crf.py`, `entrenar_k8.py`, `comprobar_k8.py` y `piloto_k8.py`.
+
+Estado: escrita antes de entrenar.
