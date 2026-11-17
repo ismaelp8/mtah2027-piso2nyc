@@ -1,0 +1,13 @@
+{
+  "main": {
+    "nota": "la entrega: B5 (aprendida.evidence_b5), dead_state y decode_cortas_a_d; el harness deja fuera el partido que puntúa"
+  },
+  "B12: GRU bidireccional": {
+    "nota": "ronda 1 (docs/decisiones.md, 17/11): referencia para B13",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b12", "dejar_fuera": true}}
+  },
+  "B13: trayectorias": {
+    "nota": "docs/decisiones.md, 17/11, «B13»: codificador de conjuntos de jugadores y balón por equipo desde su dirección de ataque, GRU bidireccional a 5 Hz, entrenada también sin balón a trozos; puntuada como B5",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b13", "dejar_fuera": true}}
+  }
+}

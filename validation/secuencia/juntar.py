@@ -4,6 +4,8 @@
     python validation/secuencia/juntar.py b12
     python validation/secuencia/juntar.py escribir     # junta pesos y α en possession/secuencia_pesos.npz
     python validation/secuencia/juntar.py escribir --modelos b11   # solo B11 (para medirlo antes)
+    python validation/secuencia/juntar.py b13          # B13 (possession/trayectorias.py), rejilla hasta 32
+    python validation/secuencia/juntar.py escribir --modelos b13   # en possession/trayectorias_pesos.npz
 
 Datos abiertos de otros partidos (DFL, CC BY 4.0), con la caché del harness y los pesos de `entrenar_red.py`. Lo
 puede ejecutar cualquiera, Claude incluido. Solo imprime agregados.
@@ -26,7 +28,19 @@ import numpy as np
 import comun
 import dfl
 import puntuar
-from possession import aprendida, ball, pipeline, secuencia
+from possession import aprendida, ball, pipeline, secuencia, trayectorias
+
+# B13 (17/11, possession/trayectorias.py): la misma elección, con la rejilla ampliada a 16 y 32 (B12 cayó en el borde, 8).
+ALFAS_B13 = comun.ALFAS + (16.0, 32.0)
+MODELOS = secuencia.MODELOS + ("b13",)
+
+
+def alfas_de(modelo):
+    return ALFAS_B13 if modelo == "b13" else comun.ALFAS
+
+
+def logit_de(modelo, trk, pesos):
+    return trayectorias.logit(trk, pesos) if modelo == "b13" else secuencia.logit(trk, modelo, pesos)
 
 
 def fichero_alfa(modelo, pliegue):
@@ -56,8 +70,8 @@ def recuentos_de_un_partido(args):
         for a, b in trk.blocks:
             cercano[a:b] = todos[a:b]
         for pliegue in pliegues:
-            z = secuencia.logit(trk, modelo, pesos_entrenados(modelo, pliegue))
-            for alfa in comun.ALFAS:
+            z = logit_de(modelo, trk, pesos_entrenados(modelo, pliegue))
+            for alfa in alfas_de(modelo):
                 de_equipo = aprendida.puntuacion_de("b5", z, visible, alfa, cercano)
                 score, allowed, _ = pipeline.combine([de_equipo, de_estado], len(trk.bx))
                 pred = decodificar(score, allowed, trk.blocks)
@@ -72,19 +86,20 @@ def elegir(modelo, procesos, seleccion=comun.PLIEGUES):
         por_partido = dict(pool.map(recuentos_de_un_partido, [(modelo, p, tuple(seleccion)) for p in comun.PARTIDOS]))
     print("### α de {} (spellF1 medio dentro de muestra: dos convenciones × dos condiciones que votan, `D` propio, "
           "decodificador de main)\n".format(modelo.upper()))
-    print("| pliegue | α | spellF1 medio por α ({}) |".format(", ".join("{:g}".format(a) for a in comun.ALFAS)))
+    alfas = alfas_de(modelo)
+    print("| pliegue | α | spellF1 medio por α ({}) |".format(", ".join("{:g}".format(a) for a in alfas)))
     print("|---|---|---|")
     for pliegue in seleccion:
         entrena = [p for p in comun.PARTIDOS if p != pliegue]
         medias = []
-        for alfa in comun.ALFAS:
+        for alfa in alfas:
             celdas = []
             for condicion in comun.CONDICIONES:
                 for convencion in dfl.CONVENCIONES:
                     r = [por_partido[p][(pliegue, alfa, condicion, convencion)] for p in entrena]
                     celdas.append(puntuar.spell_f1(*puntuar.juntar(r)))
             medias.append(float(np.mean(celdas)))
-        alfa = comun.ALFAS[int(np.argmax(medias))]  # el primero de los empatados: la más pequeña
+        alfa = alfas[int(np.argmax(medias))]  # el primero de los empatados: la más pequeña
         with open(fichero_alfa(modelo, pliegue), "w", encoding="utf-8") as f:
             json.dump({"alfa": alfa, "medias": medias}, f)
         print("| {} | {:g} | {} |".format("los 7" if pliegue == "todos" else "sin " + pliegue, alfa,
@@ -101,16 +116,19 @@ def escribir(modelos=secuencia.MODELOS):
                     datos["{}/{}/{}".format(modelo, pliegue, k)] = np.asarray(d[k])
             with open(fichero_alfa(modelo, pliegue), encoding="utf-8") as f:
                 datos["{}/{}/alfa".format(modelo, pliegue)] = np.array(float(json.load(f)["alfa"]))
-    np.savez_compressed(secuencia.PESOS, **datos)
-    print("escritos {} arrays en {}".format(len(datos), secuencia.PESOS))
+    destino = trayectorias.PESOS if modelos == ("b13",) else secuencia.PESOS
+    if "b13" in modelos and modelos != ("b13",):
+        raise ValueError("B13 va en su propio fichero: --modelos b13 solo")
+    np.savez_compressed(destino, **datos)
+    print("escritos {} arrays en {}".format(len(datos), destino))
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("que", choices=secuencia.MODELOS + ("escribir",))
+    parser.add_argument("que", choices=MODELOS + ("escribir",))
     parser.add_argument("--procesos", type=int, default=7)
-    parser.add_argument("--modelos", nargs="+", choices=secuencia.MODELOS, default=list(secuencia.MODELOS),
-                        help="con «escribir»: los modelos que se juntan (por defecto, los dos)")
+    parser.add_argument("--modelos", nargs="+", choices=MODELOS, default=list(secuencia.MODELOS),
+                        help="con «escribir»: los modelos que se juntan (por defecto, B11 y B12; B13 va solo)")
     parser.add_argument("--pliegues", nargs="+", choices=comun.PLIEGUES, default=list(comun.PLIEGUES),
                         help="al elegir α: solo estos pliegues (por defecto, los 8); cada uno se elige igual")
     args = parser.parse_args()

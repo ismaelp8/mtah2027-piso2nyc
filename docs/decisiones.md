@@ -5649,3 +5649,14 @@ lo que diga el examen:
 No se ha regenerado.
 
 Estado: B11 y B12 cerrados por la regla y apagados. La excepción de B12 queda pendiente de Ismael.
+
+### 2026-11-17 · candidatos · segunda ronda: B13, una red sobre las trayectorias (se prueba)
+
+Ismael, a través de la planificadora: sin plazos, y si una ronda no pasa, se prueba otra. Regla: la del límite de daño
+del 16/11, frente a `main`. B13 (`possession/trayectorias.py`, apagada):
+- cada equipo se codifica desde su dirección de ataque, con un codificador de conjuntos de todos sus jugadores y los
+  rivales, y el balón;
+- encima, una GRU bidireccional a 5 Hz, antisimétrica;
+- se entrena en la DFL con el balón de las dos condiciones que votan y también sin balón a trozos.
+
+Se mide en el harness con `validation/harness/versiones/b13_trayectorias_2026-11-17.json`.

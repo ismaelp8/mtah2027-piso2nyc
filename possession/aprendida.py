@@ -441,6 +441,15 @@ def evidence_b12(trk, fuera=None):
     return secuencia.evidencia(trk, "b12", fuera)
 
 
+def evidence_b13(trk, fuera=None):
+    """B13: red sobre las trayectorias de jugadores y balón, puntuada como B5 (17/11; possession/trayectorias.py).
+
+    Apagada, como B11 y B12.
+    """
+    from possession import trayectorias
+    return trayectorias.evidencia(trk, "b13", fuera)
+
+
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------
 # >>> COEFICIENTES
 # Los escribe validation/apuesta_b/entrenar.py. «todos»: los 7 partidos de la DFL (la entrega); cada
