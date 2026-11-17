@@ -6311,3 +6311,35 @@ la entrega de hoy (pide entrenar en la GPU, pesos nuevos, su punto 4 y su reprod
 
 Estado: descriptivo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian. La réplica de solo SkillCorner (el
 sentido sin voto) se ha reanudado; su medida se apunta cuando acabe.
+
+### 2026-11-17 · candidatos · modelo conjunto: la réplica de solo SkillCorner (el sentido sin voto): donde K2 falla de verdad, la mezcla vuelve al nivel de `main`
+
+Quién: Claude, en la sesión de Ismael (17/11). Es la segunda réplica de la entrada «dos refinamientos de K2 sin
+reentrenar»: el modelo de solo SkillCorner (misma configuración, en la CPU), puntuado con α = 4 en los 7 partidos de la
+DFL y en los 3 de Metrica. Salidas en `validation/conjunto/salidas/2026-11-17_refinar_replica_solo_skillcorner_*` y
+`…_entrenamiento_replica_solo_skillcorner.md`. La regla decía que este sentido se enseña sin voto en la DFL, porque
+allí B5 sí ha visto el proveedor.
+
+Resultado [medido], frente a `main`:
+
+| dónde | K2 con la réplica | K3 con la réplica |
+|---|---|---|
+| DFL, control (4 celdas) | −0,083, −0,070, −0,057 y −0,048 (0 de 7) | −0,000, +0,008, −0,000 y +0,005 |
+| DFL, flag (4 celdas) | −0,056, −0,038, −0,040 y −0,025 | −0,020, −0,007, −0,017 y −0,009 |
+| Metrica (4 celdas) | −0,024, −0,019, −0,025 y −0,026 | +0,014, +0,007, +0,001 y −0,006 |
+
+- **La réplica vale:** repite la pérdida publicada (con control, de −0,045 a −0,096; aquí, de −0,048 a −0,083) y pierde
+  más de 0,03 en las cuatro celdas, que es lo que se pedía.
+- **En la DFL la mezcla quita la pérdida con control** (vuelve al nivel de `main`) **y no con el flag** (se queda de
+  0,007 a 0,020 por debajo). Sin voto: aquí la mitad de B5 juega en casa.
+- **En Metrica ninguna de las dos mitades ha visto el proveedor,** y K2 pierde de verdad (de −0,019 a −0,026). La
+  mezcla lo deja entre −0,006 y +0,014: quita la pérdida en tres de las cuatro celdas y roza el límite en la cuarta
+  (−0,006 [−0,016 a +0,004]). Son 3 partidos.
+
+Lectura [inferencia]: es el caso que la regla de K3 quería ver y que la réplica de solo la DFL no dio, pero en otro
+sentido y en otros datos de los que la regla nombraba. No cambia el veredicto de K3, que sigue con su punto 2 sin
+leer. Dice de qué tamaño es el seguro: cuando K2 se equivoca mucho, la mezcla cae más o menos donde estaba B5, no
+por encima.
+
+Estado: descriptivo. Con esto están medidos los dos sentidos del otro proveedor. `pipeline.PIECES`, `DELIVERY_LAYERS`
+y la entrega no cambian.

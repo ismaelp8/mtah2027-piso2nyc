@@ -130,9 +130,14 @@ la GPU, así que aquí se entrenó una réplica en la CPU (3.000 pasos, 55 minut
   +0,002, por encima de cada semilla en siete de las ocho comparaciones, con el intervalo por encima de cero en
   cuatro. Es poca evidencia: dos semillas de un modelo de un solo proveedor. Mezclada con B5: +0,013, +0,017, +0,007
   y +0,011.
-- **La réplica en Metrica:** K2, +0,030 en las cuatro celdas; K3, de +0,025 a +0,036. Allí el modelo de solo la DFL
+- **La réplica de solo la DFL en Metrica:** K2, +0,030 en las cuatro celdas; K3, de +0,025 a +0,036. Allí el modelo de solo la DFL
   funciona casi como el de los dos proveedores.
-- **Partido a partido, con la réplica:** K2 queda por debajo de `main` en 20 de 40 casos (el peor, −0,054); K3, en 14
+- **El otro sentido, sin voto: K2 entrenado solo con SkillCorner.** Esta réplica sí repite la pérdida publicada. En la
+  DFL, K2 queda de −0,048 a −0,083 con control y de −0,025 a −0,056 con el flag; la mezcla vuelve al nivel de `main`
+  con control (de −0,000 a +0,008) y se queda de 0,007 a 0,020 por debajo con el flag. Allí la mitad de B5 juega en
+  casa. En Metrica, que ninguna de las dos mitades vio, K2 pierde de −0,019 a −0,026 y la mezcla queda entre −0,006 y
+  +0,014. **Cuando K2 se equivoca mucho, la mezcla cae más o menos donde estaba B5, no por encima.**
+- **Partido a partido, con la réplica de solo la DFL:** K2 queda por debajo de `main` en 20 de 40 casos (el peor, −0,054); K3, en 14
   (el peor, −0,025).
 
 ## Los cambios de posesión [medido]
@@ -244,8 +249,6 @@ Estas tablas se añadieron después de ver el bloque de dentro del proveedor: no
 
 - **Que K3 quite la pérdida de K2 en otro proveedor.** Hace falta un modelo de K2 que pierda. Los del 17/11 están en la
   máquina de la GPU (`conjunto_cache/pesos/solo_dfl_todos.pt` y `solo_sc_todos.pt`); con ellos es un comando.
-- **El sentido de SkillCorner a la DFL.** Su réplica se paró para dejarle la CPU a la segunda semilla y está
-  reanudada; su medida se apunta cuando acabe. Era el sentido sin voto.
 - **Cuánto baila K2 de un entrenamiento a otro, con precisión.** Hay tres entrenamientos del modelo de solo la DFL; del
   modelo de los dos proveedores, el de la entrega, solo hay uno. Promediar varias semillas de ese pide la GPU.
 - **La reproducción en otra máquina.** K3 solo suma dos logits que ya existen, pero no se ha ejecutado fuera de esta.
