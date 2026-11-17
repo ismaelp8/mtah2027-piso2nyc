@@ -7147,3 +7147,223 @@ Lo que falta antes de entregar:
 - Copiar ese mismo fichero como `<NOMBRE_EQUIPO>.csv` y pasar `validate_submission.py` sobre la copia.
 
 Estado: `equipo_v11` generada y validada. `main` no cambia de código: después de `23dcbc1` solo entra documentación.
+
+### 2026-11-17 · candidatos · registro de B14 a B17, traído de la rama `claude/serene-lumiere-16245d`
+
+Quién: la sesión planificadora (Claude). Las cinco entradas que siguen están copiadas tal cual del `docs/decisiones.md`
+de esa rama (commit `ddba852`), donde se escribieron en su momento. El código, los pesos y las salidas se quedan allí.
+
+- En ellas, `main` es la entrega de cuando se midió, con B5 de evidencia de equipo (`equipo_v9`), no K3.
+- Ninguna de estas redes entra. La entrega sigue siendo `equipo_v11`, con K3.
+- El resumen está en `validation/resultados/2026-11-17_modelos_de_secuencia.md`, y el uso del examen de SkillCorner para
+  B17, en `validation/skillcorner/BITACORA.md`.
+
+### 2026-11-17 · candidatos · B14: pasa en la DFL con margen y no pasa en SkillCorner
+
+B14, medido (`ae25415`; salidas en `validation/secuencia/salidas/2026-11-17_*b14*`), frente a `main`:
+
+| convención | `D` | «como el ATD» | «sin bloques» |
+|---|---|---|---|
+| control | de las etiquetas | +0,048 [+0,034 a +0,061], 7 de 7 | +0,027 [+0,014 a +0,040], 7 de 7 |
+| control | propio | +0,053 [+0,040 a +0,066], 7 de 7 | +0,030 [+0,016 a +0,043], 7 de 7 |
+| flag | de las etiquetas | +0,120, 7 de 7 | +0,118, 7 de 7 |
+| flag | propio | +0,111, 7 de 7 | +0,106, 7 de 7 |
+
+- **En la DFL pasa los puntos 1 y 3 de la regla, con margen.** Es el primero que lo consigue.
+- **SkillCorner `ENTRENAMIENTO`: no pasa.** Con el `D` de las etiquetas pierde (−0,017 y −0,013; 2 y 4 de 10); con el
+  propio empata (−0,002 y +0,002; 5 de 10).
+- **Posesiones:** 1.904 en la DFL (`main` 1.661; reales 1.736 con control) y 2.730 en SkillCorner (`main` 2.270; reales
+  3.228).
+- **Eventos humanos:** frente a `main`, un compromiso (recuperaciones +15,9 puntos, duelos con cambio +12,7, duelos sin
+  cambio −6,6); frente al control, «mejora».
+
+**B14 no pasa la regla** por SkillCorner, y el examen no se abre. Sigue cambiando de equipo de más; B15 (entrenada con
+control) ataca eso.
+
+B16 (se prueba; `aprendida.evidence_b16`, apagada) es B15 entrenada también con los 10 partidos de SkillCorner
+`ENTRENAMIENTO` (`validation/trayectorias/exportar_sc.py`), con sus etiquetas, que exigen control.
+- Para que la comprobación en SkillCorner siga fuera de muestra, hay dos pliegues más: «scA» (sin los 5 primeros
+  partidos) y «scB» (sin los otros 5). Cada partido de `ENTRENAMIENTO` se puntúa con el que no lo vio
+  (`skillcorner.py`).
+- Los pliegues de la DFL usan los 10 de SkillCorner. `EXAMEN` no se toca.
+
+### 2026-11-17 · candidatos · B15: gana a `main` con §5.8 en la DFL; en SkillCorner, positiva pero sin el «7 de 10»
+
+B15 (`f3f7e9b`, salidas en `validation/secuencia/salidas/2026-11-17_*b15*`) es la red de B14 entrenada con la etiqueta
+de control en todos los frames vivos. Frente a `main` [medido]:
+
+| convención | `D` | «como el ATD» | «sin bloques» |
+|---|---|---|---|
+| control | de las etiquetas | +0,054 [+0,041 a +0,066], 7 de 7 | +0,042 [+0,030 a +0,053], 7 de 7 |
+| control | propio | +0,050 [+0,037 a +0,062], 7 de 7 | +0,035 [+0,022 a +0,046], 7 de 7 |
+| flag | de las etiquetas | +0,048 [+0,038 a +0,058], 6 de 7 | +0,037 [+0,027 a +0,047], 6 de 7 |
+| flag | propio | +0,043 [+0,034 a +0,053], 7 de 7 | +0,034 [+0,025 a +0,044], 7 de 7 |
+
+- **Regla de §5.8 frente a `main`** (+0,03 o más con las dos convenciones, 6 de 7 e intervalo por encima de cero, en las
+  dos condiciones que votan): **gana, con el `D` de las etiquetas y con el propio.** Es el primer candidato que lo
+  consigue desde B5.
+  - La entrada del 16/11 («el flag pasa de veto a límite de daño») deja a §5.8 lo que gana con las dos convenciones.
+  - El límite de daño era para los cambios pequeños hacia control.
+- **Posesiones:** 1.655 (`main` 1.661; reales 1.736 con control y 3.061 con el flag). Ya no cambia de equipo de más,
+  como B11, B13 y B14.
+- **Eventos humanos frente a `main`:** «mejora» (recuperaciones +7,2 puntos [+1,5 a +12,8]; duelos con cambio +2,2 y sin
+  cambio −2,4, los dos sin separarse de cero).
+- **SkillCorner `ENTRENAMIENTO`** (modelo de los 7 de la DFL; SkillCorner no se usó para entrenarla): +0,006 en las cuatro
+  celdas.
+  - Gana en 7, 6, 8 y 6 de 10 partidos; los intervalos van de −0,002 a +0,013.
+  - Con el umbral del límite de daño (+0,005 y 7 de 10 en las cuatro celdas) falla dos celdas por el «7 de 10».
+  - Predice 2.322 posesiones (`main` 2.270; reales 3.228).
+- **Cuidado:** se entrenó con la etiqueta de control. Su número con control sale favorecido, porque esas etiquetas salen
+  de una regla de proximidad. Por eso pesa que gane también con el flag y que no pierda en SkillCorner.
+
+Estado: B15 apagada. Abrir su examen de SkillCorner y, si pasa, generar la entrega de prueba lo deciden Ismael y la
+planificadora.
+
+**B15, dos comprobaciones más** (descriptivas):
+- **Con los jugadores degradados como los del ATD** (`validation/apuesta_b/jugadores.py`, las tres variantes,
+  `..._jugadores_como_el_atd_b15.md`): frente a `main`, con control de +0,050 a +0,087 (7 de 7) y con el flag de +0,041 a
+  +0,054 (6 y 7 de 7). Aguanta, y gana más que con los jugadores limpios: se entrenó con copias degradadas.
+- **Escala** (`cambios_frente_a_main.py b15 --escala`): la media de |H − A| es 82, frente a 13 de B5, un cociente de 6,1 a
+  6,25.
+  - Si B15 entra, la capa de los contraataques (suma 8, pesada con la escala de B5) pesaría unas seis veces menos.
+  - Frente a `D`, B15 empuja como B5, así que el `D` no cambia por la escala.
+  - Una entrega de prueba lo vería en los 817 frames de esa capa.
+
+**B16 en SkillCorner `ENTRENAMIENTO`**, fuera de muestra (cada partido con el pliegue scA o scB que no lo vio;
+`..._skillcorner_entrenamiento_b15_b16.md`): frente a `main`, +0,007, +0,010, +0,002 y +0,007, ganando en 6, 6, 6 y 7 de 10.
+Cumple 1 de las 4 celdas. Entrenar también con SkillCorner no mejora lo que ya daba B15 (+0,006 en las cuatro). En la
+misma ejecución, B15 repite exactamente sus números. Falta el harness de la DFL de B16, cuando acaben sus últimos
+pliegues.
+
+B17 (se prueba; `aprendida.evidence_b17`, apagada) es la media de los logits de B15 y B16, sin reentrenar.
+- α: la media geométrica de las α de los dos pliegues.
+- En SkillCorner `ENTRENAMIENTO`, B16 entra con el pliegue que no vio el partido.
+- Por qué: promediar dos redes suele dar resultados más estables partido a partido, que es lo que les falta en
+  SkillCorner para el «7 de 10».
+
+### 2026-11-17 · candidatos · B16 y B17: también ganan a `main` con §5.8; B17, la media, es la mejor
+
+Medidos con `validation/harness/versiones/b17_media_2026-11-17.json` (`a88d550`; salidas en
+`validation/secuencia/salidas/2026-11-17_*b15_b16_b17*` y `..._skillcorner_entrenamiento_b17.md`). Frente a `main`
+[medido], «como el ATD» / «sin bloques»:
+
+| | control, `D` de las etiquetas | control, `D` propio | flag, `D` de las etiquetas | flag, `D` propio | SkillCorner `ENTRENAMIENTO` |
+|---|---|---|---|---|---|
+| B15 | +0,054 / +0,042 (7, 7) | +0,050 / +0,035 (7, 7) | +0,048 / +0,037 (6, 6) | +0,043 / +0,034 (7, 7) | +0,006 en las 4 (7, 6, 8 y 6 de 10): 2 de 4 celdas |
+| B16 | +0,052 / +0,043 (7, 7) | +0,044 / +0,034 (7, 7) | +0,046 / +0,041 (6, 7) | +0,042 / +0,037 (7, 7) | +0,002 a +0,010 (6–7 de 10): 1 de 4 celdas |
+| B17 | **+0,061 / +0,048 (7, 7)** | **+0,055 / +0,039 (7, 6)** | +0,049 / +0,039 (7, 7) | +0,047 / +0,038 (7, 7) | **+0,009 / +0,016 / +0,002 / +0,008 (7, 8, 6 y 8 de 10): 3 de 4 celdas** |
+
+- **Regla de §5.8 frente a `main`:** los tres **ganan**, con el `D` de las etiquetas y con el propio.
+- **Posesiones** («como el ATD»): 1.655, 1.686 y 1.654 (`main` 1.661; reales 1.736 con control). Ninguno cambia de
+  equipo de más.
+- **SkillCorner** se mide fuera de muestra:
+  - B15, con el modelo de los 7 de la DFL;
+  - B16, con scA y scB;
+  - B17, con B15 de los 7 y B16 con el pliegue que no vio el partido.
+  - Con el umbral del límite de daño (+0,005 y 7 de 10), B17 cumple 3 celdas. Falla «detectado» con el `D` propio
+    (+0,002, 6 de 10).
+
+Estado: los tres apagados. **B17 es el candidato más fuerte.** Abrir el examen de SkillCorner (una vez, un candidato) y
+generar la entrega de prueba lo deciden Ismael y la planificadora.
+
+**Cómo leer B15, B16 y B17 (para quien decida):**
+- **Con el límite de daño, la regla que fijó la planificadora para esta ronda, ninguno pasa SkillCorner `ENTRENAMIENTO`:**
+  cumplen 2, 1 y 3 de las 4 celdas. Con esa regla, el examen no se abre.
+- **Con §5.8, la regla de lo que gana con las dos convenciones, los tres ganan a `main` en la DFL.** Cuál manda, y si
+  se abre el examen (una vez, para un solo candidato), lo deciden Ismael y la planificadora.
+- **B17 se construyó después de ver a B15 y B16 en `ENTRENAMIENTO`,** y esa mitad la han leído ya siete candidatos en
+  esta ronda (B11 a B17). Su 3 de 4 es una lectura optimista.
+- **Referencia:** B12 perdió cerca de la mitad al pasar de `ENTRENAMIENTO` (+0,011 a +0,014) al examen (+0,004 a
+  +0,009).
+
+**Comprobado:**
+- numpy frente a torch, en los 26 pliegues de B14, B15 y B16: 10⁻⁵ como mucho y ningún signo distinto.
+- `validation/scripts/prueba_trayectorias.py`: todo bien en B13 a B17.
+- B17 corre en el entorno limpio de la entrega (Python 3.13.9, numpy 2.5.4), con 23 slots por equipo y hasta 21
+  presentes, y da lo mismo dos veces.
+- Las cabeceras del harness citan `a88d550` y `f3f7e9b`, sin cambios sin commitear.
+
+### 2026-11-17 · candidatos · B15–B17 junto a K2, y regla del examen de SkillCorner para B17 (escrita antes de abrirlo)
+
+**Metrica** (`validation/secuencia/metrica.py`, gemelo de `validation/conjunto/metrica.py` de K2; `main` sale igual que
+en la medida de K2: 0,668 / 0,652 / 0,542 / 0,527; salida en `..._metrica_b15_b16_b17.md`). Ninguno ha visto Metrica:
+B15 con los 7 de la DFL, B16 con los 7 de la DFL y los 10 de SkillCorner `ENTRENAMIENTO`, B17 con la media de los dos.
+
+**La tabla, frente a `main`** [medido; las cifras de K2 se copian de `validation/resultados/2026-11-17_modelo_conjunto.md`,
+rama `exp/modelo-conjunto`, con el mismo `main`]. DFL: «como el ATD» / «sin bloques». SkillCorner `ENTRENAMIENTO`, fuera de
+muestra: `D` de las etiquetas «detectado» / «detectado, suavizado» · `D` propio igual. Metrica: «tal cual» / «suavizado 25».
+
+| | DFL control, `D` etiquetas | DFL control, `D` propio | DFL flag, `D` etiquetas | DFL flag, `D` propio | SkillCorner `ENTRENAMIENTO` | Metrica, `D` etiquetas | Metrica, `D` propio |
+|---|---|---|---|---|---|---|---|
+| K2 (DFL + SkillCorner) | +0,051 / +0,046 | +0,045 / +0,036 | +0,044 / +0,037 | +0,043 / +0,033 | +0,023 (8) / +0,024 (7) · +0,021 (10) / +0,024 (10) | +0,035 / +0,036 | +0,021 / +0,024 |
+| K2, solo la DFL | – | – | – | – | −0,015 / −0,010 (`D` de las etiquetas) | +0,023 / +0,026 | – |
+| B15 (solo la DFL) | +0,054 / +0,042 | +0,050 / +0,035 | +0,048 / +0,037 | +0,043 / +0,034 | +0,006 (7) / +0,006 (6) · +0,006 (8) / +0,006 (6) | +0,024 / +0,030 | +0,021 / +0,029 |
+| B16 (DFL + SkillCorner) | +0,052 / +0,043 | +0,044 / +0,034 | +0,046 / +0,041 | +0,042 / +0,037 | +0,007 (6) / +0,010 (6) · +0,002 (6) / +0,007 (7) | +0,021 / +0,027 | +0,022 / +0,023 |
+| B17 (media de B15 y B16) | +0,061 / +0,048 | +0,055 / +0,039 | +0,049 / +0,039 | +0,047 / +0,038 | +0,009 (7) / +0,016 (8) · +0,002 (6) / +0,008 (8) | +0,026 / +0,029 | +0,023 / +0,022 |
+
+Lectura [inferencia, sobre lo medido]:
+- **En la DFL, B17 y K2 empatan:** se llevan 0,010 o menos en cada celda.
+- **En SkillCorner, fuera de muestra, K2 va por delante:** +0,021 a +0,024 frente a +0,002 a +0,016.
+- **En el proveedor no visto, nuestra familia se traslada mejor que K2 de un solo proveedor:**
+  - B15, solo con la DFL, saca +0,006 en SkillCorner; K2, solo con la DFL, pierde de −0,010 a −0,015;
+  - en Metrica, B15 a B17 sacan lo mismo que K2 de solo la DFL (+0,021 a +0,030) y menos que K2 de dos proveedores
+    (+0,035);
+  - entrenar B16 también con SkillCorner no mejoró ni SkillCorner ni Metrica, cosa que a K2 sí le sirvió.
+- **«B17 es la mejor» vale dentro de B15–B17, no frente a K2.**
+- **Otras diferencias:**
+  - posesiones en la DFL: 1.654 (B17), 1.651 (K2) y 1.661 (`main`);
+  - escala, media de |H − A| frente a B5: 6,1–6,25 veces B15 y 4,1 veces B17 (`..._escala_b17_frente_a_b5.md`); K2
+    puntúa en la escala de B5;
+  - B15 a B17 usan `np.exp` y `np.tanh` (atención y GRU), como los rasgos de B5; K2 no usa exponenciales.
+
+**La media de B17 y K2 no se prueba.** Los pesos de K2 que están en el repo (`possession/conjunto_pesos.npz`) solo traen
+los pliegues de la DFL y el de todos, y el de todos vio SkillCorner `ENTRENAMIENTO`. No se puede medir la media en
+SkillCorner con pliegues que no vieran cada partido sin reentrenar K2. **El examen va a B17.**
+
+**Regla del examen de SkillCorner para B17** (escrita antes de abrirlo):
+- **Quién:** la sesión planificadora, con la instrucción general de Ismael («haz todo lo que necesites no dependas de
+  que yo te diga que si a las cosas»; «Yo quiero probar cosas y luego ya vemos si da mejores resultados»). No es una
+  decisión de Ismael sobre B17. Lo ejecuta Claude (son datos abiertos).
+- **Qué:** `python validation/secuencia/skillcorner.py --examen b17 --confirmo-el-unico-uso`, sobre `lector.EXAMEN` (10
+  partidos), con B15 y B16 de los modelos de todos. Ninguno ha visto `EXAMEN`.
+- **Umbral:** frente a `main`, +0,005 o más y ganar en 7 de 10, en las cuatro celdas (`D` de las etiquetas y propio;
+  «detectado» y «detectado, suavizado»).
+- **B17 ya falló una celda de `ENTRENAMIENTO`** (`D` propio, «detectado»: +0,002 y 6 de 10). Si el examen sale bien, se
+  escribe «pasa el examen habiendo fallado una celda del entrenamiento», no «pasa la regla».
+- **Es el único uso para la familia B15–B17:** no hay segunda apertura. Se apunta en
+  `validation/skillcorner/BITACORA.md` («Usos del examen»).
+- **Si pasa:** B17 sigue apagado. La entrega de prueba la pide la planificadora a Ismael, con sus criterios de daño
+  escritos antes (los siete de K2, C0 a C6, para que se comparen igual) y diciendo antes cómo se lee si la capa de los
+  contraataques se queda casi sin efecto por la escala.
+- **Si no pasa:** B15–B17 se quedan cerrados y apagados.
+
+### 2026-11-17 · candidatos · B17, examen de SkillCorner: no pasa; la familia B15–B17 se queda cerrada y apagada
+
+Quién: Claude, con la regla de la entrada anterior commiteada antes (`70dd883`) y la autorización de la sesión
+planificadora. Comando: `python validation/secuencia/skillcorner.py --examen b17 --confirmo-el-unico-uso`, sobre
+`lector.EXAMEN` (10 partidos), con B15 y B16 de los modelos de todos. La cabecera de la salida dice «con el modelo de los 7
+partidos de la DFL»; el de B16 lleva además los 10 de `ENTRENAMIENTO`. Salida en
+`validation/secuencia/salidas/2026-11-17_skillcorner_examen_b17.md`.
+
+**Resultado [medido], frente a `main`:**
+
+| `D` | condición | `main` | B17 | diferencia [5–95 %] | gana en |
+|---|---|---|---|---|---|
+| de las etiquetas | «detectado» | 0,509 | 0,528 | +0,020 [+0,012 a +0,027] | 9 de 10 |
+| de las etiquetas | «detectado, suavizado» | 0,504 | 0,523 | +0,019 [+0,012 a +0,027] | 9 de 10 |
+| propio | «detectado» | 0,389 | 0,397 | +0,009 [+0,002 a +0,015] | 7 de 10 |
+| propio | «detectado, suavizado» | 0,384 | 0,392 | +0,008 [+0,001 a +0,015] | **6 de 10** |
+
+Posesiones: 2.289 frente a 2.283 de `main` (reales 3.152) con el `D` de las etiquetas y «detectado».
+
+**Con el umbral escrito antes** (+0,005 o más y 7 de 10, en las cuatro celdas): **no pasa.** Cumple tres celdas; falla
+«detectado, suavizado» con el `D` propio, que tiene el +0,005 (+0,008) pero gana en 6 de 10.
+
+**Decisión** (la escrita antes):
+- B15, B16 y B17 se quedan cerrados y apagados. `pipeline.PIECES` no cambia.
+- El examen queda usado para la familia B15–B17. No hay segunda apertura.
+
+Lectura [inferencia]:
+- En el examen, B17 gana más que en `ENTRENAMIENTO` (+0,008 a +0,020 frente a +0,002 a +0,016), y las cuatro celdas
+  tienen el intervalo por encima de cero. Falla por el número de partidos en una celda.
+- K2, en el mismo examen, sacó +0,021 a +0,028 (8 a 10 de 10).

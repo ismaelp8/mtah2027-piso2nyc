@@ -525,6 +525,9 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
         el documento técnico. No entran en `main`.
       - Los «balones largos», la fase que se quedó sin subir en el ordenador del trabajo de Ismael, no se retoman.
       - Reabrirla sería una decisión nueva, con su propia regla escrita antes de medir.
+      - **La detección del partido entero se lanzó después, el 17/11, y confirma el sondeo** (`docs/decisiones.md`,
+        17/11): el 78,0 % de los frames tiene una detección a 3 m o menos, y el 42,0 % de las detecciones cae a más de
+        5 m. No cambia nada: la línea sigue parada.
   - **En marcha (16/11, noche):**
     - David: el detector de cambios de posesión (rama `feat/detector-cambios`), en la DFL. B10 y su variante «vídeo»
       se quedan sin balón del vídeo; le queda la variante con el balón «como el ATD»;
@@ -613,8 +616,10 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Lo que no se hizo del análisis de fuera:** el `D` dentro del modelo (el harness no puede validarlo con el balón) y
     el balón del vídeo. La pregunta a la organización sobre la regla de posesión está en borrador, sin enviar
     (`validation/conjunto/pregunta_organizacion.md`): su repo tiene los issues cerrados.
-- **17/11 por la mañana: los modelos de secuencia para la evidencia de equipo (B11–B15).** Están en la rama
-  `claude/serene-lumiere-16245d`; el registro, en `docs/decisiones.md` (17/11). Ninguno entra.
+- **17/11: los modelos de secuencia para la evidencia de equipo (B11–B17), cerrados.** Están en la rama
+  `claude/serene-lumiere-16245d`; el registro, en `docs/decisiones.md` (17/11), y el resumen, en
+  `validation/resultados/2026-11-17_modelos_de_secuencia.md`. Ninguno entra. En todo este bloque, `main` es B5
+  (`equipo_v9`), la entrega de cuando se midieron.
   - **B11 (convolución temporal) y B13 (red sobre las trayectorias) se cierran:**
     - ganan mucho con el flag, de +0,09 a +0,10;
     - con control ganan solo en 4–6 de 7 partidos;
@@ -625,10 +630,26 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - La regla lo dejó fuera por un «6 de 7».
     - Ismael decidió una excepción con el examen de SkillCorner, y **el examen no pasa:** cumple 3 de las 4 celdas y en
       la que falla gana +0,004, en 6 de 10. Se queda cerrado y apagado, y el examen queda usado para B12.
-  - **B14 y B15** (redes con rasgos de control y dominio aleatorizado como el ATD) se estaban entrenando en esa rama, sin
-    medir a las 10:45. Si alguno pasa su regla, necesita su examen y su entrega de prueba antes del corte.
-  - **El código y los pesos de B11–B15 se quedan en la rama:** los `.npz` no pueden entrar en git (`CONTRIBUTING.md` §7).
-  - **La entrega no cambia:** sigue siendo `equipo_v9`.
+  - **B14** (red sobre las trayectorias, con rasgos de control y dominio aleatorizado como el ATD) pasa en la DFL con
+    margen y no pasa en SkillCorner: predice posesiones de más.
+  - **B15, B16 y B17 ganan a B5 en la DFL con las dos convenciones, pero no pasan SkillCorner.** B15 es B14 entrenada
+    con la etiqueta de control; B16, B15 entrenada también con SkillCorner; B17, la media de las dos.
+    - En la DFL, B17 gana de +0,039 a +0,061 con control y de +0,038 a +0,049 con el flag, con los dos modos del `D`.
+      Ahí empata con K2: se llevan 0,010 o menos en cada celda.
+    - En la mitad de entrenamiento de SkillCorner, fuera de muestra, B17 saca de +0,002 a +0,016 y falla una celda.
+      K2 saca de +0,021 a +0,024.
+    - **El examen de SkillCorner de B17 no pasa:** +0,020 y +0,019 con el `D` de las etiquetas y +0,009 y +0,008 con
+      el propio. Falla una celda por un «6 de 10». K2 sacó de +0,021 a +0,028.
+      - Es el único uso para la familia B15–B17.
+      - Lo abrió la sesión planificadora con la instrucción general de Ismael, no por una excepción suya.
+    - En Metrica sacan de +0,021 a +0,030. K2 saca +0,035.
+    - **Lo que queda para la fase siguiente:** B15, entrenada solo con la DFL, no pierde en un proveedor que no vio:
+      +0,006 en SkillCorner y +0,024 y +0,030 en Metrica. K2 entrenado solo con la DFL queda entre +0,003 y −0,015 en
+      SkillCorner.
+    - La media de B17 y K2 no se probó: no se puede medir en SkillCorner fuera de muestra sin reentrenar K2.
+  - **El código y los pesos de B11–B17 se quedan en la rama:** la entrega no los usa, y un `.npz` solo entra en git si
+    la entrega lo necesita (`CONTRIBUTING.md` §7).
+  - **La entrega no cambia por estos modelos:** es `equipo_v11`, con K3 (arriba).
 - **Aviso sobre la historia de `main`** (16/11, noche):
   - después de que GitHub mergeara las PR 23 y 24, sus commits se rehicieron a mano y se subieron encima. El contenido
     es el mismo (el árbol de ficheros coincide), así que no se perdió nada;
