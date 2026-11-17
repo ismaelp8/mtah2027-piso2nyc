@@ -5684,3 +5684,21 @@ frames vivos, no solo donde el flag y control coinciden.
 
 **B13 en SkillCorner `ENTRENAMIENTO`** (descriptivo, `..._skillcorner_entrenamiento_b13.md`): pierde en las cuatro celdas
 frente a `main`, de −0,010 a −0,024 (de 1 a 4 de 10). **B13 se cierra.**
+
+### 2026-11-17 · candidatos · excepción para B12: se abre el examen de SkillCorner (decisión de Ismael)
+
+Quién: Ismael (17/11, 10:20): «si puedes lánzalo y si ves que está todo ok mergea la branch con B12». Lo ejecuta Claude,
+en la sesión de Ismael del ordenador del trabajo. Escrita antes de abrir el examen.
+
+Qué se decide: la excepción que dejaba abierta la entrada «B11 y B12: resultado de la medida».
+- **El examen:** se abre `lector.EXAMEN` de SkillCorner una sola vez, para B12, con el umbral escrito en esa entrada:
+  +0,005 o más y ganar en 7 de 10, en las cuatro celdas (`D` de las etiquetas y propio, «detectado» y «detectado,
+  suavizado»). Comando: `python validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso`. El uso se
+  apunta en `validation/skillcorner/BITACORA.md` («Usos del examen»).
+- **Si pasa:** B12 entra en `main`, **apagado**. Encenderlo (`pipeline.PIECES["candidates"]`) sigue los pasos de esa
+  entrada: una persona con los datos genera la entrega de prueba frente a `equipo_v9`, se lee con sus siete criterios de
+  daño, y después se regenera, se valida y se reproduce en otra máquina.
+- **Si no pasa:** B12 se queda cerrado y apagado, y a `main` va solo el registro.
+
+Por qué: es la tercera excepción a «lo que no ha ganado en el harness no entra», tras los contraataques y el balón
+fuera. A diferencia de esas dos, B12 sí se mide en datos abiertos y gana en todo salvo en el «6 de 7» de una celda.
