@@ -77,7 +77,7 @@ duraciones mínimas y la poda van aquí, no en las piezas de evidencia.
 **Para comparar variantes de una pieza** (14/11): escríbela como otra función de tu módulo, con la misma
 firma (la apuesta B usa además `possession/aprendida.py`, que el harness admite para `candidates`). El harness la usa en lugar de la de siempre con `pipeline.run(..., pieces=...)`, que se rellena
 desde el fichero de `--versiones` (README del harness). La entrega usa siempre las de siempre:
-`ball.clean`, `aprendida.evidence_b5` (la apuesta B, desde el 14/11; antes `candidates.evidence`),
+`ball.clean`, `aprendida.evidence_k3` (la media de K2 y B5, desde el 17/11; del 14/11 al 17/11, `aprendida.evidence_b5`),
 `dead_state.evidence` y `temporal.decode`, que son las que nombra
 `pipeline.PIECES`. Todas las versiones reciben el mismo tracking, de solo lectura: una pieza devuelve una
 copia (`trk._replace(...)`), nunca lo cambia.
@@ -94,7 +94,9 @@ reciben el tracking con el balón ya limpio.
   `pipeline.build`. Así el mismo código corre en el partido y en la DFL: lo que valida el harness es lo que
   se entrega, salvo esas dos capas del partido, que el harness no puede ver. Desde el 16/11 la entrega suma
   además `dead_ball.ball_out` (`pipeline.DELIVERY_LAYERS`): no abre ficheros, pero tampoco corre en el
-  harness, porque en la DFL el balón está tapado en los `D` (docs/decisiones.md, 16/11).
+  harness, porque en la DFL el balón está tapado en los `D` (docs/decisiones.md, 16/11). Desde el 17/11,
+  `conjunto.py` lee además sus pesos (`possession/conjunto_pesos.npz`): son parte del código y salen de datos
+  abiertos, no del partido, así que corre igual en el harness (docs/decisiones.md, 17/11).
 - **Un slot no es un jugador.** Su índice no identifica a nadie a lo largo del partido. El harness
   baraja los slots para que un código que dependa de eso falle allí y no en el partido.
 - **Determinista:** sin azar o con semilla fija, y con los empates resueltos siempre igual.
@@ -103,7 +105,8 @@ reciben el tracking con el balón ya limpio.
   valor por defecto que aún no se ha ajustado se marca como «sin ajustar» en el código.
 - **Solo numpy y pandas en el pipeline.** Si entrenas un modelo, sus coeficientes van escritos en tu
   módulo y el script que los calcula, en `validation/`, con semilla fija. Una dependencia nueva la decide
-  Ismael.
+  Ismael. La excepción son los pesos de la red de K2 (36.260 por juego), que no caben como texto: van en
+  `possession/conjunto_pesos.npz` (`CONTRIBUTING.md` §7), y la red se entrenó con torch fuera del pipeline.
 
 **Comprobación de que no has roto nada** (sin datos del partido; Claude puede ejecutarla):
 

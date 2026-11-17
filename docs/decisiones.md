@@ -7074,3 +7074,44 @@ directamente mergea con el main»), sin esperar a regenerar. **`equipo_v11` no e
 desde `main` en el entorno limpio, validarla y reproducirla antes de entregar. Lleva dentro la rama de David
 (`feat/encender-k2`, hasta `02313a9`): su notebook queda fuera, y la excepción escrita de los pesos en
 `CONTRIBUTING.md` §7, pendiente.
+
+### 2026-11-17 · infraestructura · los pesos de K2 están en git: excepción escrita a `CONTRIBUTING.md` §7 y al contrato de las piezas
+
+Quién: Ismael (17/11, por la tarde), al leer la revisión de la PR 26: «sí, escríbela la excepción». La escribe Claude.
+
+Qué pasaba: la revisión de la PR 26 marcó dos incumplimientos formales, que entraron en `main` con el merge de
+`feat/encender-k3`:
+- `possession/conjunto_pesos.npz` es un `*.npz`, y `CONTRIBUTING.md` §7 dice que los `*.npz` no entran en git;
+- `possession/conjunto.py` abre ese fichero, y el contrato decía que ninguna pieza abre ficheros salvo `dead_ball.py`
+  y `transiciones.py`.
+
+Decisión: **se aceptan los dos, como una sola excepción escrita, y solo para ese fichero.**
+
+Por qué:
+- **No le aplica el motivo de la norma.** §7 excluye las cachés y los rasgos por frame porque son datos derivados del
+  partido que permiten reconstruir los originales. Esto son los pesos de la red de K2 (8 juegos de 36.260 números),
+  entrenada con datos abiertos de otros partidos: la Bundesliga de Bassek et al., 2025 (CC BY 4.0) y SkillCorner (MIT).
+  No lleva nada del partido [medido: las claves del fichero son solo los pesos, las dilaciones, α y γ de cada juego].
+- **Hace falta dentro del repo.** La entrega lo usa, y el entrenamiento en GPU no se repite bit a bit, así que sin el
+  fichero el repo no regenera el CSV con un comando.
+- **No cabe como texto en el módulo,** que es lo que el plan pedía para los coeficientes de un modelo (así van los de B5).
+- **La pieza no lee el partido:** la ruta sale de la carpeta del módulo, carga sin `pickle` y el harness corre con el
+  mismo fichero. `prueba_pipeline.py` deja leer esa ruta exacta, y solo leer; cualquier otro fichero sigue siendo un
+  error.
+
+Qué queda escrito: `CONTRIBUTING.md` §7 (la excepción, con su sha256
+`6d16316f85063f13765fe4a8707558d6f26b800b9d43ce877d8dad95ae8c0da2`), `docs/PLAN_ENTREGA.md` §2 (el contrato y la
+regla de los coeficientes), `CLAUDE.md` («Interfaz común») y `possession/tracking.py` (que ya lo decía desde el
+merge).
+
+Lo que no cubre: ningún otro `.npz`, `.npy`, `.pkl` ni `.pt`. Los pesos de los experimentos se quedan fuera del repo.
+Si el fichero cambia, cambia la entrega: se regenera y se apunta el sha256 nuevo.
+
+Lo que obliga a hacer: el documento técnico tiene que citar los dos conjuntos de datos con sus licencias, porque los
+pesos derivan de ellos y el repo será público.
+
+Descartado: quitar el fichero (la entrega con K2 o K3 no se podría regenerar); pasarlo a texto hoy (obligaría a tocar
+`possession/` y a regenerar y reproducir otra vez).
+
+Estado: escrita. De la revisión de la PR 26 queda pendiente lo que no es de `possession/`: los cuatro scripts de
+SkillCorner que dan por hecho que la entrega no vio esos partidos, y el notebook de David, que se quedó fuera de `main`.

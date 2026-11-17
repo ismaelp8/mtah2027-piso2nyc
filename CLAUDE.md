@@ -201,7 +201,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     partido cambiaría el 0,23 % de los frames con balón [medido por Antonio].
   - **No está encendida:** `ball.clean` devuelve el balón tal cual y la entrega no cambia. Encenderla
     obligaría a medir o reentrenar B5 y a repetir la medida de Manuel, que se hicieron con `ball.clean` v0.
-- **La evidencia de equipo de la entrega es B5 desde el 14/11 por la noche** (apuesta B de Ismael;
+- **La evidencia de equipo de la entrega fue B5 del 14/11 al 17/11** (apuesta B de Ismael; desde el 17/11 es K3,
+  que lleva B5 dentro: ver «Entrega en preparación», arriba;
   `validation/resultados/2026-11-14_apuesta_b.md` y `docs/decisiones.md`).
   - **Qué es:** un modelo aprendido en la DFL, con la proximidad al balón y la forma de los equipos, decide
     entre `H` y `A`. Frente al `D` empuja como N1, para no tapar la pieza de Ana.
@@ -404,7 +405,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - `python -m possession.pipeline --name <prueba> --pieza nombre=modulo.funcion --capa modulo.funcion`. Con
     el nombre de la entrega da error, y la salida dice qué se ha cambiado.
   - `python validation/partido/probar_entrega.py <prueba> --capa ...` hace la prueba entera en un solo comando:
-    genera la entrega, cuenta el balón fuera y la compara con la vigente (`--contra`, hoy `equipo_v9`).
+    genera la entrega, cuenta el balón fuera y la compara con la vigente (`--contra`, hoy `equipo_v11`).
   - Lo ejecuta una persona (regla nº 1).
 - **`D` de estado: tareas 1 a 3 de Ana en `main`** (PR 12, `98c38ca`; `docs/decisiones.md`).
   - Las ventanas de `dead_state` ya no cruzan el principio ni el final de los tramos evaluados.
@@ -530,8 +531,9 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - Claude (sesión de Ismael): el borrador del documento técnico (PR 21). Está escrito para `equipo_v8`: hay que
       ponerlo al día con `equipo_v9`.
 - **17/11: el modelo conjunto, K2, ha cumplido su regla entera, pero no se traslada de un proveedor a otro** (rama
-  `exp/modelo-conjunto`; `validation/resultados/2026-11-17_modelo_conjunto.md` y `docs/decisiones.md`, 17/11). **No está
-  en la entrega: encenderlo es una apuesta, sin señales en contra, que decide el equipo.**
+  `exp/modelo-conjunto`; `validation/resultados/2026-11-17_modelo_conjunto.md` y `docs/decisiones.md`, 17/11). **Va en
+  la entrega desde el 17/11, dentro de K3 (la media de K2 y B5): David lo encendió solo y, esa tarde, Ismael decidió
+  K3. Sigue siendo una apuesta.**
   - **Qué es:** una evidencia de equipo que mira a cada jugador (una red por jugador, suma y máximo por equipo y una
     convolucional temporal de ±12,6 s, 36.260 pesos). Se entrenó con las etiquetas de control en la DFL y con las de
     SkillCorner, y sustituye solo al logit de B5 (`aprendida.evidence_k2`): el `D`, el decodificador y las capas del
@@ -567,10 +569,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - en la ventana pública no se rompe nada: spellF1 0,680 las dos, macroF1 de 0,874 a 0,873.
   - **Qué significa:** la apuesta se queda sin señales en contra, y el modelo se comporta en el partido como en la DFL.
     Sigue siendo una apuesta: el punto 4 dice que el ATD no le resulta raro al modelo, no que K2 gane en él.
-  - **Si el equipo lo enciende:** `"aprendida.evidence_k2"` en `pipeline.PIECES["candidates"]`, la rama a `main` y
-    regenerar. Tiene que salir byte a byte igual que `prueba_k2` (`784e65e5…acbc`). Antes de entregar hay que
-    reproducirla en otra máquina (`possession/conjunto.py` es código numérico nuevo y solo se ha ejecutado en la de
-    Ismael) y contar K2 en el documento técnico.
+  - **K2 sola es `equipo_v10`** (`784e65e5…acbc`), reproducida en dos máquinas y con numpy 1.26.4 además de 2.5.4.
+    Desde `main` sale con `--pieza candidates=aprendida.evidence_k2`. El documento técnico tiene que contar K2.
   - **Lo que no pasó:** K1, la capa de cambios aprendida (`conjunto.capa_cambios`, apagada): gana con el flag, pero con
     control solo en 4–6 de 7 partidos. Una red 9 veces mayor se aprende los partidos de memoria. Y decodificar a riesgo
     mínimo con K2 no merece construirse (las muestras se fragmentan).
@@ -866,7 +866,9 @@ validation/                  validación externa con datos abiertos: pasos, scri
 - **Interfaz común** (`possession/tracking.py` y `docs/PLAN_ENTREGA.md` §2):
   - cada pieza recibe un `Tracking`: arrays indexados por **frame de vídeo**, **199.319** en el partido.
     No recibe rutas ni abre ficheros; solo `possession/dead_ball.py` y `possession/transiciones.py` (desde
-    el 15/11) usan además los del partido, con las rutas de `games.asset_paths()`;
+    el 15/11) usan además los del partido, con las rutas de `games.asset_paths()`. La otra excepción, desde el
+    17/11, es `possession/conjunto.py`, que lee sus pesos (`possession/conjunto_pesos.npz`): son parte del código,
+    no un fichero del partido (`CONTRIBUTING.md` §7);
   - las piezas de evidencia devuelven `(score, allowed)`: dos arrays de forma (n, 3), con las columnas
     `H`, `A` y `D`;
   - el decodificador devuelve una etiqueta por frame de vídeo.
