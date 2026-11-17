@@ -228,6 +228,25 @@ def por_partido(recuentos, partidos, celdas):
         total, "; ".join("{}, {}".format(clave, pierde[clave]) for clave in versiones)))
 
 
+def encontradas(recuentos, partidos, celdas):
+    """Sin voto: cuántas posesiones reales encuentra cada versión (emparejadas con una predicha con un solape de 0,5 o
+    más, el umbral central del `spellF1`) y cuántas de las predichas casan con una real. Añadido el 17/11 después de
+    ver el bloque A, para decir si se ven más cambios de posesión o solo se colocan mejor."""
+    print("\n## Posesiones reales encontradas (descriptivo, sin voto; solape de 0,5 o más)\n")
+    print("| `D` | condición | etiquetas | versión | reales | predichas | encontradas | de las reales | de las predichas "
+          "|")
+    print("|---|---|---|---|---|---|---|---|---|")
+    for celda in celdas:
+        condicion, modo, convencion = celda
+        for clave in ("main", "K2") + CANDIDATOS:
+            flags = np.hstack([recuentos[p][(clave,) + celda]["flags"] for p in partidos])
+            predichas = sum(recuentos[p][(clave,) + celda]["n_pred"] for p in partidos)
+            casan = int(flags[flags.shape[0] // 2].sum())
+            print("| {} | {} | {} | {} | {} | {} | {} | {:.1f} % | {:.1f} % |".format(
+                NOMBRE_MODO[modo], condicion, convencion, clave, flags.shape[1], predichas, casan,
+                100.0 * casan / max(flags.shape[1], 1), 100.0 * casan / max(predichas, 1)))
+
+
 def si_o_no(valor):
     return "pasa" if valor else "no pasa"
 
@@ -296,7 +315,7 @@ def main():
     parser.add_argument("--comprobar", action="store_true",
                         help="el instrumento: la mezcla con todo el peso en K2 da K2, y con todo en B5, `main`")
     parser.add_argument("--solo-por-partido", action="store_true",
-                        help="enseña solo la tabla partido a partido (descriptiva), sin las demás")
+                        help="enseña solo las tablas descriptivas (partido a partido y posesiones encontradas)")
     parser.add_argument("--recuentos", default=None,
                         help="fichero donde guardar los recuentos (o del que leerlos, si existe), fuera del repo")
     args = parser.parse_args()
@@ -359,6 +378,7 @@ def main():
 
     if args.solo_por_partido:
         por_partido(recuentos, partidos, celdas)
+        encontradas(recuentos, partidos, celdas)
         return
     resumen = informe(recuentos, partidos, celdas, args.bootstrap)
     if args.pesos:
