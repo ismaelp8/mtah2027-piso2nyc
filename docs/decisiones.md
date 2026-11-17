@@ -6813,3 +6813,50 @@ Lo que se lee [inferencia, sobre lo medido]:
 - El veredicto de K7 se apunta cuando estén las dos.
 
 Estado: K7c, medido. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · modelo conjunto: K7s tampoco se traslada mejor; K7 no pasa, y la lectura es «Metrica no ayuda a trasladarse a un tracking automático»
+
+Quién: Claude, en otra sesión de Ismael (17/11), con la regla de K7, escrita antes de entrenar (`ccbfa26`). Salidas en
+`validation/conjunto/salidas/2026-11-17_entrenamiento_k7s.md` y `…_k7s_en_skillcorner.md`.
+
+**El entrenamiento.**
+- K7s terminó (3.000 pasos, 51 minutos en la CPU) sin NaN; la pérdida de z bajó a 0,097.
+- La paridad de numpy con torch de la fila media da una diferencia máxima de 3,8e-6, sin cambios de signo.
+- El instrumento da lo publicado de `main` y de las réplicas 1 y 2 en las 4 celdas.
+
+Resultado [medido], 10 partidos de la mitad de entrenamiento de SkillCorner, α = 4, frente a `main`:
+
+| versión | etiquetas, detectado | etiquetas, suavizado | propio, detectado | propio, suavizado | media | posesiones predichas |
+|---|---|---|---|---|---|---|
+| lo mejor de los tres de solo la DFL | −0,005 | +0,001 | −0,000 | +0,003 | – | 2.447 a 2.491 |
+| K7c (arriba) | −0,007 | +0,003 | +0,000 | +0,008 | +0,001 | 2.494 |
+| **K7s, la media de las dos z (vota)** | **−0,026** [−0,035 a −0,018] | **−0,020** | **−0,004** | **+0,000** | **−0,012** | 2.782 |
+| K7s, solo la z de la DFL (sin voto) | −0,004 | −0,001 | +0,006 | +0,007 | +0,002 | 2.422 |
+| K7s, solo la z de Metrica (sin voto) | −0,057 | −0,047 | −0,017 | −0,013 | −0,034 | 3.194 |
+
+`main` predice 2.270 posesiones, y hay 3.228.
+
+**Con la regla: K7s no se traslada mejor.** Queda por debajo de lo mejor de los tres en tres celdas, con una media de
+−0,012. Frente a las réplicas pierde de 0,017 a 0,022 con el `D` de las etiquetas, en 1 a 3 de 10 partidos. No es un caso
+al límite.
+
+**K7, con la regla escrita antes: no pasa ninguna variante.**
+- La lectura es la escrita: **«Metrica no ayuda a trasladarse a un tracking automático», no «las z por proveedor no
+  sirven».**
+- La z por proveedor en el montaje de la entrega (DFL y SkillCorner) queda sin probar, apuntada para una ronda con GPU,
+  no cerrada.
+- Se pasa a K8.
+
+Lo que se ve, sin voto [inferencia, sobre lo medido]:
+- **Las dos z sí separan las convenciones.** La de Metrica, entrenada con etiquetas de eventos, cambia de equipo mucho
+  más (3.194 posesiones predichas en SkillCorner, frente a 2.422 la de la DFL) y pierde en SkillCorner. La de la DFL,
+  sola, queda como los modelos de solo la DFL.
+- **La media de las dos se paga:** fuera de sus proveedores, la z de Metrica tira de la media hacia una convención que no
+  es la de SkillCorner.
+- **Si alguna vez se prueba la z por proveedor en la entrega,** la cabeza que se use en el ATD tiene que decidirse antes,
+  y la media no es una elección neutra.
+- **Lo que cambia frente a K2** es la convención de Metrica, que sus eventos dan por toques y no por control. Un
+  proveedor más con otra convención no ayuda; con la de control, no se sabe.
+
+Estado: K7 medido; no pasa. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian. Lo siguiente de la cola es la
+K2 de la CPU en el pliegue de `J03WMX` y K8.
