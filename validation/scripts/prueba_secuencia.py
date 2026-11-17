@@ -1,6 +1,7 @@
 """Prueba B11 y B12 (possession/secuencia.py) sin cargar ningún partido.
 
     python validation/scripts/prueba_secuencia.py
+    python validation/scripts/prueba_secuencia.py --torch    # en el entorno con torch (mtah2027-balon)
 
 Con el partido inventado del harness (`puntuar.partido_de_prueba`) y con datos al azar comprueba:
 
@@ -11,8 +12,9 @@ Con el partido inventado del harness (`puntuar.partido_de_prueba`) y con datos a
   slots no cambia la puntuación;
 - que z es antisimétrico (el espejo de los canales cambia el signo de z, exacto), que aguanta tramos más cortos que
   el campo de la convolución y que la convolución y la GRU de numpy coinciden con una versión a mano, frame a frame;
-- si hay torch (el entorno `mtah2027-balon`), que numpy da lo mismo que torch con los pesos guardados. Sin torch lo
-  dice y no lo cuenta como fallo: la misma comparación con datos de la DFL la imprime `entrenar_red.py`.
+- con `--torch` (en el entorno `mtah2027-balon`, que no tiene lo que pide el harness), solo los pesos, la
+  predicción en numpy y que numpy da lo mismo que torch con los pesos guardados. Sin `--torch` esa comparación no se
+  hace: la misma, con datos de la DFL, la imprime `entrenar_red.py` en cada pliegue.
 
 No usa datos del partido ni de la DFL. Sale con código 1 si falla alguna comprobación. Claude puede ejecutarlo.
 """
@@ -26,7 +28,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 for _carpeta in (os.path.join(ROOT, "validation", "harness"), os.path.join(ROOT, "validation", "secuencia"), ROOT):
     sys.path.insert(0, _carpeta)
 import comun  # noqa: E402
-import puntuar  # noqa: E402
 from possession import aprendida, secuencia, tracking  # noqa: E402
 
 fallos = []
@@ -118,12 +119,8 @@ def comprobar_numpy():
 
 
 def comprobar_torch():
-    try:
-        import torch
-        import entrenar_red
-    except ImportError:
-        print("Sin torch en este entorno: la comparación con torch no se hace aquí (la imprime entrenar_red.py).")
-        return
+    import torch
+    import entrenar_red
     print("numpy frente a torch, con los pesos guardados")
     rng = np.random.default_rng(5)
     x = rng.normal(size=(secuencia.N_CANALES, 700))
@@ -153,6 +150,7 @@ def comprobar_torch():
 
 
 def comprobar_evidencia():
+    import puntuar  # el harness: necesita lo del entorno de trabajo (lxml), no el de torch
     trk = puntuar.partido_de_prueba()
     fuera_de_tramos = np.ones(len(trk.bx), bool)
     for inicio, fin in trk.blocks:
@@ -186,8 +184,10 @@ def comprobar_evidencia():
 def main():
     comprobar_pesos()
     comprobar_numpy()
-    comprobar_torch()
-    comprobar_evidencia()
+    if "--torch" in sys.argv[1:]:
+        comprobar_torch()
+    else:
+        comprobar_evidencia()
     print("\n{}".format("Todo bien." if not fallos else "FALLAN {}: {}".format(len(fallos), "; ".join(fallos))))
     return 1 if fallos else 0
 
