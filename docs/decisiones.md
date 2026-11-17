@@ -5853,3 +5853,20 @@ Medidos con `validation/harness/versiones/b17_media_2026-11-17.json` (`a88d550`;
 
 Estado: los tres apagados. **B17 es el candidato más fuerte.** Abrir el examen de SkillCorner (una vez, un candidato) y
 generar la entrega de prueba lo deciden Ismael y la planificadora.
+
+**Cómo leer B15, B16 y B17 (para quien decida):**
+- **Con el límite de daño, la regla que fijó la planificadora para esta ronda, ninguno pasa SkillCorner `ENTRENAMIENTO`:**
+  cumplen 2, 1 y 3 de las 4 celdas. Con esa regla, el examen no se abre.
+- **Con §5.8, la regla de lo que gana con las dos convenciones, los tres ganan a `main` en la DFL.** Cuál manda, y si
+  se abre el examen (una vez, para un solo candidato), lo deciden Ismael y la planificadora.
+- **B17 se construyó después de ver a B15 y B16 en `ENTRENAMIENTO`,** y esa mitad la han leído ya siete candidatos en
+  esta ronda (B11 a B17). Su 3 de 4 es una lectura optimista.
+- **Referencia:** B12 perdió cerca de la mitad al pasar de `ENTRENAMIENTO` (+0,011 a +0,014) al examen (+0,004 a
+  +0,009).
+
+**Comprobado:**
+- numpy frente a torch, en los 26 pliegues de B14, B15 y B16: 10⁻⁵ como mucho y ningún signo distinto.
+- `validation/scripts/prueba_trayectorias.py`: todo bien en B13 a B17.
+- B17 corre en el entorno limpio de la entrega (Python 3.13.9, numpy 2.5.4), con 23 slots por equipo y hasta 21
+  presentes, y da lo mismo dos veces.
+- Las cabeceras del harness citan `a88d550` y `f3f7e9b`, sin cambios sin commitear.

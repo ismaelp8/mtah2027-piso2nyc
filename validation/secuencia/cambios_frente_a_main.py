@@ -25,10 +25,11 @@ import comun
 sys.path.insert(0, os.path.join(comun.ROOT, "validation", "skillcorner"))
 import dfl  # noqa: E402
 import lector as lc  # noqa: E402
-from possession import aprendida, pipeline, tracking  # noqa: E402
+from possession import aprendida, pipeline, tracking, trayectorias2  # noqa: E402
 
 FUNCIONES = {"b11": aprendida.evidence_b11, "b12": aprendida.evidence_b12, "b13": aprendida.evidence_b13,
-             "b14": aprendida.evidence_b14, "b15": aprendida.evidence_b15}
+             "b14": aprendida.evidence_b14, "b15": aprendida.evidence_b15, "b16": aprendida.evidence_b16,
+             "b17": aprendida.evidence_b17}
 
 
 def comparar(acum, trk, candidato, fuera):
@@ -105,9 +106,15 @@ def main():
     lc.exigir_solo_entrenamiento(lc.ENTRENAMIENTO)
     for cond in lc.VOTAN:
         acum = collections.Counter()
-        for id_ in lc.ENTRENAMIENTO:
+        for k, id_ in enumerate(lc.ENTRENAMIENTO):
             trk, _ = lc.tracking_de(lc.leer_crudo(id_), cond, id_)
-            comparar(acum, trk, candidato, None)
+            mitad = "scA" if k < 5 else "scB"  # B16 y B17 se entrenaron con SkillCorner: el pliegue que no vio el partido
+            if args.modelo == "b16":
+                comparar(acum, trk, lambda t, fuera=None: aprendida.evidence_b16(t, fuera=mitad), None)
+            elif args.modelo == "b17":
+                comparar(acum, trk, lambda t, fuera=None: trayectorias2.evidencia_media(t, None, mitad), None)
+            else:
+                comparar(acum, trk, candidato, None)
         informe("SkillCorner", cond, acum)
 
 
