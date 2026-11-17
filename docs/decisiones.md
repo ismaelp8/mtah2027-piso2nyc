@@ -7115,3 +7115,35 @@ Descartado: quitar el fichero (la entrega con K2 o K3 no se podría regenerar); 
 
 Estado: escrita. De la revisión de la PR 26 queda pendiente lo que no es de `possession/`: los cuatro scripts de
 SkillCorner que dan por hecho que la entrega no vio esos partidos, y el notebook de David, que se quedó fuera de `main`.
+
+### 2026-11-17 · infraestructura · `equipo_v11`, con K3: generada desde `main` en el entorno limpio, válida y con la huella de `prueba_k3`
+
+Quién: la generó una persona del equipo en Windows (la ruta del repo es `C:\PROYECTOS\mtah2027-piso2nyc`; el entorno,
+Python 3.13.1 y numpy 2.5.4, es el que David usó para `equipo_v10` [quién fue, sin confirmar]) e Ismael pegó la
+salida, que solo lleva agregados. Claude la lee.
+
+Resultado [medido en el partido; solo agregados]:
+- **`python -m possession.pipeline --name equipo_v11`,** con `main` en `23dcbc1` y sin cambios locales en el código de
+  la entrega, con las piezas de la entrega y sin capas añadidas:
+  - el ATD, entero: 199.319 líneas leídas y válidas, ninguna saltada ni repetida, y ningún frame sin línea;
+  - 0 frames con piezas en conflicto;
+  - 198 posesiones (96 en la primera parte y 102 en la segunda) y 116 paradas (54 y 62);
+  - ninguna racha de menos de 12 frames ni de menos de 25, en ninguna de las dos partes;
+  - el 45,8 % de `D` en lo evaluado, y toda la `X` fuera de los tramos evaluados;
+  - sha256 `811658cd52267cbd75607270c2c359e2244b05b8a6d091d6ce8330d2d971c04b`.
+- **El validador da `Valid`:** 199.319 filas y 198 posesiones de 17,4 s de media.
+
+Qué significa:
+- **Es byte a byte la entrega de prueba `prueba_k3`,** que pasó los criterios C0 a C6 frente a `equipo_v10`. Aquella
+  se generó con Python 3.12.10 y numpy 1.26.4; esta, con el entorno limpio. K3 da los mismos bytes con las dos
+  versiones de numpy, como B5 y K2.
+- **Los recuentos son los esperados** en la entrada «se enciende K3»: 198 posesiones, 116 paradas y 0 conflictos.
+- **`equipo_v11` es la entrega vigente:** generada desde `main`, en el entorno limpio y validada.
+
+Lo que falta antes de entregar:
+- **Reproducirla en una segunda máquina.** Las dos generaciones pueden ser de la misma máquina con dos entornos [sin
+  confirmar]. K3 hereda el `np.exp` de los rasgos de B5, y ni K2 ni K3 se han ejecutado sobre el partido en Linux.
+- **El documento técnico** tiene que contar K2 y K3 y citar los datos de entrenamiento con sus licencias.
+- Copiar ese mismo fichero como `<NOMBRE_EQUIPO>.csv` y pasar `validate_submission.py` sobre la copia.
+
+Estado: `equipo_v11` generada y validada. `main` no cambia de código: después de `23dcbc1` solo entra documentación.

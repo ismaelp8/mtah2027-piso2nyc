@@ -235,16 +235,19 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega en preparación: `equipo_v11`, con K3** (17/11 por la tarde; `docs/decisiones.md`, «se enciende K3»): la
+- **Entrega vigente: `equipo_v11`, con K3** (17/11 por la tarde; `docs/decisiones.md`, «se enciende K3» y
+  «`equipo_v11`»): la
   evidencia de equipo es la media de K2 y B5 (`aprendida.evidence_k3`). Lo decidió Ismael, tras comentarlo con el
   equipo. Está en `main` desde el 17/11 por la tarde (merge de `feat/encender-k3`, que lleva dentro la rama de David).
-  - **Todavía no existe.** Hay que regenerarla en el entorno limpio desde `main`, validarla y reproducirla en una
-    segunda máquina. Se espera la huella de la entrega de prueba `prueba_k3` (`811658cd…c04b`, generada con numpy
-    1.26.4), con 198 posesiones y 116 paradas.
+  - **Generada y validada** desde `main` en `23dcbc1`, en el entorno limpio (Python 3.13.1 y numpy 2.5.4, sin cambios
+    locales): 0 conflictos, 198 posesiones de 17,4 s de media, 116 paradas, el 45,8 % de `D` en lo evaluado, ninguna
+    racha de menos de 25 frames y sha256 `811658cd…c04b`.
+  - Es byte a byte la entrega de prueba `prueba_k3`, que se generó con numpy 1.26.4 y pasó los criterios C0 a C6.
+  - **Falta reproducirla en una segunda máquina** (las dos generaciones pueden ser de la misma, con dos entornos) y
+    contarla en el documento técnico.
   - Frente a `equipo_v10` cambian 4.219 frames (2,7 %): 2.719 de un equipo al otro y 1.500 entre un equipo y `D`
     [medido por David con la entrega de prueba].
-  - Hasta que esté regenerada y validada no hay entrega vigente con K3. La vuelta atrás es `equipo_v10` (K2) o
-    `equipo_v9` (B5): `docs/decisiones.md`, «se enciende K3».
+  - La vuelta atrás es `equipo_v10` (K2) o `equipo_v9` (B5): `docs/decisiones.md`, «se enciende K3».
 - **Entrega con K2: `equipo_v10`** (17/11; `docs/decisiones.md`, «se enciende K2» y «`equipo_v10`»):
   `equipo_v9` con la evidencia de equipo de K2 (`aprendida.evidence_k2`, el modelo conjunto) en lugar de B5. Lo decidió
   David.

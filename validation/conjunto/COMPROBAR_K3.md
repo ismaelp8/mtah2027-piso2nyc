@@ -2,7 +2,9 @@
 
 **Estado, 17/11 por la tarde:** K3 pasó su entrega de prueba frente a `equipo_v10` e Ismael decidió encenderla. Está
 en `main` (merge de `feat/encender-k3`, que junta la rama de David, `feat/encender-k2`, con la de los refinamientos,
-`exp/k2-refinar`). **Falta regenerar la entrega, validarla y reproducirla en otra máquina.** El detalle está en
+`exp/k2-refinar`). **`equipo_v11` ya está generada y validada** desde `main` en `23dcbc1`, en el entorno limpio, con
+la huella esperada (`811658cd…c04b`). **Falta reproducirla en otra máquina** (paso 2) **y el documento técnico**
+(paso 3). El detalle está en
 `validation/resultados/2026-11-17_refinamientos_k2.md` y en `docs/decisiones.md` (entradas del 17/11).
 
 ## Qué es K3
