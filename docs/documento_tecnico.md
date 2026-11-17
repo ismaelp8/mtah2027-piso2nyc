@@ -187,7 +187,7 @@ El ATD se comprueba al leerlo y cualquier línea rara para la entrega.
 | Smart Tagging | `SET PIECES` para el hueco antes del reinicio; «Attacking Transition» con su `Team` para los contraataques. Nunca prohíbe nada ni se copia como etiqueta, pero en los 5 primeros segundos de cada contraataque el empujón (8 por frame, 1.000 frente a un coste de cambio de 25) fuerza el cambio al equipo de la fase, salvo que B5 diga con mucha fuerza lo contrario [inferencia, por construcción] |
 | constantes de saque (`starter/load_smart_tagging.py`) | anclas de `D` (§2) |
 | GT pública (5 min) | comprobar formato y alineación y, como pide `CHALLENGE.md` («Use it to understand what is expected»), entender qué significan las etiquetas (§6.5 y §10). No entrenó, no fijó ningún parámetro y no eligió ninguna versión |
-| vídeo táctico | lo miraron personas para entender el juego y la GT pública (§10). Además, un detector de balón automático lo procesó en local, en una muestra de 10 minutos, para la línea del balón del vídeo, que se descartó (§7) |
+| vídeo táctico | lo miraron personas para entender el juego y la GT pública (§10). Además, un detector de balón automático lo procesó en local, primero en una muestra de 10 minutos y después en el partido entero, para la línea del balón del vídeo, que se descartó (§7) |
 | homografía | no la usa la entrega. La usó la línea del balón del vídeo, descartada (§7), para llevar las detecciones al campo y medir el balón en píxeles |
 | broadcast | descartado: no está sincronizado, no hay herramienta pública para alinearlo y su homografía solo vale en el 65,8 % |
 | audio (silbato) | sondeado y descartado: no pasó su criterio porque la señal sale sucia [sin verificar: el resultado no quedó escrito en `validation/silbato/`] |
@@ -195,7 +195,8 @@ El ATD se comprueba al leerlo y cualquier línea rara para la entrega.
 Algunos valores salen de agregados del partido, sin ninguna etiqueta: el umbral de 5 s de los huecos largos,
 la cola de 16 frames del balón fuera y la degradación «como el ATD», que salen del perfil del balón del ATD
 (suavizado de unos 25 frames y retraso de unos 4). Además, las capas del hueco antes del reinicio, de los contraataques y del balón fuera entraron con recuentos
-del partido, frente a reglas de daño escritas antes de medir (§8). Nada de esto está ligado a frames
+del partido, frente a reglas de daño escritas antes de medir (§8), y «cortas a `D`» cerró así el último punto de
+su regla, con una entrega de prueba (§6.1). Nada de esto está ligado a frames
 concretos ni sale de la ventana pública. `RULES.md` permite «inspecting the data to understand them, debug
 your pipeline and design features» y prohíbe convertir lo visto en «labels, corrections, or rules and
 constants tied to specific frames of the game». Lo declaramos para que la organización lo pueda juzgar.
@@ -205,7 +206,7 @@ constants tied to specific frames of the game». Lo declaramos para que la organ
 | dataset | uso |
 |---|---|
 | Bundesliga, Bassek et al. (2025), 7 partidos | entrenamiento de B5 y E2 y harness (§5, §6) |
-| SkillCorner Open Data, 20 partidos de la A-League 2024/25 | solo validación. La medida de §6.3 usa los 20; después se apartaron 10 como examen, que el 16/11 aún no se había usado [PENDIENTE: decir si alguna decisión posterior lo usa] |
+| SkillCorner Open Data, 20 partidos de la A-League 2024/25 | solo validación. La medida de §6.3 usa los 20. Después se apartaron 10 como examen, que cada candidato abre una sola vez, con el umbral escrito antes. Lo abrieron «cortas a `D`» (pasa y está en la entrega), K2 (pasa y está apagado, §8) y B12 (no pasa, §7) |
 | Metrica sample-data, 3 partidos | solo validación |
 | dataset del detector de balón (Roboflow, clips de la Bundesliga, CC BY 4.0) | solo para medir el detector de la línea del vídeo (125 imágenes de su parte de test; §7). No entrena nada nuestro |
 | StatsBomb, Wyscout, SoccerNet, PFF FC y otros | inventariados o descartados: licencia dudosa, sin balón medido o sin aportar nada a lo anterior |
@@ -381,6 +382,30 @@ En el harness o con agregados del partido, cada uno con su regla escrita antes [
 - **Anclas fijas para el `D`** (del gol al saque, el instante del reinicio, el equipo que reanuda): o no hay
   un instante fijo, o pasan juego vivo a `D`.
 - **Doce sondeos más, el 16/11** (un coste por parte, el encuadre de la cámara, señales nuevas): ninguno gana.
+  Uno de ellos, «cortas a `D`», pasó después la regla de límite de daño y está en la entrega (§2).
+- **Un detector de cambios de posesión** (16–17/11): una pieza que avisa de que la posesión acaba de cambiar y
+  abarata ese cambio en el decodificador. Con un detector perfecto subiríamos de 0,728 a 0,824 con control
+  [medido, techo descriptivo], pero los detectores reales dan demasiados avisos falsos (solo es bueno del 23 al
+  37 %) [medido]. Ninguno pasa su regla: ni en la DFL, ni en la mitad de entrenamiento de SkillCorner (de −0,005
+  a +0,003), ni encima de K2 (§8).
+- **Modelos de secuencia para la evidencia de equipo** (17/11): redes entrenadas en la DFL que leen la
+  evidencia en el tiempo, con la inferencia en numpy. Son una convolución temporal (B11), una GRU bidireccional
+  (B12), una red sobre las trayectorias de los jugadores (B13) y esa red con rasgos de control, entrenada con la
+  DFL degradada como el ATD (B14). Con el flag todas ganan mucho en la DFL, de +0,046 a +0,120, pero no lo
+  sostienen con control o en SkillCorner [medido]:
+  - B11 y B13 ganan con control solo en 3 a 6 de 7 partidos, según la celda; en SkillCorner, B11 empata o
+    pierde y B13 pierde (de −0,010 a −0,024);
+  - B14 pasa en la DFL con margen (con control, de +0,027 a +0,053, en 7 de 7), pero en la mitad de
+    entrenamiento de SkillCorner pierde con el `D` de las etiquetas (−0,017 y −0,013) y empata con el propio;
+  - B12, la mejor con control (de +0,028 a +0,034), gana solo en 5 de 7 partidos en una condición, y se pedían
+    6. Por una excepción, decidida y escrita antes de medir, se abrió su examen de SkillCorner: cumple 3 de las 4
+    celdas, y en la que falla gana +0,004, en 6 de 10. Se queda fuera, sin probar variantes;
+  - [PENDIENTE: B15 y B16, que se estaban entrenando al escribir esto; poner su resultado o «sin medir antes
+    del corte»].
+
+  Lectura [inferencia]: estas redes encuentran más cambios de equipo. Eso gana con el flag, que cambia en cada
+  toque, pero muchos de esos cambios sobran cuando la posesión exige control, y con el tracking de otro
+  proveedor aciertan menos.
 - **El balón sacado del vídeo táctico** (16/11). La idea era darle a B5 un balón sin el suavizado de casi 1 s del
   ATD. Se usó un detector público (YOLO11n afinado para balones, AGPL-3.0), en local y en CPU, sobre un recorte de
   320 px alrededor del balón del ATD, ampliado ×2. Sus reglas se escribieron antes de medir
@@ -390,11 +415,18 @@ En el harness o con agregados del partido, cada uno con su regla escrita antes [
   - en el partido, en una muestra de 10 minutos, el 41 % de sus detecciones cae a más de 5 m del balón del ATD, y la
     regla pedía el 10 % como mucho. Da 2,6 detecciones por frame [medido], y la mayoría no son el balón
     [inferencia]. La línea se paró ahí;
+  - el 17/11 se pasó el detector por el partido entero (1,9 h en CPU) y salió lo mismo: el 42,0 % de las
+    detecciones a más de 5 m y 2,5 por frame [medido]. La más cercana al balón del ATD queda a 1,33 m de mediana,
+    así que el detector sí ve el balón casi siempre, y lo que sobra son detecciones falsas [inferencia]. La línea
+    siguió parada;
   - con la confianza mínima a 0,25 en vez de 0,10 (el otro valor medido en datos abiertos), sigue el 36 % lejos
     [medido]: los falsos positivos tienen tanta confianza como el balón [inferencia]. No se probaron más valores,
     porque sería elegir el umbral con el partido;
   - aunque hubiera pasado, en la DFL con un balón como el del vídeo, hasta un detector perfecto le daría a B5 del orden
-    de +0,01, por debajo del ruido del partido [medido, DFL emulada].
+    de +0,01, por debajo del ruido del partido [medido, DFL emulada];
+  - con la línea se quedó sin balón del vídeo, y sin medir, una capa de `D` que cerraba cada parada en el golpeo
+    del balón. La variante del detector de cambios con el balón del vídeo se midió en la DFL emulada y, con las
+    cifras de esta puerta, pierde con control.
 
 ## 8. Limitaciones y qué haríamos con más tiempo
 
@@ -407,6 +439,15 @@ En el harness o con agregados del partido, cada uno con su regla escrita antes [
   excepciones declaradas a «lo que no gana en el harness no entra». El balón fuera, además, falló su criterio
   de eficacia (seguíamos llegando tarde en el 25,5 % de las rachas de balón fuera, y se pedía menos del 15 %)
   y pasó los de daño. Su efecto en el spellF1 no se conoce.
+- **«Cortas a `D`» quita posesiones, y ya predecimos de menos.** Pasamos de 219 a 201 posesiones, de 3,79 a
+  3,53 por minuto de juego vivo, cuando en datos abiertos, con nuestro `D`, salen de 4,1 a 4,3 [medido]. Gana
+  porque empareja mejor las que quedan [inferencia]. Además:
+  - si la GT se parece al flag, cuesta hasta 0,002 [medido, DFL];
+  - con el balón tapado en los `D`, el extremo bajo del intervalo del 5–95 % con control (+0,003 y +0,004) queda
+    por debajo de los +0,005 de la regla, que se escribió con valores centrales [medido];
+  - el corte de 5 s se heredó del sondeo. Uno de 3 s también pasaría en la DFL, sin pérdida con el flag [medido
+    en el sondeo, sin reproducir], pero elegirlo después de ver los resultados sería ajustar, y no se puede
+    confirmar en el examen sin abrirlo otra vez.
 - **Escalas sin ajustar entre sí:** la escala de E2, `GAP_SCORE` y los costes de `D` valen 1, 1 y 25 por
   defecto.
 - **La convención de la GT no está medida.**
@@ -416,10 +457,32 @@ pseudoetiquetas o con seguimiento en el tiempo; §7), y los tiempos de eventos c
 (mediana de tres anotadores, según su README) que publica ELASTIC para 3 de los 7 partidos de la DFL, para
 medir mejor dónde cambia la posesión.
 
-**Líneas en marcha que pueden cambiar la entrega antes del cierre:**
-- [PENDIENTE: una opción del decodificador que pasa a `D` las posesiones muy cortas]
-- [PENDIENTE: un modelo de equipo pensado para un balón más nítido]
-- [PENDIENTE: una capa de `D` que cierra cada parada en el golpeo del balón visto en el vídeo]
+**Lo que puede cambiar la entrega antes del cierre: K2.** [PENDIENTE: lo decide el equipo antes del corte.
+Según lo que decida, este bloque se queda como «probado y no encendido» o se reescribe como parte del método]
+- **Qué es:** una evidencia de equipo que mira a cada jugador: una red por jugador, la suma y el máximo por
+  equipo y una convolución temporal de ±12,6 s, con 36.260 pesos. Sustituye solo al logit de B5; el `D`, el
+  decodificador y las capas del partido no cambian. Se entrenó con las etiquetas de control de la DFL y con las de
+  la mitad de entrenamiento de SkillCorner, y en la entrega correría en numpy.
+- **Lo medido** frente a la cadena de `equipo_v9`, cada partido con un modelo que no lo vio [medido]:
+  - en la DFL, de +0,036 a +0,051 con control (6 o 7 de 7) y de +0,033 a +0,044 con el flag (7 de 7). Pasa
+    también la regla general de §6.1 (+0,03);
+  - en SkillCorner, de +0,021 a +0,028 en la mitad de examen, abierta una vez para K2;
+  - predice tantas posesiones como la entrega: no inventa más, las coloca mejor;
+  - su entrega de prueba es válida y cambia el 4,8 % de los frames evaluados; en la ventana pública no se rompe
+    nada.
+- **El aviso:** no se traslada de un proveedor a otro [medido]. Entrenado solo con la DFL pierde en SkillCorner
+  (de −0,010 a −0,015), y entrenado solo con SkillCorner pierde en la DFL (de −0,075 a −0,096 con control). El
+  partido es de un tercer proveedor. En Metrica, el único tercer proveedor abierto, el modelo entrenado con los
+  dos gana (+0,035, en 3 partidos) [medido]. Encenderlo es una apuesta.
+- **Si se enciende, cambian:**
+  - la huella de la cabecera y de §9, que pasa a ser la de su entrega de prueba (`784e65e5…acbc`) [PENDIENTE:
+    huella entera];
+  - la fila 1 de §2, y «solo validación» de SkillCorner en §4;
+  - §5, que dice que solo hay dos piezas entrenadas, y con el mismo dataset: K2 se entrenó también con
+    SkillCorner.
+- **Antes de entregarlo, faltaría:**
+  - reproducirlo en otra máquina: `possession/conjunto.py` es código numérico nuevo;
+  - decidir cómo van sus pesos al repo: hoy son un `.npz`, y `CONTRIBUTING.md` §7 no deja entrar ninguno.
 
 ## 9. Reproducción
 
@@ -487,7 +550,9 @@ improbable, pero no lo damos por supuesto: comprobamos el sha256 del fichero en 
 **Uso de un LLM.** El equipo usó Claude (Anthropic), a través de Claude Code, para escribir código y
 documentación, diseñar medidas en datos abiertos e investigar métodos. Las decisiones de método las tomaron
 personas y están en `docs/decisiones.md` con su autor; Claude propuso candidatos y reglas de lectura y fijó
-el reparto entrenamiento/examen de SkillCorner. El LLM no interviene al generar las etiquetas. Los commits no
+el reparto entrenamiento/examen de SkillCorner. También ejecutó en datos abiertos las medidas y los tres usos de
+ese examen, cada uno autorizado por una persona del equipo y con el umbral escrito antes. El LLM no interviene
+al generar las etiquetas. Los commits no
 llevan su firma, pero los documentos del repo lo nombran.
 
 **Datos del partido y el LLM.** Los términos prohíben pasar a un LLM en la nube los materiales del concurso
@@ -529,9 +594,13 @@ constantes ligadas a frames del partido, y las publica la organización.
 - **Visionado** (15/11): una persona miró junto al vídeo los tramos de la ventana en que una versión anterior
   de la entrega y la GT pública no coincidían, con reglas escritas antes (`docs/decisiones.md`, 15/11):
   contar patrones generales, sin tiempos ni recuentos por tramo, y no ajustar ni elegir nada. Salieron
-  hipótesis generales, que se midieron en datos abiertos o con agregados del partido sin etiquetas. Una, el
-  balón visto fuera, coincidía con una tarea del plan y acabó en la entrega (§2 y §8); su peso, margen y cola
-  no salen de la ventana.
+  hipótesis generales, que se midieron en datos abiertos o con agregados del partido sin etiquetas. Dos
+  acabaron en la entrega:
+  - el balón visto fuera, que coincidía con una tarea del plan (§2 y §8);
+  - «si nuestro `D` llega tarde, damos una posesión al equipo que va a sacar», que es «cortas a `D`» (§2),
+    medida en la DFL y en SkillCorner.
+
+  Ningún peso, margen, cola ni corte sale de la ventana.
 - **Recuento a ojo** (12–13/11): dos miembros miraron en el vídeo de la ventana algunos cambios de posesión
   de la GT pública y apuntaron si les parecía un toque o un control. Dio una señal de que la GT puede dar la
   posesión con un toque sin control (1 caso claro y 1 discutible). Se dejó a medias. La revisión externa lo
