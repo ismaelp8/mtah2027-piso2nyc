@@ -5976,3 +5976,95 @@ Si el equipo decide encenderlo:
 Descartado: decidir con la ventana pública; añadir más comprobaciones sin etiquetas (la que había ya ha contestado).
 
 Estado: K2 apagado, con su regla cumplida. Pendiente de que el equipo decida si lo enciende.
+
+### 2026-11-17 · candidatos · modelo conjunto: dos refinamientos de K2 sin reentrenar, K3 (la mezcla con B5) y K4 (el espejo) (candidatos y regla, antes de medir)
+
+Quién: lo pidió Ismael el 17/11 («seguir profundizando en ese método y refinarlo lo máximo posible»), mientras David
+comprueba K2. Lo escribe Claude en la rama `exp/k2-refinar`, que sale de `exp/modelo-conjunto` en `2b187b9`, antes de
+medir ningún candidato.
+
+**Lo que no cambia.** `aprendida.evidence_k2`, `possession/conjunto.py`, `conjunto_pesos.npz` y todo lo que hay detrás
+de `prueba_k2` (`784e65e5…acbc`) se quedan byte a byte como están: es lo que David comprueba. Los refinamientos van en
+un módulo nuevo (`possession/refinamientos.py`), con nombres nuevos, apagados.
+
+**Comprobación previa del instrumento** [medido, 17/11, en el portátil de Ismael, Linux, con numpy 2.5.4]: la tabla
+publicada de K2 sale igual, con sus intervalos. En la DFL, 0,728 → 0,780 (+0,051 [+0,040 a +0,064], 7 de 7) y las
+otras once celdas; en la mitad de entrenamiento de SkillCorner, 0,519 → 0,543 y las otras tres
+(`medir.py --con-la-pieza`).
+
+**Por qué estos dos y no otros:**
+- Lo medido dice que lo que cojea en K2 es el cambio de proveedor, no la red. Ya están cerrados la red mayor y más
+  pasos (el piloto), K1, el riesgo mínimo, el coste del decodificador con K2, la ronda K2r y el detector de cambios de
+  David encima de K2.
+- Pulir dentro del proveedor da ruido: los intervalos del harness son de ±0,01 y estos 17 partidos ya han juzgado
+  muchos candidatos. Por eso el eje que decide aquí es el del otro proveedor.
+- En este portátil no hay GPU. Lo que no reentrena se puede medir hoy, con los pesos de los 8 pliegues que ya están en
+  el repo.
+
+**Los candidatos** (fijados; no se elige ningún valor mirando resultados):
+- **K3, la mezcla con B5.** El logit de la mezcla es la media a partes iguales del de K2 y del de B5, cada uno en su
+  escala (α·z), y se puntúa como B5: −|s| al equipo que pierde y el +1 de N1 donde se ve el balón. B5 es la pieza que
+  se traslada de un proveedor a otro y K2 la que gana dentro: si K2 falla en un proveedor nuevo, B5 sigue opinando.
+  La parte de K2 es ½ y no se elige: dejando un partido fuera saldría una parte mayor, porque dentro del proveedor K2
+  gana a B5, y eso no es lo que la mezcla tiene que asegurar. Con ¼ y con ¾ se enseña sin voto.
+- **K4, el espejo.** El logit de K2 promediado con el del mismo tracking con el campo en espejo (y → ancho − y). El
+  modelo se entrenó con ese espejo como aumento, pero no es simétrico por construcción (sí lo es al cambiar los
+  equipos); el promedio le quita ese ruido. Tarda el doble (unos 10 s por partido).
+- **K5,** solo si K3 y K4 pasan los dos: K3 con el logit de K4. Se mide una vez, con la regla de K3.
+
+**Cómo se mide** (`validation/conjunto/refinar.py`; `main`, K2 y el `D` se montan como en `medir.py`):
+- **A. Dentro del proveedor,** con los pesos de los 8 pliegues del repo: los 7 partidos de la DFL (K2 y B5, cada uno con
+  el pliegue que no vio el partido) y los 10 de `lector.ENTRENAMIENTO` de SkillCorner (K2 con el pliegue cruzado; B5 con
+  los coeficientes de la entrega, que nunca vio SkillCorner). **El examen de SkillCorner no se abre:** está gastado
+  para K2 y una variante no lo recibe. El script no tiene bandera para leerlo.
+- **B. El otro proveedor.** Los pesos de los dos modelos de un solo proveedor del 17/11 están en la máquina de la GPU,
+  no en el repo. Aquí se entrenan dos **réplicas** con la misma configuración (`entrenar.py todos --solo dfl` y
+  `--solo sc`, con `--dispositivo cpu`): mismo entrenamiento, otros números al azar. Cada una se puntúa en el otro
+  proveedor con α = 4, como entonces.
+  - **La réplica vale** si K2 con ella repite el problema publicado. La de solo la DFL, en SkillCorner: pierde más de
+    0,005 frente a `main` en las dos celdas con el `D` de las etiquetas (publicado: −0,015 y −0,010). La de solo
+    SkillCorner, en la DFL con control: pierde más de 0,03 en las cuatro celdas (publicado: de −0,045 a −0,096). Si
+    una réplica no vale, ese sentido no se puede leer y se dice.
+  - **El sentido que decide es el de la DFL a SkillCorner:** de un tracking limpio a uno automático, como del
+    entrenamiento al partido, y con las dos mitades de la mezcla fuera de su proveedor (ni esa K2 ni B5 vieron
+    SkillCorner). En el otro sentido, B5 sí ha visto la DFL (va con el pliegue que no vio el partido), así que
+    favorece a la mezcla: se enseña sin voto.
+- **C. Metrica** (los 3 partidos de sample-data, bajados del commit que cita `validation/metrica/BITACORA.md`), con los
+  pesos de la entrega de K2 y de B5. Ninguno vio ese proveedor: es lo más parecido que hay a lo que le pasará a la
+  entrega. Son 3 partidos, con sus avisos de siempre (etiquetas de eventos y balón pegado al jugador).
+
+**Regla de K3:**
+1. **Dentro (A), frente a `main`,** el límite de daño del 16/11, como K2: en la DFL, +0,005 o más con control en las
+   cuatro celdas ganando en 6 de 7, y sin perder más de 0,005 con el flag ni con el balón a la vista en los `D`; en
+   SkillCorner, +0,005 o más y 7 de 10 en las cuatro celdas.
+2. **El otro proveedor (B), de la DFL a SkillCorner, frente a `main`:** «quita la pérdida» si queda en −0,005 o más en
+   las cuatro celdas.
+3. **Metrica (C), frente a `main`:** no pierde más de 0,005 en la condición que vota («tal cual»), con el `D` de las
+   etiquetas ni con el propio.
+
+Lectura, escrita antes:
+- **Si pasa 1, 2 y 3,** K3 es la forma más prudente de la apuesta: se le propone al equipo en lugar de K2, con su
+  propio punto 4 (una entrega de prueba que ejecuta una persona, con criterios de daño escritos antes de generarla).
+  Con el resultado se dice el precio: lo que K3 deja de ganar frente a K2 dentro del proveedor.
+- **Si falla 1,** K3 se cierra: la mezcla no gana ni donde K2 gana.
+- **Si falla 2 o 3,** K3 se cierra: la mezcla no protege, y K2 se queda como está, con su aviso.
+- **Si la réplica de solo la DFL no vale,** el punto 2 no se puede leer: K3 no se recomienda por encima de K2 y se
+  queda como opción apagada, con lo que digan 1 y 3.
+
+**Regla de K4,** frente a K2 (es el mismo modelo, promediado): gana si la media de la diferencia con K2 en las celdas
+de control llega a +0,003, en la DFL (las cuatro del punto 1) y en SkillCorner (las cuatro), y ninguna celda de ninguno
+de los dos baja de −0,002. Si gana, K4 sustituye a K2 dentro de lo que se proponga (K2 pasa a K4 y K3 a K5). Si no, es
+un empate y se cierra: no merece la complejidad.
+
+Avisado antes de medir:
+- **Cuántas cosas se prueban:** dos candidatos y uno condicionado, sin ningún valor elegido. Con la regla de 6 de 7 y
+  7 de 10, un candidato que no aporta nada pasaría pocas veces, pero no ninguna.
+- **La mezcla es un seguro, y un seguro cuesta:** dentro del proveedor K3 quedará por debajo de K2. Solo compensa si en
+  el otro proveedor deja de perder. Que lo haga en SkillCorner y en Metrica no prueba que lo haga en el ATD.
+- **Las réplicas no son los modelos del 17/11.** Por eso se comprueba primero que repiten su problema.
+- **Nada de esto se mide en el partido.** Si un candidato pasa, su punto 4 lo ejecuta una persona.
+
+Lo que se deja fuera: reentrenar el modelo de los dos proveedores (semillas, aumentos, más datos), que necesita la GPU
+y sería otro candidato con su regla; el examen de SkillCorner; cualquier cambio en `pipeline.PIECES`.
+
+Estado: escrita antes de medir. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
