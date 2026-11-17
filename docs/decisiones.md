@@ -5816,3 +5816,9 @@ planificadora.
   - Si B15 entra, la capa de los contraataques (suma 8, pesada con la escala de B5) pesaría unas seis veces menos.
   - Frente a `D`, B15 empuja como B5, así que el `D` no cambia por la escala.
   - Una entrega de prueba lo vería en los 817 frames de esa capa.
+
+**B16 en SkillCorner `ENTRENAMIENTO`**, fuera de muestra (cada partido con el pliegue scA o scB que no lo vio;
+`..._skillcorner_entrenamiento_b15_b16.md`): frente a `main`, +0,007, +0,010, +0,002 y +0,007, ganando en 6, 6, 6 y 7 de 10.
+Cumple 1 de las 4 celdas. Entrenar también con SkillCorner no mejora lo que ya daba B15 (+0,006 en las cuatro). En la
+misma ejecución, B15 repite exactamente sus números. Falta el harness de la DFL de B16, cuando acaben sus últimos
+pliegues.

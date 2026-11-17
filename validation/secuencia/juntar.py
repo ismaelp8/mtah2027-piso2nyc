@@ -116,10 +116,14 @@ def elegir(modelo, procesos, seleccion=comun.PLIEGUES):
     print("\ntiempo: {:.0f} s".format(time.time() - inicio), file=sys.stderr)
 
 
-def escribir(modelos=secuencia.MODELOS):
+def escribir(modelos=secuencia.MODELOS, parcial=False):
+    """Junta pesos y α. Con `parcial`, solo los pliegues que ya tienen pesos y α (para medir antes en SkillCorner)."""
     datos = collections.OrderedDict()
     for modelo in modelos:
         for pliegue in pliegues_de(modelo):
+            if parcial and not (comun.fichero_pesos(modelo, pliegue).exists() and fichero_alfa(modelo, pliegue).exists()):
+                print("falta el pliegue {} de {}: no se escribe".format(pliegue, modelo))
+                continue
             with np.load(comun.fichero_pesos(modelo, pliegue)) as d:
                 for k in sorted(d.files):
                     datos["{}/{}/{}".format(modelo, pliegue, k)] = np.asarray(d[k])
@@ -141,9 +145,10 @@ def main():
                         help="con «escribir»: los modelos que se juntan (por defecto, B11 y B12; B13 va solo)")
     parser.add_argument("--pliegues", nargs="+", choices=comun.PLIEGUES + PLIEGUES_SC, default=None,
                         help="al elegir α: solo estos pliegues (por defecto, los 8); cada uno se elige igual")
+    parser.add_argument("--parcial", action="store_true", help="con «escribir»: solo los pliegues que ya estén")
     args = parser.parse_args()
     if args.que == "escribir":
-        escribir(tuple(args.modelos))
+        escribir(tuple(args.modelos), args.parcial)
     else:
         todos = pliegues_de(args.que)
         elegir(args.que, args.procesos, [p for p in todos if args.pliegues is None or p in args.pliegues])
