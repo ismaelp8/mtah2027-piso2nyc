@@ -9,10 +9,13 @@ partidos abiertos (A-League 2024/25, MIT), con el balón «como el ATD». No sus
 **Cómo entra en el pipeline.** `evidence(trk, fuera=None)` devuelve `(score, allowed)` como B5: el logit z del
 modelo, puntuado con `aprendida.puntuacion_de("b5", …)` (−α·|z| al equipo que pierde y el +1 de N1 donde se ve el
 balón). Es el candidato K2. No está en `pipeline.PIECES`: una entrega de prueba lo usa con
-`--pieza candidates=aprendida.evidence_k2`.
+`--pieza candidates=aprendida.evidence_k2`. `capa_cambios(trk)` es el candidato K1: una capa `(score, allowed)` que
+se suma a las piezas de la entrega (`--capa conjunto.capa_cambios`) y empuja hacia el equipo nuevo después de cada
+cambio que ve el modelo, con el mecanismo de `cambios.capa`.
 
 **Reproducible bit a bit.** Las entradas usan sumas, productos, divisiones, raíces, máximos y comparaciones, y la
-red solo tiene ReLU: nada de exponenciales. Todo se suma término a término y en un orden fijo, sin BLAS, como
+red solo tiene ReLU: z no pasa por ninguna exponencial. (Las probabilidades de cambio de K1 sí pasan por una, y por
+eso van redondeadas a 6 decimales.) Todo se suma término a término y en un orden fijo, sin BLAS, como
 `aprendida.logit`. La red se entrenó con torch en float32 (`validation/conjunto/`); aquí se evalúa en float64 con
 esos mismos pesos, así que z difiere del de torch en el redondeo.
 
@@ -25,7 +28,7 @@ import os
 
 import numpy as np
 
-from possession import aprendida
+from possession import aprendida, cambios
 from possession.tracking import A, H
 
 GRUPO = 5  # frames por grupo: el modelo va a 5 Hz
@@ -37,6 +40,8 @@ TOPE = 15.0  # m: tope de la distancia al balón (aprendida.TOPE)
 N_SLOT, N_IMPAR, N_PAR = 14, 4, 3
 JUGADORES = 11.0  # la suma por equipo se divide por 11
 TROZO = 4000  # grupos por trozo al pasar la red por jugador: solo limita la memoria, no cambia el resultado
+VENTANA_CAPA = 50  # frames que empuja la capa de cambios de K1 (la W de la segunda ronda del detector de cambios)
+DECIMALES = 6  # las probabilidades de cambio van redondeadas, como las puntuaciones de `aprendida`
 PESOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "conjunto_pesos.npz")
 _CACHE = {}
 
@@ -251,7 +256,7 @@ def salidas(trk, fuera=None):
 # -- pesos y evidencia ------------------------------------------------------------------------------------
 
 def pesos(fuera=None):
-    """Los pesos de un pliegue como diccionario de arrays en float64, con `alfa` y `dilaciones`."""
+    """Los pesos de un pliegue como diccionario de arrays en float64, con `alfa`, `gamma` y `dilaciones`."""
     clave = "todos" if fuera is None else str(fuera)
     if clave not in _CACHE:
         if not os.path.isfile(PESOS):
@@ -264,6 +269,7 @@ def pesos(fuera=None):
         if not juego:
             raise KeyError("no hay pesos del modelo conjunto para «{}»".format(clave))
         juego["alfa"] = float(juego["alfa"])
+        juego["gamma"] = float(juego["gamma"]) if "gamma" in juego else None
         _CACHE[clave] = juego
     return _CACHE[clave]
 
@@ -277,3 +283,21 @@ def evidence(trk, fuera=None):
     for inicio, fin in trk.blocks:  # como B5: a cero fuera de los tramos
         cercano[inicio:fin] = todos[inicio:fin]
     return aprendida.puntuacion_de("b5", z, aprendida.balon_visible(trk), juego["alfa"], cercano)
+
+
+def probabilidades_de_cambio(trk, fuera=None):
+    """`p` (n, 2): la probabilidad de un cambio hacia `H` y hacia `A` en cada frame, a cero fuera de los tramos."""
+    _, hacia_h, hacia_a = salidas(trk, fuera)
+    p = np.zeros((len(trk.bx), 2))
+    for inicio, fin in trk.blocks:
+        for columna, logit in enumerate((hacia_h, hacia_a)):
+            p[inicio:fin, columna] = np.round(1.0 / (1.0 + np.exp(-logit[inicio:fin])), DECIMALES)
+    return p
+
+
+def capa_cambios(trk, fuera=None):
+    """K1: `cambios.capa` con las probabilidades de cambio del modelo, contra el otro equipo (no empuja contra `D`)."""
+    juego = pesos(fuera)
+    if juego["gamma"] is None:
+        raise KeyError("los pesos del modelo conjunto no traen la γ de la capa de cambios")
+    return cambios.capa(probabilidades_de_cambio(trk, fuera), juego["gamma"], VENTANA_CAPA, contra_d=True)

@@ -423,6 +423,16 @@ def evidence_b9(trk, fuera=None):
     return _evidencia(trk, "b9", fuera)
 
 
+def evidence_k2(trk, fuera=None):
+    """K2 (17/11, apagado): el logit del modelo conjunto (`possession/conjunto.py`), puntuado como B5.
+
+    Solo es la puerta para que el harness y `--pieza candidates=aprendida.evidence_k2` lleguen a `conjunto.evidence`
+    sin tocar `pipeline.py`. Se importa aquí dentro porque `conjunto` importa este módulo.
+    """
+    from possession import conjunto
+    return conjunto.evidence(trk, fuera)
+
+
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------
 # >>> COEFICIENTES
 # Los escribe validation/apuesta_b/entrenar.py. «todos»: los 7 partidos de la DFL (la entrega); cada

@@ -6,8 +6,9 @@
 Hace falta el entorno `mtah2027-conjunto` (torch), solo para leer los `.pt` de `entrenar.py`. No lee ningún dato.
 
 Escribe `possession/conjunto_pesos.npz` (o `--destino`): por cada pliegue, los pesos en float32, tal como salieron
-de torch, las dilaciones y `alfa`. La α de cada pliegue es la que eligió `medir.py` para el partido que ese pliegue
-no vio (con los otros seis), y la del pliegue de todos, la elegida con los 7 (`elegidos.json`, junto a las salidas).
+de torch, las dilaciones, `alfa` (K2) y `gamma` (K1). La α y la γ de cada pliegue son las que eligió `medir.py`
+para el partido que ese pliegue no vio (con los otros seis), y las del pliegue de todos, las elegidas con los 7
+(`elegidos.json`, junto a las salidas).
 """
 
 import argparse
@@ -51,12 +52,14 @@ def main():
     parser.add_argument("--alfa", type=float, default=None,
                         help="solo para pruebas: la misma α en todos los pliegues, sin leer `elegidos.json`")
     args = parser.parse_args()
+    alfas, gammas = None, None
     if args.alfa is None:
         with open(cj.carpeta() / "salidas" / args.etiqueta / "elegidos.json", encoding="utf-8") as f:
-            alfas = json.load(f)["K2"]
+            elegidos = json.load(f)
+        alfas, gammas = elegidos["K2"], elegidos["K1"]
     salida = {}
-    print("| pliegue | pesos | α | semilla |")
-    print("|---|---|---|---|")
+    print("| pliegue | pesos | α (K2) | γ (K1) | semilla |")
+    print("|---|---|---|---|---|")
     for pliegue in args.pliegues:
         guardado = torch.load(cj.fichero_pesos(args.etiqueta, pliegue), map_location="cpu", weights_only=False)
         if guardado["pliegue"] != pliegue:
@@ -64,11 +67,13 @@ def main():
         pesos = a_numpy(guardado["pesos"], guardado["config"])
         alfa = float(args.alfa if args.alfa is not None else alfas[pliegue])
         pesos["alfa"] = np.asarray(alfa, dtype=np.float64)
+        if gammas is not None:
+            pesos["gamma"] = np.asarray(float(gammas[pliegue]), dtype=np.float64)
         for nombre, valor in pesos.items():
             salida["{}/{}".format(pliegue, nombre)] = valor
-        print("| {} | {} | {:g} | {} |".format(
-            pliegue, sum(int(v.size) for k, v in pesos.items() if k not in ("alfa", "dilaciones")), alfa,
-            guardado["semilla"]))
+        print("| {} | {} | {:g} | {} | {} |".format(
+            pliegue, sum(int(v.size) for k, v in pesos.items() if k not in ("alfa", "gamma", "dilaciones")), alfa,
+            "{:g}".format(float(gammas[pliegue])) if gammas is not None else "–", guardado["semilla"]))
     np.savez(args.destino, **salida)
     with open(args.destino, "rb") as f:
         huella = hashlib.sha256(f.read()).hexdigest()

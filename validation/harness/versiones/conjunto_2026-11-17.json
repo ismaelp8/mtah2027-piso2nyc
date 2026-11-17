@@ -1,0 +1,9 @@
+{
+  "main": {
+    "nota": "la entrega: B5 (aprendida.evidence_b5), dead_state y decode_cortas_a_d; el harness deja fuera el partido que puntúa"
+  },
+  "K2: modelo conjunto en lugar de B5": {
+    "nota": "docs/decisiones.md, 17/11, «modelo conjunto»: una red por jugador, suma y máximo por equipo y convolucional temporal (±12,6 s), entrenada con control en la DFL y con SkillCorner; z puntuada como B5, con la predicción en numpy (possession/conjunto.py) y el pliegue que no vio el partido",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_k2", "dejar_fuera": true}}
+  }
+}
