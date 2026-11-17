@@ -6413,3 +6413,41 @@ medir K3 con los pesos del modelo de solo la DFL del 17/11, que están en la má
 (`<datos abiertos>/conjunto_cache/pesos/solo_dfl_todos.pt`).
 
 Estado: criterios escritos antes de generar `prueba_k3`. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · K3 pasa su entrega de prueba frente a `equipo_v10` (C0 a C6), en un entorno que no es el limpio
+
+Quién: la ejecutó David en su máquina, con la rama `exp/k2-refinar` en `4a67424` y sin cambios locales, y pasó los
+agregados por el chat del equipo; Ismael los pegó. Claude los lee con los criterios escritos antes (entrada «K3: la
+entrega de prueba frente a `equipo_v10`», `4a67424`). Solo agregados.
+
+Resultado [medido por David en el partido; solo agregados]:
+
+| criterio | qué pedía | qué ha salido | ¿pasa? |
+|---|---|---|---|
+| C0, la rama no cambia las entregas conocidas | `equipo_v9_rama` con `d9706dfb…be63` y `prueba_k2_rama` con `784e65e5…acbc` | las dos huellas | sí |
+| C1, es una entrega | válida y con 0 frames en conflicto | `prueba_k3` es válida, con 0 conflictos; sha256 `811658cd…c04b` | sí |
+| C3, cambia lo que cabe esperar frente a K2 | como mucho el 7 % de los frames; de un equipo al otro, el 3,5 %; entre un equipo y `D`, el 3,5 % | 4.219 de 158.857 frames (2,66 %); 2.719 de un equipo al otro (1,71 %); 1.500 entre un equipo y `D` (0,94 %) | sí |
+| C4, no cambia el ritmo ni el `D` | de 183 a 213 posesiones, de 108 a 122 paradas y del 44,4 al 47,4 % de `D` | 198 posesiones, 116 paradas y el 45,8 % de `D` | sí |
+| C5, no fragmenta | ninguna posesión de menos de 12 frames y como mucho 4 de menos de 25 | 0 y 0 | sí |
+| C6, no se rompe en la ventana pública | frente a `equipo_v10`, el macroF1 no baja más de 0,03 ni el spellF1 más de 0,10 | macroF1 de 0,873 a 0,876; spellF1 de 0,680 a 0,693 | sí |
+
+Sin voto:
+- De un equipo al otro, 1.798 frames pasan de `A` a `H` y 921 de `H` a `A`.
+- El balón fuera (D7) no cambia: tarde en 12 de 47 rachas.
+- Lo que cambia es lo que se esperaba de los datos abiertos, y se parece más a la DFL (del 2,0 al 2,5 % de los frames
+  y de −2,3 a −4,6 % de posesiones) que a SkillCorner: aquí, el 2,7 % y un 2,5 % menos de posesiones (198 frente a 203).
+- La subida en la ventana pública no cuenta: son 17 posesiones (una emparejada más) y por debajo de 0,42 todo es ruido.
+
+El aviso del entorno: **no se generó con el entorno limpio,** sino con Python 3.12.10 y numpy 1.26.4.
+- En ese entorno, `equipo_v9_rama` y `prueba_k2_rama` salen con sus huellas de siempre: B5 y K2 dan los mismos bytes
+  con numpy 1.26.4 que con 2.5.4. Es un dato a favor de la reproducibilidad de `equipo_v10`.
+- La huella de `prueba_k3` (`811658cd…c04b`) queda sin confirmar en el entorno limpio. Si el equipo elige K3, hay que
+  regenerarla con `requirements-entrega.txt` y reproducirla en una segunda máquina antes de entregar.
+
+Decisión y por qué:
+- **K3 ha pasado su entrega de prueba:** en el partido no rompe nada y cambia lo esperado. No dice que gane a K2 en el
+  partido: eso no se puede medir.
+- **No se enciende aquí.** Con su regla, K3 sigue sin quedar recomendada por encima de K2 (su punto 2 no se pudo leer),
+  y elegir entre `equipo_v10` y K3 es del equipo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+Estado: K3 apagada, con su entrega de prueba pasada. Pendiente de lo que decida el equipo.
