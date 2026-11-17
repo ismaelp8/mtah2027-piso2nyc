@@ -567,8 +567,12 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       +0,017 a +0,023 en SkillCorner y de +0,014 a +0,029 en Metrica. Partido a partido queda por debajo de `main` en 3
       casos de 136; K2, en 12.
     - **K3 no queda recomendada por encima de K2.** El punto que lo decidía (¿deja de perder donde K2 pierde?) no se
-      puede leer: una réplica de K2 entrenada solo con la DFL no repite en SkillCorner la pérdida publicada (queda en
-      −0,005 y +0,001, no en −0,015 y −0,010). Con esa réplica K3 gana a `main` (+0,008 a +0,011).
+      puede leer: dos réplicas de K2 entrenadas solo con la DFL no repiten en SkillCorner la pérdida publicada en las
+      dos celdas que pedía la regla. Con las dos, K3 gana a `main` (+0,005 a +0,011) y a K2 solo (+0,008 a +0,015).
+    - **El aviso de proveedor de K2, con su tamaño:** en tres entrenamientos del modelo de solo la DFL, K2 queda entre
+      +0,003 y −0,015 frente a `main` en SkillCorner, sin ganar en ninguno. La media de dos semillas queda en +0,002 a
+      +0,004 y, mezclada con B5, en +0,007 a +0,017. Lo siguiente que entrenar es un K2 con varias semillas
+      promediadas (pide la GPU).
     - **K3 es más prudente que K2 en los cambios de posesión:** predice un 2 % menos de posesiones que `main`, se queda
       con la mitad de la mejora de K2 en recuperaciones (74,9 %, frente a 70,3 % de `main` y 80,0 % de K2) y, con el
       flag y en Metrica, queda por debajo de K2.

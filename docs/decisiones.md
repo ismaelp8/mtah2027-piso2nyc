@@ -6248,3 +6248,61 @@ Decisión: ninguna. Queda como material para el documento técnico y para decidi
 es colocar mejor los cambios, es ver más, sobre todo los que abren posesiones cortas.
 
 Estado: descriptivo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · modelo conjunto: la semilla nueva del modelo de un solo proveedor; fuera de su proveedor K2 queda entre un empate y una pérdida pequeña, y promediar ayuda
+
+Quién: Claude, en la sesión de Ismael (17/11). La lectura es la de la entrada «una semilla más», escrita antes de
+entrenarla (`017c4fe`). Salidas en `validation/conjunto/salidas/2026-11-17_refinar_semilla2_*`,
+`…_refinar_media_de_dos_semillas_*` y `…_entrenamiento_semilla2_solo_dfl.md`.
+
+Qué se probó: una réplica más del modelo de solo la DFL (semilla 20261125, en la CPU, 3.000 pasos), puntuada en los 10
+partidos de `lector.ENTRENAMIENTO` con α = 4; y la media de las z de las dos réplicas.
+
+Resultado [medido], K2 entrenado solo con la DFL, frente a `main` en SkillCorner (`D` de las etiquetas, las dos
+condiciones; y `D` propio, las dos):
+
+| qué | `D` de las etiquetas | `D` propio |
+|---|---|---|
+| K2, modelo original del 17/11 (GPU) | −0,015 y −0,010 | −0,007 y −0,004 |
+| K2, réplica 1 (CPU, semilla 20261124) | −0,005 y +0,001 | −0,000 y +0,003 |
+| K2, réplica 2 (CPU, semilla 20261125) | −0,007 y −0,003 | −0,003 y −0,001 |
+| K2, la media de las z de las dos réplicas | +0,004 y +0,004 | +0,002 y +0,002 |
+| K3 con la réplica 1 | +0,008 y +0,011 | +0,010 y +0,010 |
+| K3 con la réplica 2 | +0,008 y +0,011 | +0,005 y +0,008 |
+| K3 con la media de las dos réplicas | +0,013 y +0,017 | +0,007 y +0,011 |
+
+Con la lectura escrita antes:
+- **Ni «depende del entrenamiento» ni «es del modelo»: el caso mixto.** Con la semilla nueva K2 pierde más de 0,005 en
+  una de las dos celdas con el `D` de las etiquetas (−0,007) y en la otra no (−0,003). Se dice el rango: **en tres
+  entrenamientos con la misma configuración, K2 fuera de su proveedor queda entre +0,003 y −0,015 frente a `main`, y
+  en la primera celda pierde las tres veces (de −0,005 a −0,015).** No gana en ninguno. El aviso sobre K2 se queda,
+  con su tamaño corregido: un empate o una pérdida pequeña, no siempre −0,015.
+- Las dos réplicas aciertan frame a frame lo mismo que el modelo original (83,9 y 84,0 %, frente a 83,8 %): lo que
+  cambia de un entrenamiento a otro no es el acierto, es dónde caen los cambios.
+- **La mezcla aguanta con otra semilla:** K3 queda en +0,005 o más frente a `main` en las cuatro celdas, y saca a K2
+  solo de +0,009 a +0,015, en 9 o 10 de 10 partidos. Es lo mismo que con la réplica 1 (+0,008 a +0,013).
+- **Promediar las dos semillas ayuda** [lectura, no candidato]: la media de las z queda de +0,002 a +0,004 frente a
+  `main`, por encima de cada semilla por separado en siete de las ocho comparaciones (de −0,001 a +0,011). Y mezclada
+  con B5 da lo mejor que se ha medido fuera del proveedor: de +0,007 a +0,017.
+
+Lo que no cambia: **el veredicto de K3 con su regla.** El punto 2 sigue sin poderse leer: ninguna de las dos réplicas
+repite la pérdida en las dos celdas con el `D` de las etiquetas, que es lo que la regla pedía. Lo que sale aquí es
+descriptivo y coherente en las dos: fuera del proveedor, la mezcla gana a B5 solo y a K2 solo.
+
+La comprobación que quedó de la revisión, sin voto (`refinar.py --alfas-de-la-entrega`; salida en
+`…_refinar_dfl_alfas_de_la_entrega.md`): con las α de la entrega (4 y 4) en los siete pliegues de la DFL, K3 gana a
+`main` de +0,034 a +0,056 con control (7 de 7 en las cuatro celdas) y de +0,014 a +0,025 con el flag. Frente a K2 con
+esa misma α queda de −0,001 a −0,008 con control y de −0,015 a −0,023 con el flag: **el precio de la mezcla con
+control no es cero, es de hasta 0,008.** Con esas α, K4 tampoco pasa en la DFL (peor celda −0,002).
+
+Lo que sale para lo siguiente [inferencia, sobre lo medido]:
+- Lo que más ha ayudado fuera del proveedor no es afinar la red, es promediar: dos semillas entre sí, y la red con B5.
+  El paso natural es un K2 de los dos proveedores con varias semillas promediadas (en la GPU son minutos), medido
+  como K2, con su regla y sin examen disponible.
+- No se entrena una tercera semilla hoy: el rango ya dice lo que tenía que decir, y cada una son 55 minutos de CPU.
+
+Descartado: leer esto como que K3 ha pasado su punto 2 (la regla no lo permite); proponer el promedio de semillas para
+la entrega de hoy (pide entrenar en la GPU, pesos nuevos, su punto 4 y su reproducción).
+
+Estado: descriptivo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian. La réplica de solo SkillCorner (el
+sentido sin voto) se ha reanudado; su medida se apunta cuando acabe.
