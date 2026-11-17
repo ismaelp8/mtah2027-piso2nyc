@@ -5364,3 +5364,411 @@ detectar.
 Lectura [inferencia]: el detector ve el balón en la mayoría de los frames. Si las 2,5 detecciones por frame fueran
 todas falsas y repartidas por el recorte, la más cercana estaría a unos 3,5 m de mediana, no a 1,33 m. Lo que sobra
 son detecciones falsas, de poca confianza.
+
+### 2026-11-17 · candidatos · B11 y B12, modelos de secuencia para la evidencia de equipo (candidatos y regla, antes de medir)
+
+Quién: lo pidió Ismael el 16/11 por la noche («deberiamos probar modelos mas potentes [...] Vamos a intentar lo que
+sea»), a través de la sesión planificadora. Lo escribe Claude en la rama `claude/serene-lumiere-16245d` antes de
+entrenar ni medir nada. Lo único que se ha ejecutado antes es una prueba de velocidad con datos inventados, para fijar
+los pasos de entrenamiento.
+
+Qué se prueba: si un modelo que mira la secuencia, con una ventana hacia atrás y otra hacia delante (etiquetamos en
+diferido), encuentra los cambios de posesión que B5 no ve. B5 es una regresión logística por frame.
+
+No repite lo cerrado. La red de una capa (fase 3, 15/11) y B6–B9 miraban los rasgos de un frame, ya promediados en
+ventanas fijas. Aquí el modelo recibe los canales de cada frame sin promediar y aprende sus propios filtros en el
+tiempo. B5 no se toca.
+
+**Lo común a los dos candidatos:**
+- **Canales por frame** (`possession/secuencia.py`, `canales`), calculados por tramo evaluado y a cero fuera:
+  - **9 impares** (local menos visitante; cambian de signo si se cambian los equipos):
+    - los 5 de proximidad al balón de B1 en ventana 1: el signo del más cercano, los núcleos de 1, 2,5 y 6 m y la
+      distancia del más cercano con tope;
+    - el juego en la dirección de ataque;
+    - el balón en la dirección de ataque, en ventana 1;
+    - la velocidad de los jugadores en la dirección de ataque y la diferencia de dispersión, las dos sin promediar (las
+      series de `aprendida._rasgos_forma` antes de sus medias).
+  - **3 pares** (no cambian si se cambian los equipos):
+    - balón visible (0 o 1);
+    - la distancia al jugador más cercano de cualquiera de los dos equipos, con tope de 15 m (15 sin balón);
+    - la velocidad del balón en m/s, por diferencia centrada de ±1 frame, con tope de 40 (0 sin balón).
+  - Cada canal se divide por su raíz cuadrática media en los frames de entrenamiento del pliegue, que se guarda con
+    los pesos.
+- **Antisimetría exacta:** z = ½·(g(impares, pares) − g(−impares, pares)). Si se cambian los equipos, z cambia de
+  signo. Los canales pares solo los puede usar así; una lineal impar como B5, no.
+- **Puntuación, como B5:** el modelo solo da el logit z, y se puntúa con `aprendida.puntuacion_de("b5", z, visible, α,
+  cercano)`: −α·|z| al equipo que pierde y el +1 de N1 donde se ve el balón. Frente al `D`, empuja como B5.
+- **Etiquetas y pérdida, como B5:**
+  - solo cuentan los frames vivos en los que el flag y control coinciden (`H` = 1, `A` = 0);
+  - entropía cruzada sobre el logit;
+  - el resto de frames entra como contexto, pero no en la pérdida;
+  - así ningún candidato es una apuesta de convención.
+- **Datos: solo la DFL.** Cada partido entra con el balón de las dos condiciones que votan (`dfl.tracking_de`: «como el
+  ATD» y «como el ATD, sin bloques»), como dos ejemplos.
+  - SkillCorner no se usa para entrenar. Así su mitad de entrenamiento queda fuera de muestra para el modelo de los 7.
+- **Pliegues:** 8 por candidato, uno sin cada partido de la DFL (el harness, con `dejar_fuera`) y el de los 7 (la
+  entrega y SkillCorner).
+- **Entrenamiento:**
+  - torch 2.15 en CPU (`mtah2027-balon`), float32 y un hilo;
+  - semilla 20261117 más el índice del pliegue;
+  - AdamW con decaimiento 1e-4 y un número de pasos fijo;
+  - sin parada temprana ni validación: nada se elige mirando el partido que queda fuera.
+- **α** se elige de (1/16, 1/8, 1/4, 1/2, 1, 2, 4, 8) como la de B5 (`entrenar.elegir_alfa_d_propio`):
+  - la que da más `spellF1` medio con las dos convenciones y las dos condiciones que votan, en los 6 partidos de
+    entrenamiento del pliegue;
+  - con la pieza de `D` de `main` dentro, sin oráculo, y con el decodificador de `main` (`decode_cortas_a_d`, coste
+    25);
+  - si empatan, la más pequeña.
+  - Es dentro de muestra, como en B5. Una red puede dar logits más afilados en los partidos que vio, así que se enseña,
+    como descripción, el acierto por frame dentro y fuera del pliegue.
+- **La predicción de la entrega:**
+  - va en numpy puro, en float64 y sin BLAS: sumas canal a canal en orden fijo, como `aprendida.logit`;
+  - los pesos van en `possession/secuencia_pesos.npz`;
+  - los envoltorios son `aprendida.evidence_b11` y `aprendida.evidence_b12`, como B6–B9, y quedan apagados;
+  - se comprueba que da lo mismo que torch (con tolerancia, porque torch va en float32) y que la fila `{}` del harness
+    no cambia. La prueba sin datos va en `validation/scripts/prueba_secuencia.py`.
+
+**B11, convolucional temporal:**
+- entrada 1×1 de 12 a 24 canales;
+- 7 bloques residuales `h + conv(ReLU(h))`, con núcleo 3 y dilaciones 1, 2, 4, …, 64;
+- ReLU y salida 1×1;
+- unos 12.600 pesos;
+- ve ±127 frames (±5,1 s), con ceros fuera del tramo;
+- se entrena con trozos de 1.536 frames, 16 por paso, sorteados con semilla fija. Los 128 frames de cada borde del
+  trozo no cuentan en la pérdida;
+- 1.500 pasos, con tasa 1e-3.
+
+**B12, GRU bidireccional:**
+- los canales, en medias de 5 frames (5 Hz, por tramo);
+- una GRU de 16 en cada sentido y una salida lineal de 32 a 1;
+- z vuelve a 25 Hz por interpolación lineal entre los centros de los grupos;
+- unos 2.900 pesos;
+- se entrena con las partes enteras, que es lo que verá en la predicción: 24 secuencias por pliegue, todas en cada paso;
+- 250 pasos, con tasa 3e-3;
+- **si a las 04:00 del 17/11 no ha terminado de entrenar, se cierra sin medir.**
+
+**Regla de entrada.** Es la del «límite de daño» del 16/11, tal cual, frente a `main` (`{}`), para cada candidato:
+1. **DFL con control:** +0,005 o más en las dos condiciones del balón que votan, ganando en 6 de 7 partidos en cada
+   una, con el `D` de las etiquetas y con el `D` propio.
+2. **SkillCorner** (solo si pasan 1 y 3):
+   - **mitad de entrenamiento** (`lector.ENTRENAMIENTO`, con el modelo de los 7): +0,005 o más con los 10 partidos
+     juntos y ganando en 7 de 10, en las cuatro celdas («detectado» y «detectado, suavizado», con el `D` de las
+     etiquetas y con el propio), como el detector de cambios del 16/11. El intervalo se enseña, pero no decide;
+   - **solo entonces** se avisa a la planificadora antes de abrir el examen (`lector.EXAMEN`). Se abre una vez, para
+     un solo candidato, con el mismo umbral: +0,005 o más y 7 de 10, en las cuatro celdas.
+3. **DFL con el flag:** no pierde más de 0,005 en ninguna celda (condición que vota × modo del `D`). Si además gana con
+   el flag, se dice: es lo que más convence.
+4. **Entrega de prueba** frente a `equipo_v9`, con los criterios de daño escritos antes de generarla.
+
+- **Un único candidato llega al examen.** Si pasan los dos, el que más gana con control en la DFL (media de las cuatro
+  celdas); si empatan, B11.
+- **Si ninguno pasa en abierto, se cierra y se apunta,** sin probar más variantes.
+
+Cómo se mide:
+- **DFL:** `validation/harness/puntuar.py --versiones validation/harness/versiones/b11_secuencia_2026-11-17.json`, con
+  `--d oraculo` y con `--d propio`, y bootstrap de 1.000.
+- **SkillCorner:** `validation/secuencia/skillcorner.py`. `main` es la entrega de hoy: B5, `dead_state` y
+  `decode_cortas_a_d`.
+- Siempre se enseñan las posesiones predichas frente a las reales.
+
+Avisado antes de medir:
+- **Los precedentes:** la red de una capa y el detector de cambios encontraron más posesiones, ganaron con el flag,
+  empataron con control y perdieron o empataron en SkillCorner. Si sale el mismo patrón, la regla lo cierra.
+- **Circularidad:** las etiquetas de control salen de una regla de proximidad, y los canales son de proximidad. El
+  número con control puede salir inflado; por eso deciden también el flag (como límite) y SkillCorner.
+- **α dentro de muestra:** si la red se sobreajusta, α sale demasiado grande para el partido que no vio. Eso juega en
+  contra del candidato, no a favor.
+
+Estado: escrita antes de entrenar ni medir. El resultado va en la entrada siguiente.
+
+### 2026-11-17 · candidatos · B11 y B12: resultado de la medida
+
+Quién: Claude, en la rama `claude/serene-lumiere-16245d`, con la regla y los candidatos ya commiteados (`6c4176c`). Son
+datos abiertos: lo ejecutó Claude, sin tocar el partido.
+
+Cómo se midió:
+- **Entrenamiento:** `validation/secuencia/exportar.py`, `entrenar_red.py` y `juntar.py`, como se fijó en la entrada
+  anterior.
+  - Un cambio de implementación antes de medir nada, que no cambia el modelo: la GRU bidireccional de B12 se escribe
+    como dos GRU de un sentido, la de atrás sobre cada parte invertida, sin `pack_padded_sequence`, cuyo paso hacia
+    atrás era lentísimo en CPU. Su gradiente se suma en dos mitades del lote, para que quepan 4 pliegues en 16 GB.
+- **DFL:** `validation/harness/puntuar.py`, con `main` y B11 (las versiones del fichero commiteado sin B12, que aún
+  entrenaba), con `--d oraculo` y `--d propio`, bootstrap de 1.000 y `--eventos` (descriptivo).
+  - Código en `90952d0`, con los pesos de B11 que se commitearon después en `de770f4` (el mismo fichero, sha256
+    `c148da19…0e18`).
+  - Salidas en `validation/secuencia/salidas/2026-11-17_*`.
+- **`main` repite el harness:** 0,498 / 0,512 con el flag y 0,728 / 0,748 con control, con el `D` de las etiquetas;
+  0,414 / 0,431 y 0,623 / 0,651 con el propio.
+- **SkillCorner:** `validation/secuencia/skillcorner.py --candidatos b11`, en la mitad de entrenamiento.
+  - **Diferencia con la regla:** la regla decía «solo si pasan 1 y 3», y el encargo de la planificadora pedía medir
+    `ENTRENAMIENTO` en todo caso. Se midió después de saber que B11 no pasaba el punto 1. No decide nada: B11 ya estaba
+    cerrado. Se leyó con el umbral escrito antes. El examen no se abrió.
+
+**B11, resultado [medido], frente a `main`** (diferencia [5–95 %], en cuántos de 7 gana):
+
+| convención | `D` | «como el ATD» | «como el ATD, sin bloques» |
+|---|---|---|---|
+| control | de las etiquetas | +0,012 [−0,001 a +0,026], 4 de 7 | +0,007 [−0,006 a +0,020], 4 de 7 |
+| control | propio | +0,023 [+0,011 a +0,037], 5 de 7 | +0,014 [+0,001 a +0,027], 5 de 7 |
+| flag | de las etiquetas | +0,104 [+0,093 a +0,116], 7 de 7 | +0,108 [+0,097 a +0,120], 7 de 7 |
+| flag | propio | +0,097 [+0,087 a +0,109], 7 de 7 | +0,101 [+0,090 a +0,112], 7 de 7 |
+
+- **Posesiones predichas** (`D` de las etiquetas, «como el ATD»): 1.989, frente a 1.661 de `main`. Las reales son 1.736
+  con control y 3.061 con el flag.
+- **SkillCorner, `ENTRENAMIENTO`** (10 partidos, modelo de los 7, frente a `main`):
+
+  | `D` | «detectado» | «detectado, suavizado» |
+  |---|---|---|
+  | de las etiquetas | −0,012 [−0,020 a −0,004], 4 de 10 | −0,009 [−0,017 a −0,001], 4 de 10 |
+  | propio | +0,000 [−0,007 a +0,008], 4 de 10 | +0,001 [−0,007 a +0,008], 5 de 10 |
+
+  Predice 2.655 posesiones frente a 2.270 de `main` (las reales son 3.228), pero no son las buenas. Ninguna de las
+  cuatro celdas cumple: «no pasa».
+- **Eventos humanos** («como el ATD», frente a `main`, descriptivo): recuperaciones +11,8 puntos [+6,7 a +16,9], duelos
+  con cambio +9,6 [+5,2 a +14,0] y duelos sin cambio −10,0 [−14,7 a −4,7]: un **compromiso**. Frente al control,
+  «mejora».
+- **Descriptivo:**
+  - acierto por frame en el partido que no vio, del 92,2 al 95,5 % (del 94,6 al 95,5 % dentro del pliegue);
+  - α de 2 a 8 (el pliegue sin J03WN1 cae en el borde de la rejilla, 8);
+  - numpy frente a torch: diferencia máxima de z de 4·10⁻⁶, sin ningún signo distinto, en los 8 pliegues.
+
+**Veredicto de B11, con la regla escrita antes: no pasa.**
+- **Punto 1, DFL con control: no pasa.** Supera el +0,005 en las cuatro celdas, pero gana en 4 o 5 partidos de 7, y se
+  pedían 6.
+- **Punto 3, DFL con el flag: pasa, y gana mucho:** +0,10 en las cuatro celdas, 7 de 7. Es la mayor ganancia con el
+  flag medida hasta ahora.
+- **SkillCorner,** medido fuera de la regla: pierde con el `D` de las etiquetas y empata con el propio.
+- Ninguna regla vigente lo admite. El límite de daño falla por el «6 de 7», y §5.8 por no llegar a +0,03 con control.
+
+Lectura [inferencia]: es el patrón de la red de una capa y del detector de cambios, más marcado. B11 encuentra muchos
+más cambios de equipo (recuperaciones y duelos con cambio), y eso le hace ganar mucho con el flag. Pero también cambia
+cuando no debe (duelos sin cambio), y con un tracking de otro proveedor esas posesiones de más no aciertan. Las
+etiquetas de control y SkillCorner, que exigen control, no ven la mejora.
+
+**B12: cómo se midió.**
+- Terminó de entrenar a tiempo: el último pliegue, a las 03:58 (el plazo era a las 04:00).
+- La medida es la oficial: el harness con el fichero de versiones commiteado, desde un árbol limpio (código `bfc9566`,
+  sin cambios) y con los pesos de los dos modelos (sha256 `ba31988a…db76`).
+- Las cifras de B11 salen iguales que arriba.
+- SkillCorner, otra vez con `--candidatos b11 b12`, también fuera del orden de la regla, como en B11.
+- Salidas en `validation/secuencia/salidas/2026-11-17_*oficial*`, con la tabla por partido en
+  `..._harness_oficial_por_partido.md`.
+
+**B12, resultado [medido], frente a `main`** (diferencia [5–95 %], en cuántos de 7 gana):
+
+| convención | `D` | «como el ATD» | «como el ATD, sin bloques» |
+|---|---|---|---|
+| control | de las etiquetas | +0,034 [+0,022 a +0,046], 7 de 7 | +0,028 [+0,016 a +0,039], **5 de 7** |
+| control | propio | +0,034 [+0,023 a +0,046], 7 de 7 | +0,028 [+0,017 a +0,039], **5 de 7** |
+| flag | de las etiquetas | +0,056 [+0,046 a +0,066], 7 de 7 | +0,061 [+0,051 a +0,071], 7 de 7 |
+| flag | propio | +0,046 [+0,038 a +0,055], 7 de 7 | +0,053 [+0,044 a +0,062], 7 de 7 |
+
+- **Por partido, con control y «sin bloques»,** pierde en J03WPY (−0,006 con el `D` de las etiquetas, −0,000 con el
+  propio) y en J03WQQ (−0,025 y −0,004).
+- **Posesiones predichas** (`D` de las etiquetas, «como el ATD»): 1.774, frente a 1.661 de `main`. Las reales son 1.736
+  con control y 3.061 con el flag.
+- **SkillCorner, `ENTRENAMIENTO`** (frente a `main`, umbral escrito antes: +0,005 y 7 de 10):
+
+  | `D` | «detectado» | «detectado, suavizado» |
+  |---|---|---|
+  | de las etiquetas | +0,011 [+0,004 a +0,018], 7 de 10 | +0,014 [+0,006 a +0,021], 7 de 10 |
+  | propio | +0,012 [+0,005 a +0,019], 9 de 10 | +0,014 [+0,007 a +0,022], 9 de 10 |
+
+  Cumple las cuatro celdas. Predice 2.465 posesiones frente a 2.270 de `main` (las reales son 3.228).
+- **Eventos humanos** («como el ATD», frente a `main`, descriptivo): recuperaciones +9,2 puntos [+5,1 a +13,3], duelos
+  con cambio +8,7 [+5,2 a +12,7] y duelos sin cambio −6,2 [−10,4 a −1,4]: un **compromiso**, más suave que el de B11.
+- **Cuánto cambia la salida frente a `main`** (descriptivo, con el `D` propio;
+  `validation/secuencia/cambios_frente_a_main.py`):
+  - con otra etiqueta, el 3,8–4,1 % de los frames en la DFL y el 6,4–6,7 % en SkillCorner;
+  - entran o salen de `D` el 1,1 % en la DFL y el 3,8 % en SkillCorner, pero el `D` total se mueve 0,4 puntos como
+    mucho y las paradas casi no cambian;
+  - las posesiones suben un 4–6 % en la DFL y un 9–10 % en SkillCorner;
+  - hay menos posesiones de menos de 25 frames que con `main`.
+- **Con los jugadores degradados como los del ATD** (descriptivo):
+  - medido con `validation/apuesta_b/jugadores.py --versiones` y el fichero de hoy, con el `D` de las etiquetas, en
+    las tres variantes del 14/11, que salen sin voto; salida en `..._jugadores_como_el_atd.md`;
+  - frente a `main`, B12 sigue ganando: con control de +0,017 a +0,041 (5 a 7 de 7) y con el flag de +0,049 a
+    +0,061 (7 de 7);
+  - B11, con control, pierde en dos de las tres variantes (de −0,010 a −0,039).
+- **Descriptivo:**
+  - acierto por frame en el partido que no vio, del 91,2 al 94,4 %;
+  - α = 8 en los 8 pliegues, el borde de la rejilla fijada;
+  - numpy frente a torch: diferencia máxima de z de 2,4·10⁻⁵ en la DFL, sin ningún signo distinto.
+
+**Veredicto de B12, con la regla escrita antes: no pasa.**
+- **Punto 1, DFL con control: no pasa.** Gana entre +0,028 y +0,034 en las cuatro celdas, con el intervalo por encima
+  de cero, pero en «sin bloques» gana en 5 de 7 partidos con los dos modos del `D`, y se pedían 6.
+- **Punto 3, DFL con el flag: pasa, y gana:** +0,046 a +0,061, 7 de 7.
+- **SkillCorner, `ENTRENAMIENTO`:** cumpliría las cuatro celdas, pero se midió fuera del orden de la regla y no la
+  rescata.
+- **§5.8 frente a `main`:** tampoco pasa (+0,028 con control en «sin bloques», por debajo de +0,03).
+- **El examen de SkillCorner no se abre:** la regla solo lo abre si pasan los puntos 1 y 3.
+
+Lectura [inferencia]:
+- B12 es el primer candidato de la evidencia de equipo que gana con las dos convenciones en la DFL y, además, en
+  SkillCorner. Se queda fuera por dos partidos con pérdidas pequeñas en una condición.
+- B11 encuentra más cambios, pero muchos falsos (1.989 posesiones). B12 añade menos (1.774) y acierta más.
+- B12 saca más que B11. Con lo medido no se puede decir por qué: entre los dos cambian a la vez la memoria, los 5 Hz y
+  α.
+
+**Decisión: con la regla escrita antes, B11 y B12 se cierran y quedan apagados** (`aprendida.evidence_b11` y
+`evidence_b12`). `pipeline.PIECES` y la entrega no cambian. No se prueban más variantes.
+
+**Lo que queda abierto, para Ismael (no lo decide esta sesión):** una excepción para B12, como la de `ball_out` del
+16/11.
+- **A favor:** gana con control en las cuatro celdas de la DFL (+0,028 a +0,034, con el intervalo por encima de cero),
+  con el flag en todas (7 de 7) y en SkillCorner, que es otro proveedor y exige control.
+- **En contra:**
+  - falla el «6 de 7» que se escribió antes de medir;
+  - α cae en el borde de la rejilla;
+  - el harness no degrada a los jugadores, y B12 usa sus canales sin promediar. Con los jugadores como los del ATD
+    aguanta (arriba), pero esas variantes no votan: el ATD tiene además slots duplicados que no se imitan;
+  - su recurrencia usa `np.exp` y `np.tanh` en 14.000 pasos por parte. La puntuación va redondeada a 6 decimales, pero
+    si entra hay que reproducir la entrega una vez en otra máquina antes de entregar;
+  - **puntúa el doble de fuerte que B5:** la media de |H − A| en la DFL es 25,6 frente a 13,1 (cociente 1,95–1,96;
+    `cambios_frente_a_main.py b12 --escala`). La capa de los contraataques, que suma 8 y se pesó con la escala de B5,
+    pesaría la mitad. El `D` no se ve afectado: frente a `D`, B12 empuja como B5.
+- **Si la decide, el orden es este:**
+  1. Se avisa a la planificadora y se abre el examen de SkillCorner una vez, para B12, con el umbral escrito arriba
+     (+0,005 o más y 7 de 10, en las cuatro celdas). Son datos abiertos: lo puede ejecutar Claude.
+
+         python validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso
+
+     El uso se apunta en `validation/skillcorner/BITACORA.md` («Usos del examen») y aquí.
+  2. Si el examen pasa, Ismael genera la entrega de prueba con el python del entorno limpio.
+     - Se ejecuta desde la carpeta de esta rama (el worktree `.claude/worktrees/musing-roentgen-2874e5`).
+     - Con `--contra`, la ruta de `equipo_v9.csv` en su carpeta, porque las entregas no van en git:
+
+           C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe validation/partido/probar_entrega.py prueba_b12 --pieza candidates=aprendida.evidence_b12 --contra C:\dev\mtah2027-piso2nyc\evaluation\results\equipo_v9.csv
+
+     - Comprobado sin datos con ese python (3.13.9, numpy 2.5.4): la pieza se resuelve, carga los pesos y da lo mismo
+       dos veces.
+
+  3. Encenderla (`pipeline.PIECES["candidates"]`) es otra decisión, con la entrega regenerada y validada.
+
+**Criterios de daño de esa entrega de prueba frente a `equipo_v9`.** Se escriben antes de generarla y solo valen si hay
+excepción y el examen pasa. Las bandas salen de lo que B12 cambia en abierto (arriba). Si falla uno, B12 no entra, diga
+lo que diga el examen:
+1. 0 frames con piezas en conflicto (si no, el pipeline no escribe el CSV).
+2. Ninguna posesión de menos de 25 frames en los dos tramos, como `equipo_v9`. En abierto, B12 da menos que `main`.
+3. **El `D` casi no se mueve:**
+   - el `D` de los frames evaluados, a 0,5 puntos o menos del 46,2 % de `equipo_v9`;
+   - entre 111 y 121 paradas (116 en `equipo_v9`);
+   - los frames que entran o salen de `D` (en `comparar_entregas.py`), como mucho el 6 % de los evaluados, unos 9.500.
+     En abierto, del 1,1 al 3,8 %; el tope es el máximo más la mitad.
+4. **Posesiones:** entre 197 y 227 (201 en `equipo_v9`, de −2 a +13 %). En abierto suben de un 4 a un 10 %.
+5. **Frames con otra etiqueta:** como mucho el 10 % de los evaluados, unos 15.900. En abierto, del 3,8 al 6,7 %.
+6. **Balón fuera** (`balon_fuera.py`): no más de 2 rachas «tarde» más que `equipo_v9` con el mismo script (el de
+   `equipo_v9` sale de `python validation/partido/balon_fuera.py --entrega equipo_v9`).
+7. El validador, en verde.
+
+**Desviaciones del plan escrito antes:**
+- SkillCorner se midió para los dos fuera del orden de la regla, como pedía el encargo. No rescata a ninguno.
+- B12 tuvo dos cambios de implementación antes de medir nada: dos GRU de un sentido en lugar de `pack_padded_sequence`,
+  y el gradiente sumado en dos mitades. Es el mismo modelo y el mismo gradiente, salvo el redondeo.
+- B12 terminó de entrenar 90 s antes del plazo que se fijó.
+
+**La entrega no cambia:**
+- B11 y B12 están fuera de `pipeline.PIECES`;
+- la fila de `main` del harness repite sus números de siempre;
+- `prueba_aprendida.py`, `prueba_pipeline.py`, `prueba_harness.py` y `prueba_secuencia.py` dan todo bien.
+
+No se ha regenerado.
+
+Estado: B11 y B12 cerrados por la regla y apagados. La excepción de B12 queda pendiente de Ismael.
+
+### 2026-11-17 · candidatos · segunda ronda: B13, una red sobre las trayectorias (se prueba)
+
+Ismael, a través de la planificadora: sin plazos, y si una ronda no pasa, se prueba otra. Regla: la del límite de daño
+del 16/11, frente a `main`. B13 (`possession/trayectorias.py`, apagada):
+- cada equipo se codifica desde su dirección de ataque, con un codificador de conjuntos de todos sus jugadores y los
+  rivales, y el balón;
+- encima, una GRU bidireccional a 5 Hz, antisimétrica;
+- se entrena en la DFL con el balón de las dos condiciones que votan y también sin balón a trozos.
+
+Se mide en el harness con `validation/harness/versiones/b13_trayectorias_2026-11-17.json`.
+
+B14 (`possession/trayectorias2.py`, apagada) es B13 con tres cambios:
+- rasgos de control por jugador: núcleos de 1 y 3 m, co-movimiento y acercamiento al balón;
+- atención conjunta sobre los dos equipos;
+- entrenada con dominio aleatorizado como el ATD (`exportar2.py`): dos copias más de cada partido, con jugadores
+  degradados, tracklets cortados, slots fantasma y el balón con otra semilla y de 0 a 6 frames tarde, y espejo en y.
+
+Se mide igual, frente a `main`.
+
+**B13, medido [harness, `ad6dd9f`; salidas en `validation/secuencia/salidas/2026-11-17_harness_b13_*`]:** frente a `main`,
+con el flag +0,094 / +0,093 (7 de 7) y con control +0,021 (6 de 7) / +0,003 (4 de 7) con el `D` de las etiquetas, y
++0,025 (5 de 7) / +0,007 (3 de 7) con el propio. No pasa el punto 1 y queda por debajo de B12 con control. Predice
+1.865 posesiones (`main` 1.661, B12 1.774; las reales son 1.736 con control). Es el patrón de B11: encuentra más cambios,
+pero muchos sobran.
+
+B15 (se prueba; `aprendida.evidence_b15`, apagada) es la red de B14 entrenada con la etiqueta de control en todos los
+frames vivos, no solo donde el flag y control coinciden.
+- Por qué: B11 y B13 cambian de equipo de más. Nunca vieron en la pérdida los toques breves del rival (del 5 al 9 % de
+  los vivos), y ahí cambian.
+- Es una apuesta de convención declarada («exigir control», 12/11). Como las etiquetas de control salen de una regla de
+  proximidad, el número con control sale favorecido. Pesan el flag (como límite) y SkillCorner.
+
+**B13 en SkillCorner `ENTRENAMIENTO`** (descriptivo, `..._skillcorner_entrenamiento_b13.md`): pierde en las cuatro celdas
+frente a `main`, de −0,010 a −0,024 (de 1 a 4 de 10). **B13 se cierra.**
+
+### 2026-11-17 · candidatos · excepción para B12: se abre el examen de SkillCorner (decisión de Ismael)
+
+Quién: Ismael (17/11, 10:20): «si puedes lánzalo y si ves que está todo ok mergea la branch con B12». Lo ejecuta Claude,
+en la sesión de Ismael del ordenador del trabajo. Escrita antes de abrir el examen.
+
+Qué se decide: la excepción que dejaba abierta la entrada «B11 y B12: resultado de la medida».
+- **El examen:** se abre `lector.EXAMEN` de SkillCorner una sola vez, para B12, con el umbral escrito en esa entrada:
+  +0,005 o más y ganar en 7 de 10, en las cuatro celdas (`D` de las etiquetas y propio, «detectado» y «detectado,
+  suavizado»). Comando: `python validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso`. El uso se
+  apunta en `validation/skillcorner/BITACORA.md` («Usos del examen»).
+- **Si pasa:** B12 entra en `main`, **apagado**. Encenderlo (`pipeline.PIECES["candidates"]`) sigue los pasos de esa
+  entrada: una persona con los datos genera la entrega de prueba frente a `equipo_v9`, se lee con sus siete criterios de
+  daño, y después se regenera, se valida y se reproduce en otra máquina.
+- **Si no pasa:** B12 se queda cerrado y apagado, y a `main` va solo el registro.
+
+Por qué: es la tercera excepción a «lo que no ha ganado en el harness no entra», tras los contraataques y el balón
+fuera. A diferencia de esas dos, B12 sí se mide en datos abiertos y gana en todo salvo en el «6 de 7» de una celda.
+
+### 2026-11-17 · candidatos · B12, examen de SkillCorner: no pasa; B12 se queda cerrado y apagado
+
+Quién: Claude, en la sesión de Ismael del ordenador del trabajo, con la excepción que decidió Ismael (entrada anterior).
+Son datos abiertos.
+
+Cómo se midió:
+- **El comando:** `python validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso`, sobre `lector.EXAMEN`
+  (10 partidos).
+- **Qué se compara:**
+  - `main` es B5, `dead_state` y `decode_cortas_a_d`;
+  - B12, con el modelo de los 7 partidos de la DFL;
+  - bootstrap pareado de 1.000.
+- **Con qué pesos:** desde una copia con los pesos de B12 escritos como números (`possession/secuencia_pesos.py`), que se
+  comprobó que son idénticos bit a bit a los medidos (sha256 de la fuente `ba31988a…db76`).
+
+**Resultado [medido]:**
+
+| `D` | condición | `main` | B12 | frente a `main` [5–95 %] | gana en |
+|---|---|---|---|---|---|
+| de las etiquetas | «detectado» | 0,509 | 0,513 | +0,004 [−0,003 a +0,012] | 6 de 10 |
+| de las etiquetas | «detectado, suavizado» | 0,504 | 0,510 | +0,007 [−0,001 a +0,015] | 7 de 10 |
+| propio | «detectado» | 0,389 | 0,394 | +0,006 [−0,001 a +0,013] | 7 de 10 |
+| propio | «detectado, suavizado» | 0,384 | 0,394 | +0,009 [+0,002 a +0,017] | 7 de 10 |
+
+B12 predice más posesiones que `main` (2.512 frente a 2.283, con el `D` de las etiquetas y «detectado»). Las reales son
+3.152.
+
+**Con la regla escrita antes** (+0,005 o más y ganar en 7 de 10, en las cuatro celdas): **no pasa.** Cumple tres de las
+cuatro celdas. Falla «detectado» con el `D` de las etiquetas: +0,004 y gana en 6 de 10.
+
+**Decisión** (la que se escribió antes de abrir el examen):
+- B12 se queda cerrado y apagado;
+- a `main` va solo el registro, no el código ni los pesos;
+- el examen de SkillCorner queda usado para B12;
+- no se prueba ninguna variante de B12.
+
+Lectura [inferencia]:
+- En el examen, B12 gana menos que en la mitad de entrenamiento: de +0,004 a +0,009, frente a +0,011 a +0,014. Parte de
+  la ventaja era de esa mitad.
+- Las cuatro celdas siguen siendo positivas, pero ninguna se aleja del ruido.
+
+Lo que no se hace: buscar otra excepción para B12. Sería buscar hasta que salga.

@@ -510,6 +510,28 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - Antonio: la línea del vídeo, cerrada;
     - Claude (sesión de Ismael): el borrador del documento técnico (PR 21). Está escrito para `equipo_v8`: hay que
       ponerlo al día con `equipo_v9`.
+- **17/11 por la mañana: los modelos de secuencia para la evidencia de equipo (B11–B15).** Están en la rama
+  `claude/serene-lumiere-16245d`; el registro, en `docs/decisiones.md` (17/11). Ninguno entra.
+  - **B11 (convolución temporal) y B13 (red sobre las trayectorias) se cierran:**
+    - ganan mucho con el flag, de +0,09 a +0,10;
+    - con control ganan solo en 4–6 de 7 partidos;
+    - en SkillCorner pierden o empatan.
+  - **B12 (GRU bidireccional) es el mejor candidato de equipo medido, pero tampoco entra.**
+    - En la DFL gana de +0,028 a +0,034 con control y de +0,046 a +0,061 con el flag. En la mitad de entrenamiento de
+      SkillCorner, de +0,011 a +0,014.
+    - La regla lo dejó fuera por un «6 de 7».
+    - Ismael decidió una excepción con el examen de SkillCorner, y **el examen no pasa:** cumple 3 de las 4 celdas y en
+      la que falla gana +0,004, en 6 de 10. Se queda cerrado y apagado, y el examen queda usado para B12.
+  - **B14 y B15** (redes con rasgos de control y dominio aleatorizado como el ATD) se estaban entrenando en esa rama, sin
+    medir a las 10:45. Si alguno pasa su regla, necesita su examen y su entrega de prueba antes del corte.
+  - **El código y los pesos de B11–B15 se quedan en la rama:** los `.npz` no pueden entrar en git (`CONTRIBUTING.md` §7).
+  - **La entrega no cambia:** sigue siendo `equipo_v9`.
+- **Aviso sobre la historia de `main`** (16/11, noche):
+  - después de que GitHub mergeara las PR 23 y 24, sus commits se rehicieron a mano y se subieron encima. El contenido
+    es el mismo (el árbol de ficheros coincide), así que no se perdió nada;
+  - las ramas que salieron de aquellos merges (como `claude/serene-lumiere-16245d`) tienen ahora varias bases: se
+    mergean con squash;
+  - no se reescribe historia que ya está en GitHub, y `--force` en `main` está prohibido (sección «Flujo de git»).
 
 **Lo siguiente: el plan hasta la entrega** ([`docs/PLAN_ENTREGA.md`](docs/PLAN_ENTREGA.md), decidido por
 Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal para el final.
