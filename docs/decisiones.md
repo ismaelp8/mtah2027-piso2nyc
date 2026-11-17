@@ -5464,3 +5464,54 @@ Avisado antes de medir:
 
 Estado: escrita antes de exportar, entrenar o medir. El piloto y el resultado van en las entradas siguientes.
 `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega (`equipo_v9`) no cambian.
+
+### 2026-11-17 · candidatos · modelo conjunto: el piloto no cambia nada; la configuración queda fijada
+
+Quién: Claude, en la sesión de Ismael (17/11). Escrita después del piloto y antes de entrenar los otros pliegues.
+
+Qué se probó: el pliegue que deja fuera `J03WMX` (DFL) y `1874553` y `2010085` (SkillCorner), con la configuración
+de la entrada anterior y cinco variantes, todas dentro de lo que el piloto podía tocar. Código en `validation/conjunto/`
+(`exportar.py`, `red.py`, `entrenar.py`, `medir.py`); torch 2.14.1 con CUDA en la RTX 3060, unos 2,7 minutos por
+pliegue.
+
+Resultado [medido; los tres partidos que el pliegue no vio, con el balón de sus dos condiciones que votan]:
+
+| variante | pesos | pasos | acierto de z: DFL / SkillCorner | pérdida de z: DFL / SkillCorner | dentro de muestra (DFL) |
+|---|---|---|---|---|---|
+| **la escrita antes** | 36.260 | 3.000 | 93,7 % / 85,9 % | 0,160 / 0,317 | 93,2 % |
+| red 9 veces mayor (64 por jugador, 96 canales, 10 bloques) | 308.484 | 8.000 | 92,1 % / 84,8 % | 0,42 / 1,05 | 99,4 % |
+| la misma, 6.000 pasos | 36.260 | 6.000 | 93,5 % / 85,8 % | 0,155 / 0,343 | 95,2 % |
+| 64 canales, abandono 0,2 | 84.740 | 4.000 | 92,0 % / 85,7 % | 0,184 / 0,355 | 96,2 % |
+| más abandono, más slots que faltan y más decaimiento | 36.260 | 3.000 | 93,5 % / 86,4 % | 0,167 / 0,315 | 92,3 % |
+| la misma, 2.000 pasos | 36.260 | 2.000 | 93,6 % / 86,0 % | 0,160 / 0,314 | 91,7 % |
+
+- **La red grande se aprende los partidos de memoria:** acierta el 99 % de lo que vio y pierde fuera. Con ±12 s de
+  contexto, la posición de 22 jugadores identifica el momento del partido.
+- **La escrita antes no se sobreajusta** (acierta lo mismo dentro y fuera) y las tres variantes pequeñas dan lo mismo
+  fuera de muestra, dentro del ruido de tres partidos.
+- **La salida de cambios es prudente:** con el umbral 0,5 ve el 22–25 % de los cambios de control de la DFL, con 0,8–1,0
+  avisos por minuto vivo y el 68–72 % buenos (el detector aprendido de David: 55–63 % vistos, 10–16 avisos por minuto,
+  23–25 % buenos). En SkillCorner ve el 4–9 %, con el 30–40 % buenos.
+- **Comprobación del instrumento** (`medir.py --comprobar`, `J03WMX`): K1 con `p` a cero y K2 con el logit y la α de B5
+  dan `main` frame a frame en las 18 salidas.
+- **La predicción en numpy** (`possession/conjunto.py`, sin exponenciales y sin BLAS) frente a torch en dos partidos:
+  diferencia máxima de z de 0,003, y el signo cambia en 7 y 25 frames de 150.000 (`paridad.py`). Tarda 4–5 s por
+  partido.
+- **Descriptivo, con los candidatos en esos tres partidos** (han servido para mirar; no deciden):
+  - K2 en `J03WMX`, con α entre 1 y 8: de +0,068 a +0,089 con control y de +0,03 a +0,05 con el flag, con el `D` de las
+    etiquetas; en los dos de SkillCorner, con α entre 0,5 y 4: de +0,050 a +0,056 con el `D` de las etiquetas y de
+    +0,027 a +0,033 con el propio.
+  - K1 en `J03WMX`, con γ = 8: +0,024 y +0,018 con control y +0,035 con el flag; en SkillCorner, entre −0,006 y +0,018.
+
+Decisión y por qué: **no se toca nada.** Los 8 pliegues se entrenan con la configuración escrita antes de entrenar
+(`entrenar.CONFIG`). Es la más simple de las que empatan y no hay que explicar ningún cambio. La red grande se descarta
+por sobreajuste.
+
+Lo que se dice con el resultado final: `J03WMX`, `1874553` y `2010085` son los partidos del piloto. No cambiaron la
+configuración, pero se miraron antes de fijarla; el resultado se da también sin `J03WMX`.
+
+Descartado: la red grande y las variantes con más pasos o más canales (sobreajuste); elegir entre las tres pequeñas
+por una diferencia que tres partidos no distinguen.
+
+Estado: configuración fijada en este commit. El resultado de los 7 partidos de la DFL y de SkillCorner va en la entrada
+siguiente.
