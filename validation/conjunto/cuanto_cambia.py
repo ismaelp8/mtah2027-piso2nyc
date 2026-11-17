@@ -10,8 +10,9 @@ Sirve para escribir, antes de generar la entrega de prueba, qué cambios caben e
 
 Ejecuta el pipeline entero **con el `D` propio** (sin las capas del partido, que aquí no existen) dos veces por
 partido y condición: con las piezas de la entrega (`main`) y con `aprendida.evidence_k2` en lugar de B5, cada una con
-el pliegue que no vio el partido. Cuenta, sobre los frames evaluados: cuántos cambian de etiqueta y de qué a qué, y
-las posesiones y las paradas de cada salida.
+el pliegue que no vio el partido. Cuenta, sobre los frames evaluados: cuántos cambian de etiqueta y de qué a qué, las
+posesiones y las paradas de cada salida, y las posesiones de menos de 12 y de 25 frames (las cotas de las rachas
+cortas que imprime `possession.pipeline`).
 """
 
 import functools
@@ -50,6 +51,17 @@ def rachas(codes, blocks, valores):
     return total
 
 
+def cortas(codes, blocks, limite):
+    """Cuántas posesiones (rachas de `H` o de `A`) duran menos de `limite` frames dentro de los tramos evaluados."""
+    total = 0
+    for a, b in blocks:
+        w = codes[a:b]
+        inicio = np.flatnonzero(np.concatenate(([True], w[1:] != w[:-1])))
+        largo = np.diff(np.concatenate((inicio, [len(w)])))
+        total += int(np.sum(np.isin(w[inicio], (H, A)) & (largo < limite)))
+    return total
+
+
 def comparar(antes, despues, blocks):
     """Recuentos de dos salidas sobre los frames evaluados."""
     dentro = np.zeros(len(antes), dtype=bool)
@@ -65,6 +77,7 @@ def comparar(antes, despues, blocks):
         rachas(antes, blocks, (H, A)), rachas(despues, blocks, (H, A)),
         rachas(antes, blocks, (D,)), rachas(despues, blocks, (D,)),
         int(np.sum(x == D)), int(np.sum(y == D)),
+        cortas(antes, blocks, 12), cortas(despues, blocks, 12), cortas(antes, blocks, 25), cortas(despues, blocks, 25),
     ], dtype=np.int64)
 
 
@@ -100,15 +113,16 @@ def main():
     print("Código: {} · {} partidos de la DFL y {} de SkillCorner, cada uno con el pliegue que no lo vio.\n".format(
         puntuar.version_del_codigo(), len(cj.DFL), len(cj.SKILLCORNER)))
     print("| datos | condición | balón en los D | frames evaluados que cambian | {} | posesiones: main → K2 | paradas: "
-          "main → K2 | frames D: main → K2 |".format(" | ".join(CLASES)))
-    print("|---|---|---|---|---|---|---|---|---|---|")
+          "main → K2 | frames D: main → K2 | posesiones de menos de 12 frames: main → K2 | de menos de 25: main → K2 |"
+          .format(" | ".join(CLASES)))
+    print("|---|---|---|---|---|---|---|---|---|---|---|---|")
     for (datos, condicion, balon), r in filas.items():
         n = float(r[0])
         print("| {} | {} | {} | {:.1f} % | {:.1f} % | {:.2f} % | {:.2f} % | {} → {} ({:+.1f} %) | {} → {} ({:+.1f} %) | "
-              "{:.1f} % → {:.1f} % |".format(
+              "{:.1f} % → {:.1f} % | {} → {} | {} → {} |".format(
                   datos, condicion, balon or "–", 100.0 * (r[1] + r[2] + r[3]) / n, 100.0 * r[1] / n, 100.0 * r[2] / n,
                   100.0 * r[3] / n, r[4], r[5], 100.0 * (r[5] - r[4]) / r[4], r[6], r[7], 100.0 * (r[7] - r[6]) / r[6],
-                  100.0 * r[8] / n, 100.0 * r[9] / n))
+                  100.0 * r[8] / n, 100.0 * r[9] / n, r[10], r[11], r[12], r[13]))
 
 
 if __name__ == "__main__":

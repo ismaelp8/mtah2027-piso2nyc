@@ -231,10 +231,21 @@ def _por_grupo(bx, by, px, py, team, largo, ancho, fps, pesos):
 
 
 def _a_frames(valores, n):
-    """De grupos a frames, por interpolación lineal entre los centros de los grupos."""
-    inicio = np.arange(len(valores)) * GRUPO
+    """De grupos a frames, por interpolación lineal entre los centros de los grupos.
+
+    Antes del primer centro y después del último vale el del extremo. Va escrita con operaciones de numpy una a
+    una (`a + w·(b − a)`) y no con `np.interp`, cuyo bucle en C puede fundir el producto y la suma en una sola
+    operación según la máquina: así el último bit no depende de ella.
+    """
+    grupos = len(valores)
+    inicio = np.arange(grupos) * GRUPO
     centros = (inicio + np.minimum(inicio + GRUPO - 1, n - 1)) / 2.0
-    return np.interp(np.arange(n, dtype=np.float64), centros, valores)
+    t = np.arange(n, dtype=np.float64)
+    anterior = np.clip(np.searchsorted(centros, t, side="right") - 1, 0, grupos - 1)
+    siguiente = np.minimum(anterior + 1, grupos - 1)
+    hueco = centros[siguiente] - centros[anterior]
+    peso = np.clip((t - centros[anterior]) / np.where(hueco > 0, hueco, 1.0), 0.0, 1.0)
+    return valores[anterior] + peso * (valores[siguiente] - valores[anterior])
 
 
 def salidas(trk, fuera=None):
