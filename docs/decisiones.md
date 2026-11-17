@@ -5581,8 +5581,8 @@ Lectura [inferencia]:
 - B12 es el primer candidato de la evidencia de equipo que gana con las dos convenciones en la DFL y, además, en
   SkillCorner. Se queda fuera por dos partidos con pérdidas pequeñas en una condición.
 - B11 encuentra más cambios, pero muchos falsos (1.989 posesiones). B12 añade menos (1.774) y acierta más.
-- Una GRU de 16 que ve la parte entera saca más que una convolucional de ±5 s. Ver toda la parte parece contar más que
-  la forma fina de los cambios.
+- B12 saca más que B11. Con lo medido no se puede decir por qué: entre los dos cambian a la vez la memoria, los 5 Hz y
+  α.
 
 **Decisión: con la regla escrita antes, B11 y B12 se cierran y quedan apagados** (`aprendida.evidence_b11` y
 `evidence_b12`). `pipeline.PIECES` y la entrega no cambian. No se prueban más variantes.
@@ -5597,7 +5597,10 @@ Lectura [inferencia]:
   - el harness no degrada a los jugadores, y B12 usa sus canales sin promediar. Con los jugadores como los del ATD
     aguanta (arriba), pero esas variantes no votan: el ATD tiene además slots duplicados que no se imitan;
   - su recurrencia usa `np.exp` y `np.tanh` en 14.000 pasos por parte. La puntuación va redondeada a 6 decimales, pero
-    si entra hay que reproducir la entrega una vez en otra máquina antes de entregar.
+    si entra hay que reproducir la entrega una vez en otra máquina antes de entregar;
+  - **puntúa el doble de fuerte que B5:** la media de |H − A| en la DFL es 25,6 frente a 13,1 (cociente 1,95–1,96;
+    `cambios_frente_a_main.py b12 --escala`). La capa de los contraataques, que suma 8 y se pesó con la escala de B5,
+    pesaría la mitad. El `D` no se ve afectado: frente a `D`, B12 empuja como B5.
 - **Si la decide, el orden es este:**
   1. Se avisa a la planificadora y se abre el examen de SkillCorner una vez, para B12, con el umbral escrito arriba
      (+0,005 o más y 7 de 10, en las cuatro celdas). Son datos abiertos: lo puede ejecutar Claude.
@@ -5605,9 +5608,14 @@ Lectura [inferencia]:
          python validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso
 
      El uso se apunta en `validation/skillcorner/BITACORA.md` («Usos del examen») y aquí.
-  2. Si el examen pasa, Ismael genera la entrega de prueba con el python del entorno limpio:
+  2. Si el examen pasa, Ismael genera la entrega de prueba con el python del entorno limpio.
+     - Se ejecuta desde la carpeta de esta rama (el worktree `.claude/worktrees/musing-roentgen-2874e5`).
+     - Con `--contra`, la ruta de `equipo_v9.csv` en su carpeta, porque las entregas no van en git:
 
-         C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe validation/partido/probar_entrega.py prueba_b12 --pieza candidates=aprendida.evidence_b12
+           C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe validation/partido/probar_entrega.py prueba_b12 --pieza candidates=aprendida.evidence_b12 --contra C:\dev\mtah2027-piso2nyc\evaluation\results\equipo_v9.csv
+
+     - Comprobado sin datos con ese python (3.13.9, numpy 2.5.4): la pieza se resuelve, carga los pesos y da lo mismo
+       dos veces.
 
   3. Encenderla (`pipeline.PIECES["candidates"]`) es otra decisión, con la entrega regenerada y validada.
 
@@ -5619,11 +5627,25 @@ lo que diga el examen:
 3. **El `D` casi no se mueve:**
    - el `D` de los frames evaluados, a 0,5 puntos o menos del 46,2 % de `equipo_v9`;
    - entre 111 y 121 paradas (116 en `equipo_v9`);
-   - los frames que entran o salen de `D` (en `comparar_entregas.py`), como mucho el 4 % de los evaluados, unos 6.350.
+   - los frames que entran o salen de `D` (en `comparar_entregas.py`), como mucho el 6 % de los evaluados, unos 9.500.
+     En abierto, del 1,1 al 3,8 %; el tope es el máximo más la mitad.
 4. **Posesiones:** entre 197 y 227 (201 en `equipo_v9`, de −2 a +13 %). En abierto suben de un 4 a un 10 %.
 5. **Frames con otra etiqueta:** como mucho el 10 % de los evaluados, unos 15.900. En abierto, del 3,8 al 6,7 %.
 6. **Balón fuera** (`balon_fuera.py`): no más de 2 rachas «tarde» más que `equipo_v9` con el mismo script (el de
    `equipo_v9` sale de `python validation/partido/balon_fuera.py --entrega equipo_v9`).
 7. El validador, en verde.
+
+**Desviaciones del plan escrito antes:**
+- SkillCorner se midió para los dos fuera del orden de la regla, como pedía el encargo. No rescata a ninguno.
+- B12 tuvo dos cambios de implementación antes de medir nada: dos GRU de un sentido en lugar de `pack_padded_sequence`,
+  y el gradiente sumado en dos mitades. Es el mismo modelo y el mismo gradiente, salvo el redondeo.
+- B12 terminó de entrenar 90 s antes del plazo que se fijó.
+
+**La entrega no cambia:**
+- B11 y B12 están fuera de `pipeline.PIECES`;
+- la fila de `main` del harness repite sus números de siempre;
+- `prueba_aprendida.py`, `prueba_pipeline.py`, `prueba_harness.py` y `prueba_secuencia.py` dan todo bien.
+
+No se ha regenerado.
 
 Estado: B11 y B12 cerrados por la regla y apagados. La excepción de B12 queda pendiente de Ismael.

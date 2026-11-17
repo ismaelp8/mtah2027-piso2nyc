@@ -62,11 +62,35 @@ def informe(fuente, cond, acum):
         acum["cortas25_main"] * por90, acum["cortas25_cand"] * por90).replace(".", ","))
 
 
+def escala(candidato, nombre):
+    """Media de |H − A| de la puntuación de equipo en los frames evaluados de la DFL, B5 frente al candidato.
+
+    Las capas que suman una cantidad fija (la de los contraataques suma 8) se pesaron con la escala de B5.
+    """
+    print("| condición | media de |H − A|, B5 | media de |H − A|, {} | cociente |".format(nombre.upper()))
+    print("|---|---|---|---|")
+    for cond in dfl.VOTAN:
+        suma = collections.Counter()
+        for partido in dfl.PARTIDOS:
+            trk = dfl.tracking_de(dfl.cargar(partido), cond)
+            for clave, funcion in (("b5", aprendida.evidence_b5), ("cand", candidato)):
+                score = funcion(trk, fuera=partido)[0]
+                for a, b in trk.blocks:
+                    suma[clave] += float(np.abs(score[a:b, tracking.H] - score[a:b, tracking.A]).sum())
+            suma["frames"] += sum(b - a for a, b in trk.blocks)
+        b5, cand = suma["b5"] / suma["frames"], suma["cand"] / suma["frames"]
+        print("| {} | {:.2f} | {:.2f} | {:.2f} |".format(cond, b5, cand, cand / b5).replace(".", ","))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("modelo", choices=sorted(FUNCIONES))
+    parser.add_argument("--escala", action="store_true", help="solo la escala de la puntuación frente a B5, en la DFL")
     args = parser.parse_args()
     candidato = FUNCIONES[args.modelo]
+    if args.escala:
+        escala(candidato, args.modelo)
+        return
     print("{} frente a main, con el `D` propio (descriptivo). DFL: cada partido con el pliegue que no lo vio. "
           "SkillCorner: `lector.ENTRENAMIENTO`, con el modelo de los 7.\n".format(args.modelo.upper()))
     print("| fuente | condición | frames con otra etiqueta | frames que entran o salen de `D` | `D` | posesiones | "
