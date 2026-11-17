@@ -80,7 +80,7 @@ def _usar_pesos(ruta):
         conjunto._CACHE.clear()
 
 
-def _logits(limpio, fuera_k2, alfa_k2, fuera_b5, pesos=()):
+def _logits(limpio, fuera_k2, alfa_k2, fuera_b5, pesos=(), alfa_b5=None):
     """Los tres logits ya en su escala: K2, K2 con el espejo y B5. Con varios ficheros de `pesos` (el promedio de
     semillas), la z de K2 es la media de las de cada fichero."""
     en_espejo = rf.en_espejo(limpio)
@@ -94,7 +94,12 @@ def _logits(limpio, fuera_k2, alfa_k2, fuera_b5, pesos=()):
     else:
         z = conjunto.salidas(limpio, fuera_k2)[0]
         espejo = conjunto.salidas(en_espejo, fuera_k2)[0]
-    return {"k2": alfa_k2 * z, "k2e": alfa_k2 * (0.5 * (z + espejo)), "b5": rf.logit_b5(limpio, fuera_b5)}
+    if alfa_b5 is None:
+        s_b5 = rf.logit_b5(limpio, fuera_b5)
+    else:  # los pesos del pliegue, con la α de la entrega
+        s_b5 = float(alfa_b5) * aprendida.logit(aprendida.rasgos(limpio, "b5"),
+                                                 aprendida.coeficientes("b5", fuera_b5)["pesos"])
+    return {"k2": alfa_k2 * z, "k2e": alfa_k2 * (0.5 * (z + espejo)), "b5": s_b5}
 
 
 def _versiones(piezas, logits, modo, comprobar):
@@ -128,11 +133,12 @@ def _apuntar(recuentos, versiones, gts, celda, comprobar):
 
 
 def medir_dfl(trabajo):
-    partido, pesos, comprobar = trabajo
+    partido, pesos, comprobar, de_la_entrega = trabajo
     inicio = time.time()
     _usar_pesos(pesos[0] if pesos else None)
     fuera_k2 = None if pesos else partido
-    alfa_k2 = conjunto.pesos(fuera_k2)["alfa"]
+    alfa_k2 = conjunto.pesos(None if de_la_entrega else fuera_k2)["alfa"]
+    alfa_b5 = aprendida.coeficientes("b5", None)["alfa"] if de_la_entrega else None
     cargado = dfl.cargar(partido)
     recuentos = {}
     for condicion in dfl.VOTAN:
@@ -140,7 +146,7 @@ def medir_dfl(trabajo):
             trk = puntuar.solo_lectura(d_propio.con_balon_en_d(cargado, condicion) if vista
                                        else dfl.tracking_de(cargado, condicion))
             piezas = medir._piezas(trk, cargado["gt"]["flag"], partido)
-            logits = _logits(piezas["limpio"], fuera_k2, alfa_k2, partido, pesos)
+            logits = _logits(piezas["limpio"], fuera_k2, alfa_k2, partido, pesos, alfa_b5)
             for modo in (("vista",) if vista else ("oraculo", "propio")):
                 _apuntar(recuentos, _versiones(piezas, logits, modo, comprobar), cargado["gt"], (condicion, modo),
                          comprobar)
@@ -148,7 +154,7 @@ def medir_dfl(trabajo):
 
 
 def medir_sc(trabajo):
-    id_, pesos, comprobar = trabajo
+    id_, pesos, comprobar, _ = trabajo
     inicio = time.time()
     lector.exigir_solo_entrenamiento([id_])
     _usar_pesos(pesos[0] if pesos else None)
@@ -166,7 +172,7 @@ def medir_sc(trabajo):
 
 
 def medir_metrica(trabajo):
-    id_, pesos, comprobar = trabajo
+    id_, pesos, comprobar, _ = trabajo
     inicio = time.time()
     _usar_pesos(pesos[0] if pesos else None)
     lc = lector_metrica()
@@ -329,6 +335,9 @@ def main():
                              "Con varios ficheros, la z de K2 es la media de las de todos (el promedio de semillas)")
     parser.add_argument("--entrenado-con", choices=("dfl", "sc"), default=None,
                         help="con --pesos: el único proveedor que vio ese modelo")
+    parser.add_argument("--alfas-de-la-entrega", action="store_true",
+                        help="DFL, descriptivo: K2 y B5 entran en la mezcla con la α de «todos» (las de la entrega, 4 y "
+                             "4), no con la de cada pliegue; los pesos siguen siendo los del pliegue")
     parser.add_argument("--comprobar", action="store_true",
                         help="el instrumento: la mezcla con todo el peso en K2 da K2, y con todo en B5, `main`")
     parser.add_argument("--solo-por-partido", action="store_true",
@@ -338,13 +347,16 @@ def main():
     args = parser.parse_args()
     if bool(args.pesos) != bool(args.entrenado_con):
         parser.error("--pesos y --entrenado-con van juntos")
+    if args.alfas_de_la_entrega and (args.dominio != "dfl" or args.pesos):
+        parser.error("--alfas-de-la-entrega solo cambia algo en la DFL con los pesos de los pliegues")
     if args.pesos and args.entrenado_con == args.dominio:
         parser.error("esos pesos vieron partidos de este proveedor: no es una medida del otro proveedor")
     alfas = sorted({alfa_de_todos(ruta) for ruta in (args.pesos or [conjunto.PESOS])})
     if len(alfas) > 1:  # la z se promedia, pero la escala es una sola: tienen que traer la misma
         parser.error("los ficheros de --pesos traen α distintas ({}): no se pueden promediar".format(alfas))
     meta = {"dominio": args.dominio, "pesos": [huella(ruta) for ruta in (args.pesos or [conjunto.PESOS])],
-            "codigo": puntuar.version_del_codigo(), "script": huella(os.path.abspath(__file__))}
+            "codigo": puntuar.version_del_codigo(), "script": huella(os.path.abspath(__file__)),
+            "alfas": "entrega" if args.alfas_de_la_entrega else "pliegue"}
 
     if args.dominio == "dfl":
         partidos = list(args.partidos or cj.DFL)
@@ -367,8 +379,9 @@ def main():
         with open(args.recuentos, "rb") as f:
             guardado = pickle.load(f)
         if set(guardado) == {"meta", "recuentos"}:
-            if guardado["meta"]["dominio"] != meta["dominio"] or guardado["meta"]["pesos"] != meta["pesos"]:
-                sys.exit("los recuentos guardados son de otro dominio o de otros pesos")
+            if guardado["meta"]["dominio"] != meta["dominio"] or guardado["meta"]["pesos"] != meta["pesos"] \
+                    or guardado["meta"].get("alfas", "pliegue") != meta["alfas"]:
+                sys.exit("los recuentos guardados son de otro dominio, de otros pesos o de otras α")
             recuentos = guardado["recuentos"]
             origen = "recuentos guardados, calculados con el código {} y el script {}…".format(
                 guardado["meta"]["codigo"], guardado["meta"]["script"])
@@ -380,7 +393,7 @@ def main():
             sys.exit("los recuentos guardados son de otros partidos")
     else:
         recuentos = {}
-        trabajos = [(p, tuple(args.pesos or ()), args.comprobar) for p in partidos]
+        trabajos = [(p, tuple(args.pesos or ()), args.comprobar, args.alfas_de_la_entrega) for p in partidos]
         with concurrent.futures.ProcessPoolExecutor(max(1, args.procesos)) as pool:
             for partido, valor, segundos in pool.map(funcion, trabajos):
                 recuentos[partido] = valor
@@ -406,7 +419,9 @@ def main():
         "el pliegue que no vio el partido (sí vio otros de la DFL)" if args.dominio == "dfl"
         else "los coeficientes de la entrega (nunca vio este proveedor)"))
     print("α de K2: {} · este script: sha256 {}…{}".format(
-        "la del pliegue que no vio cada partido (4 u 8)" if args.dominio == "dfl" and not args.pesos
+        "la de la entrega, {:g}, igual que la de B5 en la mezcla ({:g}); los pesos, los del pliegue".format(
+            conjunto.pesos(None)["alfa"], aprendida.coeficientes("b5", None)["alfa"]) if args.alfas_de_la_entrega
+        else "la del pliegue que no vio cada partido (4 u 8)" if args.dominio == "dfl" and not args.pesos
         else "{:g}, la de «todos»".format(alfas[0]), meta["script"], " · " + origen if origen else ""))
     if args.comprobar:
         distintos = sorted({k[0] for r in recuentos.values() for k, igual in r.items() if not igual})
