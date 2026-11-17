@@ -5453,3 +5453,69 @@ Avisado antes de medir:
   contra del candidato, no a favor.
 
 Estado: escrita antes de entrenar ni medir. El resultado va en la entrada siguiente.
+
+### 2026-11-17 · candidatos · B11 y B12: resultado de la medida
+
+Quién: Claude, en la rama `claude/serene-lumiere-16245d`, con la regla y los candidatos ya commiteados (`6c4176c`). Son
+datos abiertos: lo ejecutó Claude, sin tocar el partido.
+
+Cómo se midió:
+- **Entrenamiento:** `validation/secuencia/exportar.py`, `entrenar_red.py` y `juntar.py`, como se fijó en la entrada
+  anterior.
+  - Un cambio de implementación antes de medir nada, que no cambia el modelo: la GRU bidireccional de B12 se escribe
+    como dos GRU de un sentido, la de atrás sobre cada parte invertida, sin `pack_padded_sequence`, cuyo paso hacia
+    atrás era lentísimo en CPU. Su gradiente se suma en dos mitades del lote, para que quepan 4 pliegues en 16 GB.
+- **DFL:** `validation/harness/puntuar.py`, con `main` y B11 (las versiones del fichero commiteado sin B12, que aún
+  entrenaba), con `--d oraculo` y `--d propio`, bootstrap de 1.000 y `--eventos` (descriptivo).
+  - Código en `90952d0`, con los pesos de B11 que se commitearon después en `de770f4` (el mismo fichero, sha256
+    `c148da19…0e18`).
+  - Salidas en `validation/secuencia/salidas/2026-11-17_*`.
+- **`main` repite el harness:** 0,498 / 0,512 con el flag y 0,728 / 0,748 con control, con el `D` de las etiquetas;
+  0,414 / 0,431 y 0,623 / 0,651 con el propio.
+- **SkillCorner:** `validation/secuencia/skillcorner.py --candidatos b11`, en la mitad de entrenamiento.
+  - **Diferencia con la regla:** la regla decía «solo si pasan 1 y 3», y el encargo de la planificadora pedía medir
+    `ENTRENAMIENTO` en todo caso. Se midió después de saber que B11 no pasaba el punto 1. No decide nada: B11 ya estaba
+    cerrado. Se leyó con el umbral escrito antes. El examen no se abrió.
+
+**B11, resultado [medido], frente a `main`** (diferencia [5–95 %], en cuántos de 7 gana):
+
+| convención | `D` | «como el ATD» | «como el ATD, sin bloques» |
+|---|---|---|---|
+| control | de las etiquetas | +0,012 [−0,001 a +0,026], 4 de 7 | +0,007 [−0,006 a +0,020], 4 de 7 |
+| control | propio | +0,023 [+0,011 a +0,037], 5 de 7 | +0,014 [+0,001 a +0,027], 5 de 7 |
+| flag | de las etiquetas | +0,104 [+0,093 a +0,116], 7 de 7 | +0,108 [+0,097 a +0,120], 7 de 7 |
+| flag | propio | +0,097 [+0,087 a +0,109], 7 de 7 | +0,101 [+0,090 a +0,112], 7 de 7 |
+
+- **Posesiones predichas** (`D` de las etiquetas, «como el ATD»): 1.989, frente a 1.661 de `main`. Las reales son 1.736
+  con control y 3.061 con el flag.
+- **SkillCorner, `ENTRENAMIENTO`** (10 partidos, modelo de los 7, frente a `main`):
+
+  | `D` | «detectado» | «detectado, suavizado» |
+  |---|---|---|
+  | de las etiquetas | −0,012 [−0,020 a −0,004], 4 de 10 | −0,009 [−0,017 a −0,001], 4 de 10 |
+  | propio | +0,000 [−0,007 a +0,008], 4 de 10 | +0,001 [−0,007 a +0,008], 5 de 10 |
+
+  Predice 2.655 posesiones frente a 2.270 de `main` (las reales son 3.228), pero no son las buenas. Ninguna de las
+  cuatro celdas cumple: «no pasa».
+- **Eventos humanos** («como el ATD», frente a `main`, descriptivo): recuperaciones +11,8 puntos [+6,7 a +16,9], duelos
+  con cambio +9,6 [+5,2 a +14,0] y duelos sin cambio −10,0 [−14,7 a −4,7]: un **compromiso**. Frente al control,
+  «mejora».
+- **Descriptivo:**
+  - acierto por frame en el partido que no vio, del 92,2 al 95,5 % (del 94,6 al 95,5 % dentro del pliegue);
+  - α de 2 a 8 (el pliegue sin J03WN1 cae en el borde de la rejilla, 8);
+  - numpy frente a torch: diferencia máxima de z de 4·10⁻⁶, sin ningún signo distinto, en los 8 pliegues.
+
+**Veredicto de B11, con la regla escrita antes: no pasa.**
+- **Punto 1, DFL con control: no pasa.** Supera el +0,005 en las cuatro celdas, pero gana en 4 o 5 partidos de 7, y se
+  pedían 6.
+- **Punto 3, DFL con el flag: pasa, y gana mucho:** +0,10 en las cuatro celdas, 7 de 7. Es la mayor ganancia con el
+  flag medida hasta ahora.
+- **SkillCorner,** medido fuera de la regla: pierde con el `D` de las etiquetas y empata con el propio.
+- Ninguna regla vigente lo admite. El límite de daño falla por el «6 de 7», y §5.8 por no llegar a +0,03 con control.
+
+Lectura [inferencia]: es el patrón de la red de una capa y del detector de cambios, más marcado. B11 encuentra muchos
+más cambios de equipo (recuperaciones y duelos con cambio), y eso le hace ganar mucho con el flag. Pero también cambia
+cuando no debe (duelos sin cambio), y con un tracking de otro proveedor esas posesiones de más no aciertan. Las
+etiquetas de control y SkillCorner, que exigen control, no ven la mejora.
+
+Estado: B11 se cierra. B12, pendiente de terminar de entrenar.
