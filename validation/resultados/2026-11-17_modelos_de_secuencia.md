@@ -54,7 +54,7 @@ y 6 de 7, con los dos modos del `D`; con el flag, no perder más de 0,005.
 
 Todo es con datos abiertos (`MTAH_OPEN_DATA_DIR` o `~/mtah2027-datos-abiertos`, con la caché de la DFL y SkillCorner).
 Los pesos están en el repo: `possession/secuencia_pesos.npz` (B11, B12), `possession/trayectorias_pesos.npz` (B13) y,
-cuando estén, `possession/trayectorias2_pesos.npz` (B14) y `possession/trayectorias2_b15_pesos.npz` (B15).
+`possession/trayectorias2_pesos.npz` (B14), `possession/trayectorias2_b15_pesos.npz` (B15) y `possession/trayectorias2_b16_pesos.npz` (B16; B17 usa los de B15 y B16).
 
 - **Medir sin entrenar:** `python validation/harness/puntuar.py --versiones validation/harness/versiones/b14_trayectorias2_2026-11-17.json --d oraculo`
   (y `--d propio`); `python validation/secuencia/skillcorner.py --candidatos b14`.
@@ -64,6 +64,6 @@ cuando estén, `possession/trayectorias2_pesos.npz` (B14) y `possession/trayecto
   2. `python validation/trayectorias/entrenar2.py <pliegue>` (B14) o `... <pliegue> --control` (B15), con
      `<pliegue>` en `todos`, `J03WMX`, `J03WN1`, `J03WOH`, `J03WOY`, `J03WPY`, `J03WQQ` y `J03WR9`;
   3. `python validation/secuencia/juntar.py b14` (α) y `python validation/secuencia/juntar.py escribir --modelos b14`.
-- **Prueba sin datos:** `python validation/scripts/prueba_secuencia.py` (B11 y B12).
+- **Pruebas sin datos:** `python validation/scripts/prueba_secuencia.py` (B11 y B12) y `python validation/scripts/prueba_trayectorias.py` (B13 a B17: interfaz, antisimetría exacta, determinismo, orden de los slots y tope de la velocidad del balón). Las dos dan «Todo bien».
 - **Entrega de prueba** (solo si algo pasa la regla y su examen; la ejecuta una persona):
   `python validation/partido/probar_entrega.py prueba_bNN --pieza candidates=aprendida.evidence_bNN`.
