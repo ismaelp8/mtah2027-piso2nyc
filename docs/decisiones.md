@@ -5668,3 +5668,75 @@ Descartado: encender K2 sin el punto 4; repetir el examen después del cambio de
 mirando la tabla; seguir con K1.
 
 Estado: K2 espera el punto 4, que ejecuta una persona. El sondeo del riesgo mínimo se ejecuta después de este commit.
+
+### 2026-11-17 · temporal · riesgo mínimo con la evidencia de K2: no merece construirse; se cierra
+
+Quién: Claude, en la sesión de Ismael (17/11). Regla en la entrada anterior, escrita antes de ejecutarlo (`10c899f`).
+
+Qué se probó: el sondeo S2 del 16/11 con la evidencia de K2 en lugar de la de B5
+(`validation/conjunto/riesgo_minimo_k2.py`; salida en `validation/conjunto/salidas/2026-11-17_riesgo_minimo_k2.md`).
+
+Cómo se midió: los 7 partidos de la DFL, «como el ATD», `D` de las etiquetas, K2 con el pliegue que no vio cada partido;
+24 muestras por parte; seis costes de cambio.
+
+Resultado [medido]:
+- **La duda del modelo ahora sí dice algo:** la anchura de la duda separa los cambios sin pareja con un AUC de 0,68
+  (flag) y 0,70 (control); con B5 eran 0,60 y 0,69. La correlación con el error es de 0,24 y 0,25 (con B5, 0,09 y 0,14).
+  Cumple la primera parte de la regla por el AUC.
+- **Las muestras se siguen fragmentando:** una muestra tiene una mediana de 2.196 posesiones por parte, cuando hay unas
+  220. z se entrenó frame a frame, y los frames vecinos no son independientes.
+- **La elección por parte no gana:** elige el coste 8 en 13 de las 14 partes y saca 0,549 con el flag (+0,007 sobre el
+  coste 25) y 0,761 con control (−0,019). Se pedía +0,010 con las dos convenciones. Ni un oráculo que eligiera el mejor
+  coste en cada parte pasa de +0,009 y +0,010.
+- Descriptivo: con K2, subir el coste a 35 o 50 da +0,004 y +0,006 con control y −0,002 y −0,006 con el flag. Es el
+  mismo compromiso entre convenciones que con B5, y no se toca.
+
+Decisión y por qué: **no merece construirse; el punto 3 del análisis se cierra también para este modelo.** No se prueban
+variantes.
+
+Lo que queda apuntado para una fase siguiente: una distribución sobre secuencias de verdad pediría entrenar el modelo
+como un CRF, con la verosimilitud de la secuencia entera. Sería otro candidato, con su regla.
+
+### 2026-11-17 · candidatos · modelo conjunto: tres comprobaciones más antes de recomendar nada (lectura, antes de medir)
+
+Quién: Claude, en la sesión de Ismael (17/11), tras la revisión del resultado. Escrita antes de entrenar o medir nada
+de esto, y antes de que nadie ejecute nada sobre el partido.
+
+Por qué: todo lo que K2 ha pasado está medido **dentro del proveedor**. Los partidos de la DFL se puntuaron con modelos
+que vieron otros partidos de la DFL, y los de SkillCorner (el examen incluido), con modelos que vieron SkillCorner. El
+partido es un tercer proveedor, y ahí es donde falló B11. Además, dos rasgos medidos del ATD se usaron como aumentos al
+entrenar, pero no se han puntuado.
+
+Son tres comprobaciones **descriptivas**: no cambian la regla de K2 ni abren un candidato. Dicen cuánto fiarse del punto
+4 y qué decirle a quien decida.
+
+1. **El otro proveedor** (`entrenar.py --solo` y `medir.py --alfa 4`). Dos modelos con la configuración fijada, cada uno
+   con un solo proveedor, puntuados en el otro: uno entrenado con los 10 partidos de `lector.ENTRENAMIENTO`, en los 7 de
+   la DFL; otro con los 7 de la DFL, en los 10 de `lector.ENTRENAMIENTO`. α = 4, la elegida; no se elige nada. No toca
+   el examen.
+   - **«Aguanta otro proveedor»** si, en los dos sentidos, gana a `main` en todas las celdas (la DFL con control y con el
+     flag, y SkillCorner; `D` de las etiquetas y propio) y por +0,005 o más con control y en SkillCorner. Entonces la
+     recomendación de probarlo en el partido se mantiene tal cual.
+   - **«Depende del proveedor»** si en algún sentido se queda entre −0,005 y +0,005. Entonces la ganancia medida viene
+     de haber visto ese proveedor, y en el ATD cabe esperar un empate: K2 solo se enciende si el punto 4 sale limpio, y
+     se dice que el harness no lo respalda fuera de sus proveedores.
+   - **«No aguanta»** si en algún sentido pierde más de 0,005 en alguna celda. Entonces no se recomienda encenderlo
+     para la entrega, aunque pase el punto 4: sería una apuesta, y se dice así.
+   - Además dice si entrenar con SkillCorner hacía falta: es lo que mide el modelo entrenado solo con la DFL.
+2. **Los slots y el balón como los del partido** (`validation/conjunto/como_el_atd.py`). En los 7 partidos de la DFL,
+   con el pliegue que no vio cada uno y las dos condiciones que votan, K2 y `main` con tres degradaciones que ya existen
+   y están calibradas con agregados del partido: los slots de P4 (tracklets cortados y un slot de más en el 12,9 % de los
+   frames, `investigacion_1116/slots_dfl.degradar`), el balón 4 frames tarde (`ball.advance_ball`, 15/11) y las dos
+   juntas.
+   - **«Aguanta»** si, con las dos juntas, K2 sigue ganando a `main` por +0,005 o más con control en las cuatro celdas
+     (dos condiciones, `D` de las etiquetas y propio) y no pierde con el flag.
+   - Si no, se dice cuál de las dos lo estropea y cuánto. K2 mira a cada jugador, así que un slot de más puede pesarle
+     más que a B5.
+3. **La referencia del criterio C2, con el balón a la vista en las paradas.** `referencia_abiertos.json` se calculó
+   con las vistas en que el balón va tapado en los `D`. En el ATD el balón se ve en la mayoría de los frames de las
+   paradas, así que sus agregados «con balón» incluyen frames que la referencia no vio, y el criterio podría saltar sin
+   motivo. Se añaden las 14 vistas de la DFL con el balón a la vista en los `D` (48 vistas en total) y se regenera el
+   JSON. **Es una enmienda al criterio C2, hecha antes de que nadie ejecute nada sobre el partido.** El resto de C2 no
+   cambia.
+
+Estado: escrita antes de medir. Los resultados van en la entrada siguiente.
