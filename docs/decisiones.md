@@ -5804,6 +5804,14 @@ Resultado [medido]:
    dentro de muestra, más estrecha; y en el partido el rango junta dos proveedores, más ancho (los cambios de signo van
    de 3,0 a 8,1 por minuto), así que es menos sensible. Por eso se añadió la línea por proveedor del punto 3.
 
+   **Corrección (17/11, después del punto 4): «C2 sirve de alarma» dice más de lo que se midió.** Las dos salidas que
+   hacen saltar el criterio, los cambios de signo por minuto y |z| sin balón, separan la DFL de SkillCorner también con
+   el modelo de los dos proveedores, que funciona en los dos: de 3,0 a 4,6 frente a 5,4 a 8,1, y de 1,9 a 6,8 frente a
+   0,5 a 1,4 (`referencia_abiertos.json`). Un modelo que funciona en SkillCorner también haría saltar una referencia
+   hecha solo con la DFL. Lo que mide esta prueba es que los proveedores se ven distintos, no que C2 detecte un modelo
+   que falla. **C2 dice si el partido se parece, para el modelo, a un proveedor conocido, y nada más.** Se retira de lo
+   que hay «a favor» en la lista de más abajo.
+
 Decisión y por qué, con la lectura escrita antes:
 - **Por la comprobación 1, K2 no se recomienda para la entrega sin más.** Lo que el harness mide es lo que gana K2 en
   proveedores que ha visto, y el partido es de uno que no ha visto. Encenderlo es una apuesta, y se dice así.
@@ -5945,11 +5953,14 @@ Decisión y por qué:
 - **No se enciende aquí.** La lectura de la comprobación del proveedor, también escrita antes, no cambia: fuera de los
   proveedores que ha visto, el harness no respalda a K2, así que encenderlo es una apuesta y la decide el equipo.
   `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega (`equipo_v9`) siguen igual.
-- **Lo que el punto 4 añade a la apuesta** [inferencia, sobre lo medido]: no hay ninguna señal en contra, y hay dos a
-  favor que ayer no estaban. La alarma de C2, que salta en 42 de los 48 casos en que se sabe que el modelo falla, se ha
-  quedado callada, también con el rango de la DFL sola. Y el modelo se comporta en el partido como en la DFL, que es el
-  proveedor que más se parece al ATD por fuera (se ve a casi todos los jugadores) y donde K2 más gana. Sigue sin haber
-  un solo partido del ATD con etiquetas: nada de esto prueba que gane.
+- **Lo que el punto 4 añade a la apuesta** [inferencia, sobre lo medido]: no hay ninguna señal en contra. Para el
+  modelo, el partido se parece a la DFL: sus seis salidas caen dentro del rango de la DFL sola, y lo que cambia frente a
+  `equipo_v9` es lo que cambiaba allí. La DFL es el proveedor que más se parece al ATD por fuera (se ve a casi todos
+  los jugadores) y donde K2 más gana. Eso dice que el ATD no le resulta raro al modelo, no que acierte en él: sigue sin
+  haber un solo partido del ATD con etiquetas.
+- **Corregido el mismo día:** la primera versión de esta entrada contaba además a favor que la «alarma» de C2 se había
+  quedado callada. No vale como prueba: C2 mide si el partido se parece a un proveedor conocido, no si el modelo falla
+  (corrección en la entrada de las comprobaciones, punto 6).
 
 Si el equipo decide encenderlo:
 - `pipeline.PIECES["candidates"]` pasa a `"aprendida.evidence_k2"`; la rama se junta en `main`; y la entrega se regenera

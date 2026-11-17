@@ -532,8 +532,10 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - en Metrica, el único tercer proveedor abierto, el modelo de los dos proveedores gana (+0,035) y más que
       cualquiera de un solo proveedor (3 partidos, con sus avisos);
     - con los slots y el balón como los del partido (P4 y el retraso de 4 frames) sigue ganando por +0,040 a +0,068, y
-      le cuestan menos que a B5;
-    - el criterio C2 salta en 22 de 28 y en 20 de 20 vistas donde se sabe que el modelo falla.
+      le cuestan menos que a B5.
+  - **Qué mide el criterio C2 del punto 4:** si el partido se parece, para el modelo, a un proveedor conocido. No
+    detecta un modelo que falla: las salidas que lo hacen saltar separan la DFL de SkillCorner también cuando el modelo
+    funciona. Pasar C2 no cuenta como prueba de que K2 acierte.
   - **El punto 4, en el partido: pasa los siete criterios (C0 a C6)** [medido por Ismael el 17/11, en el entorno
     limpio y con la rama en `73c3787`; solo agregados]:
     - la rama no cambia la entrega: `equipo_v9_rama` sale con `d9706dfb…be63`;
@@ -545,7 +547,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       única entrada fuera es la que se esperaba (más de 11 slots en el 13,2 % de los grupos);
     - en la ventana pública no se rompe nada: spellF1 0,680 las dos, macroF1 de 0,874 a 0,873.
   - **Qué significa:** la apuesta se queda sin señales en contra, y el modelo se comporta en el partido como en la DFL.
-    Sigue siendo una apuesta: el punto 4 puede dar la alarma, no probar que K2 gane en el ATD.
+    Sigue siendo una apuesta: el punto 4 dice que el ATD no le resulta raro al modelo, no que K2 gane en él.
   - **Si el equipo lo enciende:** `"aprendida.evidence_k2"` en `pipeline.PIECES["candidates"]`, la rama a `main` y
     regenerar. Tiene que salir byte a byte igual que `prueba_k2` (`784e65e5…acbc`). Antes de entregar hay que
     reproducirla en otra máquina (`possession/conjunto.py` es código numérico nuevo y solo se ha ejecutado en la de

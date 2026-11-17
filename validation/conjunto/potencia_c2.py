@@ -17,6 +17,10 @@ el modelo falla. Aquí se hace con ellos lo mismo que C2 hace con el partido:
 - **la prueba** son sus salidas en las vistas del otro proveedor.
 
 Los pesos de esos dos modelos se pasan como ficheros `.npz` (`juntar.py --pliegues todos --destino … --alfa 4`).
+
+**Ojo al leerlo** (corrección del 17/11, docs/decisiones.md): las salidas que más saltan, los cambios de signo por
+minuto y |z| sin balón, separan la DFL de SkillCorner también con un modelo que funciona en los dos. Así que esta tabla
+mide que los proveedores se ven distintos, no que C2 detecte un modelo que falla.
 """
 
 import argparse

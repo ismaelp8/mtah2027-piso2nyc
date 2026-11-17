@@ -19,8 +19,8 @@
    −0,015), y entrenado solo con SkillCorner pierde en la DFL (−0,075 a −0,096 con control). El partido es de un
    tercer proveedor. **Por eso no se recomienda para la entrega sin más: es una apuesta.**
 3. **No es una apuesta a ciegas** [medido]: en Metrica, el único tercer proveedor abierto, el modelo de los dos
-   proveedores gana (+0,035) y más que cualquiera de un solo proveedor; aguanta los slots de más y el balón tarde del
-   ATD mejor que B5; y hay una alarma (el criterio C2) que salta donde se sabe que el modelo falla.
+   proveedores gana (+0,035) y más que cualquiera de un solo proveedor; y aguanta los slots de más y el balón tarde del
+   ATD mejor que B5.
 4. **No inventa posesiones: las coloca mejor.** Predice casi las mismas que `main` (1.651 frente a 1.661 en la DFL) y
    acierta más recuperaciones y más duelos con cambio en los eventos humanos.
 5. **En el partido pasa los siete criterios de daño** [medido por Ismael, solo agregados]: cambia el 4,8 % de los
@@ -129,9 +129,11 @@ manera [inferencia].
 los frames y el balón 4 frames tarde, K2 gana a `main` por +0,040 a +0,068 con control. A `main` esas degradaciones le
 cuestan hasta 0,013; a K2, nada.
 
-**La alarma** (`potencia_c2.py`): el criterio C2 del punto 4 compara las salidas del modelo en el partido con su rango
-en los datos abiertos. Con los modelos de un solo proveedor, salta en 22 de las 28 vistas de la DFL y en las 20 de
-SkillCorner. En el partido es menos sensible, porque el rango junta dos proveedores.
+**Qué mide el criterio C2** (`potencia_c2.py`): compara las salidas del modelo en el partido con su rango en los datos
+abiertos. Con los modelos de un solo proveedor salta en 22 de las 28 vistas de la DFL y en las 20 de SkillCorner, pero
+por dos salidas (los cambios de signo por minuto y |z| sin balón) que separan a los dos proveedores también cuando el
+modelo funciona. Así que C2 dice si el partido se parece, para el modelo, a un proveedor conocido. **No detecta un
+modelo que falla,** y pasar C2 no cuenta como prueba de que K2 acierte.
 
 ## Decodificar para la métrica [medido]
 
@@ -165,9 +167,8 @@ pierde con control (−0,019). No merece construirse. Haría falta entrenar el m
 | C6, no se rompe en la ventana pública | spellF1 0,680 las dos; macroF1 de 0,874 a 0,873 | sí |
 
 Sin voto: las seis salidas caen también dentro del rango de la DFL sola (dos caen fuera del de SkillCorner), y lo que
-cambia frente a `equipo_v9` se parece a lo que cambiaba en la DFL. La alarma de C2, que salta en 42 de los 48 casos en
-que se sabe que el modelo falla, se ha quedado callada. Nada de esto prueba que K2 gane en el partido: no hay ningún
-partido del ATD con etiquetas.
+cambia frente a `equipo_v9` se parece a lo que cambiaba en la DFL. Es decir, para el modelo el partido se parece a la
+DFL, que es donde K2 más gana. Eso no prueba que K2 gane en el partido: no hay ningún partido del ATD con etiquetas.
 
 Los comandos, con el python del entorno limpio y desde la carpeta de la rama:
 
@@ -188,8 +189,8 @@ documento técnico.
 
 ## Lo que no he podido comprobar
 
-- **Que K2 gane en el partido.** El punto 4 ha salido limpio, pero solo puede dar la alarma: no hay ni un partido del
-  ATD con etiquetas, y la ventana pública no sirve para elegir.
+- **Que K2 gane en el partido.** El punto 4 ha salido limpio, pero solo dice que el ATD no le resulta raro al modelo:
+  no hay ni un partido del ATD con etiquetas, y la ventana pública no sirve para elegir.
 - **La reproducción en otra máquina.** La pieza está escrita para dar lo mismo bit a bit (sin exponenciales, sin BLAS y
   sin `np.interp`), pero solo se ha ejecutado en esta.
 - **El entrenamiento no es reproducible bit a bit** (GPU). Los pesos sí: están en el repo, y la entrega solo usa los
@@ -207,7 +208,7 @@ documento técnico.
 | `validation/conjunto/medir.py` | K1 y K2 frente a `main`, con la regla; con `--con-la-pieza`, en numpy; el examen, cerrado salvo con dos banderas |
 | `validation/conjunto/paridad.py` | numpy frente a torch |
 | `validation/conjunto/cuanto_cambia.py`, `referencia.py`, `agregados.py`, `referencia_abiertos.json` | lo que cabe esperar en la entrega de prueba y la referencia para el partido |
-| `validation/conjunto/como_el_atd.py`, `metrica.py`, `potencia_c2.py`, `riesgo_minimo_k2.py` | las comprobaciones: los rasgos del ATD, el tercer proveedor, la alarma y el riesgo mínimo |
+| `validation/conjunto/como_el_atd.py`, `metrica.py`, `potencia_c2.py`, `riesgo_minimo_k2.py` | las comprobaciones: los rasgos del ATD, el tercer proveedor, qué mide C2 y el riesgo mínimo |
 | `validation/partido/conjunto_en_el_partido.py` | **lee el partido:** las entradas y las salidas del modelo en el ATD frente a la referencia |
 | `validation/scripts/prueba_conjunto.py`, `prueba_conjunto_en_el_partido.py` | pruebas sin datos |
 | `validation/harness/versiones/conjunto_2026-11-17.json` | las versiones del harness oficial |
