@@ -5674,3 +5674,10 @@ con el flag +0,094 / +0,093 (7 de 7) y con control +0,021 (6 de 7) / +0,003 (4 d
 +0,025 (5 de 7) / +0,007 (3 de 7) con el propio. No pasa el punto 1 y queda por debajo de B12 con control. Predice
 1.865 posesiones (`main` 1.661, B12 1.774; las reales son 1.736 con control). Es el patrón de B11: encuentra más cambios,
 pero muchos sobran.
+
+B15 (se prueba; `aprendida.evidence_b15`, apagada) es la red de B14 entrenada con la etiqueta de control en todos los
+frames vivos, no solo donde el flag y control coinciden.
+- Por qué: B11 y B13 cambian de equipo de más. Nunca vieron en la pérdida los toques breves del rival (del 5 al 9 % de
+  los vivos), y ahí cambian.
+- Es una apuesta de convención declarada («exigir control», 12/11). Como las etiquetas de control salen de una regla de
+  proximidad, el número con control sale favorecido. Pesan el flag (como límite) y SkillCorner.

@@ -36,7 +36,7 @@ UMBRAL = 0.005
 GANA_DE = 7
 MODOS = ("oraculo", "propio")
 CANDIDATOS = {"b11": aprendida.evidence_b11, "b12": aprendida.evidence_b12, "b13": aprendida.evidence_b13,
-              "b14": aprendida.evidence_b14}
+              "b14": aprendida.evidence_b14, "b15": aprendida.evidence_b15}
 
 
 def ejecutar(nombre, trk, gt, modo):

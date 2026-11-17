@@ -33,6 +33,11 @@ def nombre(partido, condicion, copia, parte, clave):
     return carpeta() / "{}_{}_c{}_{}_{}.npy".format(partido, rutas.CONDICIONES.index(condicion), copia, parte, clave)
 
 
+def nombre_control(partido, parte, clave):
+    """Las etiquetas de control de B15 (`etiquetas_control.py`): las mismas en todas las copias y condiciones."""
+    return carpeta() / "{}_control_{}_{}.npy".format(partido, parte, clave)
+
+
 def empaquetar(c, s):
     for mascara, claves in (("hay_h", ("H_propios", "A_rivales")), ("hay_a", ("A_propios", "H_rivales"))):
         m = c[mascara]

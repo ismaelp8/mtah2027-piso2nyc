@@ -457,6 +457,12 @@ def evidence_b14(trk, fuera=None):
     return trayectorias2.evidencia(trk, "b14", fuera)
 
 
+def evidence_b15(trk, fuera=None):
+    """B15: la red de B14 entrenada con la etiqueta de control en todos los frames vivos (17/11). Apagada."""
+    from possession import trayectorias2
+    return trayectorias2.evidencia(trk, "b15", fuera, ruta=trayectorias2.PESOS_B15)
+
+
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------
 # >>> COEFICIENTES
 # Los escribe validation/apuesta_b/entrenar.py. «todos»: los 7 partidos de la DFL (la entrega); cada

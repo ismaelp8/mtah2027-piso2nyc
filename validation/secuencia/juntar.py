@@ -32,8 +32,9 @@ from possession import aprendida, ball, pipeline, secuencia, trayectorias, traye
 
 # B13 (17/11, possession/trayectorias.py): la misma elección, con la rejilla ampliada a 16 y 32 (B12 cayó en el borde, 8).
 ALFAS_B13 = comun.ALFAS + (16.0, 32.0)
-MODELOS = secuencia.MODELOS + ("b13", "b14")
-PROPIOS = {"b13": trayectorias, "b14": trayectorias2}  # los modelos con módulo y fichero de pesos propios
+MODELOS = secuencia.MODELOS + ("b13", "b14", "b15")
+PROPIOS = {"b13": trayectorias, "b14": trayectorias2, "b15": trayectorias2}  # los modelos con módulo y pesos propios
+FICHERO_DE = {"b13": trayectorias.PESOS, "b14": trayectorias2.PESOS, "b15": trayectorias2.PESOS_B15}
 
 
 def alfas_de(modelo):
@@ -120,7 +121,7 @@ def escribir(modelos=secuencia.MODELOS):
     propios = [m for m in modelos if m in PROPIOS]
     if propios and len(modelos) != 1:
         raise ValueError("B13 y B14 van cada uno en su propio fichero: --modelos con uno solo")
-    destino = PROPIOS[modelos[0]].PESOS if propios else secuencia.PESOS
+    destino = FICHERO_DE[modelos[0]] if propios else secuencia.PESOS
     np.savez_compressed(destino, **datos)
     print("escritos {} arrays en {}".format(len(datos), destino))
 

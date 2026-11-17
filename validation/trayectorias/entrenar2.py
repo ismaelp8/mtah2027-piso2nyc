@@ -3,6 +3,7 @@
     python validation/trayectorias/entrenar2.py J03WMX     # el pliegue sin J03WMX (para el harness)
     python validation/trayectorias/entrenar2.py todos      # el de los 7 (la entrega y SkillCorner)
     python validation/trayectorias/entrenar2.py todos --fontaneria
+    python validation/trayectorias/entrenar2.py J03WMX --control  # B15: la etiqueta de control en todos los vivos
 
 Hace falta torch (el entorno `mtah2027-balon`) y los rasgos de `exportar2.py`. Datos abiertos de otros partidos (DFL,
 CC BY 4.0): lo puede ejecutar cualquiera, Claude incluido. Solo imprime agregados.
@@ -112,12 +113,19 @@ def leer(partidos, copias=COPIAS):
                 while paquetes.nombre(partido, condicion, copia, k, "y").exists():
                     c = {clave: np.load(paquetes.nombre(partido, condicion, copia, k, clave), mmap_mode="r")
                          for clave in paquetes.CLAVES}
-                    c["partido"], c["copia"] = partido, copia
+                    c["partido"], c["copia"], c["parte"] = partido, copia, k
                     crudas.append(c)
                     k += 1
     if not crudas:
         raise FileNotFoundError("no hay paquetes: python validation/trayectorias/paquetes.py")
     return crudas
+
+
+def con_control(secuencias):
+    """B15: la etiqueta (1 si control dice `H`) y la máscara (frames vivos con control) de `etiquetas_control.py`."""
+    for c in secuencias:
+        c["y"] = np.load(paquetes.nombre_control(c["partido"], c["parte"], "y"))
+        c["m"] = np.load(paquetes.nombre_control(c["partido"], c["parte"], "m"))
 
 
 def tensores(c, a, largo, sin_balon=None, espejo=False):
@@ -198,19 +206,24 @@ def main():
     parser.add_argument("pliegue", choices=comun.PLIEGUES)
     parser.add_argument("--fontaneria", action="store_true", help="3 pasos y los pesos a un fichero aparte")
     parser.add_argument("--hilos", type=int, default=b13.HILOS, help="hilos de torch (solo cambia la velocidad)")
+    parser.add_argument("--control", action="store_true",
+                        help="B15: entrena con la etiqueta de control en todos los frames vivos (etiquetas_control.py)")
     args = parser.parse_args()
+    modelo_nombre = "b15" if args.control else "b14"
     if args.fontaneria:
         PASOS = 3
     torch.set_num_threads(args.hilos)
-    semilla = comun.SEMILLA + 200 + comun.indice_pliegue(args.pliegue)
+    semilla = comun.SEMILLA + (300 if args.control else 200) + comun.indice_pliegue(args.pliegue)
     torch.manual_seed(semilla)
     inicio = time.time()
     secuencias = leer([p for p in comun.PARTIDOS if p != args.pliegue])
-    print("b14 · pliegue {} · {} secuencias · {} slots tras empaquetar · semilla {}".format(
+    if args.control:
+        con_control(secuencias)
+    print(modelo_nombre + " · pliegue {} · {} secuencias · {} slots tras empaquetar · semilla {}".format(
         args.pliegue, len(secuencias), secuencias[0]["hay_h"].shape[1], semilla), flush=True)
     modelo = entrenar(secuencias, semilla)
     pesos = modelo.a_numpy()
-    destino = comun.fichero_pesos("b14", args.pliegue)
+    destino = comun.fichero_pesos(modelo_nombre, args.pliegue)
     if args.fontaneria:
         destino = destino.with_name("fontaneria_" + destino.name)
     destino.parent.mkdir(parents=True, exist_ok=True)
@@ -224,6 +237,8 @@ def main():
     fuera = []
     if args.pliegue != "todos":
         fuera = leer([args.pliegue], copias=(0,))
+        if args.control:
+            con_control(fuera)
         total, bien, perdida = acierto(modelo, fuera)
         linea += " · fuera ({}) {:.1f} % (pérdida {:.4f})".format(args.pliegue, 100.0 * bien / total, perdida)
     print(linea)
