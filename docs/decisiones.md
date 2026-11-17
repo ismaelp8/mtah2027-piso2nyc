@@ -5337,3 +5337,30 @@ falsos, así que añaden posesiones que no existen. Va en la línea de la primer
 no el mecanismo.
 
 Descartado: probar otros umbrales o combinaciones en SkillCorner (sería elegir mirando).
+
+### 2026-11-17 · balón · la detección del balón del vídeo en el partido entero confirma el sondeo; la línea sigue parada
+
+Quién: la ejecutó Ismael en su Windows (CPU, 1,87 h; commit `b9876e6` de `exp/balon-video`, sin cambios locales). Lo
+apunta la sesión planificadora (Claude). Solo agregados.
+
+Resultado [medido, agregados del partido]:
+- 91.838 frames con balón del ATD en los tramos con juego; 233.298 detecciones, 2,54 por frame. El 97,5 % de los
+  frames tiene alguna.
+- Condición 1: el 78,0 % de los frames tiene una detección a 3 m o menos (en el sondeo, 78,9 %). Condición 2: el
+  42,0 % de las detecciones está a más de 5 m (en el sondeo, 40,7 %). Sale lo mismo que en la muestra.
+- La detección más cercana al balón del ATD está a 1,33 m de mediana (p75 2,54 m; p95 6,84 m). Las que elige la capa
+  tienen una confianza de 0,80 de mediana; todas juntas, de 0,58.
+- Con la selección de la capa: 43,7 toques por minuto, frente a 2,4 con el balón del ATD, y 17,4 de ruido, frente a
+  2,9. Temblor de 0,049 m y racha media de fallos de 7,4 frames.
+- El desfase con el balón del ATD que mejor cuadra es 0 frames en las dos partes, no los 4 esperados.
+- Puerta 2.1 leída con estas cifras: celda p = 0,7, σ = 0,03 y L = 12. Pasa con el `D` de las etiquetas («sin
+  decidir») y no pasa con el `D` propio.
+- Huella de la caché: `8cda6bf2d85dbe6ff88fbc2e6279fbc1c769dc5e471d10a6267c72a61612fd71`.
+
+Decisión: no cambia nada. La línea sigue parada (16/11) y la capa no entra: con el `D` propio no pasa su regla. La
+caché queda en la carpeta de datos de Ismael; si alguien retoma el balón como trayectoria, no hace falta volver a
+detectar.
+
+Lectura [inferencia]: el detector ve el balón en la mayoría de los frames. Si las 2,5 detecciones por frame fueran
+todas falsas y repartidas por el recorte, la más cercana estaría a unos 3,5 m de mediana, no a 1,33 m. Lo que sobra
+son detecciones falsas, de poca confianza.
