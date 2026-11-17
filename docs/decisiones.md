@@ -5906,3 +5906,62 @@ entrenamiento, sino saber qué regla usa su tracking corregido. Es la pregunta a
 Descartado: probar los aumentos uno a uno o con otros valores (la regla lo excluía); abrir el examen.
 
 Estado: cerrada. `entrenar.ROBUSTO` queda en el código, apagado por defecto (`--robusto`).
+
+### 2026-11-17 · candidatos · modelo conjunto: K2 pasa el punto 4 en el partido (C0 a C6); encenderlo sigue siendo una decisión del equipo
+
+Quién: Ismael ejecutó los cuatro comandos en el entorno limpio (Python 3.13.9 y numpy 2.5.4, con la rama en `73c3787` y
+sin cambios locales) y pegó la salida, que solo lleva agregados. Claude la lee con los criterios escritos antes
+(entrada «K2 pasa los puntos 1, 2 y 3», `10c899f`; C2 con la enmienda de las 48 vistas, `8c46846`) y mide C6 con el
+scorer oficial, que solo lee las entregas y la GT pública.
+
+Resultado [medido en el partido; solo agregados]:
+
+| criterio | qué pedía | qué ha salido | ¿pasa? |
+|---|---|---|---|
+| C0, la rama no cambia la entrega | `equipo_v9_rama` con el sha256 de `equipo_v9` | `d9706dfb…be63`, con 201 posesiones, 116 paradas y 0 conflictos | sí |
+| C1, es una entrega | válida y con 0 frames en conflicto | `prueba_k2` es válida, con 0 conflictos; sha256 `784e65e5…acbc` | sí |
+| C2, el modelo dice en el ATD lo que dice en los abiertos | las seis salidas dentro del rango ensanchado | 0 de 6 fuera. De las 45 entradas, 1 fuera, la que se esperaba: un equipo tiene más de 11 slots en el 13,2 % de los grupos (en los abiertos, del 0,3 al 0,7 %) | sí |
+| C3, cambia lo que cabe esperar | como mucho el 12 % de los frames; de un equipo al otro, el 6 %; entre un equipo y `D`, el 6 % | 7.666 de 158.857 frames (4,83 %); 5.181 de un equipo al otro (3,26 %); 2.485 entre un equipo y `D` (1,56 %) | sí |
+| C4, no cambia el ritmo ni el `D` | de 185 a 235 posesiones, de 109 a 123 paradas y del 45,2 al 49,2 % de `D` | 203 posesiones (de 16,9 s de media), 115 paradas y el 45,9 % de `D` | sí |
+| C5, no fragmenta | ninguna posesión de menos de 12 frames y como mucho 4 de menos de 25 | 0 y 1 | sí |
+| C6, no se rompe en la ventana pública | el macroF1 no baja más de 0,03 ni el spellF1 más de 0,10 | macroF1 de 0,8743 a 0,8730; spellF1 de 0,6800 a 0,6800; 13 posesiones las dos; 0 frames de `X` | sí |
+
+Lo que dice además la salida, sin voto:
+- **Las seis salidas del modelo caen dentro del rango de la DFL sola,** y dos caen fuera del de SkillCorner (los cambios
+  de signo de z por minuto y |z| sin balón). En el partido, z cambia de signo 4,1 veces por minuto (en la DFL, de 3,0 a
+  4,6; en SkillCorner, de 5,4 a 8,1), y se ven 10,3 jugadores por equipo (en la DFL, de 10,5 a 11,0; en SkillCorner, de
+  7,4 a 8,7).
+- **Lo que cambia frente a `equipo_v9` se parece a lo que cambiaba en la DFL,** no en SkillCorner: el 4,8 % de los
+  frames (DFL, 4,4–5,3 %; SkillCorner, 7,5–7,9 %), el 1,6 % entre un equipo y `D` (1,2–1,8 % y 4,5–4,6 %) y un 1 % más
+  de posesiones (de +0,1 a +2,8 % y de +3,1 a +4,2 %).
+- **De qué a qué:** 3.258 frames de `H` a `A` y 1.923 de `A` a `H`; 711 y 302 de un equipo a `D`; 531 y 941 de `D` a un
+  equipo. Ninguno a 250 frames o menos del borde de un tramo ni fuera de los tramos.
+- **El balón fuera (D7)** no cambia: llegamos tarde en 12 de 47 rachas, como con `equipo_v9`.
+- **La ventana pública no elige** (17 posesiones; el propio scorer dice que por debajo de 0,42 todo es ruido): que salga
+  igual solo dice que no se ha roto nada.
+
+Decisión y por qué:
+- **K2 ha cumplido su regla entera,** los cuatro puntos, con todo escrito antes de medir.
+- **No se enciende aquí.** La lectura de la comprobación del proveedor, también escrita antes, no cambia: fuera de los
+  proveedores que ha visto, el harness no respalda a K2, así que encenderlo es una apuesta y la decide el equipo.
+  `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega (`equipo_v9`) siguen igual.
+- **Lo que el punto 4 añade a la apuesta** [inferencia, sobre lo medido]: no hay ninguna señal en contra, y hay dos a
+  favor que ayer no estaban. La alarma de C2, que salta en 42 de los 48 casos en que se sabe que el modelo falla, se ha
+  quedado callada, también con el rango de la DFL sola. Y el modelo se comporta en el partido como en la DFL, que es el
+  proveedor que más se parece al ATD por fuera (se ve a casi todos los jugadores) y donde K2 más gana. Sigue sin haber
+  un solo partido del ATD con etiquetas: nada de esto prueba que gane.
+
+Si el equipo decide encenderlo:
+- `pipeline.PIECES["candidates"]` pasa a `"aprendida.evidence_k2"`; la rama se junta en `main`; y la entrega se regenera
+  con `python -m possession.pipeline`. Tiene que salir byte a byte igual que `prueba_k2` (`784e65e5…acbc`), porque son
+  las mismas piezas.
+- **Hay que reproducirla en otra máquina antes de entregar.** `possession/conjunto.py` es código numérico nuevo. Está
+  escrito para dar lo mismo bit a bit (sin exponenciales, sin BLAS y sin `np.interp`), pero solo se ha ejecutado en la
+  máquina de Ismael.
+- El documento técnico tiene que contar K2: los datos de entrenamiento (los 7 partidos de la DFL de Bassek et al., 2025,
+  CC BY 4.0, y los 10 de entrenamiento de SkillCorner, MIT), las etiquetas (control en la DFL y las de SkillCorner), que
+  se entrenó con torch en una GPU y que la entrega solo usa los pesos, en numpy.
+
+Descartado: decidir con la ventana pública; añadir más comprobaciones sin etiquetas (la que había ya ha contestado).
+
+Estado: K2 apagado, con su regla cumplida. Pendiente de que el equipo decida si lo enciende.

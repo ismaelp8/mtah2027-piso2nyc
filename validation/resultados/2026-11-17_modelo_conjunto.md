@@ -23,8 +23,10 @@
    ATD mejor que B5; y hay una alarma (el criterio C2) que salta donde se sabe que el modelo falla.
 4. **No inventa posesiones: las coloca mejor.** Predice casi las mismas que `main` (1.651 frente a 1.661 en la DFL) y
    acierta más recuperaciones y más duelos con cambio en los eventos humanos.
-5. **No está en la entrega, y lo decide el equipo.** El punto 4 de su regla, en el partido, está listo: cuatro
-   comandos, con los criterios de daño ya escritos.
+5. **En el partido pasa los siete criterios de daño** [medido por Ismael, solo agregados]: cambia el 4,8 % de los
+   frames, deja las mismas posesiones (203 frente a 201) y paradas (115 frente a 116), no fragmenta, y lo que dice el
+   modelo en el ATD cae dentro del rango de los datos abiertos, también del de la DFL sola. **No está en la entrega:**
+   encenderlo sigue siendo una apuesta, ahora sin señales en contra, y la decide el equipo.
 6. **K1, la capa de cambios aprendida, no pasa,** y decodificar a riesgo mínimo con K2 tampoco merece construirse.
 
 ## Qué es K2
@@ -150,28 +152,44 @@ pierde con control (−0,019). No merece construirse. Haría falta entrenar el m
   cada jugador aprende también las manías del tracking con el que se entrena.
 - **No se probó:** meter el `D` en el modelo (el harness no puede validarlo con el balón) ni el balón del vídeo.
 
-## Si el equipo quiere mirarlo: el punto 4, en el partido
+## El punto 4, en el partido [medido por Ismael el 17/11; solo agregados]
 
-Lo ejecuta una persona, con el python del entorno limpio, desde la carpeta de la rama:
+| criterio | qué ha salido | ¿pasa? |
+|---|---|---|
+| C0, la rama no cambia la entrega | `equipo_v9_rama` sale con `d9706dfb…be63` | sí |
+| C1, es una entrega | `prueba_k2` es válida, con 0 conflictos (sha256 `784e65e5…acbc`) | sí |
+| C2, el modelo dice en el ATD lo que dice en los abiertos | 0 de 6 salidas fuera; 1 de 45 entradas, la esperada | sí |
+| C3, cambia lo que cabe esperar | el 4,83 % de los frames; el 3,26 % de un equipo al otro; el 1,56 % con el `D` | sí |
+| C4, no cambia el ritmo ni el `D` | 203 posesiones, 115 paradas y el 45,9 % de `D` (201, 116 y el 46,2 %) | sí |
+| C5, no fragmenta | 0 posesiones de menos de 12 frames y 1 de menos de 25 | sí |
+| C6, no se rompe en la ventana pública | spellF1 0,680 las dos; macroF1 de 0,874 a 0,873 | sí |
+
+Sin voto: las seis salidas caen también dentro del rango de la DFL sola (dos caen fuera del de SkillCorner), y lo que
+cambia frente a `equipo_v9` se parece a lo que cambiaba en la DFL. La alarma de C2, que salta en 42 de los 48 casos en
+que se sabe que el modelo falla, se ha quedado callada. Nada de esto prueba que K2 gane en el partido: no hay ningún
+partido del ATD con etiquetas.
+
+Los comandos, con el python del entorno limpio y desde la carpeta de la rama:
 
     python -m possession.pipeline --name equipo_v9_rama
     python validation/partido/conjunto_en_el_partido.py
     python validation/partido/probar_entrega.py prueba_k2 --pieza candidates=aprendida.evidence_k2 --contra equipo_v9_rama
     python evaluation/validate_submission.py evaluation/results/prueba_k2.csv
 
-Los criterios (C0 a C6) están en `docs/decisiones.md`, 17/11, escritos antes de generar nada. En corto: la rama no
-cambia la entrega; el modelo dice en el ATD cosas parecidas a las que dice en los datos abiertos; frente a `equipo_v9`
-cambia como mucho el 12 % de los frames; el número de posesiones y de paradas y el `D` se quedan cerca; no fragmenta; y
-la ventana pública no se rompe.
+Los criterios (C0 a C6) están en `docs/decisiones.md`, 17/11, escritos antes de generar nada.
 
-Lo que cabe esperar [medido en datos abiertos, `cuanto_cambia.py`]: cambia entre el 4 y el 8 % de los frames evaluados,
-unos 3 puntos de un equipo al otro; las posesiones suben entre el 0 y el 4 %; ninguna posesión de menos de 12 frames.
+Lo que cabía esperar [medido en datos abiertos, `cuanto_cambia.py`]: que cambiara entre el 4 y el 8 % de los frames
+evaluados, unos 3 puntos de un equipo al otro; que las posesiones subieran entre el 0 y el 4 %; y ninguna posesión de
+menos de 12 frames.
+
+**Si el equipo lo enciende:** `"aprendida.evidence_k2"` en `pipeline.PIECES["candidates"]`, la rama a `main` y regenerar;
+tiene que salir byte a byte igual que `prueba_k2`. Antes de entregar, reproducirla en otra máquina y contar K2 en el
+documento técnico.
 
 ## Lo que no he podido comprobar
 
-- **Nada del partido.** Si el ATD se parece lo bastante a los datos de entrenamiento no lo dice el harness. El punto 4
-  puede dar la alarma, pero no puede probar que K2 gane allí: no hay ni un partido del ATD con etiquetas, y la ventana
-  pública no sirve para elegir.
+- **Que K2 gane en el partido.** El punto 4 ha salido limpio, pero solo puede dar la alarma: no hay ni un partido del
+  ATD con etiquetas, y la ventana pública no sirve para elegir.
 - **La reproducción en otra máquina.** La pieza está escrita para dar lo mismo bit a bit (sin exponenciales, sin BLAS y
   sin `np.interp`), pero solo se ha ejecutado en esta.
 - **El entrenamiento no es reproducible bit a bit** (GPU). Los pesos sí: están en el repo, y la entrega solo usa los
