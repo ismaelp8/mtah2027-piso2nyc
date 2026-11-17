@@ -1,8 +1,8 @@
 # K3: qué es y qué falta para entregar con ella (17/11/2026)
 
 **Estado, 17/11 por la tarde:** K3 pasó su entrega de prueba frente a `equipo_v10` e Ismael decidió encenderla. Está
-encendida en la rama `feat/encender-k3`, que junta la de David (`feat/encender-k2`) con la de los refinamientos
-(`exp/k2-refinar`). **Falta regenerar la entrega, validarla y reproducirla en otra máquina.** El detalle está en
+en `main` (merge de `feat/encender-k3`, que junta la rama de David, `feat/encender-k2`, con la de los refinamientos,
+`exp/k2-refinar`). **Falta regenerar la entrega, validarla y reproducirla en otra máquina.** El detalle está en
 `validation/resultados/2026-11-17_refinamientos_k2.md` y en `docs/decisiones.md` (entradas del 17/11).
 
 ## Qué es K3
@@ -13,8 +13,8 @@ encendida en la rama `feat/encender-k3`, que junta la de David (`feat/encender-k
   visitante). K3 los promedia a partes iguales y lo demás no cambia: el mismo balón muerto, el mismo decodificador y
   las mismas capas del partido.
 - **No se ha entrenado nada nuevo.** Usa los pesos de K2 que ya están en el repo y los coeficientes de B5.
-- **Está encendida en `feat/encender-k3`:** `pipeline.PIECES["candidates"]` es `aprendida.evidence_k3`. El código es
-  `possession/refinamientos.py` y ese envoltorio. En `main` todavía no está.
+- **Está encendida en `main`:** `pipeline.PIECES["candidates"]` es `aprendida.evidence_k3`. El código es
+  `possession/refinamientos.py` y ese envoltorio.
 
 ## Para qué sirve
 
@@ -67,7 +67,7 @@ La hace una persona con los datos del partido y el entorno de `requirements-entr
 sin cambios locales:
 
     git fetch origin
-    git switch --detach origin/feat/encender-k3
+    git switch --detach origin/main
     python -m possession.pipeline --name equipo_v11
     python evaluation/validate_submission.py evaluation/results/equipo_v11.csv
 
@@ -118,10 +118,12 @@ K3:** son 17 posesiones, y por debajo de 0,42 de diferencia todo es ruido.
 
 ## Si hay que volver atrás
 
-- **A K2:** la entrega es `equipo_v10` (`784e65e5…acbc`), de la rama `feat/encender-k2`, reproducida en dos máquinas.
-- **A B5:** la entrega es `equipo_v9` (`d9706dfb…be63`), la que da `main` hoy.
+- **A K2:** `python -m possession.pipeline --name equipo_v10 --pieza candidates=aprendida.evidence_k2` tiene que dar
+  `784e65e5…acbc`, la huella de `equipo_v10`, reproducida en dos máquinas.
+- **A B5:** lo mismo con `--pieza candidates=aprendida.evidence_b5` y la huella de `equipo_v9`, `d9706dfb…be63`.
 
-Volver a cualquiera de las dos es no mergear `feat/encender-k3`.
+Para dejarlo fijo, `pipeline.PIECES["candidates"]` vuelve a esa pieza en un commit, con las comprobaciones de las
+pruebas que la nombran (`docs/decisiones.md`, «se enciende K3»).
 
 ## Lo que no hay que hacer
 

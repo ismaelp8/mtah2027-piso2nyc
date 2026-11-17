@@ -236,13 +236,14 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
 - **Entrega en preparación: `equipo_v11`, con K3** (17/11 por la tarde; `docs/decisiones.md`, «se enciende K3»): la
   evidencia de equipo es la media de K2 y B5 (`aprendida.evidence_k3`). Lo decidió Ismael, tras comentarlo con el
-  equipo, en la rama `feat/encender-k3`.
-  - **Todavía no existe.** Hay que regenerarla en el entorno limpio desde esa rama, validarla y reproducirla en una
+  equipo. Está en `main` desde el 17/11 por la tarde (merge de `feat/encender-k3`, que lleva dentro la rama de David).
+  - **Todavía no existe.** Hay que regenerarla en el entorno limpio desde `main`, validarla y reproducirla en una
     segunda máquina. Se espera la huella de la entrega de prueba `prueba_k3` (`811658cd…c04b`, generada con numpy
     1.26.4), con 198 posesiones y 116 paradas.
   - Frente a `equipo_v10` cambian 4.219 frames (2,7 %): 2.719 de un equipo al otro y 1.500 entre un equipo y `D`
     [medido por David con la entrega de prueba].
-  - Hasta que esté regenerada y la rama entre en `main`, la entrega vigente es la que dé `main`.
+  - Hasta que esté regenerada y validada no hay entrega vigente con K3. La vuelta atrás es `equipo_v10` (K2) o
+    `equipo_v9` (B5): `docs/decisiones.md`, «se enciende K3».
 - **Entrega con K2: `equipo_v10`** (17/11; `docs/decisiones.md`, «se enciende K2» y «`equipo_v10`»):
   `equipo_v9` con la evidencia de equipo de K2 (`aprendida.evidence_k2`, el modelo conjunto) en lugar de B5. Lo decidió
   David.
@@ -250,8 +251,8 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     (Python 3.13.1, numpy 2.5.4, rama `feat/encender-k2` en `7e0c2cc`, sin cambios locales): 0 conflictos, válida,
     203 posesiones de 16,9 s de media. **Reproducida en dos máquinas.**
   - Frente a `equipo_v9` cambian 7.666 frames (4,8 %): 5.181 de un equipo al otro y 2.485 entre un equipo y `D`.
-  - Es la entrega de la rama `feat/encender-k2` (PR 26), y la vuelta atrás si K3 no se regenera a tiempo. El documento
-    técnico tiene que contar K2.
+  - Es la vuelta atrás si K3 no se regenera a tiempo: desde `main`, con `--pieza candidates=aprendida.evidence_k2`
+    sale con esa misma huella. El documento técnico tiene que contar K2 y K3.
 - **Entrega anterior: `equipo_v9`** (16/11 por la noche): `equipo_v8` más «cortas a `D`»
   (`temporal.decode_cortas_a_d`, en `pipeline.PIECES` desde el 16/11; Ismael: «si enciendela»; `docs/decisiones.md`).
   - Es la entrega de prueba `prueba_cortas_a_d`: sha256 `d9706dfb…be63`, válida, con 201 posesiones de 17,0 s de

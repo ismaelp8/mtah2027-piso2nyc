@@ -7061,11 +7061,16 @@ Lo que hay que hacer, en este orden:
 5. Lo pendiente de la PR 26 que no es de esta rama: la excepción escrita de los pesos (`CONTRIBUTING.md` §7) y los
    cuatro scripts de SkillCorner que dan por hecho que la entrega no vio esos partidos.
 
-Vuelta atrás: `equipo_v10` (K2) sigue siendo la entrega de `feat/encender-k2`, reproducida en dos máquinas, y
-`equipo_v9` (B5), la de `main`. Volver a cualquiera de las dos es no mergear esta rama.
+Vuelta atrás: en `main`, `pipeline.PIECES["candidates"]` vuelve a `"aprendida.evidence_k2"` (la entrega tiene que
+salir con `784e65e5…acbc`, la de `equipo_v10`, reproducida en dos máquinas) o a `"aprendida.evidence_b5"` (con
+`d9706dfb…be63`, la de `equipo_v9`), cambiando a la vez las comprobaciones de las pruebas que fijan la pieza. Desde
+esta rama, las dos huellas salieron bien al pasar la pieza a mano (criterio C0 de la entrega de prueba).
 
 Descartado: mezclar con ¾ de K2 (se vio sin voto y elegirlo ahora sería elegir mirando el resultado); esperar a los
 pesos de la máquina de la GPU para leer el punto 2 (no llegan hoy).
 
-Estado: encendida en `feat/encender-k3`. **`equipo_v11` no existe todavía:** hasta que alguien la regenere y la valide,
-la entrega vigente es la que haya en `main`.
+Estado: encendida, y mergeada en `main` el 17/11 con merge commit por decisión de Ismael («súbelo a la branch y
+directamente mergea con el main»), sin esperar a regenerar. **`equipo_v11` no existe todavía:** hay que regenerarla
+desde `main` en el entorno limpio, validarla y reproducirla antes de entregar. Lleva dentro la rama de David
+(`feat/encender-k2`, hasta `02313a9`): su notebook queda fuera, y la excepción escrita de los pesos en
+`CONTRIBUTING.md` §7, pendiente.
