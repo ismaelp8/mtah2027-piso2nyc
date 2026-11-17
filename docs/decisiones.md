@@ -5745,3 +5745,25 @@ Lectura [inferencia]:
 - Las cuatro celdas siguen siendo positivas, pero ninguna se aleja del ruido.
 
 Lo que no se hace: buscar otra excepción para B12. Sería buscar hasta que salga.
+
+### 2026-11-17 · candidatos · B14: pasa en la DFL con margen y no pasa en SkillCorner
+
+B14, medido (`ae25415`; salidas en `validation/secuencia/salidas/2026-11-17_*b14*`), frente a `main`:
+
+| convención | `D` | «como el ATD» | «sin bloques» |
+|---|---|---|---|
+| control | de las etiquetas | +0,048 [+0,034 a +0,061], 7 de 7 | +0,027 [+0,014 a +0,040], 7 de 7 |
+| control | propio | +0,053 [+0,040 a +0,066], 7 de 7 | +0,030 [+0,016 a +0,043], 7 de 7 |
+| flag | de las etiquetas | +0,120, 7 de 7 | +0,118, 7 de 7 |
+| flag | propio | +0,111, 7 de 7 | +0,106, 7 de 7 |
+
+- **En la DFL pasa los puntos 1 y 3 de la regla, con margen.** Es el primero que lo consigue.
+- **SkillCorner `ENTRENAMIENTO`: no pasa.** Con el `D` de las etiquetas pierde (−0,017 y −0,013; 2 y 4 de 10); con el
+  propio empata (−0,002 y +0,002; 5 de 10).
+- **Posesiones:** 1.904 en la DFL (`main` 1.661; reales 1.736 con control) y 2.730 en SkillCorner (`main` 2.270; reales
+  3.228).
+- **Eventos humanos:** frente a `main`, un compromiso (recuperaciones +15,9 puntos, duelos con cambio +12,7, duelos sin
+  cambio −6,6); frente al control, «mejora».
+
+**B14 no pasa la regla** por SkillCorner, y el examen no se abre. Sigue cambiando de equipo de más; B15 (entrenada con
+control) ataca eso.

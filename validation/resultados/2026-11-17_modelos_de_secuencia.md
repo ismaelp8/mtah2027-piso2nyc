@@ -31,12 +31,13 @@ y 6 de 7, con los dos modos del `D`; con el flag, no perder más de 0,005.
 | B11 | +0,012 (4) / +0,007 (4) | +0,023 (5) / +0,014 (5) | +0,10 (7) | pierde o empata | 1.989 |
 | B12 | +0,034 (7) / +0,028 (**5**) | +0,034 (7) / +0,028 (**5**) | +0,05 (7) | **gana las 4** (+0,011 a +0,014, 7–9 de 10) | 1.774 |
 | B13 | +0,021 (6) / +0,003 (4) | +0,025 (5) / +0,007 (3) | +0,09 (7) | pierde las 4 (−0,010 a −0,024) | 1.865 |
-| B14 | (pendiente) | | | | |
+| B14 | **+0,048 (7) / +0,027 (7)** | **+0,053 (7) / +0,030 (7)** | +0,11 a +0,12 (7) | pierde o empata (−0,017 a +0,002) | 1.904 |
 | B15 | (pendiente) | | | | |
 
 ## Lectura
 
-- **Ninguna pasa la regla, de momento.** B12 es la que más se acerca: gana con control en las cuatro celdas, con el
+- **Ninguna pasa la regla, de momento.** **B14 es la primera que pasa los puntos 1 y 3 en la DFL, con margen** (7 de 7 en
+  todo), pero en SkillCorner pierde con el `D` de las etiquetas y empata con el propio. B12 es la otra que más se acerca: gana con control en las cuatro celdas, con el
   intervalo por encima de cero, y en SkillCorner, pero en «sin bloques» gana en 5 de 7 partidos y se piden 6. Ismael
   tiene pendiente decidir si se le hace una excepción (como la del balón fuera) y se abre su examen de SkillCorner.
 - **Las redes que miran más fino (B11 y B13) cambian de equipo de más.** Ganan mucho con el flag (+0,09 a +0,10), que
