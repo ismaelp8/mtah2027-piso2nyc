@@ -6151,17 +6151,19 @@ Con la regla escrita antes:
   Es lo que la regla decía para este caso, y no se reescribe.
 
 Lo que sale sin voto, y hay que decirlo junto al número de K3:
-- **El precio de la mezcla:** con control deja la ganancia de K2 como estaba (de −0,003 a +0,003 frente a K2 en la
-  DFL), pero con el flag pierde de 0,013 a 0,018 frente a K2, y en Metrica, lo más parecido a la entrega, de 0,006 a
-  0,012. Con la regla de §5.8 frente a `main`, el harness oficial dice «gana» para K2 y «empate o no concluye» para K3.
+- **El precio de la mezcla:** con control deja la ganancia de K2 casi como estaba (de −0,006 a +0,003 frente a K2 en
+  la DFL, contando las celdas con el balón a la vista en los `D`), pero con el flag pierde de 0,013 a 0,018 frente a
+  K2, y en Metrica, lo más parecido a la entrega, de 0,006 a 0,012. Con la regla de §5.8 frente a `main`, el harness oficial dice «gana» para K2 y «empate o no concluye» para K3.
 - **Lo que la mezcla da a cambio:** con la réplica, en un proveedor que ninguna de sus dos mitades vio, K3 gana a
   `main` en las cuatro celdas (+0,008 a +0,011) y a K2 solo (+0,008 a +0,013, con los intervalos por encima de cero).
   Y partido a partido falla menos: en los bloques A y C, K2 queda por debajo de `main` en 12 de 136 casos (partido y
   celda), el peor con −0,026; K3, en 3, el peor con −0,007.
-- **K3 es más prudente justo en los cambios de posesión.** Predice un 2 % menos de posesiones que `main` (K2 predice las
-  mismas). En los eventos humanos de la DFL acierta el 74,9 % de las recuperaciones (`main`, el 70,3 %; K2, el 80,0 %)
-  y el 79,9 % de los duelos con cambio (77,3 % y 82,5 %): se queda con la mitad de lo que K2 mejora ahí. A cambio
-  acierta más duelos sin cambio (79,6 %, frente a 74,9 % y 77,7 %).
+- **K3 es más prudente justo en los cambios de posesión.** Con el `D` propio predice un 2 % menos de posesiones que
+  `main` (K2, hasta un 2 % más); con el `D` de las etiquetas, un 4 % menos en la DFL (K2, las mismas). En los eventos
+  humanos de la DFL, «como el ATD», acierta el 74,9 % de las recuperaciones (`main`, el 70,3 %; K2, el 80,0 %) y el
+  79,9 % de los duelos con cambio (77,3 % y 82,5 %): se queda con la mitad de lo que K2 mejora ahí. «Sin bloques»
+  conserva la mitad en las recuperaciones (+4,1 puntos de +7,7) y casi nada en los duelos con cambio (+0,4 de +3,1).
+  A cambio acierta más duelos sin cambio (79,6 %, frente a 74,9 % y 77,7 %).
 - **Ni K2 ni K3 ven más posesiones: las colocan mejor.** En la DFL con control hay 1.736 posesiones reales; `main`
   encuentra el 72,5 %, K2 el 76,9 % y K3 el 75,9 % (emparejadas con un solape de 0,5 o más). Con el flag, el 39,1, el
   42,5 y el 41,0 %; en SkillCorner, el 44,9, el 47,9 y el 46,3 %. El hueco de los cambios que no vemos sigue ahí.
@@ -6174,14 +6176,26 @@ Lo que hay que decir con el número:
   (`prueba_pipeline`, `prueba_aprendida`, `prueba_harness`, `prueba_conjunto` y `prueba_refinamientos` siguen en verde),
   pero el fichero ya no es byte a byte el de `exp/modelo-conjunto`. Si algo de esta rama sigue adelante, primero el
   criterio C0 desde esta rama: `equipo_v9_rama` tiene que salir con `d9706dfb…be63`.
-- **La réplica no es el modelo del 17/11** (CPU, 33 columnas, torch 2.15). Frame a frame acierta lo mismo que él en
+- **La réplica no es el modelo del 17/11** (CPU, 33 columnas y torch 2.15, según el comando de esta sesión: la salida
+  del entrenamiento no lo imprimía, y desde ahora sí; lleva el mismo número de semilla, 20261124, pero el generador de
+  la CPU no es el de la GPU). Frame a frame acierta lo mismo que él en
   SkillCorner (84,0 % frente a 83,8 %), así que la diferencia de 0,010 en la nota apunta a ruido del entrenamiento
   [inferencia]. Hay una semilla más en marcha, con su lectura escrita antes (entrada anterior).
 - **El sentido de SkillCorner a la DFL no se ha medido todavía.** Su réplica está a medias y parada, para dejarle la
   CPU a la semilla nueva. Era el sentido sin voto.
-- **Cuántas cosas se han probado:** dos candidatos, sin elegir ningún valor. La mezcla con ¼ y con ¾ de K2 se enseña
-  sin voto: con ¾ queda a la altura de K2 dentro del proveedor y en Metrica, y con la réplica saca +0,006 a +0,007.
-  Elegir ¾ ahora sería elegir mirando el resultado.
+- **Cuántas cosas se han mirado:** dos candidatos, sin elegir ningún valor. Además, el script mide e imprime en todas
+  las ejecuciones K5, que no llegó a ser candidato, y la mezcla con ¼ y con ¾ de K2, sin voto. Con ¾ queda a 0,006 o
+  menos de K2 con control, en SkillCorner y en Metrica, pierde de 0,005 a 0,011 con el flag en la DFL, y con la
+  réplica saca +0,006 a +0,007. Elegir ¾ ahora sería elegir mirando el resultado.
+- **La mezcla que se mide en la DFL no es siempre la de la entrega.** Cada logit va con la α de su pliegue: la de K2
+  es 4, 4, 4, 4, 8, 8 y 8, y la de B5, 2, 4, 4, 4, 4, 4 y 8. En tres partidos (`J03WMX`, `J03WPY` y `J03WQQ`) K2
+  entra con el doble de escala relativa que en la entrega, donde las dos son 4. En SkillCorner y en Metrica la mezcla
+  sí es la de la entrega. Es lo que decía la regla («cada uno en su escala»); cuánto mueve las cifras de la DFL se
+  mide aparte, sin voto.
+- **Con qué código salió cada salida.** El sello «Código» de las salidas es el commit que había al ejecutarlas, y los
+  scripts de `validation/conjunto/` entraron en el commit siguiente: `cuanto_cambia_k3.py` en `8409165`,
+  `detalle_abiertos.py` en `118e854` y las tablas de `*_por_partido.md` en `3794aaf`. Desde ahora `refinar.py` imprime
+  su propia huella y la α, y guarda con cada caché de recuentos el dominio, los pesos y el código con que se calculó.
 
 Lo que haría legible el punto 2: los pesos de los dos modelos de un solo proveedor del 17/11
 (`conjunto_cache/pesos/solo_dfl_todos.pt` y `solo_sc_todos.pt`, en la máquina de la GPU). Con ellos K2 sí pierde, y la
@@ -6215,14 +6229,16 @@ Resultado [medido], con el `D` propio:
 1. **«Cuando vemos un cambio lo ponemos en su sitio; el problema son los que no vemos»: se repite.** De los cambios
    directos entre equipos, `main` ve el 35,0 % en la DFL con control, el 18,7 % con el flag, el 17,6 % en SkillCorner y
    el 34,3 % en Metrica. K2 ve el 48,1, el 24,9, el 21,2 y el 40,0 %; K3, el 44,4, el 22,6, el 19,6 y el 37,7 %. El
-   retraso mediano de los que vemos es de 0 a +5 frames. K2 además inventa menos: le sobran 396 cambios entre equipos en
+   retraso mediano de todos los cambios que vemos (también los que pasan por `D`) es de 0 a +5 frames. K2 además
+   inventa menos: le sobran 396 cambios entre equipos en
    la DFL, frente a 505 de `main`.
 2. **«Nos faltan posesiones» (13 de 17 en la ventana): se repite.** Con `main` predecimos el 89 % de las que hay en la
    DFL con control, el 73 % en Metrica, el 65 % en SkillCorner y el 50 % con el flag.
 3. **«Nuestras posesiones duran más: nos comemos las cortas del rival»: se repite.** Las posesiones reales de menos de
    2 s no las encuentra ninguna versión (del 0 al 9 %); las de 2 a 5 s, `main` el 27 %, K2 el 39 % y K3 el 33 % en la
-   DFL con control. Casi nunca partimos una posesión (del 1 al 3 % de las perdidas): las perdemos por decir el otro
-   equipo, por fundirlas con la de al lado o por taparlas con `D`.
+   DFL con control. Casi nunca partimos una posesión (las partidas o más cortas son del 1 al 3 % de las reales):
+   las perdemos por no decir su equipo ni en la mitad de sus frames, por fundirlas con la de al lado o por taparlas
+   con `D`.
 
 Lectura [inferencia]: lo que se ve en 17 posesiones del partido es lo mismo que se ve en miles de otros tres
 proveedores, así que no es un accidente de la ventana. K2 mueve los tres números en la buena dirección y K3 se queda a

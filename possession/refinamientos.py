@@ -15,8 +15,10 @@ partido es de un tercer proveedor. Aquí no se entrena nada: se combinan dos log
 **No toca nada de K2 ni de B5.** `conjunto.evidence`, `aprendida.evidence_b5`, sus pesos y sus coeficientes no
 cambian: este módulo solo los lee. Nada de aquí está en `pipeline.PIECES`.
 
-**Reproducible bit a bit,** como las dos piezas que combina: la mezcla y el promedio son productos y sumas de numpy
-término a término, y la puntuación va redondeada a `aprendida.DECIMALES`. Con la parte de K2 a 1 y sin espejo, la
+**Reproducible bit a bit, con un matiz.** La mezcla y el promedio son productos y sumas de numpy término a término, y
+la puntuación va redondeada a `aprendida.DECIMALES`. K4 no pasa por ninguna exponencial, como K2. K3 y K5 heredan el
+`np.exp` de los rasgos de B5: una entrega con ellas hay que reproducirla en otra máquina, como se hizo con B5. Con la
+parte de K2 a 1 y sin espejo, la
 puntuación es la de `conjunto.evidence` bit a bit; con la parte de K2 a 0, la de `aprendida.evidence_b5`
 (`validation/scripts/prueba_refinamientos.py`).
 

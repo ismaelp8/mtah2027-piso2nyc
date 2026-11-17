@@ -16,6 +16,7 @@ SkillCorner, la de todos.
 import argparse
 import concurrent.futures
 import functools
+import hashlib
 import os
 import sys
 import time
@@ -95,8 +96,10 @@ def main():
             print("# hecho {} ({:.0f} s)".format(trabajo[1], time.time() - inicio), file=sys.stderr, flush=True)
 
     print("# Cuánto cambia la salida con K3 (descriptivo, `D` propio, sin las capas del partido)\n")
-    print("Código: {} · {} partidos de la DFL y {} de SkillCorner, cada uno con el pliegue que no lo vio.".format(
-        puntuar.version_del_codigo(), len(cj.DFL), len(cj.SKILLCORNER)))
+    with open(os.path.abspath(__file__), "rb") as f:
+        huella = hashlib.sha256(f.read()).hexdigest()[:16]
+    print("Código: {} · este script: sha256 {}… · {} partidos de la DFL y {} de SkillCorner, cada uno con el pliegue que "
+          "no lo vio.".format(puntuar.version_del_codigo(), huella, len(cj.DFL), len(cj.SKILLCORNER)))
     for antes, despues in PARES:
         print("\n## De {} a {}\n".format(antes, despues))
         print("| datos | condición | balón en los D | frames evaluados que cambian | {0} | posesiones: {1} → {2} | "

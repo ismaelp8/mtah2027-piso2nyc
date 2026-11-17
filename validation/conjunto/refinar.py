@@ -208,8 +208,8 @@ def informe(recuentos, partidos, celdas, n_draws):
                 NOMBRE_MODO[modo], condicion, convencion, ref, k2, cand, dif, medir.rango(intervalo), gana,
                 len(partidos), dif_k2, medir.rango(intervalo_k2), gana_k2, len(partidos)))
         predichas = {v: sum(recuentos[p][(v,) + celdas[0]]["n_pred"] for p in partidos) for v in ("main", "K2", clave)}
-        print("\nPosesiones predichas en la primera celda: {} · K2, {} · `main`, {} (reales: {}).".format(
-            predichas[clave], predichas["K2"], predichas["main"],
+        print("\nPosesiones predichas en la primera celda: {}, {} · K2, {} · `main`, {} (reales: {}).".format(
+            clave, predichas[clave], predichas["K2"], predichas["main"],
             sum(recuentos[p][("main",) + celdas[0]]["n_gt"] for p in partidos)))
     return resumen
 
@@ -312,6 +312,12 @@ def huella(ruta):
         return hashlib.sha256(f.read()).hexdigest()[:16]
 
 
+def alfa_de_todos(ruta):
+    """La α de K2 del juego «todos» de un fichero de pesos, sin tocar `conjunto.PESOS`."""
+    with np.load(ruta, allow_pickle=False) as fichero:
+        return float(fichero["todos/alfa"])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--dominio", choices=("dfl", "sc", "metrica"), default="dfl")
@@ -334,6 +340,11 @@ def main():
         parser.error("--pesos y --entrenado-con van juntos")
     if args.pesos and args.entrenado_con == args.dominio:
         parser.error("esos pesos vieron partidos de este proveedor: no es una medida del otro proveedor")
+    alfas = sorted({alfa_de_todos(ruta) for ruta in (args.pesos or [conjunto.PESOS])})
+    if len(alfas) > 1:  # la z se promedia, pero la escala es una sola: tienen que traer la misma
+        parser.error("los ficheros de --pesos traen α distintas ({}): no se pueden promediar".format(alfas))
+    meta = {"dominio": args.dominio, "pesos": [huella(ruta) for ruta in (args.pesos or [conjunto.PESOS])],
+            "codigo": puntuar.version_del_codigo(), "script": huella(os.path.abspath(__file__))}
 
     if args.dominio == "dfl":
         partidos = list(args.partidos or cj.DFL)
@@ -351,9 +362,20 @@ def main():
         funcion, convenciones, condiciones, modos = medir_metrica, ("eventos",), lc.CONDICIONES, ("oraculo", "propio")
     celdas = [(c, m, v) for m in modos for c in condiciones for v in convenciones]
 
+    origen = None
     if args.recuentos and os.path.isfile(args.recuentos) and not args.comprobar:
         with open(args.recuentos, "rb") as f:
-            recuentos = pickle.load(f)
+            guardado = pickle.load(f)
+        if set(guardado) == {"meta", "recuentos"}:
+            if guardado["meta"]["dominio"] != meta["dominio"] or guardado["meta"]["pesos"] != meta["pesos"]:
+                sys.exit("los recuentos guardados son de otro dominio o de otros pesos")
+            recuentos = guardado["recuentos"]
+            origen = "recuentos guardados, calculados con el código {} y el script {}…".format(
+                guardado["meta"]["codigo"], guardado["meta"]["script"])
+        else:  # los del 17/11 por la mañana, de antes de guardar con qué se calcularon
+            recuentos = guardado
+            origen = ("recuentos guardados sin metadatos (los primeros del 17/11): no consta con qué pesos ni con qué "
+                      "código se calcularon")
         if sorted(recuentos) != sorted(partidos):
             sys.exit("los recuentos guardados son de otros partidos")
     else:
@@ -366,7 +388,7 @@ def main():
         if args.recuentos and not args.comprobar:
             os.makedirs(os.path.dirname(os.path.abspath(args.recuentos)), exist_ok=True)
             with open(args.recuentos, "wb") as f:
-                pickle.dump(recuentos, f)
+                pickle.dump({"meta": meta, "recuentos": recuentos}, f)
 
     donde = {"dfl": "DFL", "sc": "SkillCorner, mitad de entrenamiento", "metrica": "Metrica"}[args.dominio]
     print("# Refinamientos de K2 sin reentrenar · {} · {} partidos\n".format(donde, len(partidos)))
@@ -383,6 +405,9 @@ def main():
         puntuar.version_del_codigo(), args.bootstrap, pipeline.PIECES["temporal"], de_k2,
         "el pliegue que no vio el partido (sí vio otros de la DFL)" if args.dominio == "dfl"
         else "los coeficientes de la entrega (nunca vio este proveedor)"))
+    print("α de K2: {} · este script: sha256 {}…{}".format(
+        "la del pliegue que no vio cada partido (4 u 8)" if args.dominio == "dfl" and not args.pesos
+        else "{:g}, la de «todos»".format(alfas[0]), meta["script"], " · " + origen if origen else ""))
     if args.comprobar:
         distintos = sorted({k[0] for r in recuentos.values() for k, igual in r.items() if not igual})
         print("\nComprobación del instrumento: {} salidas comparadas frame a frame; distintas: {}.".format(

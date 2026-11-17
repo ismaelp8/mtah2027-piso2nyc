@@ -37,7 +37,7 @@ import red
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-SLOTS = 48  # columnas por partido en la GPU; la última queda libre para el slot duplicado
+SLOTS = 48  # columnas por partido en el dispositivo; la última queda libre para el slot duplicado
 CONFIG = {
     "pasos": 3000, "lote": 32, "grupos": 512, "margen": 64, "tasa": 2e-3, "decaimiento": 1e-4, "calentamiento": 100,
     "peso_cambios": 1.0, "peso_flag": 0.3,
@@ -87,7 +87,7 @@ def calidad(p, clase, frames, hacia, umbral=0.5):
 
 
 def cargar(dominio, partido, device, columnas=SLOTS):
-    """Un partido de la caché, en la GPU, con las columnas de slots rellenadas hasta `columnas`."""
+    """Un partido de la caché, en el dispositivo, con las columnas de slots rellenadas hasta `columnas`."""
     with np.load(cj.fichero_partido(dominio, partido)) as d:
         datos = {k: d[k] for k in d.files}
     n, slots = datos["px"].shape
@@ -404,6 +404,8 @@ def main():
     print("Entrena con {} partidos de la DFL y {} de SkillCorner; deja fuera: {}.".format(
         len(dentro["dfl"]), len(dentro["sc"]), ", ".join(str(p) for p in fuera_dfl + fuera_sc) or "ninguno"))
     print("Configuración: {}\n".format(json.dumps({k: cfg[k] for k in sorted(cfg)}, ensure_ascii=False)))
+    print("Dispositivo: {} · torch {} · hilos {} · columnas de slots {}\n".format(
+        device.type, torch.__version__, torch.get_num_threads(), args.columnas))
 
     modelo = red.Conjunto(cfg["oculto"], cfg["canales"], tuple(cfg["dilaciones"]), cfg["abandono"]).to(device)
     print("Pesos: {}".format(sum(v.numel() for v in modelo.parameters())), flush=True)

@@ -5,7 +5,8 @@
 Datos abiertos de otros partidos (DFL, CC BY 4.0; SkillCorner, mitad de entrenamiento, MIT; Metrica sample-data). Lo
 puede ejecutar cualquiera, Claude incluido. Solo imprime agregados. No lee el examen de SkillCorner.
 
-Es el análisis de `notebooks/ventana_publica_detalle.ipynb` (David, 17/11), que mira una entrega frente a los 5 minutos
+Es el análisis de `notebooks/ventana_publica_detalle.ipynb` (David, 17/11; rama `feat/encender-k2`), que mira una
+entrega frente a los 5 minutos
 públicos del partido (17 posesiones), repetido donde hay miles de posesiones con etiquetas: los 7 partidos de la DFL
 (con control y con el flag), los 10 de entrenamiento de SkillCorner y los 3 de Metrica. Las cuentas son las suyas, con
 las funciones del scorer oficial (`evaluation/possession_metrics.py`):
@@ -14,7 +15,8 @@ las funciones del scorer oficial (`evaluation/possession_metrics.py`):
   transF1 oficial. Los emparejados son los «vistos», con su retraso (positivo, llegamos tarde); los reales sin pareja,
   los «no vistos»; los nuestros sin pareja, los que «nos sobran»;
 - **las posesiones:** una real está «encontrada» si se empareja con una nuestra con un solape de 0,5 o más. Si no, la
-  causa, en este orden: la tapamos con `D` (la mitad o más de sus frames) · decimos el otro equipo en la mayoría ·
+  causa, en este orden: la tapamos con `D` (la mitad o más de sus frames) · «otro equipo»: decimos el bueno en menos
+  de la mitad de sus frames (con el `D` de las etiquetas, el resto es el rival; con el propio, el rival o `D`) ·
   decimos el bueno, pero la nuestra es más larga (se funde con la de al lado) · la nuestra es más corta o va partida.
 
 Las tres versiones se montan como en `refinar.py`, con el pliegue que no vio cada partido: `main` (B5), K2 y K3 (la
@@ -70,14 +72,14 @@ def detalle(gt, pred):
 
     reales, nuestros = pm.transitions(gt, runs), pm.transitions(llenado, runs)
     parejas, perdidos, sobrantes = pm.match_transitions(reales, nuestros, TOLERANCIA)
-    retrasos = {"todos": [], "equipos": []}
+    retrasos = {}
     for clase, filtro in (("todos", lambda c: True), ("equipos", _entre_equipos)):
         r["cambios reales", clase] = sum(1 for c in reales if filtro(c))
         r["cambios nuestros", clase] = sum(1 for c in nuestros if filtro(c))
         r["vistos", clase] = sum(1 for real, _ in parejas if filtro(real))
         r["no vistos", clase] = sum(1 for c in perdidos if filtro(c))
         r["nos sobran", clase] = sum(1 for c in sobrantes if filtro(c))
-        retrasos[clase] = [mio[0] - real[0] for real, mio in parejas if filtro(real)]
+    retrasos["todos"] = [mio[0] - real[0] for real, mio in parejas]
 
     pos_reales, pos_nuestras = pm.possession_spells(gt, runs), pm.possession_spells(llenado, runs)
     solapes = pm.spell_overlaps(pos_reales, pos_nuestras)
@@ -181,9 +183,9 @@ def main():
             print("# hecho {} {} en {:.0f} s".format(dominio, partido, segundos), file=sys.stderr, flush=True)
 
     print("# El detalle de los cambios y de las posesiones en los datos abiertos (descriptivo)\n")
-    print("Código: {} · cuentas de `notebooks/ventana_publica_detalle.ipynb` con el scorer oficial · cambios emparejados "
+    print("Código: {} · este script: sha256 {}… · cuentas de `notebooks/ventana_publica_detalle.ipynb` con el scorer oficial · cambios emparejados "
           "a ±{} frames · posesiones encontradas con un solape de {} o más · cada partido con el pliegue que no lo vio."
-          .format(puntuar.version_del_codigo(), TOLERANCIA, UMBRAL))
+          .format(puntuar.version_del_codigo(), refinar.huella(os.path.abspath(__file__)), TOLERANCIA, UMBRAL))
     datos = [d for d in ("DFL, control", "DFL, flag", "SkillCorner, entrenamiento", "Metrica") if partidos[d]]
     for modo in MODOS:
         print("\n## Con el `D` {}\n".format("propio (como en la entrega)" if modo == "propio" else "de las etiquetas"))

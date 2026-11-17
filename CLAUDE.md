@@ -563,7 +563,7 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - **K4, el logit de K2 promediado con el del campo en espejo, se cierra:** gana en la DFL (+0,005 con control) y
       empata en SkillCorner y en Metrica.
     - **K3, la media a partes iguales del logit de K2 y del de B5** (`possession/refinamientos.py`,
-      `aprendida.evidence_k3`), gana a `main` (B5) en todo lo medido: de +0,032 a +0,054 con control en la DFL, de
+      `aprendida.evidence_k3`), gana a `main` (B5) en todo lo medido: de +0,029 a +0,054 con control en la DFL, de
       +0,017 a +0,023 en SkillCorner y de +0,014 a +0,029 en Metrica. Partido a partido queda por debajo de `main` en 3
       casos de 136; K2, en 12.
     - **K3 no queda recomendada por encima de K2.** El punto que lo decidía (¿deja de perder donde K2 pierde?) no se

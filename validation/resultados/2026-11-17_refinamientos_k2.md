@@ -25,7 +25,7 @@ Para leerlo sin el resto del repo:
 
 1. **K4, el espejo, se cierra** [medido]. Promediar el logit de K2 con el del campo en espejo gana en la DFL (+0,005
    con control) y empata en SkillCorner y en Metrica. La regla pedía ganar en los dos.
-2. **K3, la mezcla a partes iguales de K2 y B5, gana a `main` en todo lo medido** [medido]: en la DFL (+0,032 a +0,054
+2. **K3, la mezcla a partes iguales de K2 y B5, gana a `main` en todo lo medido** [medido]: en la DFL (+0,029 a +0,054
    con control), en SkillCorner (+0,017 a +0,023), en Metrica (+0,014 a +0,029) y, con una réplica de K2 entrenada solo
    con la DFL, en SkillCorner (+0,008 a +0,011), donde K2 solo empata.
 3. **Pero no queda recomendada por encima de K2.** El punto que tenía que decidirlo (¿deja de perder donde K2 pierde?)
@@ -145,11 +145,14 @@ Es donde más fallamos (`validation/resultados/2026-11-15_diagnostico_errores.md
 
 - **K2 no predice más posesiones que `main`: predice casi las mismas y acierta más.** De cada 100 reales encuentra
   entre 2 y 4 más, y acierta 10 recuperaciones más de cada 100.
-- **K3 predice menos** (un 2 % menos que `main`) **y se queda a medio camino:** la mitad de la mejora de K2 en
-  recuperaciones y en duelos con cambio. A cambio es la que menos cambia cuando no debe.
+- **K3 predice menos** (con el `D` de las etiquetas, un 4 % menos que `main` en la DFL y un 3 % en SkillCorner; con el
+  propio, un 2 %) **y se queda a medio camino:** la mitad de la mejora de K2 en recuperaciones y, en duelos con
+  cambio, entre casi nada («sin bloques», +0,4 puntos de +3,1) y la mitad («como el ATD»). A cambio es la que menos
+  cambia cuando no debe.
 - **El hueco sigue ahí.** Con el flag y en SkillCorner no encontramos ni la mitad de las posesiones reales, con
-  ninguna de las tres. Las redes que predicen más posesiones (B11, B13 y B14, de la otra línea) ganan con el flag y
-  pierden o empatan en SkillCorner: las que añaden no caen donde deben.
+  ninguna de las tres. Las redes que predicen más posesiones (B11, B13 y B14) ganan con el flag y pierden o
+  empatan en SkillCorner: las que añaden no caen donde deben [medido por la otra línea, en la rama
+  `claude/serene-lumiere-16245d`; no es de esta sesión].
 
 ## Las tres conclusiones de David, donde hay miles de posesiones [medido]
 
@@ -184,12 +187,12 @@ un 2 % más que `main`, y K3, un 2 % menos en la DFL y en SkillCorner.
 | SkillCorner, entrenamiento | 9,9 / 15,9 / 15,0 / 15,8 | 724: el 0,4 / 0,7 / 0,1 % | 714: el 13,6 / 15,1 / 13,9 % |
 | Metrica | 12,8 / 16,3 / 16,3 / 16,3 | 140: el 2,1 / 5,0 / 4,3 % | 219: el 24,7 / 27,4 / 28,3 % |
 
-- **Las posesiones de menos de 2 s no las encuentra ninguna versión.** En entre 4 y 7 de cada 10 decimos el otro
-  equipo: se las come la posesión de al lado.
+- **Las posesiones de menos de 2 s no las encuentra ninguna versión.** En entre 4 y 7 de cada 10 no decimos su
+  equipo ni en la mitad de sus frames: se las come la posesión de al lado o, con el `D` propio, una parada.
 - **Lo que K2 arregla está entre 2 y 10 s:** en la DFL con control pasa del 27 al 39 % en las de 2 a 5 s y del 65 al
   68 % en las de 5 a 10 s. K3 se queda a medio camino (33 % y 68 %).
-- **Casi nunca partimos una posesión:** las perdidas por ir partidas o más cortas son del 1 al 3 %. Las perdemos por
-  decir el otro equipo (del 10 al 30 %), por fundirlas con la de al lado (del 12 al 27 %) y por taparlas con `D` (del
+- **Casi nunca partimos una posesión:** las perdidas por ir partidas o más cortas son del 1 al 3 % de las reales. Las
+  perdemos por no decir su equipo ni en la mitad de sus frames (del 10 al 30 %), por fundirlas con la de al lado (del 12 al 27 %) y por taparlas con `D` (del
   10 al 13 %).
 
 Lo que significa [inferencia]: lo que David vio en 17 posesiones no es un accidente de la ventana. K2 mueve los tres
@@ -227,6 +230,11 @@ Estas tablas se añadieron después de ver el bloque de dentro del proveedor: no
 - **El sentido de SkillCorner a la DFL.** Su réplica está a medias y parada. Era el sentido sin voto.
 - **Cuánto baila K2 de un entrenamiento a otro.** Una réplica no basta; hay otra semilla en marcha.
 - **La reproducción en otra máquina.** K3 solo suma dos logits que ya existen, pero no se ha ejecutado fuera de esta.
+- **La mezcla que se mide en la DFL no es siempre la de la entrega.** Cada logit va con la α de su pliegue, y en tres
+  partidos de la DFL K2 entra con el doble de escala relativa que en la entrega (donde las dos α son 4). En
+  SkillCorner y en Metrica sí es la de la entrega.
+- **Reproducción bit a bit.** K3 hereda el `np.exp` de los rasgos de B5, que K2 evitaba: una entrega de prueba de K3
+  hay que reproducirla en otra máquina, como se hizo con B5 y con K2.
 - **`possession/aprendida.py` tiene un envoltorio nuevo** (`evidence_k3`). No cambia B5 ni K2 y las pruebas siguen en
   verde, pero antes de que nada de esta rama siga adelante hay que repetir el criterio C0 desde ella: `equipo_v9_rama`
   tiene que salir con `d9706dfb…be63`.
