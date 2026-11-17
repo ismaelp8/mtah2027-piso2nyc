@@ -5870,3 +5870,57 @@ generar la entrega de prueba lo deciden Ismael y la planificadora.
 - B17 corre en el entorno limpio de la entrega (Python 3.13.9, numpy 2.5.4), con 23 slots por equipo y hasta 21
   presentes, y da lo mismo dos veces.
 - Las cabeceras del harness citan `a88d550` y `f3f7e9b`, sin cambios sin commitear.
+
+### 2026-11-17 · candidatos · B15–B17 junto a K2, y regla del examen de SkillCorner para B17 (escrita antes de abrirlo)
+
+**Metrica** (`validation/secuencia/metrica.py`, gemelo de `validation/conjunto/metrica.py` de K2; `main` sale igual que
+en la medida de K2: 0,668 / 0,652 / 0,542 / 0,527; salida en `..._metrica_b15_b16_b17.md`). Ninguno ha visto Metrica:
+B15 con los 7 de la DFL, B16 con los 7 de la DFL y los 10 de SkillCorner `ENTRENAMIENTO`, B17 con la media de los dos.
+
+**La tabla, frente a `main`** [medido; las cifras de K2 se copian de `validation/resultados/2026-11-17_modelo_conjunto.md`,
+rama `exp/modelo-conjunto`, con el mismo `main`]. DFL: «como el ATD» / «sin bloques». SkillCorner `ENTRENAMIENTO`, fuera de
+muestra: `D` de las etiquetas «detectado» / «detectado, suavizado» · `D` propio igual. Metrica: «tal cual» / «suavizado 25».
+
+| | DFL control, `D` etiquetas | DFL control, `D` propio | DFL flag, `D` etiquetas | DFL flag, `D` propio | SkillCorner `ENTRENAMIENTO` | Metrica, `D` etiquetas | Metrica, `D` propio |
+|---|---|---|---|---|---|---|---|
+| K2 (DFL + SkillCorner) | +0,051 / +0,046 | +0,045 / +0,036 | +0,044 / +0,037 | +0,043 / +0,033 | +0,023 (8) / +0,024 (7) · +0,021 (10) / +0,024 (10) | +0,035 / +0,036 | +0,021 / +0,024 |
+| K2, solo la DFL | – | – | – | – | −0,015 / −0,010 (`D` de las etiquetas) | +0,023 / +0,026 | – |
+| B15 (solo la DFL) | +0,054 / +0,042 | +0,050 / +0,035 | +0,048 / +0,037 | +0,043 / +0,034 | +0,006 (7) / +0,006 (6) · +0,006 (8) / +0,006 (6) | +0,024 / +0,030 | +0,021 / +0,029 |
+| B16 (DFL + SkillCorner) | +0,052 / +0,043 | +0,044 / +0,034 | +0,046 / +0,041 | +0,042 / +0,037 | +0,007 (6) / +0,010 (6) · +0,002 (6) / +0,007 (7) | +0,021 / +0,027 | +0,022 / +0,023 |
+| B17 (media de B15 y B16) | +0,061 / +0,048 | +0,055 / +0,039 | +0,049 / +0,039 | +0,047 / +0,038 | +0,009 (7) / +0,016 (8) · +0,002 (6) / +0,008 (8) | +0,026 / +0,029 | +0,023 / +0,022 |
+
+Lectura [inferencia, sobre lo medido]:
+- **En la DFL, B17 y K2 empatan:** se llevan 0,010 o menos en cada celda.
+- **En SkillCorner, fuera de muestra, K2 va por delante:** +0,021 a +0,024 frente a +0,002 a +0,016.
+- **En el proveedor no visto, nuestra familia se traslada mejor que K2 de un solo proveedor:**
+  - B15, solo con la DFL, saca +0,006 en SkillCorner; K2, solo con la DFL, pierde de −0,010 a −0,015;
+  - en Metrica, B15 a B17 sacan lo mismo que K2 de solo la DFL (+0,021 a +0,030) y menos que K2 de dos proveedores
+    (+0,035);
+  - entrenar B16 también con SkillCorner no mejoró ni SkillCorner ni Metrica, cosa que a K2 sí le sirvió.
+- **«B17 es la mejor» vale dentro de B15–B17, no frente a K2.**
+- **Otras diferencias:**
+  - posesiones en la DFL: 1.654 (B17), 1.651 (K2) y 1.661 (`main`);
+  - escala, media de |H − A| frente a B5: 6,1–6,25 veces B15 y 4,1 veces B17 (`..._escala_b17_frente_a_b5.md`); K2
+    puntúa en la escala de B5;
+  - B15 a B17 usan `np.exp` y `np.tanh` (atención y GRU), como los rasgos de B5; K2 no usa exponenciales.
+
+**La media de B17 y K2 no se prueba.** Los pesos de K2 que están en el repo (`possession/conjunto_pesos.npz`) solo traen
+los pliegues de la DFL y el de todos, y el de todos vio SkillCorner `ENTRENAMIENTO`. No se puede medir la media en
+SkillCorner con pliegues que no vieran cada partido sin reentrenar K2. **El examen va a B17.**
+
+**Regla del examen de SkillCorner para B17** (escrita antes de abrirlo):
+- **Quién:** la sesión planificadora, con la instrucción general de Ismael («haz todo lo que necesites no dependas de
+  que yo te diga que si a las cosas»; «Yo quiero probar cosas y luego ya vemos si da mejores resultados»). No es una
+  decisión de Ismael sobre B17. Lo ejecuta Claude (son datos abiertos).
+- **Qué:** `python validation/secuencia/skillcorner.py --examen b17 --confirmo-el-unico-uso`, sobre `lector.EXAMEN` (10
+  partidos), con B15 y B16 de los modelos de todos. Ninguno ha visto `EXAMEN`.
+- **Umbral:** frente a `main`, +0,005 o más y ganar en 7 de 10, en las cuatro celdas (`D` de las etiquetas y propio;
+  «detectado» y «detectado, suavizado»).
+- **B17 ya falló una celda de `ENTRENAMIENTO`** (`D` propio, «detectado»: +0,002 y 6 de 10). Si el examen sale bien, se
+  escribe «pasa el examen habiendo fallado una celda del entrenamiento», no «pasa la regla».
+- **Es el único uso para la familia B15–B17:** no hay segunda apertura. Se apunta en
+  `validation/skillcorner/BITACORA.md` («Usos del examen»).
+- **Si pasa:** B17 sigue apagado. La entrega de prueba la pide la planificadora a Ismael, con sus criterios de daño
+  escritos antes (los siete de K2, C0 a C6, para que se comparen igual) y diciendo antes cómo se lee si la capa de los
+  contraataques se queda casi sin efecto por la escala.
+- **Si no pasa:** B15–B17 se quedan cerrados y apagados.
