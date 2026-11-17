@@ -116,6 +116,13 @@ entrenaron dos modelos con un solo proveedor cada uno, y se puntuó todo tambié
 - **B5 sí se traslada:** gana al baseline en SkillCorner y en Metrica sin haberlos visto. Un modelo de 30 agregados
   generaliza mejor que uno de 36.000 pesos que ve a cada jugador.
 
+**Una ronda para acercar los proveedores (K2r), cerrada en su primer paso.** Con una sola configuración de aumentos
+en los partidos de la DFL (jugadores que faltan como en SkillCorner, datos a 10 Hz y ruido lento de posición), el modelo
+de solo la DFL pasa de −0,015 y −0,010 en SkillCorner a −0,004 y −0,002 con el `D` de las etiquetas: un empate. Con el
+`D` propio no cambia (−0,008 y −0,005), y la regla pedía no perder más de 0,005 en ninguna celda. Parecerse por fuera a
+un tracking automático quita la mitad del problema; la otra mitad es que cada proveedor etiqueta la posesión a su
+manera [inferencia].
+
 **Los dos rasgos medidos del ATD** (`como_el_atd.py`, DFL): con los tracklets cortados, un slot de más en el 12,9 % de
 los frames y el balón 4 frames tarde, K2 gana a `main` por +0,040 a +0,068 con control. A `main` esas degradaciones le
 cuestan hasta 0,013; a K2, nada.

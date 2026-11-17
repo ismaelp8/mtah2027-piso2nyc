@@ -546,6 +546,9 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Lo que no pasó:** K1, la capa de cambios aprendida (`conjunto.capa_cambios`, apagada): gana con el flag, pero con
     control solo en 4–6 de 7 partidos. Una red 9 veces mayor se aprende los partidos de memoria. Y decodificar a riesgo
     mínimo con K2 no merece construirse (las muestras se fragmentan).
+  - **Una ronda contra el cambio de proveedor (K2r), cerrada en su primer paso:** con aumentos hacia un tracking
+    automático en los partidos de la DFL (`entrenar.py --robusto`), el modelo de solo la DFL pasa de −0,015 y −0,010 a
+    −0,004 y −0,002 en SkillCorner con el `D` de las etiquetas, pero con el propio sigue en −0,008 y −0,005.
   - **Lo que sale para la fase siguiente:** lo que cojea ahora es el cambio de proveedor, no la arquitectura. El
     instrumento para medirlo es dejar un proveedor fuera (`entrenar.py --solo` y `medir.py --alfa`).
   - **Lo que no se hizo del análisis de fuera:** el `D` dentro del modelo (el harness no puede validarlo con el balón) y

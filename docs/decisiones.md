@@ -5873,3 +5873,36 @@ Avisado antes de medir:
   ningún resultado. No se prueban uno a uno ni se ajustan sus valores.
 
 Estado: escrita antes de entrenar. El resultado va en la entrada siguiente.
+
+### 2026-11-17 · candidatos · modelo conjunto, ronda K2r: los aumentos acercan, pero no bastan; se cierra en el paso A
+
+Quién: Claude, en la sesión de Ismael (17/11). Regla en la entrada anterior, escrita antes de entrenar (`068357a`).
+
+Qué se probó: el paso A. El modelo entrenado solo con los 7 partidos de la DFL con `entrenar.ROBUSTO` (jugadores que
+faltan, datos a 10 Hz y ruido lento de posición en los trozos de la DFL), puntuado con α = 4 en los 10 partidos de
+`lector.ENTRENAMIENTO`. Salida en `validation/conjunto/salidas/2026-11-17_k2r_paso_a.md`.
+
+Resultado [medido], frente a `main`:
+
+| `D` | condición | sin los aumentos (comprobación 1) | con los aumentos |
+|---|---|---|---|
+| de las etiquetas | detectado | −0,015 [−0,023 a −0,007] (3 de 10) | −0,004 [−0,012 a +0,004] (5 de 10) |
+| de las etiquetas | detectado, suavizado | −0,010 [−0,018 a −0,002] (5 de 10) | −0,002 [−0,010 a +0,006] (5 de 10) |
+| propio | detectado | −0,007 | −0,008 [−0,015 a −0,001] (3 de 10) |
+| propio | detectado, suavizado | −0,004 | −0,005 [−0,012 a +0,002] (4 de 10) |
+
+- Con el `D` de las etiquetas, los aumentos se comen la pérdida: de perder a empatar.
+- Con el `D` propio no cambian nada, y una celda queda por debajo de −0,005.
+
+Decisión y por qué: **la ronda se cierra en el paso A,** con la regla escrita antes (pedía no perder más de 0,005 en
+ninguna celda). No se entrena K2r ni se prueban otros aumentos. K2 se queda como está, apagado y con su aviso.
+
+Lectura [inferencia]: parecerse a un tracking automático por fuera (menos jugadores, 10 Hz, ruido) quita la mitad del
+problema. La otra mitad no está en cómo se ven los datos: SkillCorner etiqueta la posesión a su manera, y eso no lo
+arregla ningún aumento. Para el partido vale lo mismo: lo que falta no es solo que el ATD se parezca a los datos de
+entrenamiento, sino saber qué regla usa su tracking corregido. Es la pregunta a la organización
+(`validation/conjunto/pregunta_organizacion.md`).
+
+Descartado: probar los aumentos uno a uno o con otros valores (la regla lo excluía); abrir el examen.
+
+Estado: cerrada. `entrenar.ROBUSTO` queda en el código, apagado por defecto (`--robusto`).
