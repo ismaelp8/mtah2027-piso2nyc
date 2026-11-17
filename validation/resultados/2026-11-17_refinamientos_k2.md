@@ -39,8 +39,8 @@ Para leerlo sin el resto del repo:
    con la mitad de lo que K2 mejora en las recuperaciones, y en Metrica y con el flag queda por debajo de K2.
 5. **Fuera de su proveedor, K2 queda entre un empate y una pérdida pequeña** [medido]: en tres entrenamientos del
    modelo de solo la DFL (el original y dos réplicas), de +0,003 a −0,015 frente a `main` en SkillCorner, sin ganar en
-   ninguno. **Promediar ayuda:** la media de las dos réplicas queda en +0,002 a +0,004, y mezclada con B5, en +0,007 a
-   +0,017, lo mejor que se ha medido fuera del proveedor.
+   ninguno. **Promediar parece ayudar** (con solo dos semillas): la media de las dos réplicas queda en +0,002 a +0,004, y
+   mezclada con B5, en +0,007 a +0,017, lo mejor que se ha medido fuera del proveedor.
 6. **Ni K2 ni K3 ven más cambios de posesión: los colocan mejor.** El hueco de las posesiones que no vemos sigue ahí.
 
 ## Qué son K3 y K4
@@ -127,8 +127,9 @@ la GPU, así que aquí se entrenó una réplica en la CPU (3.000 pasos, 55 minut
   Las dos réplicas siguen sin repetir la pérdida en las dos celdas que pedía la regla, así que el punto 2 de K3 sigue
   sin poderse leer.
 - **La media de las z de las dos réplicas** (una lectura, no un candidato): K2 pasa a +0,004, +0,004, +0,002 y
-  +0,002, por encima de cada semilla en siete de las ocho comparaciones. Mezclada con B5: +0,013, +0,017, +0,007 y
-  +0,011.
+  +0,002, por encima de cada semilla en siete de las ocho comparaciones, con el intervalo por encima de cero en
+  cuatro. Es poca evidencia: dos semillas de un modelo de un solo proveedor. Mezclada con B5: +0,013, +0,017, +0,007
+  y +0,011.
 - **La réplica en Metrica:** K2, +0,030 en las cuatro celdas; K3, de +0,025 a +0,036. Allí el modelo de solo la DFL
   funciona casi como el de los dos proveedores.
 - **Partido a partido, con la réplica:** K2 queda por debajo de `main` en 20 de 40 casos (el peor, −0,054); K3, en 14
@@ -255,6 +256,11 @@ Estas tablas se añadieron después de ver el bloque de dentro del proveedor: no
   queda de −0,001 a −0,008 con control. **El precio de la mezcla con control no es cero: es de hasta 0,008.**
 - **Reproducción bit a bit.** K3 hereda el `np.exp` de los rasgos de B5, que K2 evitaba: una entrega de prueba de K3
   hay que reproducirla en otra máquina, como se hizo con B5 y con K2.
+- **Con K2 encendido, `main` cambia de significado.** `refinar.py` y `detalle_abiertos.py` llaman `main` a la entrega
+  con B5 y, en SkillCorner y en Metrica, la toman de `pipeline.PIECES`. Se niegan a medir si ahí ya no está B5: si
+  esta rama se junta con `feat/encender-k2`, hay que decidir antes qué se llama `main`. Los scripts del estudio de K2
+  (`medir.py`, `metrica.py`) tienen el mismo problema, sin candado. Y una entrega de prueba de K3 se compararía con
+  `equipo_v10` (`784e65e5…acbc`), no con `equipo_v9`.
 - **`possession/aprendida.py` tiene un envoltorio nuevo** (`evidence_k3`). No cambia B5 ni K2 y las pruebas siguen en
   verde, pero antes de que nada de esta rama siga adelante hay que repetir el criterio C0 desde ella: `equipo_v9_rama`
   tiene que salir con `d9706dfb…be63`.

@@ -6281,9 +6281,11 @@ Con la lectura escrita antes:
   cambia de un entrenamiento a otro no es el acierto, es dónde caen los cambios.
 - **La mezcla aguanta con otra semilla:** K3 queda en +0,005 o más frente a `main` en las cuatro celdas, y saca a K2
   solo de +0,009 a +0,015, en 9 o 10 de 10 partidos. Es lo mismo que con la réplica 1 (+0,008 a +0,013).
-- **Promediar las dos semillas ayuda** [lectura, no candidato]: la media de las z queda de +0,002 a +0,004 frente a
-  `main`, por encima de cada semilla por separado en siete de las ocho comparaciones (de −0,001 a +0,011). Y mezclada
-  con B5 da lo mejor que se ha medido fuera del proveedor: de +0,007 a +0,017.
+- **Promediar las dos semillas parece ayudar** [lectura, no candidato]: la media de las z queda de +0,002 a +0,004
+  frente a `main` (un empate), por encima de cada semilla por separado en siete de las ocho comparaciones (de −0,000
+  a +0,011). El intervalo pareado queda por encima de cero en cuatro de las ocho y toca el cero en las otras cuatro:
+  es poca evidencia, de dos semillas de un modelo de un solo proveedor. Mezclada con B5 da lo mejor que se ha medido
+  fuera del proveedor: de +0,007 a +0,017.
 
 Lo que no cambia: **el veredicto de K3 con su regla.** El punto 2 sigue sin poderse leer: ninguna de las dos réplicas
 repite la pérdida en las dos celdas con el `D` de las etiquetas, que es lo que la regla pedía. Lo que sale aquí es
@@ -6296,9 +6298,9 @@ esa misma α queda de −0,001 a −0,008 con control y de −0,015 a −0,023 c
 control no es cero, es de hasta 0,008.** Con esas α, K4 tampoco pasa en la DFL (peor celda −0,002).
 
 Lo que sale para lo siguiente [inferencia, sobre lo medido]:
-- Lo que más ha ayudado fuera del proveedor no es afinar la red, es promediar: dos semillas entre sí, y la red con B5.
-  El paso natural es un K2 de los dos proveedores con varias semillas promediadas (en la GPU son minutos), medido
-  como K2, con su regla y sin examen disponible.
+- Lo que más ha ayudado fuera del proveedor no es afinar la red, es promediar: la red con B5 (medido en dos réplicas)
+  y, con menos evidencia, dos semillas entre sí. Un paso que probar después es un K2 de los dos proveedores con
+  varias semillas promediadas (en la GPU son minutos), medido como K2, con su regla y sin examen disponible.
 - No se entrena una tercera semilla hoy: el rango ya dice lo que tenía que decir, y cada una son 55 minutos de CPU.
 
 Descartado: leer esto como que K3 ha pasado su punto 2 (la regla no lo permite); proponer el promedio de semillas para

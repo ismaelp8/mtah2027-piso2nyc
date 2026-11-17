@@ -571,8 +571,10 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       dos celdas que pedía la regla. Con las dos, K3 gana a `main` (+0,005 a +0,011) y a K2 solo (+0,008 a +0,015).
     - **El aviso de proveedor de K2, con su tamaño:** en tres entrenamientos del modelo de solo la DFL, K2 queda entre
       +0,003 y −0,015 frente a `main` en SkillCorner, sin ganar en ninguno. La media de dos semillas queda en +0,002 a
-      +0,004 y, mezclada con B5, en +0,007 a +0,017. Lo siguiente que entrenar es un K2 con varias semillas
-      promediadas (pide la GPU).
+      +0,004 y, mezclada con B5, en +0,007 a +0,017 [lectura, con solo dos semillas]. Queda por probar un K2 con
+      varias semillas promediadas (pide la GPU), con su regla.
+    - **Los scripts de esa rama (`refinar.py`, `detalle_abiertos.py`) se niegan a medir si `PIECES` ya no tiene B5:**
+      llaman `main` a la entrega con B5. Con K2 encendido hay que decidir antes qué se llama `main`.
     - **K3 es más prudente que K2 en los cambios de posesión:** predice un 2 % menos de posesiones que `main`, se queda
       con la mitad de la mejora de K2 en recuperaciones (74,9 %, frente a 70,3 % de `main` y 80,0 % de K2) y, con el
       flag y en Metrica, queda por debajo de K2.

@@ -313,6 +313,19 @@ def lectura_otro_proveedor(resumen):
             ("**quita la pérdida**" if min(valores) >= -DANO else "**pierde más de {} en alguna celda**".format(DANO))))
 
 
+def exigir_b5_en_main():
+    """Se niega a medir si la evidencia de equipo de la entrega ya no es B5.
+
+    Estos scripts llaman `main` a la entrega con B5 y comparan con ella. En SkillCorner y en Metrica `main` sale de
+    `pipeline.PIECES` (`medir._piezas`). Si ahí está K2 (se encendió el 17/11 en `feat/encender-k2`), `main` sería K2
+    con los pesos de todos, que vio los partidos de entrenamiento de SkillCorner, y las tablas seguirían diciendo
+    «`main` = B5».
+    """
+    if pipeline.PIECES["candidates"] != "aprendida.evidence_b5":
+        sys.exit("`pipeline.PIECES[\"candidates\"]` es {} y no B5: estos scripts comparan con la entrega de B5. Mide desde "
+                 "una rama que la tenga, o cambia antes qué se llama `main` aquí.".format(pipeline.PIECES["candidates"]))
+
+
 def huella(ruta):
     with open(ruta, "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()[:16]
@@ -345,6 +358,7 @@ def main():
     parser.add_argument("--recuentos", default=None,
                         help="fichero donde guardar los recuentos (o del que leerlos, si existe), fuera del repo")
     args = parser.parse_args()
+    exigir_b5_en_main()
     if bool(args.pesos) != bool(args.entrenado_con):
         parser.error("--pesos y --entrenado-con van juntos")
     if args.alfas_de_la_entrega and (args.dominio != "dfl" or args.pesos):
