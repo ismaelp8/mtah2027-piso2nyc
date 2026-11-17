@@ -510,6 +510,33 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - Antonio: la línea del vídeo, cerrada;
     - Claude (sesión de Ismael): el borrador del documento técnico (PR 21). Está escrito para `equipo_v8`: hay que
       ponerlo al día con `equipo_v9`.
+- **17/11: el modelo conjunto, K2, ha pasado todo menos el partido** (rama `exp/modelo-conjunto`;
+  `validation/resultados/2026-11-17_modelo_conjunto.md` y `docs/decisiones.md`, 17/11). **No está en la entrega.**
+  - **Qué es:** una evidencia de equipo que mira a cada jugador (una red por jugador, suma y máximo por equipo y una
+    convolucional temporal de ±12,6 s, 36.260 pesos). Se entrenó con las etiquetas de control en la DFL y con las de
+    SkillCorner, y sustituye solo al logit de B5 (`aprendida.evidence_k2`): el `D`, el decodificador y las capas del
+    partido no cambian. En la entrega corre en numpy puro (`possession/conjunto.py`, pesos en
+    `possession/conjunto_pesos.npz`); torch solo hizo falta para entrenar.
+  - **Lo medido** (K2 frente a `main`, cada partido con un modelo que no lo vio):
+    - DFL con control, de +0,036 a +0,051 (6 o 7 de 7); DFL con el flag, de +0,033 a +0,044 (7 de 7);
+    - SkillCorner, de +0,021 a +0,024 en la mitad de entrenamiento y de +0,021 a +0,028 en el examen, usado una vez
+      para K2 (`validation/skillcorner/BITACORA.md`);
+    - gana también con la regla de §5.8 frente a `main`, y mejora las recuperaciones (+9,7 puntos) y los duelos con
+      cambio (+5,2) de los eventos humanos de la DFL;
+    - predice las mismas posesiones que `main`: no inventa más, las coloca mejor.
+  - **Lo que falta, y lo ejecuta una persona:** el punto 4 de su regla, con los criterios de daño C0 a C6 escritos
+    antes (`docs/decisiones.md`, 17/11). Con el python del entorno limpio, desde la carpeta de la rama:
+    - `python -m possession.pipeline --name equipo_v9_rama` (tiene que dar el sha256 de `equipo_v9`);
+    - `python validation/partido/conjunto_en_el_partido.py`;
+    - `python validation/partido/probar_entrega.py prueba_k2 --pieza candidates=aprendida.evidence_k2 --contra equipo_v9_rama`;
+    - `python evaluation/validate_submission.py evaluation/results/prueba_k2.csv` y `/evaluar`.
+  - **Si pasa,** encenderlo es una decisión del equipo: `pipeline.PIECES["candidates"]` pasa a
+    `"aprendida.evidence_k2"`, se regenera (`equipo_v10`) y se reproduce en otra máquina antes de entregar.
+  - **Lo que no pasó:** K1, la capa de cambios aprendida (`conjunto.capa_cambios`, apagada): gana con el flag, pero con
+    control solo en 4–6 de 7 partidos. Una red 9 veces mayor se aprende los partidos de memoria.
+  - **Lo que no se hizo del análisis de fuera:** el `D` dentro del modelo (el harness no puede validarlo con el balón) y
+    el balón del vídeo. La pregunta a la organización sobre la regla de posesión está en borrador, sin enviar
+    (`validation/conjunto/pregunta_organizacion.md`): su repo tiene los issues cerrados.
 
 **Lo siguiente: el plan hasta la entrega** ([`docs/PLAN_ENTREGA.md`](docs/PLAN_ENTREGA.md), decidido por
 Ismael el 14/11). Sustituye al orden anterior, que dejaba el modelo temporal para el final.

@@ -1,6 +1,6 @@
 # Modelo conjunto frente a `main` · tanda «v1» · SkillCorner, mitad de entrenamiento · 10 partidos
 
-Código: 5cd0357, con cambios sin commit en possession/ o validation/harness/ · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · salidas del modelo: la pieza en numpy (possession/conjunto.py).
+Código: 56ee7c6 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · salidas del modelo: la pieza en numpy (possession/conjunto.py).
 
 ## Candidato K2 · α = 4, elegida en la DFL con los 7
 

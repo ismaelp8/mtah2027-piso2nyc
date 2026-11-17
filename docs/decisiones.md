@@ -5515,3 +5515,156 @@ por una diferencia que tres partidos no distinguen.
 
 Estado: configuración fijada en este commit. El resultado de los 7 partidos de la DFL y de SkillCorner va en la entrada
 siguiente.
+
+### 2026-11-17 · candidatos · modelo conjunto: K2 pasa los puntos 1, 2 y 3 de su regla (examen incluido); K1 no pasa
+
+Quién: Claude, en la sesión de Ismael (17/11). Las reglas son las de las dos entradas anteriores (`b4ec45f` y
+`5cd0357`), escritas antes de medir.
+
+Qué se probó: los dos candidatos, con los 8 pliegues entrenados con la configuración fijada.
+- **K2:** el logit del modelo conjunto en lugar del de B5 (`aprendida.evidence_k2`), puntuado como B5.
+- **K1:** `main` más la capa de cambios aprendida (`conjunto.capa_cambios`).
+
+Cómo se midió:
+- **DFL:** los 7 partidos, cada uno con el pliegue que no lo vio, con `validation/conjunto/medir.py` y con el harness
+  oficial (`puntuar.py --versiones validation/harness/versiones/conjunto_2026-11-17.json`, con `--d oraculo --eventos` y
+  con `--d propio`; código en `56ee7c6`). Bootstrap pareado de 1.000.
+- **SkillCorner:** los 10 partidos de `lector.ENTRENAMIENTO`, cada uno con el pliegue que no lo vio, y los 10 de
+  `lector.EXAMEN`, **una sola vez y solo para K2**, con el modelo de los 17 partidos (código en `a37010a`; apuntado en
+  `validation/skillcorner/BITACORA.md`).
+- **`main`** es la entrega de hoy (B5, `dead_state` y `decode_cortas_a_d`) y repite sus cifras conocidas: 0,498 y 0,728
+  en la DFL con el `D` de las etiquetas, 0,414 y 0,623 con el propio, y 0,519 y 0,391 en SkillCorner.
+- **γ y α,** elegidas dejando un partido fuera: γ = 8 en los 7 pliegues; α = 4 en cuatro y 8 en tres, y 4 con los 7.
+- Salidas en `validation/conjunto/salidas/`; resumen en `validation/resultados/2026-11-17_modelo_conjunto.md`.
+
+Resultado [medido], K2 frente a `main`:
+
+| datos | `D` | condición | `main` | K2 | diferencia [5–95 %] | gana en |
+|---|---|---|---|---|---|---|
+| DFL, control | de las etiquetas | como el ATD | 0,728 | 0,780 | +0,051 [+0,040 a +0,064] | 7 de 7 |
+| DFL, control | de las etiquetas | como el ATD, sin bloques | 0,748 | 0,794 | +0,046 [+0,035 a +0,057] | 6 de 7 |
+| DFL, control | propio | como el ATD | 0,623 | 0,668 | +0,045 [+0,035 a +0,057] | 6 de 7 |
+| DFL, control | propio | como el ATD, sin bloques | 0,651 | 0,686 | +0,036 [+0,024 a +0,047] | 6 de 7 |
+| DFL, flag | de las etiquetas | como el ATD | 0,498 | 0,542 | +0,044 [+0,034 a +0,054] | 7 de 7 |
+| DFL, flag | de las etiquetas | como el ATD, sin bloques | 0,512 | 0,549 | +0,037 [+0,027 a +0,046] | 7 de 7 |
+| DFL, flag | propio | como el ATD | 0,414 | 0,457 | +0,043 [+0,034 a +0,052] | 7 de 7 |
+| DFL, flag | propio | como el ATD, sin bloques | 0,431 | 0,464 | +0,033 [+0,024 a +0,042] | 7 de 7 |
+| SkillCorner, entrenamiento | de las etiquetas | detectado | 0,519 | 0,543 | +0,023 [+0,015 a +0,031] | 8 de 10 |
+| SkillCorner, entrenamiento | de las etiquetas | detectado, suavizado | 0,514 | 0,539 | +0,024 [+0,016 a +0,032] | 7 de 10 |
+| SkillCorner, entrenamiento | propio | detectado | 0,391 | 0,413 | +0,021 [+0,014 a +0,029] | 10 de 10 |
+| SkillCorner, entrenamiento | propio | detectado, suavizado | 0,388 | 0,412 | +0,024 [+0,017 a +0,032] | 10 de 10 |
+| **SkillCorner, examen** | de las etiquetas | detectado | 0,509 | 0,532 | +0,023 [+0,015 a +0,032] | 9 de 10 |
+| **SkillCorner, examen** | de las etiquetas | detectado, suavizado | 0,504 | 0,532 | +0,028 [+0,019 a +0,037] | 10 de 10 |
+| **SkillCorner, examen** | propio | detectado | 0,389 | 0,409 | +0,021 [+0,013 a +0,028] | 8 de 10 |
+| **SkillCorner, examen** | propio | detectado, suavizado | 0,384 | 0,410 | +0,026 [+0,019 a +0,034] | 10 de 10 |
+
+- **Punto 1 (DFL con control): pasa.** Pedía +0,005 y 6 de 7 en las cuatro celdas.
+- **Punto 3 (DFL con el flag): pasa, y además gana** en 7 de 7 en las cuatro celdas. Con el balón a la vista en los
+  `D` y el `D` propio tampoco pierde: +0,044 y +0,035 con control y +0,035 y +0,029 con el flag.
+- **Punto 2 (SkillCorner): pasa** la mitad de entrenamiento con los pliegues cruzados y **el examen**, con el umbral
+  escrito antes (+0,005 y 7 de 10 en las cuatro celdas).
+- **Gana también con la regla de §5.8 frente a `main`** (más de +0,03 con las dos convenciones en las dos condiciones
+  que votan, 6 de 7 o más y los intervalos por encima de cero), con el `D` de las etiquetas y con el propio. Es lo que
+  dice la salida del harness oficial; la regla que se había escrito era la del límite de daño.
+- **Eventos humanos de la DFL** (descriptivo; no dependen de nuestras etiquetas), «como el ATD», K2 frente a `main`:
+  recuperaciones del 70,3 al 80,0 % (+9,7 [+4,1 a +14,9]), duelos con cambio del 77,3 al 82,5 % (+5,2 [+2,2 a +9,2]) y
+  duelos sin cambio del 74,9 al 77,7 % (+2,8 [−1,9 a +7,6]). Veredicto del harness: «mejora» en las dos condiciones.
+  Cambia más cuando debe y no cambia más cuando no debe.
+- **No predice más posesiones, las coloca mejor:** en la DFL con el `D` de las etiquetas, 1.651 frente a las 1.661 de
+  `main` (1.736 reales con control). En SkillCorner, 2.306 frente a 2.270 (3.228 reales).
+- **No depende de α:** con cualquier α entre 0,5 y 8 gana en las ocho celdas de la DFL (con control, de +0,032 a
+  +0,062).
+- **Sin el partido del piloto** (6 partidos): con control, +0,047 (6 de 6), +0,042, +0,043 y +0,034 (5 de 6); con el
+  flag, de +0,034 a +0,045 (6 de 6).
+- **Las condiciones sin voto** (`D` de las etiquetas; flag y control): con el balón limpio, +0,032 y +0,034; con «huecos
+  y suavizado», la prueba de estrés con el 41 % del juego sin balón, +0,040 y +0,064.
+
+**K1 no pasa el punto 1:** con control gana +0,009 (5 de 7), +0,008 (4 de 7), +0,016 (6 de 7) y +0,011 (4 de 7), y se
+pedían 6 de 7 en las cuatro celdas. Con el flag gana +0,024 a +0,028 (7 de 7). No sigue a SkillCorner y
+`conjunto.capa_cambios` se queda apagada.
+
+**La pieza en numpy** (`possession/conjunto.py`, la que usaría la entrega; pesos en `possession/conjunto_pesos.npz`,
+1,2 MB):
+- da las mismas cifras que las salidas de torch en todas las celdas de la DFL y de SkillCorner;
+- frente a torch, la diferencia máxima de z es de 0,003 y el signo cambia en 4 a 65 frames de unos 145.000 por partido;
+- la interpolación de grupos a frames se reescribió sin `np.interp` después del examen, para que el último bit no
+  dependa de la máquina (`56ee7c6`). Da lo mismo hasta 2·10⁻¹⁵, y las tablas del harness oficial salen idénticas fila a
+  fila antes y después. El examen no se repitió;
+- pasa `validation/scripts/prueba_conjunto.py` (24 comprobaciones sin datos) y no cambia la entrega: `prueba_pipeline`,
+  `prueba_aprendida`, `prueba_harness`, `prueba_cambios` y `prueba_decodificador` siguen en verde.
+
+Decisión y por qué: **K2 ha pasado los puntos 1, 2 y 3 y sigue al punto 4** (la entrega de prueba, más abajo). No entra
+todavía en nada: `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega (`equipo_v9`) no cambian. K1 se cierra.
+
+Lo que hay que decir con el número:
+- **Circularidad.** Las etiquetas de control salen de una regla de proximidad y el modelo se entrena con ellas. Lo que
+  no es circular dice lo mismo: gana con el flag, en SkillCorner (sus etiquetas no son nuestras) y en los eventos
+  humanos.
+- **Cuántas cosas se han probado.** Dos candidatos y seis variantes de entrenamiento en el piloto, que no cambió nada.
+  El examen se usó una vez.
+- **La α no está anidada del todo,** como la rejilla del detector de cambios. Pesa poco: todas las α entre 0,5 y 8
+  ganan.
+- **El harness sobrestima el nivel y nada de esto se ha medido en el ATD.** El modelo ve a cada jugador, y los 46 slots
+  del ATD no se parecen del todo ni a la DFL ni a SkillCorner. Para eso está el punto 4.
+- **Qué parte del análisis era cierta** [inferencia, sobre lo medido]: no hizo falta cambiar la pregunta ni el
+  decodificador. Lo que movió el número fue cambiar la evidencia: mirar a cada jugador, entrenar con control en todos
+  los frames vivos y entrenar también con otro proveedor. La salida de cambios por sí sola (K1) no bastó.
+
+**Punto 4: la entrega de prueba, con los criterios de daño escritos antes de generarla.**
+
+Lo que cabe esperar [medido en los datos abiertos con `validation/conjunto/cuanto_cambia.py`: el pipeline entero con el
+`D` propio, sin las capas del partido, con K2 en lugar de B5]:
+
+| datos | frames evaluados que cambian | de un equipo al otro | entre un equipo y `D` | posesiones | paradas | frames `D` | posesiones de menos de 12 / de 25 frames |
+|---|---|---|---|---|---|---|---|
+| DFL (7 partidos, 4 celdas) | 4,4–5,3 % | 3,2–3,5 % | 1,2–1,8 % | de +0,1 a +2,8 % | de −0,3 a +0,4 % | de −0,2 a +0,2 puntos | 0 / de 6 a 12 en los 7 partidos |
+| SkillCorner (10 partidos, 2 celdas) | 7,5–7,9 % | 3,1–3,3 % | 4,5–4,6 % | de +3,1 a +4,2 % | +1,5 % | de +2,1 a +2,4 puntos | 0 / 6 o 7 en los 10 partidos |
+
+La fuerza de la evidencia es parecida a la de B5 [medido en dos partidos de SkillCorner, con los pesos de la entrega: la
+mediana de la diferencia `H` − `A` por frame es de 8,3–8,6 con K2 y de 9,0–10,4 con B5; las dos con α = 4], así que las
+capas del partido (contraataques, balón fuera, anclas) pesan más o menos lo mismo frente a ella.
+
+Lo ejecuta una persona, con el python del entorno limpio y desde la carpeta de esta rama:
+
+    python -m possession.pipeline --name equipo_v9_rama
+    python validation/partido/conjunto_en_el_partido.py
+    python validation/partido/probar_entrega.py prueba_k2 --pieza candidates=aprendida.evidence_k2 --contra equipo_v9_rama
+    python evaluation/validate_submission.py evaluation/results/prueba_k2.csv
+
+y después `/evaluar` para ver la ventana pública de las dos.
+
+K2 pasa el punto 4 si se cumple todo:
+- **C0, la rama no cambia la entrega:** `equipo_v9_rama` sale con el sha256 de `equipo_v9` (`d9706dfb…be63`).
+- **C1, es una entrega:** `prueba_k2` es válida y sale con 0 frames en conflicto.
+- **C2, el modelo ve en el ATD algo parecido a lo que vio:** las seis salidas de `conjunto_en_el_partido.py` caen
+  dentro del rango de las 34 vistas de los datos abiertos, ensanchado un cuarto por cada lado (lo dice el script). Las
+  entradas que caigan fuera se apuntan y no deciden. Se espera una: en el partido un equipo tiene más de 11 slots en el
+  12,9 % de los frames, y en los abiertos, en menos del 1 %.
+- **C3, cambia lo que cabe esperar:** frente a `equipo_v9_rama` cambia como mucho el 12 % de los frames evaluados; de un
+  equipo al otro, como mucho el 6 %; y entre un equipo y `D`, en los dos sentidos, como mucho el 6 %.
+- **C4, no cambia el ritmo ni el `D`:** entre 185 y 235 posesiones (`equipo_v9` tiene 201), entre 109 y 123 paradas
+  (tiene 116) y entre el 45,2 y el 49,2 % de `D` en lo evaluado (tiene el 46,2 %).
+- **C5, no fragmenta:** ninguna posesión de menos de 12 frames y como mucho 4 de menos de 25.
+- **C6, no se rompe en la ventana pública:** el macroF1 no baja más de 0,03 ni el spellF1 más de 0,10 respecto a
+  `equipo_v9`. Una subida no cuenta: la ventana no elige (con 17 posesiones, hasta 0,39 es ruido).
+
+Si pasa todo, K2 ha cumplido su regla entera y lo que queda es una decisión del equipo: encenderlo es poner
+`"aprendida.evidence_k2"` en `pipeline.PIECES["candidates"]`, regenerar y validar (`equipo_v10`), y reproducirlo en otra
+máquina antes de entregar. Si falla C2, o C3, C4 o C5, no se enciende sin mirar antes por qué.
+
+**Punto 3 del análisis, decodificar para la métrica: regla del sondeo, escrita antes de ejecutarlo.** Con un candidato
+que ha pasado, se repite S2 (16/11) con la evidencia de K2 en lugar de la de B5:
+`validation/conjunto/riesgo_minimo_k2.py`, que usa el instrumento de S2 sin tocarlo (DFL, «como el ATD», `D` de las
+etiquetas; lo que el instrumento llama `main` es el Viterbi de coste 25 sobre K2). La regla es la de S2, tal cual:
+- «la duda del modelo sirve» si la correlación de rangos entre la anchura de la duda y el error es de 0,3 o más, o la
+  anchura separa los cambios sin pareja con un AUC de 0,65 o más, con las dos convenciones;
+- «el riesgo mínimo merece construirse» si la elección por parte gana al Viterbi de coste 25 por +0,010 o más con las dos
+  convenciones.
+Si no merece construirse, el punto 3 se cierra también para este modelo. Avisado antes: z se entrenó frame a frame, así
+que la cadena con temperatura puede volver a fragmentarse, como con B5; una distribución sobre secuencias pediría
+entrenar el modelo como un CRF, que sería otro candidato.
+
+Descartado: encender K2 sin el punto 4; repetir el examen después del cambio de la interpolación; elegir entre α
+mirando la tabla; seguir con K1.
+
+Estado: K2 espera el punto 4, que ejecuta una persona. El sondeo del riesgo mínimo se ejecuta después de este commit.

@@ -116,6 +116,17 @@ que faltan, los scripts y los resultados. El porqué está en
 | `scripts/balon_fuera_abiertos.py` | D7 en datos abiertos: cuántos frames con el balón visto a más de 1 m fuera son `D` en SkillCorner (mitad de entrenamiento) y en Metrica, y cuántas rachas caen enteras en juego. Descriptivo | SkillCorner y Metrica |
 | `partido/probar_entrega.py` | **lee el partido:** una entrega de prueba con un solo comando. La genera con `--pieza` o `--capa`, cuenta el balón fuera y la compara con `equipo_v3`, para pegar una sola salida | **datos del partido: solo una persona** |
 | `posesiones_cortas/puerta_no_lineal.py` | fase 3, puerta: una red de una capa con los rasgos de B9 y de los jugadores, fuera de muestra | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `conjunto/exportar.py` | modelo conjunto (17/11): exporta los partidos abiertos como arrays crudos por jugador, con el balón de las condiciones que votan | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `conjunto/entrenar.py`, `conjunto/red.py` | entrena el modelo conjunto en un pliegue, con torch en la GPU (entorno `mtah2027-conjunto`), y guarda sus salidas fuera de muestra | la caché de `conjunto/exportar.py` |
+| `conjunto/juntar.py` | junta los pesos de los 8 pliegues en `possession/conjunto_pesos.npz`, con la α y la γ elegidas | ninguno (lee los pesos de torch) |
+| `conjunto/medir.py` | K1 y K2 frente a `main` con la regla del 17/11, en la DFL y en SkillCorner; con `--con-la-pieza`, con la predicción en numpy; el examen de SkillCorner solo con `--examen --examen-con-permiso --candidato` | DFL y SkillCorner |
+| `conjunto/paridad.py` | la predicción en numpy de `possession/conjunto.py` frente a la de torch | la caché de `conjunto/exportar.py` |
+| `conjunto/cuanto_cambia.py` | descriptivo: cuánto cambia la salida del pipeline con K2 en lugar de B5 (frames, posesiones, paradas, rachas cortas), para los criterios de la entrega de prueba | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
+| `conjunto/referencia.py`, `conjunto/agregados.py` | las entradas y las salidas del modelo conjunto en las 34 vistas de los partidos abiertos (`conjunto/referencia_abiertos.json`): la referencia para el partido | la caché de `conjunto/exportar.py` |
+| `conjunto/riesgo_minimo_k2.py` | el sondeo S2 del 16/11 (decodificar a riesgo mínimo) repetido con la evidencia de K2 | DFL |
+| `partido/conjunto_en_el_partido.py` | **lee el partido** (ATD): las entradas y las salidas del modelo conjunto en el partido frente al rango de los datos abiertos. Criterio C2 del punto 4 de K2 (`docs/decisiones.md`, 17/11). Solo agregados. Lo ejecuta una persona | **datos del partido: solo una persona** |
+| `scripts/prueba_conjunto.py` | prueba `possession/conjunto.py` con un partido inventado: interfaz, determinismo, antisimetría exacta, slots, la red frente a una versión con matrices y los pesos | ninguno |
+| `scripts/prueba_conjunto_en_el_partido.py` | prueba la comparación de `partido/conjunto_en_el_partido.py` con números inventados | ninguno |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
 
