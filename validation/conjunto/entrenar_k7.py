@@ -21,6 +21,11 @@ Lo fijado en docs/decisiones.md (17/11, K7, antes de entrenar). Es el entrenamie
   proveedor que no ha visto se usa la media de las dos. Como la última capa es lineal, esa media es una sola fila de
   pesos: `juntar_k7.py` la escribe así y `possession/conjunto.py` la puntúa sin cambiar nada.
 
+**La limpieza de Metrica** (decidida antes de entrenar, con `signo_sin_balon.py`): en sus trozos, los frames vivos
+sin balón crudo (sin balón en «tal cual») no cuentan en la pérdida de z ni en la de cambios. Sus etiquetas, sacadas de
+eventos, no casan con el balón en los bordes de las paradas: K2 acierta el signo ahí el 44,7 %, frente al 89,0 % en la
+DFL «como el ATD».
+
 Con `c --parte-metrica 0` es `entrenar.py todos --solo dfl`, paso a paso: es la comprobación del instrumento
 (`comprobar_k7.py pasos`).
 
@@ -47,6 +52,20 @@ if hasattr(sys.stdout, "reconfigure"):
 PROVEEDORES = ("dfl", "metrica")
 PARTE_METRICA = 0.25  # la parte del lote que viene de Metrica: 8 trozos de 32 (fijada antes de entrenar)
 METRICA = (1, 2, 3)  # los 3 partidos de sample-data (validation/metrica/lector.py)
+
+
+def limpiar_metrica(m):
+    """La limpieza de Metrica, sobre un partido cargado con `entrenar.cargar`: los frames vivos sin balón crudo pasan a
+    no contar (z a 3 y la clase de cambios a −1). Las clases se calcularon antes, con las etiquetas enteras, así que
+    los cambios no se mueven de sitio. Devuelve (frames que dejan de contar, frames vivos)."""
+    with np.load(cj.fichero_partido("metrica", m["partido"])) as d:
+        sin_balon = np.isnan(d["bx_0"])
+    gt = m["np"]["gt"]
+    mascara = (gt < 2) & sin_balon
+    t = torch.as_tensor(mascara, device=m["gt"].device)
+    m["gt"] = torch.where(t, torch.full_like(m["gt"], 3), m["gt"])
+    m["clase"] = torch.where(t, torch.full_like(m["clase"], -1), m["clase"])
+    return int(mascara.sum()), int((gt < 2).sum())
 
 
 class ConjuntoK7(red.Conjunto):
@@ -108,10 +127,14 @@ def main():
     inicio = time.time()
     dentro = {"dfl": [en.cargar("dfl", p, device, args.columnas) for p in cj.DFL],
               "metrica": [en.cargar("metrica", p, device, args.columnas) for p in METRICA]}
+    limpieza = [limpiar_metrica(m) for m in dentro["metrica"]]
     print("# K7{} · tanda «{}» · semilla {}\n".format(args.variante, args.etiqueta, semilla))
     print("Entrena con {} partidos de la DFL y {} de Metrica, sin SkillCorner. Variante {}: {}.".format(
         len(dentro["dfl"]), len(dentro["metrica"]), args.variante,
         "una sola z" if args.variante == "c" else "una z por proveedor; fuera, la media de las dos"))
+    print("Limpieza de Metrica: dejan de contar {} de {} frames vivos ({:.1f} %), los que no tienen balón crudo.".format(
+        sum(a for a, _ in limpieza), sum(b for _, b in limpieza),
+        100.0 * sum(a for a, _ in limpieza) / max(sum(b for _, b in limpieza), 1)))
     print("Configuración: {}".format(json.dumps({k: cfg[k] for k in sorted(cfg)}, ensure_ascii=False)))
     print("Parte de Metrica en el lote: {:g} · dispositivo {} · torch {} · hilos {} · columnas de slots {}\n".format(
         args.parte_metrica, device.type, torch.__version__, torch.get_num_threads(), args.columnas))

@@ -6624,3 +6624,26 @@ Lo que no cambia: `entrenar.py`, `red.py`, `exportar.py`, `possession/conjunto.p
 `k7.py` y `signo_sin_balon.py`. Los pesos se quedan fuera de git (`conjunto_cache/`).
 
 Estado: escrita antes de entrenar. La medida del signo sin balón se apunta debajo antes de entrenar.
+
+**La medida del signo de z sin balón** (17/11, antes de entrenar ningún K7). Salida en
+`validation/conjunto/salidas/2026-11-17_signo_sin_balon.md`. [medido]
+
+| datos | etiquetas | K2 con balón | K2 sin balón | B5 con balón | B5 sin balón |
+|---|---|---|---|---|---|
+| DFL «como el ATD» (vota) | control | 93,3 % | **89,0 %** (de 84,0 a 92,9 % por partido) | 91,4 % | 84,2 % |
+| DFL «como el ATD» | flag | 89,2 % | 84,6 % | 87,5 % | 79,3 % |
+| DFL «como el ATD, sin bloques» | control | 93,3 % | 90,8 % | 91,4 % | 86,2 % |
+| SkillCorner, entrenamiento, detectado | las suyas | 85,9 % | 73,0 % | 85,6 % | 66,0 % |
+| Metrica, tal cual (K6a, arriba) | eventos | 94,4 % | 44,7 % | – | – |
+
+- **Con la regla: 89,0 %, por encima del 60 %.** Lo de Metrica es de sus etiquetas, no de K2. Así que, en los trozos de
+  Metrica, los frames vivos sin balón crudo no cuentan en la pérdida de z ni en la de cambios
+  (`entrenar_k7.limpiar_metrica`). Son 41.550 de 280.343 frames vivos, el 14,8 %. Las clases de cambio se calculan
+  antes, con las etiquetas enteras, así que los cambios no se mueven de sitio.
+- **Sin voto, y vale también para la entrega** [inferencia]: K2 sabe bastante sin balón. En la DFL acierta 89 de cada
+  100 frames vivos sin balón, y B5, 84. En SkillCorner, 73 frente a 66. Es la ventaja más grande de K2 sobre B5 de toda
+  la tabla, justo donde el ATD pierde el balón.
+- **La prueba de humo** (2 y 30 pasos): las dos variantes entrenan, y los pesos exportados dan en `conjunto.py` la z de
+  torch, con una diferencia máxima de 4e-7 (`comprobar_k7.py paridad`).
+
+Estado: la limpieza queda fijada antes de entrenar. Se entrena K7c.
