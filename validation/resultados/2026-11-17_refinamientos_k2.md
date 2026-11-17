@@ -151,6 +151,51 @@ Es donde más fallamos (`validation/resultados/2026-11-15_diagnostico_errores.md
   ninguna de las tres. Las redes que predicen más posesiones (B11, B13 y B14, de la otra línea) ganan con el flag y
   pierden o empatan en SkillCorner: las que añaden no caen donde deben.
 
+## Las tres conclusiones de David, donde hay miles de posesiones [medido]
+
+David miró la entrega frente a los 5 minutos públicos del partido (`notebooks/ventana_publica_detalle.ipynb`, rama
+`feat/encender-k2`; 17 posesiones) y sacó tres conclusiones. El mismo análisis, con sus mismas cuentas, se repite aquí en
+los 20 partidos abiertos (`validation/conjunto/detalle_abiertos.py`), con el `D` propio, como en la entrega:
+
+**1. «Cuando vemos un cambio lo ponemos en su sitio; el problema son los que no vemos.» Se repite.**
+
+| datos | cambios directos entre equipos | `main` ve | K2 ve | K3 ve | nos sobran: `main` / K2 / K3 |
+|---|---|---|---|---|---|
+| DFL, control (7 partidos) | 1.026 | 35,0 % | 48,1 % | 44,4 % | 505 / 396 / 373 |
+| DFL, flag (7) | 2.351 | 18,7 % | 24,9 % | 22,6 % | 438 / 315 / 308 |
+| SkillCorner, entrenamiento (10) | 2.210 | 17,6 % | 21,2 % | 19,6 % | 719 / 685 / 633 |
+| Metrica (3) | 668 | 34,3 % | 40,0 % | 37,7 % | 148 / 108 / 125 |
+
+Un cambio está «visto» si hay uno nuestro hacia el mismo estado a 1 s o menos. De todos los que vemos (también los que
+pasan por `D`), el retraso mediano es de +2 a +5 frames en la DFL, de 0 en SkillCorner y de +1 a +3 en Metrica. Con el
+`D` de las etiquetas es de 0 en todas partes y unos 9 de cada 10 caen a 12 frames o menos: el poco retraso que hay viene de
+nuestro `D`, no de la evidencia de equipo.
+
+**2. «Reales 17, nuestras 13: nos faltan 4» (el 76 %). Se repite.** Con `main` predecimos el 89 % de las posesiones que
+hay en la DFL con control, el 73 % en Metrica, el 65 % en SkillCorner y el 50 % en la DFL con el flag. K2 predice hasta
+un 2 % más que `main`, y K3, un 2 % menos en la DFL y en SkillCorner.
+
+**3. «Nuestras posesiones duran un 34 % más: nos comemos posesiones cortas del rival.» Se repite, y se ve dónde.**
+
+| datos | duración media: real / `main` / K2 / K3 (s) | de menos de 2 s: reales, y encontradas con `main` / K2 / K3 | de 2 a 5 s: reales, y encontradas |
+|---|---|---|---|
+| DFL, control | 12,7 / 14,8 / 14,5 / 15,1 | 159: el 5,7 / 8,8 / 6,9 % | 399: el 27,1 / 38,8 / 32,6 % |
+| DFL, flag | 7,2 / 14,8 / 14,5 / 15,1 | 919: el 1,8 / 2,3 / 2,1 % | 934: el 16,3 / 22,3 / 18,1 % |
+| SkillCorner, entrenamiento | 9,9 / 15,9 / 15,0 / 15,8 | 724: el 0,4 / 0,7 / 0,1 % | 714: el 13,6 / 15,1 / 13,9 % |
+| Metrica | 12,8 / 16,3 / 16,3 / 16,3 | 140: el 2,1 / 5,0 / 4,3 % | 219: el 24,7 / 27,4 / 28,3 % |
+
+- **Las posesiones de menos de 2 s no las encuentra ninguna versión.** En entre 4 y 7 de cada 10 decimos el otro
+  equipo: se las come la posesión de al lado.
+- **Lo que K2 arregla está entre 2 y 10 s:** en la DFL con control pasa del 27 al 39 % en las de 2 a 5 s y del 65 al
+  68 % en las de 5 a 10 s. K3 se queda a medio camino (33 % y 68 %).
+- **Casi nunca partimos una posesión:** las perdidas por ir partidas o más cortas son del 1 al 3 %. Las perdemos por
+  decir el otro equipo (del 10 al 30 %), por fundirlas con la de al lado (del 12 al 27 %) y por taparlas con `D` (del
+  10 al 13 %).
+
+Lo que significa [inferencia]: lo que David vio en 17 posesiones no es un accidente de la ventana. K2 mueve los tres
+números en la buena dirección, pero el hueco grande (los cambios que no vemos y las posesiones cortas) sigue abierto
+con cualquiera de las tres versiones.
+
 ## Partido a partido [medido, sin voto]
 
 El reto es un solo partido, así que importa cuántas veces pierde cada versión, no solo la media. Casos (partido y
@@ -194,6 +239,7 @@ Estas tablas se añadieron después de ver el bloque de dentro del proveedor: no
 | `possession/aprendida.py` | el envoltorio `evidence_k3`, para el harness oficial y para `--pieza` |
 | `validation/conjunto/refinar.py` | la medida: dentro del proveedor, con otros pesos (`--pesos`) y en Metrica; las tablas descriptivas, con `--solo-por-partido` |
 | `validation/conjunto/cuanto_cambia_k3.py` | lo que cabe esperar en una entrega de prueba de K3 |
+| `validation/conjunto/detalle_abiertos.py` | el análisis del notebook de David (cambios y posesiones) en los 20 partidos abiertos, para `main`, K2 y K3 |
 | `validation/conjunto/entrenar.py` | ahora entrena también en la CPU (`--dispositivo cpu`), con otra semilla (`--semilla`) y con menos columnas |
 | `validation/scripts/prueba_refinamientos.py` | pruebas sin datos |
 | `validation/harness/versiones/refinamientos_k2_2026-11-17.json` | `main`, K2 y K3 para el harness oficial |

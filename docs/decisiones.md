@@ -6198,3 +6198,37 @@ la mezcla mirando la tabla; abrir el examen de SkillCorner; seguir con K4 o con 
 
 Estado: K3 y K4 apagados. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian. K2 sigue como estaba: con su
 regla cumplida y pendiente de lo que decida el equipo.
+
+### 2026-11-17 · validación · las tres conclusiones de David en la ventana pública se repiten en los datos abiertos (descriptivo)
+
+Quién: Claude, en la sesión de Ismael (17/11), a petición suya («por si combinamos algo suyo en el estudio»). David
+subió `notebooks/ventana_publica_detalle.ipynb` (rama `feat/encender-k2`, sin outputs [comprobado con
+`outputs_notebooks.py` antes de abrirlo]) y sacó tres conclusiones de los 5 minutos públicos del partido, que Ismael
+pegó como agregados. Claude no ha ejecutado el notebook: lee una entrega del partido.
+
+Qué se hizo: las mismas cuentas del notebook (cambios emparejados a ±25 frames con el scorer oficial; posesiones
+encontradas con un solape de 0,5 o más y la causa de las perdidas) en los 20 partidos abiertos, para `main`, K2 y K3,
+cada uno con el pliegue que no vio el partido (`validation/conjunto/detalle_abiertos.py`; salida en
+`validation/conjunto/salidas/2026-11-17_detalle_abiertos.md`). No hay regla: es descriptivo y no elige nada.
+
+Resultado [medido], con el `D` propio:
+1. **«Cuando vemos un cambio lo ponemos en su sitio; el problema son los que no vemos»: se repite.** De los cambios
+   directos entre equipos, `main` ve el 35,0 % en la DFL con control, el 18,7 % con el flag, el 17,6 % en SkillCorner y
+   el 34,3 % en Metrica. K2 ve el 48,1, el 24,9, el 21,2 y el 40,0 %; K3, el 44,4, el 22,6, el 19,6 y el 37,7 %. El
+   retraso mediano de los que vemos es de 0 a +5 frames. K2 además inventa menos: le sobran 396 cambios entre equipos en
+   la DFL, frente a 505 de `main`.
+2. **«Nos faltan posesiones» (13 de 17 en la ventana): se repite.** Con `main` predecimos el 89 % de las que hay en la
+   DFL con control, el 73 % en Metrica, el 65 % en SkillCorner y el 50 % con el flag.
+3. **«Nuestras posesiones duran más: nos comemos las cortas del rival»: se repite.** Las posesiones reales de menos de
+   2 s no las encuentra ninguna versión (del 0 al 9 %); las de 2 a 5 s, `main` el 27 %, K2 el 39 % y K3 el 33 % en la
+   DFL con control. Casi nunca partimos una posesión (del 1 al 3 % de las perdidas): las perdemos por decir el otro
+   equipo, por fundirlas con la de al lado o por taparlas con `D`.
+
+Lectura [inferencia]: lo que se ve en 17 posesiones del partido es lo mismo que se ve en miles de otros tres
+proveedores, así que no es un accidente de la ventana. K2 mueve los tres números en la buena dirección y K3 se queda a
+medio camino; ninguno cierra el hueco de los cambios que no vemos ni el de las posesiones de menos de 2 s.
+
+Decisión: ninguna. Queda como material para el documento técnico y para decidir qué entrenar después: lo que falta no
+es colocar mejor los cambios, es ver más, sobre todo los que abren posesiones cortas.
+
+Estado: descriptivo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
