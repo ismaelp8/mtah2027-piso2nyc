@@ -6530,3 +6530,478 @@ Resultado [medido, agregados del partido]:
 Qué significa: K2 da lo mismo en dos máquinas distintas y con dos versiones de Python 3.13, que era lo que faltaba
 antes de entregar con él (`possession/conjunto.py` es código numérico nuevo). **`equipo_v10` es la entrega vigente**
 cuando `feat/encender-k2` entre en `main`; hasta entonces, `main` sigue dando `equipo_v9`.
+
+### 2026-11-17 · candidatos · modelo conjunto: dos refinamientos de K2 sin reentrenar, K3 (la mezcla con B5) y K4 (el espejo) (candidatos y regla, antes de medir)
+
+Quién: lo pidió Ismael el 17/11 («seguir profundizando en ese método y refinarlo lo máximo posible»), mientras David
+comprueba K2. Lo escribe Claude en la rama `exp/k2-refinar`, que sale de `exp/modelo-conjunto` en `2b187b9`, antes de
+medir ningún candidato.
+
+**Lo que no cambia.** `aprendida.evidence_k2`, `possession/conjunto.py`, `conjunto_pesos.npz` y todo lo que hay detrás
+de `prueba_k2` (`784e65e5…acbc`) se quedan byte a byte como están: es lo que David comprueba. Los refinamientos van en
+un módulo nuevo (`possession/refinamientos.py`), con nombres nuevos, apagados.
+
+**Comprobación previa del instrumento** [medido, 17/11, en el portátil de Ismael, Linux, con numpy 2.5.4]: la tabla
+publicada de K2 sale igual, con sus intervalos. En la DFL, 0,728 → 0,780 (+0,051 [+0,040 a +0,064], 7 de 7) y las
+otras once celdas; en la mitad de entrenamiento de SkillCorner, 0,519 → 0,543 y las otras tres
+(`medir.py --con-la-pieza`).
+
+**Por qué estos dos y no otros:**
+- Lo medido dice que lo que cojea en K2 es el cambio de proveedor, no la red. Ya están cerrados la red mayor y más
+  pasos (el piloto), K1, el riesgo mínimo, el coste del decodificador con K2, la ronda K2r y el detector de cambios de
+  David encima de K2.
+- Pulir dentro del proveedor da ruido: los intervalos del harness son de ±0,01 y estos 17 partidos ya han juzgado
+  muchos candidatos. Por eso el eje que decide aquí es el del otro proveedor.
+- En este portátil no hay GPU. Lo que no reentrena se puede medir hoy, con los pesos de los 8 pliegues que ya están en
+  el repo.
+
+**Los candidatos** (fijados; no se elige ningún valor mirando resultados):
+- **K3, la mezcla con B5.** El logit de la mezcla es la media a partes iguales del de K2 y del de B5, cada uno en su
+  escala (α·z), y se puntúa como B5: −|s| al equipo que pierde y el +1 de N1 donde se ve el balón. B5 es la pieza que
+  se traslada de un proveedor a otro y K2 la que gana dentro: si K2 falla en un proveedor nuevo, B5 sigue opinando.
+  La parte de K2 es ½ y no se elige: dejando un partido fuera saldría una parte mayor, porque dentro del proveedor K2
+  gana a B5, y eso no es lo que la mezcla tiene que asegurar. Con ¼ y con ¾ se enseña sin voto.
+- **K4, el espejo.** El logit de K2 promediado con el del mismo tracking con el campo en espejo (y → ancho − y). El
+  modelo se entrenó con ese espejo como aumento, pero no es simétrico por construcción (sí lo es al cambiar los
+  equipos); el promedio le quita ese ruido. Tarda el doble (unos 10 s por partido).
+- **K5,** solo si K3 y K4 pasan los dos: K3 con el logit de K4. Se mide una vez, con la regla de K3.
+
+**Cómo se mide** (`validation/conjunto/refinar.py`; `main`, K2 y el `D` se montan como en `medir.py`):
+- **A. Dentro del proveedor,** con los pesos de los 8 pliegues del repo: los 7 partidos de la DFL (K2 y B5, cada uno con
+  el pliegue que no vio el partido) y los 10 de `lector.ENTRENAMIENTO` de SkillCorner (K2 con el pliegue cruzado; B5 con
+  los coeficientes de la entrega, que nunca vio SkillCorner). **El examen de SkillCorner no se abre:** está gastado
+  para K2 y una variante no lo recibe. El script no tiene bandera para leerlo.
+- **B. El otro proveedor.** Los pesos de los dos modelos de un solo proveedor del 17/11 están en la máquina de la GPU,
+  no en el repo. Aquí se entrenan dos **réplicas** con la misma configuración (`entrenar.py todos --solo dfl` y
+  `--solo sc`, con `--dispositivo cpu`): mismo entrenamiento, otros números al azar. Cada una se puntúa en el otro
+  proveedor con α = 4, como entonces.
+  - **La réplica vale** si K2 con ella repite el problema publicado. La de solo la DFL, en SkillCorner: pierde más de
+    0,005 frente a `main` en las dos celdas con el `D` de las etiquetas (publicado: −0,015 y −0,010). La de solo
+    SkillCorner, en la DFL con control: pierde más de 0,03 en las cuatro celdas (publicado: de −0,045 a −0,096). Si
+    una réplica no vale, ese sentido no se puede leer y se dice.
+  - **El sentido que decide es el de la DFL a SkillCorner:** de un tracking limpio a uno automático, como del
+    entrenamiento al partido, y con las dos mitades de la mezcla fuera de su proveedor (ni esa K2 ni B5 vieron
+    SkillCorner). En el otro sentido, B5 sí ha visto la DFL (va con el pliegue que no vio el partido), así que
+    favorece a la mezcla: se enseña sin voto.
+- **C. Metrica** (los 3 partidos de sample-data, bajados del commit que cita `validation/metrica/BITACORA.md`), con los
+  pesos de la entrega de K2 y de B5. Ninguno vio ese proveedor: es lo más parecido que hay a lo que le pasará a la
+  entrega. Son 3 partidos, con sus avisos de siempre (etiquetas de eventos y balón pegado al jugador).
+
+**Regla de K3:**
+1. **Dentro (A), frente a `main`,** el límite de daño del 16/11, como K2: en la DFL, +0,005 o más con control en las
+   cuatro celdas ganando en 6 de 7, y sin perder más de 0,005 con el flag ni con el balón a la vista en los `D`; en
+   SkillCorner, +0,005 o más y 7 de 10 en las cuatro celdas.
+2. **El otro proveedor (B), de la DFL a SkillCorner, frente a `main`:** «quita la pérdida» si queda en −0,005 o más en
+   las cuatro celdas.
+3. **Metrica (C), frente a `main`:** no pierde más de 0,005 en la condición que vota («tal cual»), con el `D` de las
+   etiquetas ni con el propio.
+
+Lectura, escrita antes:
+- **Si pasa 1, 2 y 3,** K3 es la forma más prudente de la apuesta: se le propone al equipo en lugar de K2, con su
+  propio punto 4 (una entrega de prueba que ejecuta una persona, con criterios de daño escritos antes de generarla).
+  Con el resultado se dice el precio: lo que K3 deja de ganar frente a K2 dentro del proveedor.
+- **Si falla 1,** K3 se cierra: la mezcla no gana ni donde K2 gana.
+- **Si falla 2 o 3,** K3 se cierra: la mezcla no protege, y K2 se queda como está, con su aviso.
+- **Si la réplica de solo la DFL no vale,** el punto 2 no se puede leer: K3 no se recomienda por encima de K2 y se
+  queda como opción apagada, con lo que digan 1 y 3.
+
+**Regla de K4,** frente a K2 (es el mismo modelo, promediado): gana si la media de la diferencia con K2 en las celdas
+de control llega a +0,003, en la DFL (las cuatro del punto 1) y en SkillCorner (las cuatro), y ninguna celda de ninguno
+de los dos baja de −0,002. Si gana, K4 sustituye a K2 dentro de lo que se proponga (K2 pasa a K4 y K3 a K5). Si no, es
+un empate y se cierra: no merece la complejidad.
+
+Avisado antes de medir:
+- **Cuántas cosas se prueban:** dos candidatos y uno condicionado, sin ningún valor elegido. Con la regla de 6 de 7 y
+  7 de 10, un candidato que no aporta nada pasaría pocas veces, pero no ninguna.
+- **La mezcla es un seguro, y un seguro cuesta:** dentro del proveedor K3 quedará por debajo de K2. Solo compensa si en
+  el otro proveedor deja de perder. Que lo haga en SkillCorner y en Metrica no prueba que lo haga en el ATD.
+- **Las réplicas no son los modelos del 17/11.** Por eso se comprueba primero que repiten su problema.
+- **Nada de esto se mide en el partido.** Si un candidato pasa, su punto 4 lo ejecuta una persona.
+
+Lo que se deja fuera: reentrenar el modelo de los dos proveedores (semillas, aumentos, más datos), que necesita la GPU
+y sería otro candidato con su regla; el examen de SkillCorner; cualquier cambio en `pipeline.PIECES`.
+
+Estado: escrita antes de medir. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · modelo conjunto: una semilla más del modelo de un solo proveedor (lectura, antes de entrenarla)
+
+Quién: Claude, en la sesión de Ismael (17/11). Escrita antes de entrenar o medir la semilla nueva. La primera réplica ya
+está medida y vista (salida en `validation/conjunto/salidas/2026-11-17_refinar_replica_solo_dfl_en_skillcorner.md`); su
+lectura con la regla de K3 va en la entrada de resultados.
+
+Por qué: la réplica del modelo de solo la DFL (misma configuración, otros números al azar, en la CPU) no repite en
+SkillCorner la pérdida publicada. K2 con ella queda en −0,005, +0,001, −0,000 y +0,003 frente a `main`; con el modelo
+original eran −0,015, −0,010, −0,007 y −0,004. Frame a frame los dos modelos aciertan lo mismo en esos 10 partidos
+[medido: 84,0 % frente a 83,8 % con el balón detectado, y la misma pérdida, 0,762 frente a 0,766]. Que la nota difiera
+en 0,010 con el mismo acierto apunta a ruido del entrenamiento [inferencia: es una sola réplica, que además cambia de
+GPU a CPU, de 48 a 33 columnas y de versión de torch].
+
+Qué se hace: **una** réplica más del modelo de solo la DFL, con la semilla 20261125 (`entrenar.py --semilla`), la misma
+configuración y en la CPU. Se puntúa en los 10 partidos de `lector.ENTRENAMIENTO` con α = 4, como la primera. Con lo
+que salga se decide si se entrena una tercera.
+
+Lectura, escrita antes:
+- **«La pérdida publicada depende del entrenamiento»** si K2 con la semilla nueva queda otra vez a 0,005 o menos de
+  `main` en las dos celdas con el `D` de las etiquetas. Serían dos entrenamientos de tres en empate, y el aviso sobre
+  K2 pasa a decirse así: fuera de su proveedor, un entrenamiento de K2 queda entre un empate y una pérdida de 0,015.
+- **«La pérdida es del modelo»** si pierde más de 0,005 en las dos. Serían dos de tres con pérdida, y el aviso se queda
+  como estaba.
+- En otro caso se dice el rango, sin más.
+- **La mezcla con otra semilla:** se dice si K3 con la semilla nueva queda en −0,005 o más frente a `main` en las
+  cuatro celdas, y cuánto saca a K2.
+- **El promedio de las dos semillas** (la media de sus z, `refinar.py --pesos` con los dos ficheros) se enseña frente
+  a `main` y frente a cada semilla por separado. Es una lectura, no un candidato para la entrega: la entrega usaría el
+  modelo de los dos proveedores, y promediar semillas de ese modelo pide entrenarlas en la GPU.
+
+Lo que no cambia: **el veredicto de K3 con su regla.** Esta ronda es descriptiva: sirve para decir cuánto pesa el aviso
+de proveedor de K2 y qué entrenar después.
+
+Lo que se deja: la réplica de solo SkillCorner (el sentido sin voto) se para para dejarle la CPU a esta. Si no da
+tiempo a terminarla, se dice.
+
+Estado: escrita antes de entrenar.
+
+### 2026-11-17 · candidatos · modelo conjunto, refinamientos sin reentrenar: K4 (el espejo) se cierra; K3 (la mezcla con B5) pasa dos de sus tres puntos y el tercero no se puede leer
+
+Quién: Claude, en la sesión de Ismael (17/11). Regla en la entrada «dos refinamientos de K2 sin reentrenar», escrita
+antes de medir (`d96fce8`). Todo en datos abiertos de otros partidos; nada del partido.
+
+Qué se probó: K3, la media a partes iguales del logit de K2 y del de B5, y K4, el logit de K2 promediado con el del
+campo en espejo (`possession/refinamientos.py`, apagados).
+
+Cómo se midió (`validation/conjunto/refinar.py`; salidas en `validation/conjunto/salidas/2026-11-17_refinar_*`):
+- el instrumento da lo que tiene que dar: la mezcla con todo el peso en K2 da K2 y con todo en B5 da `main`, frame a
+  frame (24 salidas); y `main` y K2 repiten sus cifras publicadas en la DFL, en SkillCorner y en Metrica;
+- **A, dentro del proveedor:** los 7 partidos de la DFL y los 10 de `lector.ENTRENAMIENTO`, cada uno con el pliegue que
+  no lo vio;
+- **B, el otro proveedor:** una réplica del modelo de solo la DFL, entrenada aquí en la CPU (3.000 pasos, 55 minutos),
+  puntuada en los 10 partidos de `lector.ENTRENAMIENTO` con α = 4;
+- **C, Metrica:** los 3 partidos, con los pesos de la entrega;
+- además, el harness oficial con los eventos humanos (`validation/harness/versiones/refinamientos_k2_2026-11-17.json`).
+
+Resultado [medido], diferencia de `spellF1` con `main` (entre paréntesis, en cuántos partidos gana):
+
+| datos | celdas | K2 | K3 | K4 |
+|---|---|---|---|---|
+| DFL, control | 2 condiciones × `D` de las etiquetas y propio | +0,051 (7), +0,046 (6), +0,045 (6), +0,036 (6) | +0,054 (7), +0,047 (7), +0,042 (7), +0,032 (7) | +0,060 (7), +0,052 (7), +0,048 (7), +0,038 (6) |
+| DFL, flag | las mismas | +0,044, +0,037, +0,043, +0,033 (7 en todas) | +0,031, +0,024, +0,025, +0,017 (7 en todas) | +0,047, +0,039, +0,041, +0,033 (7 en todas) |
+| SkillCorner, entrenamiento | 2 condiciones × 2 modos del `D` | +0,023 (8), +0,024 (7), +0,021 (10), +0,024 (10) | +0,021 (10), +0,023 (9), +0,017 (10), +0,021 (10) | +0,022 (8), +0,027 (8), +0,020 (9), +0,024 (10) |
+| Metrica, pesos de la entrega | 2 condiciones × 2 modos del `D` | +0,035 (2 de 3), +0,036 (3), +0,021 (2), +0,024 (3) | +0,023 (3), +0,029 (3), +0,014 (3), +0,017 (3) | +0,035 (3), +0,039 (3), +0,024 (2), +0,022 (3) |
+| SkillCorner, con la réplica de solo la DFL | las de SkillCorner | −0,005 (4), +0,001 (5), −0,000 (5), +0,003 (6) | +0,008 (6), +0,011 (6), +0,010 (7), +0,010 (7) | −0,009 (4), +0,001 (6), −0,001 (5), +0,004 (6) |
+
+Con la regla escrita antes:
+- **K4 no pasa y se cierra.** Frente a K2 gana en la DFL (+0,005 de media con control, peor celda −0,001) y empata en
+  SkillCorner (−0,000 de media), y se pedía +0,003 en los dos. En Metrica tampoco se mueve (de −0,001 a +0,003). El
+  espejo le quita ruido al modelo donde más gana, pero no donde importa. K5 no llegó a ser candidato (pedía que
+  pasaran K3 y K4); el script lo imprime y no añade nada a K3.
+- **K3, punto 1 (dentro del proveedor): pasa.** En la DFL gana con control en las cuatro celdas y en 7 de 7; con el flag
+  y con el balón a la vista en los `D` no pierde (gana de +0,013 a +0,040). En SkillCorner gana en las cuatro celdas y en
+  9 o 10 de 10.
+- **K3, punto 3 (Metrica): pasa.** No pierde frente a `main`: gana +0,023 y +0,014 en la condición que vota, en 3 de 3.
+- **K3, punto 2 (el otro proveedor): no se puede leer.** La réplica no vale con el criterio escrito antes: K2 con ella
+  no pierde más de 0,005 en las dos celdas con el `D` de las etiquetas (queda en −0,005 y +0,001; con el modelo original
+  eran −0,015 y −0,010). Sin una pérdida que quitar, el punto no dice lo que tenía que decir.
+- **Así que K3 no se recomienda por encima de K2 y se queda como opción apagada,** con lo que dicen los puntos 1 y 3.
+  Es lo que la regla decía para este caso, y no se reescribe.
+
+Lo que sale sin voto, y hay que decirlo junto al número de K3:
+- **El precio de la mezcla:** con control deja la ganancia de K2 casi como estaba (de −0,006 a +0,003 frente a K2 en
+  la DFL, contando las celdas con el balón a la vista en los `D`), pero con el flag pierde de 0,013 a 0,018 frente a
+  K2, y en Metrica, lo más parecido a la entrega, de 0,006 a 0,012. Con la regla de §5.8 frente a `main`, el harness oficial dice «gana» para K2 y «empate o no concluye» para K3.
+- **Lo que la mezcla da a cambio:** con la réplica, en un proveedor que ninguna de sus dos mitades vio, K3 gana a
+  `main` en las cuatro celdas (+0,008 a +0,011) y a K2 solo (+0,008 a +0,013, con los intervalos por encima de cero).
+  Y partido a partido falla menos: en los bloques A y C, K2 queda por debajo de `main` en 12 de 136 casos (partido y
+  celda), el peor con −0,026; K3, en 3, el peor con −0,007.
+- **K3 es más prudente justo en los cambios de posesión.** Con el `D` propio predice un 2 % menos de posesiones que
+  `main` (K2, hasta un 2 % más); con el `D` de las etiquetas, un 4 % menos en la DFL (K2, las mismas). En los eventos
+  humanos de la DFL, «como el ATD», acierta el 74,9 % de las recuperaciones (`main`, el 70,3 %; K2, el 80,0 %) y el
+  79,9 % de los duelos con cambio (77,3 % y 82,5 %): se queda con la mitad de lo que K2 mejora ahí. «Sin bloques»
+  conserva la mitad en las recuperaciones (+4,1 puntos de +7,7) y casi nada en los duelos con cambio (+0,4 de +3,1).
+  A cambio acierta más duelos sin cambio (79,6 %, frente a 74,9 % y 77,7 %).
+- **Ni K2 ni K3 ven más posesiones: las colocan mejor.** En la DFL con control hay 1.736 posesiones reales; `main`
+  encuentra el 72,5 %, K2 el 76,9 % y K3 el 75,9 % (emparejadas con un solape de 0,5 o más). Con el flag, el 39,1, el
+  42,5 y el 41,0 %; en SkillCorner, el 44,9, el 47,9 y el 46,3 %. El hueco de los cambios que no vemos sigue ahí.
+
+Lo que hay que decir con el número:
+- **Añadido después de ver el bloque A:** las tablas partido a partido y las de posesiones encontradas
+  (`*_por_partido.md`). Son descriptivas y no entran en ninguna regla.
+- **`possession/aprendida.py` ha cambiado después de escribir que lo de detrás de `prueba_k2` no se tocaba:** tiene un
+  envoltorio nuevo, `evidence_k3`, para el harness oficial y para una entrega de prueba. No cambia B5 ni K2
+  (`prueba_pipeline`, `prueba_aprendida`, `prueba_harness`, `prueba_conjunto` y `prueba_refinamientos` siguen en verde),
+  pero el fichero ya no es byte a byte el de `exp/modelo-conjunto`. Si algo de esta rama sigue adelante, primero el
+  criterio C0 desde esta rama: `equipo_v9_rama` tiene que salir con `d9706dfb…be63`.
+- **La réplica no es el modelo del 17/11** (CPU, 33 columnas y torch 2.15, según el comando de esta sesión: la salida
+  del entrenamiento no lo imprimía, y desde ahora sí; lleva el mismo número de semilla, 20261124, pero el generador de
+  la CPU no es el de la GPU). Frame a frame acierta lo mismo que él en
+  SkillCorner (84,0 % frente a 83,8 %), así que la diferencia de 0,010 en la nota apunta a ruido del entrenamiento
+  [inferencia]. Hay una semilla más en marcha, con su lectura escrita antes (entrada anterior).
+- **El sentido de SkillCorner a la DFL no se ha medido todavía.** Su réplica está a medias y parada, para dejarle la
+  CPU a la semilla nueva. Era el sentido sin voto.
+- **Cuántas cosas se han mirado:** dos candidatos, sin elegir ningún valor. Además, el script mide e imprime en todas
+  las ejecuciones K5, que no llegó a ser candidato, y la mezcla con ¼ y con ¾ de K2, sin voto. Con ¾ queda a 0,006 o
+  menos de K2 con control, en SkillCorner y en Metrica, pierde de 0,005 a 0,011 con el flag en la DFL, y con la
+  réplica saca +0,006 a +0,007. Elegir ¾ ahora sería elegir mirando el resultado.
+- **La mezcla que se mide en la DFL no es siempre la de la entrega.** Cada logit va con la α de su pliegue: la de K2
+  es 4, 4, 4, 4, 8, 8 y 8, y la de B5, 2, 4, 4, 4, 4, 4 y 8. En tres partidos (`J03WMX`, `J03WPY` y `J03WQQ`) K2
+  entra con el doble de escala relativa que en la entrega, donde las dos son 4. En SkillCorner y en Metrica la mezcla
+  sí es la de la entrega. Es lo que decía la regla («cada uno en su escala»); cuánto mueve las cifras de la DFL se
+  mide aparte, sin voto.
+- **Con qué código salió cada salida.** El sello «Código» de las salidas es el commit que había al ejecutarlas, y los
+  scripts de `validation/conjunto/` entraron en el commit siguiente: `cuanto_cambia_k3.py` en `8409165`,
+  `detalle_abiertos.py` en `118e854` y las tablas de `*_por_partido.md` en `3794aaf`. Desde ahora `refinar.py` imprime
+  su propia huella y la α, y guarda con cada caché de recuentos el dominio, los pesos y el código con que se calculó.
+  **Regeneradas después** (13:51, con el código de `74f3191`): las once salidas de `refinar.py`,
+  `detalle_abiertos.py` y `cuanto_cambia_k3.py` se volvieron a calcular desde cero y salen idénticas fuera de las
+  líneas de cabecera. Las guardadas en la rama son las regeneradas, con su sello y la huella de cada script.
+
+Lo que haría legible el punto 2: los pesos de los dos modelos de un solo proveedor del 17/11
+(`conjunto_cache/pesos/solo_dfl_todos.pt` y `solo_sc_todos.pt`, en la máquina de la GPU). Con ellos K2 sí pierde, y la
+medida es un comando (`juntar.py --etiqueta solo_dfl --pliegues todos --destino … --alfa 4` y
+`refinar.py --dominio sc --pesos … --entrenado-con dfl`).
+
+Si el equipo quiere ver K3 en el partido: una entrega de prueba, que ejecuta una persona, con criterios de daño
+escritos antes de generarla. Lo que cabe esperar está medido (`validation/conjunto/cuanto_cambia_k3.py`): frente a
+`main` cambia del 2,6 al 3,0 % de los frames evaluados en la DFL y del 4,6 al 5,0 % en SkillCorner (K2, del 4,4 al
+5,3 % y del 7,4 al 7,8 %), con un 2 % menos de posesiones, las mismas paradas y ninguna posesión de menos de 12 frames.
+
+Descartado: recomendar K3 por lo que sale con la réplica (la regla decía que así no se podía leer); elegir el peso de
+la mezcla mirando la tabla; abrir el examen de SkillCorner; seguir con K4 o con K5.
+
+Estado: K3 y K4 apagados. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian. K2 sigue como estaba: con su
+regla cumplida y pendiente de lo que decida el equipo.
+
+### 2026-11-17 · validación · las tres conclusiones de David en la ventana pública se repiten en los datos abiertos (descriptivo)
+
+Quién: Claude, en la sesión de Ismael (17/11), a petición suya («por si combinamos algo suyo en el estudio»). David
+subió `notebooks/ventana_publica_detalle.ipynb` (rama `feat/encender-k2`, sin outputs [comprobado con
+`outputs_notebooks.py` antes de abrirlo]) y sacó tres conclusiones de los 5 minutos públicos del partido, que Ismael
+pegó como agregados. Claude no ha ejecutado el notebook: lee una entrega del partido.
+
+Qué se hizo: las mismas cuentas del notebook (cambios emparejados a ±25 frames con el scorer oficial; posesiones
+encontradas con un solape de 0,5 o más y la causa de las perdidas) en los 20 partidos abiertos, para `main`, K2 y K3,
+cada uno con el pliegue que no vio el partido (`validation/conjunto/detalle_abiertos.py`; salida en
+`validation/conjunto/salidas/2026-11-17_detalle_abiertos.md`). No hay regla: es descriptivo y no elige nada.
+
+Resultado [medido], con el `D` propio:
+1. **«Cuando vemos un cambio lo ponemos en su sitio; el problema son los que no vemos»: se repite.** De los cambios
+   directos entre equipos, `main` ve el 35,0 % en la DFL con control, el 18,7 % con el flag, el 17,6 % en SkillCorner y
+   el 34,3 % en Metrica. K2 ve el 48,1, el 24,9, el 21,2 y el 40,0 %; K3, el 44,4, el 22,6, el 19,6 y el 37,7 %. El
+   retraso mediano de todos los cambios que vemos (también los que pasan por `D`) es de 0 a +5 frames. K2 además
+   inventa menos: le sobran 396 cambios entre equipos en
+   la DFL, frente a 505 de `main`.
+2. **«Nos faltan posesiones» (13 de 17 en la ventana): se repite.** Con `main` predecimos el 89 % de las que hay en la
+   DFL con control, el 73 % en Metrica, el 65 % en SkillCorner y el 50 % con el flag.
+3. **«Nuestras posesiones duran más: nos comemos las cortas del rival»: se repite.** Las posesiones reales de menos de
+   2 s no las encuentra ninguna versión (del 0 al 9 %); las de 2 a 5 s, `main` el 27 %, K2 el 39 % y K3 el 33 % en la
+   DFL con control. Casi nunca partimos una posesión (las partidas o más cortas son del 1 al 3 % de las reales):
+   las perdemos por no decir su equipo ni en la mitad de sus frames, por fundirlas con la de al lado o por taparlas
+   con `D`.
+
+Lectura [inferencia]: lo que se ve en 17 posesiones del partido es lo mismo que se ve en miles de otros tres
+proveedores, así que no es un accidente de la ventana. K2 mueve los tres números en la buena dirección y K3 se queda a
+medio camino; ninguno cierra el hueco de los cambios que no vemos ni el de las posesiones de menos de 2 s.
+
+Decisión: ninguna. Queda como material para el documento técnico y para decidir qué entrenar después: lo que falta no
+es colocar mejor los cambios, es ver más, sobre todo los que abren posesiones cortas.
+
+Estado: descriptivo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · modelo conjunto: la semilla nueva del modelo de un solo proveedor; fuera de su proveedor K2 queda entre un empate y una pérdida pequeña, y promediar ayuda
+
+Quién: Claude, en la sesión de Ismael (17/11). La lectura es la de la entrada «una semilla más», escrita antes de
+entrenarla (`017c4fe`). Salidas en `validation/conjunto/salidas/2026-11-17_refinar_semilla2_*`,
+`…_refinar_media_de_dos_semillas_*` y `…_entrenamiento_semilla2_solo_dfl.md`.
+
+Qué se probó: una réplica más del modelo de solo la DFL (semilla 20261125, en la CPU, 3.000 pasos), puntuada en los 10
+partidos de `lector.ENTRENAMIENTO` con α = 4; y la media de las z de las dos réplicas.
+
+Resultado [medido], K2 entrenado solo con la DFL, frente a `main` en SkillCorner (`D` de las etiquetas, las dos
+condiciones; y `D` propio, las dos):
+
+| qué | `D` de las etiquetas | `D` propio |
+|---|---|---|
+| K2, modelo original del 17/11 (GPU) | −0,015 y −0,010 | −0,007 y −0,004 |
+| K2, réplica 1 (CPU, semilla 20261124) | −0,005 y +0,001 | −0,000 y +0,003 |
+| K2, réplica 2 (CPU, semilla 20261125) | −0,007 y −0,003 | −0,003 y −0,001 |
+| K2, la media de las z de las dos réplicas | +0,004 y +0,004 | +0,002 y +0,002 |
+| K3 con la réplica 1 | +0,008 y +0,011 | +0,010 y +0,010 |
+| K3 con la réplica 2 | +0,008 y +0,011 | +0,005 y +0,008 |
+| K3 con la media de las dos réplicas | +0,013 y +0,017 | +0,007 y +0,011 |
+
+Con la lectura escrita antes:
+- **Ni «depende del entrenamiento» ni «es del modelo»: el caso mixto.** Con la semilla nueva K2 pierde más de 0,005 en
+  una de las dos celdas con el `D` de las etiquetas (−0,007) y en la otra no (−0,003). Se dice el rango: **en tres
+  entrenamientos con la misma configuración, K2 fuera de su proveedor queda entre +0,003 y −0,015 frente a `main`, y
+  en la primera celda pierde las tres veces (de −0,005 a −0,015).** No gana en ninguno. El aviso sobre K2 se queda,
+  con su tamaño corregido: un empate o una pérdida pequeña, no siempre −0,015.
+- Las dos réplicas aciertan frame a frame lo mismo que el modelo original (83,9 y 84,0 %, frente a 83,8 %): lo que
+  cambia de un entrenamiento a otro no es el acierto, es dónde caen los cambios.
+- **La mezcla aguanta con otra semilla:** K3 queda en +0,005 o más frente a `main` en las cuatro celdas, y saca a K2
+  solo de +0,009 a +0,015, en 9 o 10 de 10 partidos. Es lo mismo que con la réplica 1 (+0,008 a +0,013).
+- **Promediar las dos semillas parece ayudar** [lectura, no candidato]: la media de las z queda de +0,002 a +0,004
+  frente a `main` (un empate), por encima de cada semilla por separado en siete de las ocho comparaciones (de −0,000
+  a +0,011). El intervalo pareado queda por encima de cero en cuatro de las ocho y toca el cero en las otras cuatro:
+  es poca evidencia, de dos semillas de un modelo de un solo proveedor. Mezclada con B5 da lo mejor que se ha medido
+  fuera del proveedor: de +0,007 a +0,017.
+
+Lo que no cambia: **el veredicto de K3 con su regla.** El punto 2 sigue sin poderse leer: ninguna de las dos réplicas
+repite la pérdida en las dos celdas con el `D` de las etiquetas, que es lo que la regla pedía. Lo que sale aquí es
+descriptivo y coherente en las dos: fuera del proveedor, la mezcla gana a B5 solo y a K2 solo.
+
+La comprobación que quedó de la revisión, sin voto (`refinar.py --alfas-de-la-entrega`; salida en
+`…_refinar_dfl_alfas_de_la_entrega.md`): con las α de la entrega (4 y 4) en los siete pliegues de la DFL, K3 gana a
+`main` de +0,034 a +0,056 con control (7 de 7 en las cuatro celdas) y de +0,014 a +0,025 con el flag. Frente a K2 con
+esa misma α queda de −0,001 a −0,008 con control y de −0,015 a −0,023 con el flag: **el precio de la mezcla con
+control no es cero, es de hasta 0,008.** Con esas α, K4 tampoco pasa en la DFL (peor celda −0,002).
+
+Lo que sale para lo siguiente [inferencia, sobre lo medido]:
+- Lo que más ha ayudado fuera del proveedor no es afinar la red, es promediar: la red con B5 (medido en dos réplicas)
+  y, con menos evidencia, dos semillas entre sí. Un paso que probar después es un K2 de los dos proveedores con
+  varias semillas promediadas (en la GPU son minutos), medido como K2, con su regla y sin examen disponible.
+- No se entrena una tercera semilla hoy: el rango ya dice lo que tenía que decir, y cada una son 55 minutos de CPU.
+
+Descartado: leer esto como que K3 ha pasado su punto 2 (la regla no lo permite); proponer el promedio de semillas para
+la entrega de hoy (pide entrenar en la GPU, pesos nuevos, su punto 4 y su reproducción).
+
+Estado: descriptivo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian. La réplica de solo SkillCorner (el
+sentido sin voto) se ha reanudado; su medida se apunta cuando acabe.
+
+### 2026-11-17 · candidatos · modelo conjunto: la réplica de solo SkillCorner (el sentido sin voto): donde K2 falla de verdad, la mezcla vuelve al nivel de `main`
+
+Quién: Claude, en la sesión de Ismael (17/11). Es la segunda réplica de la entrada «dos refinamientos de K2 sin
+reentrenar»: el modelo de solo SkillCorner (misma configuración, en la CPU), puntuado con α = 4 en los 7 partidos de la
+DFL y en los 3 de Metrica. Salidas en `validation/conjunto/salidas/2026-11-17_refinar_replica_solo_skillcorner_*` y
+`…_entrenamiento_replica_solo_skillcorner.md`. La regla decía que este sentido se enseña sin voto en la DFL, porque
+allí B5 sí ha visto el proveedor.
+
+Resultado [medido], frente a `main`:
+
+| dónde | K2 con la réplica | K3 con la réplica |
+|---|---|---|
+| DFL, control (4 celdas) | −0,083, −0,070, −0,057 y −0,048 (0 de 7) | −0,000, +0,008, −0,000 y +0,005 |
+| DFL, flag (4 celdas) | −0,056, −0,038, −0,040 y −0,025 | −0,020, −0,007, −0,017 y −0,009 |
+| Metrica (4 celdas) | −0,024, −0,019, −0,025 y −0,026 | +0,014, +0,007, +0,001 y −0,006 |
+
+- **La réplica vale:** repite la pérdida publicada (con control, de −0,045 a −0,096; aquí, de −0,048 a −0,083) y pierde
+  más de 0,03 en las cuatro celdas, que es lo que se pedía.
+- **En la DFL la mezcla quita la pérdida con control** (vuelve al nivel de `main`) **y no con el flag** (se queda de
+  0,007 a 0,020 por debajo). Sin voto: aquí la mitad de B5 juega en casa.
+- **En Metrica ninguna de las dos mitades ha visto el proveedor,** y K2 pierde de verdad (de −0,019 a −0,026). La
+  mezcla lo deja entre −0,006 y +0,014: quita la pérdida en tres de las cuatro celdas y roza el límite en la cuarta
+  (−0,006 [−0,016 a +0,004]). Son 3 partidos.
+
+Lectura [inferencia]: es el caso que la regla de K3 quería ver y que la réplica de solo la DFL no dio, pero en otro
+sentido y en otros datos de los que la regla nombraba. No cambia el veredicto de K3, que sigue con su punto 2 sin
+leer. Dice de qué tamaño es el seguro: cuando K2 se equivoca mucho, la mezcla cae más o menos donde estaba B5, no
+por encima.
+
+Estado: descriptivo. Con esto están medidos los dos sentidos del otro proveedor. `pipeline.PIECES`, `DELIVERY_LAYERS`
+y la entrega no cambian.
+
+### 2026-11-17 · candidatos · K3: la entrega de prueba frente a `equipo_v10`, con los criterios de daño escritos antes de generarla
+
+Quién: Ismael (17/11): «quiero una entrega de prueba de K3 frente a `equipo_v10`». Lo escribe Claude en la rama
+`exp/k2-refinar`, antes de que nadie genere `prueba_k3`. La ejecuta una persona, con los datos del partido y el entorno
+limpio; Claude solo lee los agregados que se peguen.
+
+Dónde está cada cosa:
+- **`equipo_v10`** es la entrega con K2 que encendió David en `feat/encender-k2` (sha256
+  `784e65e5825a7fe52f7fe5f3a51c9f5e1bccf2c9f89a1372b7b344a3f882acbc`, la misma que `prueba_k2`): 203 posesiones de
+  16,9 s de media, 115 paradas y el 45,9 % de `D` en lo evaluado [medido por Ismael y por David].
+- **Esta rama sale de antes de encender K2:** su `pipeline.PIECES` lleva B5, así que sin opciones genera `equipo_v9`.
+  Entre las dos ramas, `possession/` solo difiere en esa línea de `pipeline.py` [medido: `git diff`], así que desde
+  esta rama `--pieza candidates=aprendida.evidence_k2` tiene que dar los bytes de `equipo_v10`.
+
+Los comandos, con el python del entorno limpio y desde la carpeta del repo en esta rama
+(`git fetch origin` y `git switch --detach origin/exp/k2-refinar`):
+
+    python -m possession.pipeline --name equipo_v9_rama
+    python -m possession.pipeline --name prueba_k2_rama --pieza candidates=aprendida.evidence_k2
+    python validation/partido/probar_entrega.py prueba_k3 --pieza candidates=aprendida.evidence_k3 --contra prueba_k2_rama
+    python evaluation/validate_submission.py evaluation/results/prueba_k3.csv
+    python evaluation/run_evaluation.py
+
+Lo que cabe esperar de K2 a K3 [medido en datos abiertos con `validation/conjunto/cuanto_cambia_k3.py`, `D` propio, sin
+las capas del partido]:
+
+| datos | frames evaluados que cambian | de un equipo al otro | entre un equipo y `D` | posesiones | paradas | frames `D` | posesiones de menos de 12 / de 25 frames |
+|---|---|---|---|---|---|---|---|
+| DFL (7 partidos, 4 celdas) | 2,0–2,5 % | 1,4–1,6 % | 0,5–0,9 % | de −2,3 a −4,6 % | de −0,1 a +0,1 % | de −0,3 a 0,0 puntos | 0 / 1 en los 7 partidos |
+| SkillCorner (10 partidos, 2 celdas) | 3,3 % | 1,6–1,7 % | 1,6–1,7 % | de −4,0 a −4,2 % | −0,6 % | de −0,6 a −0,7 puntos | 0 / 2 en los 10 partidos |
+
+Con K2, el partido salió como la DFL (cambió el 4,8 % de los frames frente a `equipo_v9`; en la DFL, del 4,4 al 5,3 %).
+
+K3 pasa su entrega de prueba si se cumple todo:
+- **C0, la rama no cambia las entregas conocidas:** `equipo_v9_rama` sale con el sha256 de `equipo_v9`
+  (`d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63`) y `prueba_k2_rama`, con el de `equipo_v10`
+  (`784e65e5…acbc`). La segunda es la referencia con la que se compara K3.
+- **C1, es una entrega:** `prueba_k3` es válida y sale con 0 frames en conflicto.
+- **C3, cambia lo que cabe esperar** frente a `prueba_k2_rama`: como mucho el 7 % de los frames evaluados; de un equipo
+  al otro, como mucho el 3,5 %; y entre un equipo y `D`, en los dos sentidos, como mucho el 3,5 %.
+- **C4, no cambia el ritmo ni el `D`:** entre 183 y 213 posesiones (`equipo_v10` tiene 203), entre 108 y 122 paradas
+  (tiene 115) y entre el 44,4 y el 47,4 % de `D` en lo evaluado (tiene el 45,9 %).
+- **C5, no fragmenta:** ninguna posesión de menos de 12 frames y como mucho 4 de menos de 25.
+- **C6, no se rompe en la ventana pública:** frente a `equipo_v10`, el macroF1 no baja más de 0,03 ni el spellF1 más
+  de 0,10. Una subida no cuenta: la ventana no elige (17 posesiones; por debajo de 0,42 todo es ruido).
+
+Lo que no se repite: el criterio C2 de K2 (lo que el modelo ve en el ATD frente a los datos abiertos). K3 no trae
+ningún modelo nuevo: usa los pesos de K2 que ya pasaron C2 y el B5 de la entrega.
+
+Sin voto, para apuntar: de qué a qué cambian los frames, y el recuento del balón fuera (D7), que con `equipo_v9` y con
+`equipo_v10` da 12 rachas tarde de 47.
+
+Qué significa cada resultado:
+- **Si pasa todo,** K3 ha hecho en el partido lo que se le puede pedir sin etiquetas: no rompe nada y cambia lo
+  esperado. No dice que K3 gane a K2 en el partido; eso no se puede medir. La elección entre `equipo_v10` y K3 sigue
+  siendo del equipo, con lo medido en datos abiertos: K3 falla menos partido a partido y es más prudente en los
+  cambios de posesión; K2 gana más donde funciona.
+- **Si falla C0,** no se sigue: algo de esta rama cambia una entrega y hay que mirarlo antes.
+- **Si falla C3, C4 o C5,** K3 no se enciende sin mirar antes por qué.
+
+Si el equipo decide entregar con K3: `pipeline.PIECES["candidates"]` pasa a `"aprendida.evidence_k3"`, la entrega se
+regenera y tiene que salir byte a byte igual que `prueba_k3`; **hay que reproducirla en una segunda máquina** (K3
+hereda el `np.exp` de los rasgos de B5); y el documento técnico tiene que contarla.
+
+Pendiente aparte, y no bloquea la entrega de prueba: el punto 2 de la regla de K3 sigue sin leer. Lo haría legible
+medir K3 con los pesos del modelo de solo la DFL del 17/11, que están en la máquina donde se entrenó K2
+(`<datos abiertos>/conjunto_cache/pesos/solo_dfl_todos.pt`).
+
+Estado: criterios escritos antes de generar `prueba_k3`. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · K3 pasa su entrega de prueba frente a `equipo_v10` (C0 a C6), en un entorno que no es el limpio
+
+Quién: la ejecutó David en su máquina, con la rama `exp/k2-refinar` en `4a67424` y sin cambios locales, y pasó los
+agregados por el chat del equipo; Ismael los pegó. Claude los lee con los criterios escritos antes (entrada «K3: la
+entrega de prueba frente a `equipo_v10`», `4a67424`). Solo agregados.
+
+Resultado [medido por David en el partido; solo agregados]:
+
+| criterio | qué pedía | qué ha salido | ¿pasa? |
+|---|---|---|---|
+| C0, la rama no cambia las entregas conocidas | `equipo_v9_rama` con `d9706dfb…be63` y `prueba_k2_rama` con `784e65e5…acbc` | las dos huellas | sí |
+| C1, es una entrega | válida y con 0 frames en conflicto | `prueba_k3` es válida, con 0 conflictos; sha256 `811658cd…c04b` | sí |
+| C3, cambia lo que cabe esperar frente a K2 | como mucho el 7 % de los frames; de un equipo al otro, el 3,5 %; entre un equipo y `D`, el 3,5 % | 4.219 de 158.857 frames (2,66 %); 2.719 de un equipo al otro (1,71 %); 1.500 entre un equipo y `D` (0,94 %) | sí |
+| C4, no cambia el ritmo ni el `D` | de 183 a 213 posesiones, de 108 a 122 paradas y del 44,4 al 47,4 % de `D` | 198 posesiones, 116 paradas y el 45,8 % de `D` | sí |
+| C5, no fragmenta | ninguna posesión de menos de 12 frames y como mucho 4 de menos de 25 | 0 y 0 | sí |
+| C6, no se rompe en la ventana pública | frente a `equipo_v10`, el macroF1 no baja más de 0,03 ni el spellF1 más de 0,10 | macroF1 de 0,873 a 0,876; spellF1 de 0,680 a 0,693 | sí |
+
+Sin voto:
+- De un equipo al otro, 1.798 frames pasan de `A` a `H` y 921 de `H` a `A`.
+- El balón fuera (D7) no cambia: tarde en 12 de 47 rachas.
+- Lo que cambia es lo que se esperaba de los datos abiertos, y se parece más a la DFL (del 2,0 al 2,5 % de los frames
+  y de −2,3 a −4,6 % de posesiones) que a SkillCorner: aquí, el 2,7 % y un 2,5 % menos de posesiones (198 frente a 203).
+- La subida en la ventana pública no cuenta: son 17 posesiones (una emparejada más) y por debajo de 0,42 todo es ruido.
+
+El aviso del entorno: **no se generó con el entorno limpio,** sino con Python 3.12.10 y numpy 1.26.4.
+- En ese entorno, `equipo_v9_rama` y `prueba_k2_rama` salen con sus huellas de siempre: B5 y K2 dan los mismos bytes
+  con numpy 1.26.4 que con 2.5.4. Es un dato a favor de la reproducibilidad de `equipo_v10`.
+- La huella de `prueba_k3` (`811658cd…c04b`) queda sin confirmar en el entorno limpio. Si el equipo elige K3, hay que
+  regenerarla con `requirements-entrega.txt` y reproducirla en una segunda máquina antes de entregar.
+
+Decisión y por qué:
+- **K3 ha pasado su entrega de prueba:** en el partido no rompe nada y cambia lo esperado. No dice que gane a K2 en el
+  partido: eso no se puede medir.
+- **No se enciende aquí.** Con su regla, K3 sigue sin quedar recomendada por encima de K2 (su punto 2 no se pudo leer),
+  y elegir entre `equipo_v10` y K3 es del equipo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+Estado: K3 apagada, con su entrega de prueba pasada. Pendiente de lo que decida el equipo.

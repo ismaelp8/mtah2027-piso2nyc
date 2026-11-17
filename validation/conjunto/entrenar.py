@@ -1,10 +1,13 @@
-"""Entrena el modelo conjunto en un pliegue, con torch en la GPU, y guarda sus salidas fuera de muestra.
+"""Entrena el modelo conjunto en un pliegue, con torch (GPU o CPU), y guarda sus salidas fuera de muestra.
 
     python validation/conjunto/entrenar.py J03WMX     # el pliegue sin J03WMX y sin sus dos partidos de SkillCorner
     python validation/conjunto/entrenar.py todos      # el de los 17 partidos (la entrega y el examen)
     python validation/conjunto/entrenar.py todos --solo sc --etiqueta solo_sc   # solo SkillCorner: se puntúa en la DFL
+    python validation/conjunto/entrenar.py todos --solo dfl --etiqueta r_solo_dfl --dispositivo cpu   # sin GPU
 
-Hace falta el entorno `mtah2027-conjunto` (torch con CUDA) y la caché de `exportar.py`. Datos abiertos de otros
+Hace falta el entorno `mtah2027-conjunto` (torch con CUDA) y la caché de `exportar.py`. Con `--dispositivo cpu`
+(17/11, «dos refinamientos de K2 sin reentrenar») vale cualquier torch: es el mismo entrenamiento, más lento y con
+otros números al azar, porque el generador de la CPU no es el de la GPU. Datos abiertos de otros
 partidos (DFL, CC BY 4.0; SkillCorner, MIT): lo puede ejecutar cualquiera, Claude incluido. Solo imprime agregados.
 **No lee el examen de SkillCorner:** la lista de partidos es `cj_comun.SKILLCORNER`, la mitad de entrenamiento.
 
@@ -34,7 +37,7 @@ import red
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
-SLOTS = 48  # columnas por partido en la GPU; la última queda libre para el slot duplicado
+SLOTS = 48  # columnas por partido en el dispositivo; la última queda libre para el slot duplicado
 CONFIG = {
     "pasos": 3000, "lote": 32, "grupos": 512, "margen": 64, "tasa": 2e-3, "decaimiento": 1e-4, "calentamiento": 100,
     "peso_cambios": 1.0, "peso_flag": 0.3,
@@ -83,15 +86,15 @@ def calidad(p, clase, frames, hacia, umbral=0.5):
     return np.array([len(frames), vistos, avisos, buenos, int(np.sum(clase >= 0))])
 
 
-def cargar(dominio, partido, device):
-    """Un partido de la caché, en la GPU, con las columnas de slots rellenadas hasta `SLOTS`."""
+def cargar(dominio, partido, device, columnas=SLOTS):
+    """Un partido de la caché, en el dispositivo, con las columnas de slots rellenadas hasta `columnas`."""
     with np.load(cj.fichero_partido(dominio, partido)) as d:
         datos = {k: d[k] for k in d.files}
     n, slots = datos["px"].shape
-    if slots >= SLOTS:
-        raise ValueError("{} slots no caben en {} columnas con una libre".format(slots, SLOTS))
-    relleno = np.full((n, SLOTS - slots), np.nan, dtype=np.float32)
-    team = np.concatenate((datos["team"].astype(np.int64), np.full(SLOTS - slots, -1, dtype=np.int64)))
+    if slots >= columnas:
+        raise ValueError("{} slots no caben en {} columnas con una libre".format(slots, columnas))
+    relleno = np.full((n, columnas - slots), np.nan, dtype=np.float32)
+    team = np.concatenate((datos["team"].astype(np.int64), np.full(columnas - slots, -1, dtype=np.int64)))
     blocks = [(int(a), int(b)) for a, b in datos["blocks"]]
     direccion = []
     for a, b in blocks:  # el local ataca hacia donde está, en media, el visitante (aprendida._rasgos_forma)
@@ -359,6 +362,15 @@ def main():
                         help="entrena con un solo proveedor (pliegue «todos») y guarda las salidas del otro")
     parser.add_argument("--robusto", action="store_true",
                         help="la configuración de la ronda K2r: los aumentos de `ROBUSTO` en los trozos de la DFL")
+    parser.add_argument("--dispositivo", choices=("cuda", "cpu"), default="cuda",
+                        help="dónde entrena; en la CPU salen otros números al azar que en la GPU")
+    parser.add_argument("--hilos", type=int, default=None, help="hilos de torch en la CPU (por defecto, los suyos)")
+    parser.add_argument("--semilla", type=int, default=None,
+                        help="otra semilla (por defecto, la del pliegue): para medir cuánto cambia el resultado de un "
+                             "entrenamiento a otro con la misma configuración")
+    parser.add_argument("--columnas", type=int, default=SLOTS,
+                        help="columnas de slots por partido (por defecto {}); con menos, la CPU hace menos cuentas "
+                             "sobre columnas vacías. Cambia los números al azar, no el modelo".format(SLOTS))
     parser.add_argument("--describir-dentro", action="store_true",
                         help="enseña también la tabla en dos partidos que el pliegue sí vio")
     args = parser.parse_args()
@@ -373,8 +385,10 @@ def main():
         if desconocidas:
             raise KeyError("claves desconocidas en --config: {}".format(desconocidas))
         cfg.update(cambios)
-    device = torch.device("cuda")
-    semilla = cj.SEMILLA + cj.PLIEGUES.index(args.pliegue)
+    device = torch.device(args.dispositivo)
+    if args.hilos:
+        torch.set_num_threads(args.hilos)
+    semilla = args.semilla if args.semilla is not None else cj.SEMILLA + cj.PLIEGUES.index(args.pliegue)
     torch.manual_seed(semilla)
     rng = np.random.default_rng(semilla)
     gen = torch.Generator(device=device)
@@ -384,12 +398,14 @@ def main():
     inicio = time.time()
     if args.solo:  # el otro proveedor entero queda fuera
         fuera_dfl, fuera_sc = (cj.DFL, ()) if args.solo == "sc" else ((), cj.SKILLCORNER)
-    dentro = {"dfl": [cargar("dfl", p, device) for p in cj.DFL if p not in fuera_dfl],
-              "sc": [cargar("sc", p, device) for p in cj.SKILLCORNER if p not in fuera_sc]}
+    dentro = {"dfl": [cargar("dfl", p, device, args.columnas) for p in cj.DFL if p not in fuera_dfl],
+              "sc": [cargar("sc", p, device, args.columnas) for p in cj.SKILLCORNER if p not in fuera_sc]}
     print("# Modelo conjunto · tanda «{}» · pliegue {} · semilla {}\n".format(args.etiqueta, args.pliegue, semilla))
     print("Entrena con {} partidos de la DFL y {} de SkillCorner; deja fuera: {}.".format(
         len(dentro["dfl"]), len(dentro["sc"]), ", ".join(str(p) for p in fuera_dfl + fuera_sc) or "ninguno"))
     print("Configuración: {}\n".format(json.dumps({k: cfg[k] for k in sorted(cfg)}, ensure_ascii=False)))
+    print("Dispositivo: {} · torch {} · hilos {} · columnas de slots {}\n".format(
+        device.type, torch.__version__, torch.get_num_threads(), args.columnas))
 
     modelo = red.Conjunto(cfg["oculto"], cfg["canales"], tuple(cfg["dilaciones"]), cfg["abandono"]).to(device)
     print("Pesos: {}".format(sum(v.numel() for v in modelo.parameters())), flush=True)
@@ -433,7 +449,8 @@ def main():
     destino.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"pesos": modelo.state_dict(), "config": cfg, "pliegue": args.pliegue, "semilla": semilla}, destino)
 
-    fuera = [cargar("dfl", p, device) for p in fuera_dfl] + [cargar("sc", p, device) for p in fuera_sc]
+    fuera = ([cargar("dfl", p, device, args.columnas) for p in fuera_dfl]
+             + [cargar("sc", p, device, args.columnas) for p in fuera_sc])
     if fuera:
         describir(modelo, fuera, "## Fuera de muestra: los partidos que el pliegue no vio (descriptivo, umbral 0,5)")
         for m in fuera:
