@@ -5668,3 +5668,9 @@ B14 (`possession/trayectorias2.py`, apagada) es B13 con tres cambios:
   degradados, tracklets cortados, slots fantasma y el balón con otra semilla y de 0 a 6 frames tarde, y espejo en y.
 
 Se mide igual, frente a `main`.
+
+**B13, medido [harness, `ad6dd9f`; salidas en `validation/secuencia/salidas/2026-11-17_harness_b13_*`]:** frente a `main`,
+con el flag +0,094 / +0,093 (7 de 7) y con control +0,021 (6 de 7) / +0,003 (4 de 7) con el `D` de las etiquetas, y
++0,025 (5 de 7) / +0,007 (3 de 7) con el propio. No pasa el punto 1 y queda por debajo de B12 con control. Predice
+1.865 posesiones (`main` 1.661, B12 1.774; las reales son 1.736 con control). Es el patrón de B11: encuentra más cambios,
+pero muchos sobran.
