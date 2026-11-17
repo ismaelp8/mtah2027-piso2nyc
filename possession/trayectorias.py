@@ -33,6 +33,9 @@ GRUPO = 5  # frames por muestra (25 fps a 5 Hz)
 VEL_MAX = 12.0  # m/s: más rápido es un cambio de slot, no un jugador (como aprendida.VEL_MAX)
 TOPE_BALON = 30.0  # m
 TOPE_VECINO = 20.0  # m
+# Una velocidad del balón mayor es un salto del tracking, no el balón (como VEL_MAX con los jugadores): vale 0. Está por
+# encima de lo que se vio al entrenar en la DFL (41,1 m/s como mucho) y apaga los saltos falsos del ATD (> 40 m/s).
+TOPE_VEL_BALON = 42.0  # m/s
 N_JUGADOR = 10
 N_BALON = 5
 CANALES_DEL_BALON = (4, 5, 6, 7)  # los rasgos del jugador que dependen del balón (se apagan sin balón)
@@ -100,8 +103,10 @@ def rasgos_tramo(trk, inicio, fin):
     visible = np.isfinite(bxs) & np.isfinite(bys)
     with np.errstate(invalid="ignore"):
         bvx, bvy = _velocidad(bx, idx, fps, 2), _velocidad(by, idx, fps, 2)
-    bvx = np.where(np.isfinite(bvx) & visible, bvx, 0.0)
-    bvy = np.where(np.isfinite(bvy) & visible, bvy, 0.0)
+    with np.errstate(invalid="ignore"):
+        valida_b = np.isfinite(bvx) & np.isfinite(bvy) & visible & (np.hypot(bvx, bvy) <= TOPE_VEL_BALON)
+    bvx = np.where(valida_b, bvx, 0.0)
+    bvy = np.where(valida_b, bvy, 0.0)
 
     equipos = {}
     for equipo in (H, A):

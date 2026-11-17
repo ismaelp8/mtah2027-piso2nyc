@@ -1,0 +1,13 @@
+{
+  "main": {
+    "nota": "la entrega: B5 (aprendida.evidence_b5), dead_state y decode_cortas_a_d; el harness deja fuera el partido que puntúa"
+  },
+  "B13: trayectorias": {
+    "nota": "docs/decisiones.md, 17/11, «B13»: referencia para B14",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b13", "dejar_fuera": true}}
+  },
+  "B14: trayectorias con dominio aleatorizado": {
+    "nota": "docs/decisiones.md, 17/11, «B14»: rasgos de control, atención conjunta y entrenada con copias como el ATD; puntuada como B5",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b14", "dejar_fuera": true}}
+  }
+}

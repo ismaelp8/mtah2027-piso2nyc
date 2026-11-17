@@ -27,7 +27,8 @@ import dfl  # noqa: E402
 import lector as lc  # noqa: E402
 from possession import aprendida, pipeline, tracking  # noqa: E402
 
-FUNCIONES = {"b11": aprendida.evidence_b11, "b12": aprendida.evidence_b12}
+FUNCIONES = {"b11": aprendida.evidence_b11, "b12": aprendida.evidence_b12, "b13": aprendida.evidence_b13,
+             "b14": aprendida.evidence_b14}
 
 
 def comparar(acum, trk, candidato, fuera):

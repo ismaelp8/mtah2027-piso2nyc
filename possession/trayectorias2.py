@@ -20,7 +20,7 @@ import numpy as np
 
 from possession import aprendida, secuencia
 from possession.tracking import A, H
-from possession.trayectorias import TOPE_BALON, TOPE_VECINO, VEL_MAX, _lineal, _vecino, _velocidad, a_frames, \
+from possession.trayectorias import TOPE_BALON, TOPE_VECINO, TOPE_VEL_BALON, VEL_MAX, _lineal, _vecino, _velocidad, a_frames, \
     representantes
 
 PESOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trayectorias2_pesos.npz")
@@ -53,8 +53,10 @@ def rasgos_tramo(trk, inicio, fin):
     visible = np.isfinite(bxs) & np.isfinite(bys)
     with np.errstate(invalid="ignore"):
         bvx, bvy = _velocidad(bx, idx, fps, 2), _velocidad(by, idx, fps, 2)
-    bvx = np.where(np.isfinite(bvx) & visible, bvx, 0.0)
-    bvy = np.where(np.isfinite(bvy) & visible, bvy, 0.0)
+    with np.errstate(invalid="ignore"):
+        valida_b = np.isfinite(bvx) & np.isfinite(bvy) & visible & (np.hypot(bvx, bvy) <= TOPE_VEL_BALON)
+    bvx = np.where(valida_b, bvx, 0.0)
+    bvy = np.where(valida_b, bvy, 0.0)
 
     equipos = {}
     for equipo in (H, A):
