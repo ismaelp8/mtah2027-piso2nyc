@@ -204,6 +204,30 @@ def informe(recuentos, partidos, celdas, n_draws):
     return resumen
 
 
+def por_partido(recuentos, partidos, celdas):
+    """Sin voto: la diferencia con `main` partido a partido. El reto es un solo partido, así que importa cuántas
+    veces pierde cada versión y cuánto, no solo la media. Añadido después de ver el bloque A (17/11)."""
+    print("\n## Partido a partido, frente a `main` (descriptivo, sin voto)\n")
+    versiones = ("K2",) + CANDIDATOS + tuple(SIN_VOTO)
+    print("Cada casilla: peor partido / mediana / mejor partido, y en cuántos partidos queda por debajo de `main`.\n")
+    print("| `D` | condición | etiquetas | {} |".format(" | ".join(versiones)))
+    print("|---|---|---|" + "---|" * len(versiones))
+    pierde = collections.Counter()
+    for celda in celdas:
+        condicion, modo, convencion = celda
+        casillas = []
+        for clave in versiones:
+            difs = np.array([cc.spell([recuentos[p][(clave,) + celda]]) - cc.spell([recuentos[p][("main",) + celda]])
+                             for p in partidos])
+            pierde[clave] += int(np.sum(difs < 0))
+            casillas.append("{:+.3f} / {:+.3f} / {:+.3f} ({})".format(difs.min(), float(np.median(difs)), difs.max(),
+                                                                    int(np.sum(difs < 0))))
+        print("| {} | {} | {} | {} |".format(NOMBRE_MODO[modo], condicion, convencion, " | ".join(casillas)))
+    total = len(celdas) * len(partidos)
+    print("\nVeces que queda por debajo de `main`, de {} (partido y celda): {}.".format(
+        total, "; ".join("{}, {}".format(clave, pierde[clave]) for clave in versiones)))
+
+
 def si_o_no(valor):
     return "pasa" if valor else "no pasa"
 
@@ -271,6 +295,8 @@ def main():
                         help="con --pesos: el único proveedor que vio ese modelo")
     parser.add_argument("--comprobar", action="store_true",
                         help="el instrumento: la mezcla con todo el peso en K2 da K2, y con todo en B5, `main`")
+    parser.add_argument("--solo-por-partido", action="store_true",
+                        help="enseña solo la tabla partido a partido (descriptiva), sin las demás")
     parser.add_argument("--recuentos", default=None,
                         help="fichero donde guardar los recuentos (o del que leerlos, si existe), fuera del repo")
     args = parser.parse_args()
@@ -331,6 +357,9 @@ def main():
             sum(len(r) for r in recuentos.values()), ", ".join(distintos) or "ninguna"))
         sys.exit(1 if distintos else 0)
 
+    if args.solo_por_partido:
+        por_partido(recuentos, partidos, celdas)
+        return
     resumen = informe(recuentos, partidos, celdas, args.bootstrap)
     if args.pesos:
         lectura_otro_proveedor(resumen)
