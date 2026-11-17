@@ -5828,3 +5828,28 @@ B17 (se prueba; `aprendida.evidence_b17`, apagada) es la media de los logits de 
 - En SkillCorner `ENTRENAMIENTO`, B16 entra con el pliegue que no vio el partido.
 - Por qué: promediar dos redes suele dar resultados más estables partido a partido, que es lo que les falta en
   SkillCorner para el «7 de 10».
+
+### 2026-11-17 · candidatos · B16 y B17: también ganan a `main` con §5.8; B17, la media, es la mejor
+
+Medidos con `validation/harness/versiones/b17_media_2026-11-17.json` (`a88d550`; salidas en
+`validation/secuencia/salidas/2026-11-17_*b15_b16_b17*` y `..._skillcorner_entrenamiento_b17.md`). Frente a `main`
+[medido], «como el ATD» / «sin bloques»:
+
+| | control, `D` de las etiquetas | control, `D` propio | flag, `D` de las etiquetas | flag, `D` propio | SkillCorner `ENTRENAMIENTO` |
+|---|---|---|---|---|---|
+| B15 | +0,054 / +0,042 (7, 7) | +0,050 / +0,035 (7, 7) | +0,048 / +0,037 (6, 6) | +0,043 / +0,034 (7, 7) | +0,006 en las 4 (7, 6, 8 y 6 de 10): 2 de 4 celdas |
+| B16 | +0,052 / +0,043 (7, 7) | +0,044 / +0,034 (7, 7) | +0,046 / +0,041 (6, 7) | +0,042 / +0,037 (7, 7) | +0,002 a +0,010 (6–7 de 10): 1 de 4 celdas |
+| B17 | **+0,061 / +0,048 (7, 7)** | **+0,055 / +0,039 (7, 6)** | +0,049 / +0,039 (7, 7) | +0,047 / +0,038 (7, 7) | **+0,009 / +0,016 / +0,002 / +0,008 (7, 8, 6 y 8 de 10): 3 de 4 celdas** |
+
+- **Regla de §5.8 frente a `main`:** los tres **ganan**, con el `D` de las etiquetas y con el propio.
+- **Posesiones** («como el ATD»): 1.655, 1.686 y 1.654 (`main` 1.661; reales 1.736 con control). Ninguno cambia de
+  equipo de más.
+- **SkillCorner** se mide fuera de muestra:
+  - B15, con el modelo de los 7 de la DFL;
+  - B16, con scA y scB;
+  - B17, con B15 de los 7 y B16 con el pliegue que no vio el partido.
+  - Con el umbral del límite de daño (+0,005 y 7 de 10), B17 cumple 3 celdas. Falla «detectado» con el `D` propio
+    (+0,002, 6 de 10).
+
+Estado: los tres apagados. **B17 es el candidato más fuerte.** Abrir el examen de SkillCorner (una vez, un candidato) y
+generar la entrega de prueba lo deciden Ismael y la planificadora.

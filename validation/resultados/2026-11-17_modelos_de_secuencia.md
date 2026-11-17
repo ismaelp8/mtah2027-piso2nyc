@@ -17,6 +17,8 @@
 | B13 | **las trayectorias**: cada jugador (posición, velocidad, posición respecto al balón, vecinos) y el balón, desde la dirección de ataque de cada equipo | codificador de conjuntos por equipo y GRU bidireccional de 32 a 5 Hz; entrenada también sin balón a trozos |
 | B14 | lo de B13 más rasgos de control (co-movimiento y acercamiento al balón) | B13 con atención conjunta, entrenada con dominio aleatorizado como el ATD: jugadores degradados, tracklets cortados, fantasmas, balón con retraso, espejo |
 | B15 | lo de B14 | B14 entrenada con la etiqueta de control en todos los frames vivos |
+| B16 | lo de B14 | B15 entrenada también con SkillCorner `ENTRENAMIENTO` (comprobada en SkillCorner con validación cruzada) |
+| B17 | lo de B14 | la media de los logits de B15 y B16, sin reentrenar |
 
 Todas son antisimétricas por construcción (cambiar los equipos cambia el signo), predicen en numpy sin torch (comprobado:
 la diferencia con torch es de 10⁻⁵ o menos) y se puntúan como B5.
@@ -33,9 +35,12 @@ y 6 de 7, con los dos modos del `D`; con el flag, no perder más de 0,005.
 | B13 | +0,021 (6) / +0,003 (4) | +0,025 (5) / +0,007 (3) | +0,09 (7) | pierde las 4 (−0,010 a −0,024) | 1.865 |
 | B14 | **+0,048 (7) / +0,027 (7)** | **+0,053 (7) / +0,030 (7)** | +0,11 a +0,12 (7) | pierde o empata (−0,017 a +0,002) | 1.904 |
 | **B15** | **+0,054 (7) / +0,042 (7)** | **+0,050 (7) / +0,035 (7)** | **+0,034 a +0,048 (6–7)** | +0,006 en las 4 (7, 6, 8 y 6 de 10) | 1.655 |
+| **B16** | **+0,052 (7) / +0,043 (7)** | **+0,044 (7) / +0,034 (7)** | **+0,037 a +0,046 (6–7)** | +0,002 a +0,010 (6–7 de 10) | 1.686 |
+| **B17** | **+0,061 (7) / +0,048 (7)** | **+0,055 (7) / +0,039 (6)** | **+0,038 a +0,049 (7)** | **+0,002 a +0,016 (6–8 de 10); 3 de 4 celdas** | 1.654 |
 
 ## Lectura
 
+- **B15, B16 y B17 ganan a `main` con §5.8 en la DFL** (+0,03 o más con las dos convenciones, 6–7 de 7, los dos modos del `D`). **B17 (la media de B15 y B16) es la más fuerte:** +0,039 a +0,061 con control y +0,038 a +0,049 con el flag, y en SkillCorner `ENTRENAMIENTO` cumple 3 de las 4 celdas del límite de daño (falla una con +0,002 y 6 de 10). Siguiente paso, si Ismael lo decide: el examen de SkillCorner para B17 (una vez) y la entrega de prueba (`python validation/partido/probar_entrega.py prueba_b17 --pieza candidates=aprendida.evidence_b17`, con el python del entorno limpio y `--contra` con la ruta de `equipo_v9.csv`). Ojo: puntúan unas 6 veces más fuerte que B5, así que la capa de los contraataques pesaría poco a su lado.
 - **B15 gana a `main` con la regla de §5.8 en la DFL** (+0,03 o más con control y con el flag, 6–7 de 7, con los dos modos del `D`), el primer candidato que lo consigue desde B5. En SkillCorner `ENTRENAMIENTO` es positiva en las cuatro celdas (+0,006) pero no llega al «7 de 10» en dos. Entrenar con la etiqueta de control quitó los cambios de equipo de sobra de B14. El examen de SkillCorner de B15 y la entrega de prueba quedan para la decisión de Ismael. B16 (B15 entrenada también con SkillCorner) se está entrenando.
 - **Ninguna pasa la regla, de momento.** **B14 es la primera que pasa los puntos 1 y 3 en la DFL, con margen** (7 de 7 en
   todo), pero en SkillCorner pierde con el `D` de las etiquetas y empata con el propio. B12 es la otra que más se acerca (gana con control en las cuatro celdas y en SkillCorner `ENTRENAMIENTO`, pero en «sin bloques» gana en 5 de 7). Ismael le hizo la excepción y **su examen de SkillCorner no pasa**: +0,004 a +0,009, falla una celda (+0,004 y 6 de 10). B12 queda cerrado y el examen, usado para B12.
