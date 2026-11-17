@@ -40,12 +40,12 @@ def pesos_entrenados(modelo, pliegue):
 
 def recuentos_de_un_partido(args):
     """Para un partido: {(pliegue, α, condición, convención): recuento} de los pliegues que lo entrenaron."""
-    modelo, partido = args
+    modelo, partido, seleccion = args
     cargado = dfl.cargar(partido)
     gt = cargado["gt"]
     decodificar = pipeline.default_piece("temporal")
     estado = pipeline.default_piece("dead_state")
-    pliegues = [p for p in comun.PLIEGUES if p != partido]
+    pliegues = [p for p in seleccion if p != partido]
     salida = {}
     for condicion in comun.CONDICIONES:
         trk = ball.clean(dfl.tracking_de(cargado, condicion))
@@ -66,15 +66,15 @@ def recuentos_de_un_partido(args):
     return partido, salida
 
 
-def elegir(modelo, procesos):
+def elegir(modelo, procesos, seleccion=comun.PLIEGUES):
     inicio = time.time()
     with multiprocessing.Pool(procesos) as pool:
-        por_partido = dict(pool.map(recuentos_de_un_partido, [(modelo, p) for p in comun.PARTIDOS]))
+        por_partido = dict(pool.map(recuentos_de_un_partido, [(modelo, p, tuple(seleccion)) for p in comun.PARTIDOS]))
     print("### α de {} (spellF1 medio dentro de muestra: dos convenciones × dos condiciones que votan, `D` propio, "
           "decodificador de main)\n".format(modelo.upper()))
     print("| pliegue | α | spellF1 medio por α ({}) |".format(", ".join("{:g}".format(a) for a in comun.ALFAS)))
     print("|---|---|---|")
-    for pliegue in comun.PLIEGUES:
+    for pliegue in seleccion:
         entrena = [p for p in comun.PARTIDOS if p != pliegue]
         medias = []
         for alfa in comun.ALFAS:
@@ -111,11 +111,13 @@ def main():
     parser.add_argument("--procesos", type=int, default=7)
     parser.add_argument("--modelos", nargs="+", choices=secuencia.MODELOS, default=list(secuencia.MODELOS),
                         help="con «escribir»: los modelos que se juntan (por defecto, los dos)")
+    parser.add_argument("--pliegues", nargs="+", choices=comun.PLIEGUES, default=list(comun.PLIEGUES),
+                        help="al elegir α: solo estos pliegues (por defecto, los 8); cada uno se elige igual")
     args = parser.parse_args()
     if args.que == "escribir":
         escribir(tuple(args.modelos))
     else:
-        elegir(args.que, args.procesos)
+        elegir(args.que, args.procesos, [p for p in comun.PLIEGUES if p in args.pliegues])
 
 
 if __name__ == "__main__":
