@@ -6479,3 +6479,46 @@ Lo que se deja fuera:
 - cualquier cambio en `pipeline.PIECES`, `DELIVERY_LAYERS`, `evidence_k2`, `evidence_k3`, `conjunto.py` o sus pesos.
 
 Estado: escrita antes de medir. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · modelo conjunto: K6a no apunta bien en Metrica; K6 no se cierra y baja detrás de K7 y K8
+
+Quién: Claude, en otra sesión de Ismael (17/11), con la regla de la entrada anterior, escrita antes de medir (`446ec4c`).
+Salida en `validation/conjunto/salidas/2026-11-17_k6a_metrica.md`.
+
+**El instrumento da lo publicado** [medido]. Con un solo juego, «todos», `main` y K2 salen iguales que en
+`salidas/2026-11-17_refinar_metrica.md` en las cuatro celdas: 0,668 → 0,703, 0,652 → 0,688, 0,542 → 0,563 y 0,527 →
+0,551.
+
+Resultado [medido], 3 partidos de Metrica. La diferencia lleva entre corchetes el intervalo pareado del 5 al 95 %:
+
+| `D` | condición | K2 | K6a | K6a − K2 | partido a partido |
+|---|---|---|---|---|---|
+| etiquetas | tal cual | 0,703 | 0,703 | −0,000 [−0,010 a +0,010] | −0,001, −0,001, +0,001 |
+| etiquetas | suavizado 25 | 0,688 | 0,691 | +0,003 [−0,007 a +0,014] | +0,012, −0,010, +0,007 |
+| propio | tal cual | 0,563 | 0,566 | +0,002 [−0,006 a +0,011] | −0,002, +0,007, +0,003 |
+| propio | suavizado 25 | 0,551 | 0,550 | −0,001 [−0,010 a +0,008] | +0,006, −0,013, +0,002 |
+
+**Con la regla: no apunta bien.** La media de las 4 celdas es +0,001 (se pedía +0,003) y la peor celda −0,0014 (se
+pedía −0,002 o más). Como estaba escrito, **K6 no se cierra: baja de prioridad y va detrás de K7 y K8.**
+
+Sin voto:
+- **Las otras medias, frente a K2:** la de solo los 7 pliegues da −0,001, +0,005, +0,002 y +0,001; la media de α_k·z_k
+  da −0,004, +0,005, +0,001 y +0,004. Las dos están dentro del mismo ruido.
+- **K6a frente a `main`:** +0,035, +0,039, +0,024 y +0,022. Es lo mismo que K2.
+- **K6a mezclada con B5, frente a K3:** +0,002, +0,002, +0,007 y −0,000.
+- **Posesiones predichas** en la primera celda: K6a 619, K2 624 y `main` 612 (reales, 879).
+- **Acierto por frame del signo de z:**
+  - con balón, K6a acierta un poco más que K2 (94,61 frente a 94,38 % «tal cual», y 94,16 frente a 94,00 % suavizado);
+  - sin balón (41.550 frames), acierta menos: 42,3 frente a 44,7 %, y 41,3 frente a 43,8 %;
+  - **sin balón, en Metrica, las dos aciertan menos que una moneda** [medido]. Por qué no se sabe; puede ser cómo
+    etiquetan los eventos de Metrica mientras el balón no se ve [inferencia sin comprobar]. No entra en ninguna regla.
+
+Lo que se lee [inferencia, sobre lo medido]:
+- En Metrica, promediar los 8 juegos no mueve el spellF1 por encima del ruido. Entre dos versiones casi iguales, ese
+  ruido es de ±0,010 en cada celda y de hasta ±0,013 partido a partido.
+- Un efecto de promediar menor de unos 0,01 no se puede ver con 3 partidos. Esto no contradice la señal de las dos
+  semillas en SkillCorner, que tenía 10 partidos y salía de un modelo de un solo proveedor.
+
+Descartado: cerrar K6 por esto, como decía la regla. Tampoco lleva nada a la entrega.
+
+Estado: K6 queda en espera, detrás de K7 y K8. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
