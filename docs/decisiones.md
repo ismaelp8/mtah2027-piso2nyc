@@ -6413,3 +6413,69 @@ medir K3 con los pesos del modelo de solo la DFL del 17/11, que están en la má
 (`<datos abiertos>/conjunto_cache/pesos/solo_dfl_todos.pt`).
 
 Estado: criterios escritos antes de generar `prueba_k3`. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · modelo conjunto: K6a, la media de los 8 juegos de pesos de K2 sin entrenar, como filtro en Metrica (regla, antes de medir)
+
+Quién: lo pidió Ismael el 17/11 («seguir mejorando la red K2 por orden de prioridad»). Lo coordina y revisa la sesión
+que hizo el estudio de K2 y K3. Lo escribe Claude en otra sesión de Ismael, en la rama `exp/k2-siguiente`, que sale de
+`exp/k2-refinar` en `4a67424`, antes de medir. Los candidatos nuevos se llaman de K6 en adelante.
+
+Por qué: fuera de su proveedor, lo que más ha ayudado es promediar. Mezclar K2 con B5 (K3) ayudó en dos réplicas, y la
+media de las z de dos semillas del modelo de solo la DFL sacó a cada una de −0,000 a +0,011 en SkillCorner, con el
+intervalo por encima de cero en 4 de 8 comparaciones (entrada «la semilla nueva del modelo de un solo proveedor»).
+Entrenar semillas en este portátil cuesta unos 55 minutos de CPU cada una, así que primero se mira lo que no pide
+entrenar.
+
+**Qué es K6a.** `possession/conjunto_pesos.npz` trae 8 juegos de pesos de K2: los 7 pliegues, cada uno sin un partido de
+la DFL y uno o dos de SkillCorner, y el de «todos», el de la entrega. K6a es la media de sus 8 z, con α = 4 (la de
+«todos» y la de la entrega), sin espejo, y se puntúa como K2. **Es un filtro, no un candidato a la entrega:** solo se
+puede medir en Metrica, porque en la DFL y en SkillCorner siete de los ocho juegos vieron cada partido. Dice si merece
+la pena gastar CPU en semillas.
+
+**Cómo se mide** (`validation/conjunto/k6.py`). Se usan los 3 partidos de Metrica, que no vio ninguno de los 8 juegos.
+`main`, K2, K3 y el `D` se montan con las mismas funciones que `refinar.py`. No se toca `possession/conjunto.py`, sus
+pesos ni `refinar.py`: `conjunto.pesos(fuera)` ya da el juego de cada pliegue. Hay 4 celdas: «tal cual» y «suavizado
+25», con el `D` de las etiquetas y con el propio.
+
+**Antes de leer nada se comprueba el instrumento.** Con un solo juego, «todos», el script tiene que dar en cada celda lo
+publicado de `main` y de K2 (`salidas/2026-11-17_refinar_metrica.md`): 0,668 → 0,703, 0,652 → 0,688, 0,542 → 0,563 y
+0,527 → 0,551, es decir, +0,035, +0,036, +0,021 y +0,024. Si no salen, no se lee nada y se para.
+
+**Regla** (K6a frente a K2, con los umbrales de K4, que también era el mismo modelo promediado):
+- **«Apunta bien»** si la media de K6a − K2 en las 4 celdas llega a +0,003 y ninguna celda baja de −0,002. Entonces el
+  paso siguiente es el piloto de semillas: 2 semillas más del pliegue de `J03WMX`, en la CPU, con su propia regla
+  escrita antes de entrenar.
+- **Si no apunta bien, K6 no se cierra: baja de prioridad y va detrás de K7 y K8.** El filtro tiene poca potencia: son
+  3 partidos, y entre dos versiones casi iguales el intervalo pareado es de unos ±0,007 (K4 dio en Metrica +0,000,
+  +0,003, +0,003 y −0,001). Además ya hay una señal a favor en otro eje, la de las dos semillas en SkillCorner. Cerrar
+  una idea general por tres partidos sería leer de más.
+
+Sin voto, para saber cuánto fiarse:
+- el intervalo pareado de K6a − K2 en cada celda y la diferencia partido a partido;
+- K6a frente a `main`;
+- la media de solo los 7 pliegues;
+- la media de α_k·z_k, cada juego con su α (4 u 8);
+- K6a mezclada con B5 a ½, frente a K3;
+- las posesiones predichas;
+- por frame, el acierto del signo de z en los frames de juego con equipo en la etiqueta, con balón y sin él.
+
+Avisado antes de medir:
+- Son 3 partidos con etiquetas sacadas de eventos y un balón pegado al jugador.
+- Los 8 juegos no son semillas independientes: comparten casi todos los datos. La media puede ayudar menos que la de
+  semillas de «todos», o más.
+- Ni siquiera «apunta bien» lleva nada a la entrega: decide qué se entrena después.
+
+**El piloto, si toca** (apuntes para su regla, que se escribe antes de entrenar):
+- Se entrenan 2 semillas más del pliegue de `J03WMX`, no de «todos». Así la media se puede medir también dentro del
+  proveedor, en los partidos que ese pliegue no vio: `J03WMX` en la DFL y `1874553` y `2010085` en SkillCorner.
+  También se mide en Metrica.
+- La media de las 3 se compara con cada una por separado, de forma pareada, y no solo con la original.
+- La original se entrenó en la GPU y las nuevas en la CPU.
+- Esos tres partidos son los del piloto de K2: valen para decidir si se entrena más, no para dar un número.
+
+Lo que se deja fuera:
+- el examen de SkillCorner, que está gastado para K2;
+- la ventana pública;
+- cualquier cambio en `pipeline.PIECES`, `DELIVERY_LAYERS`, `evidence_k2`, `evidence_k3`, `conjunto.py` o sus pesos.
+
+Estado: escrita antes de medir. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
