@@ -628,7 +628,7 @@ tiene alguna línea rara o si dos piezas se contradicen en un frame evaluado.
 posesiones de 17,4 s de media (96 en la 1ª parte y 102 en la 2ª), 116 paradas, `D` en el 45,8 % de los frames
 evaluados, 0 frames con piezas en conflicto y ninguna posesión de menos de 25 frames [medido].
 
-**Máquinas.** `equipo_v11` ha salido con ese sha256 [medido]:
+**Máquinas.** `equipo_v11` (la entrega, con K3) ha salido con ese sha256 [medido]:
 - en Windows, en un entorno limpio con `requirements-entrega.txt` (Python 3.13.1 y numpy 2.5.4), con `main` en
   `23dcbc1` y sin cambios locales en el código de la entrega;
 - como entrega de prueba `prueba_k3`, en otra instalación (Python 3.12.10 y numpy 1.26.4);

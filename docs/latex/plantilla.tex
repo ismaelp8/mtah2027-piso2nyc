@@ -1,0 +1,138 @@
+% Plantilla del documento técnico en LaTeX.
+%
+% md_a_latex.py la rellena con el contenido de docs/documento_tecnico.md y escribe
+% docs/latex/documento_tecnico.tex. El aspecto (letra, colores, márgenes, cajas) se cambia
+% aquí; el texto se cambia en el .md y se regenera. Las marcas %%ASÍ%% las sustituye el script.
+%
+% Compila con pdflatex (TeX Live, MiKTeX u Overleaf), sin nada más que los paquetes estándar.
+\documentclass[11pt,a4paper]{article}
+
+% --- Letra e idioma --------------------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english,spanish,es-noshorthands,es-tabla,es-nodecimaldot]{babel}
+\usepackage{lmodern}          % monoespaciada (código)
+\usepackage{charter}          % texto
+\usepackage[scale=0.92]{tgheros} % títulos
+\usepackage{textcomp}
+\usepackage{microtype}
+
+% Caracteres que el texto usa y pdflatex no conoce de serie.
+\DeclareUnicodeCharacter{2212}{\textminus}
+\DeclareUnicodeCharacter{03B1}{\ensuremath{\alpha}}
+\DeclareUnicodeCharacter{2194}{\ensuremath{\leftrightarrow}}
+\DeclareUnicodeCharacter{2192}{\ensuremath{\rightarrow}}
+\DeclareUnicodeCharacter{2190}{\ensuremath{\leftarrow}}
+\DeclareUnicodeCharacter{2264}{\ensuremath{\leq}}
+\DeclareUnicodeCharacter{2265}{\ensuremath{\geq}}
+\DeclareUnicodeCharacter{2248}{\ensuremath{\approx}}
+\DeclareUnicodeCharacter{2260}{\ensuremath{\neq}}
+\DeclareUnicodeCharacter{00A0}{~}
+
+% --- Página -----------------------------------------------------------------------------------
+\usepackage[a4paper,left=2.4cm,right=2.4cm,top=2.6cm,bottom=2.6cm,headheight=14pt]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em plus 0.2em}
+\setlength{\emergencystretch}{3em}
+\raggedbottom
+
+% --- Colores ----------------------------------------------------------------------------------
+\usepackage{xcolor}
+\definecolor{acento}{HTML}{1F3A5F}
+\definecolor{gris}{HTML}{5F6670}
+\definecolor{etiq}{HTML}{2E6E6A}
+\definecolor{codigo}{HTML}{2B2B2B}
+
+% --- Tablas, listas, títulos ------------------------------------------------------------------
+\usepackage{array,booktabs,longtable,xltabular}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\LTpre}{0.4em}
+\setlength{\LTpost}{0.6em}
+
+\usepackage{enumitem}
+\setlist{itemsep=0.25em,parsep=0.2em,topsep=0.3em}
+\setlist[itemize,1]{label=\textcolor{acento}{\textbullet}}
+\setlist[itemize,2]{label=\textcolor{acento}{\textendash}}
+\setlist[itemize,3]{label=\textcolor{acento}{\textperiodcentered}}
+\setlist[enumerate,1]{label=\arabic*.}
+
+\usepackage{titlesec}
+\titleformat{\section}{\sffamily\Large\bfseries\color{acento}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\sffamily\large\bfseries\color{acento}}{\thesubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.5em}{0.5em}
+\titlespacing*{\subsection}{0pt}{1.1em}{0.35em}
+
+\usepackage[titles]{tocloft}
+\setlength{\cftsecnumwidth}{2em}     % que «10.» no se pegue al título
+\renewcommand{\cftsecaftersnum}{.}   % «0.», como en los títulos
+\setlength{\cftsubsecnumwidth}{2.6em}
+\setlength{\cftbeforesecskip}{0.45em}
+
+% --- Cajas y código ---------------------------------------------------------------------------
+\usepackage{fvextra}
+\usepackage[skins,breakable]{tcolorbox}
+\usepackage{seqsplit}
+
+\newtcolorbox{nota}{enhanced,breakable,colback=acento!4,colframe=acento!35,boxrule=0.4pt,
+  arc=2pt,left=7pt,right=7pt,top=4pt,bottom=4pt,fontupper=\small,before skip=0.6em,after skip=0.6em}
+\newtcolorbox{resumen}[1]{enhanced,breakable,colback=white,colframe=acento,boxrule=0.6pt,
+  arc=2pt,left=8pt,right=8pt,top=5pt,bottom=5pt,title={#1},fonttitle=\sffamily\bfseries\small,
+  coltitle=white,colbacktitle=acento,before skip=0.8em,after skip=0.8em}
+\newtcolorbox{bloquecodigo}{enhanced,breakable,colback=gray!6,colframe=gray!35,boxrule=0.4pt,
+  arc=2pt,left=5pt,right=5pt,top=2pt,bottom=2pt,before skip=0.5em,after skip=0.7em}
+
+% Código en línea; md_a_latex.py ya escapa los caracteres especiales y marca dónde puede partirse.
+\newcommand{\code}[1]{\texttt{\textcolor{codigo}{#1}}}
+% Etiquetas de evidencia del documento: [medido], [inferencia], [sin verificar]...
+\newcommand{\etiqueta}[1]{{\small\textcolor{etiq}{[#1]}}}
+% Lo que falta por rellenar antes de entregar: sale en rojo para que no se escape.
+\newcommand{\pendiente}[1]{{\color{red!75!black}\bfseries[#1]}}
+
+% --- Cabecera y pie ---------------------------------------------------------------------------
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\sffamily\footnotesize\color{gris}%%EQUIPO%%}
+\fancyhead[R]{\sffamily\footnotesize\color{gris}%%TITULO_CORTO%%}
+\fancyfoot[C]{\sffamily\footnotesize\color{gris}\thepage\ de \pageref*{LastPage}}
+\renewcommand{\headrulewidth}{0.3pt}
+\fancypagestyle{portada}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}%
+  \fancyfoot[C]{\sffamily\footnotesize\color{gris}\thepage\ de \pageref*{LastPage}}}
+
+% --- Enlaces ----------------------------------------------------------------------------------
+\usepackage[unicode]{hyperref}
+\usepackage{bookmark}
+\usepackage{xurl}             % las URL largas pueden partirse en cualquier carácter
+\hypersetup{colorlinks=true,linkcolor=acento,urlcolor=acento!75!black,citecolor=acento,
+  pdftitle={%%TITULO_PDF%%},pdfauthor={%%EQUIPO%%},pdflang={es-ES}}
+\urlstyle{tt}
+
+% El documento numera desde la sección 0, como el .md.
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+
+\begin{document}
+
+\thispagestyle{portada}
+{\sffamily\small\color{gris}\MakeUppercase{%%CONCURSO%%}\par}
+\vspace{1.4em}
+{\sffamily\bfseries\fontsize{25}{30}\selectfont\color{acento}%%TITULO%%\par}
+\vspace{0.5em}
+{\sffamily\Large\color{gris}%%SUBTITULO%%\par}
+\vspace{0.9em}
+{\color{acento}\rule{\linewidth}{0.9pt}}\par
+\vspace{0.2em}
+{\sffamily\large\bfseries %%EQUIPO%%}\hfill{\sffamily\color{gris}%%FECHA%%}\par
+\vspace{0.6em}
+
+%%PORTADA%%
+
+\newpage
+{\hypersetup{linkcolor=black}\tableofcontents}
+\vspace{1em}
+
+\setcounter{section}{-1}
+%%CUERPO%%
+
+\end{document}
