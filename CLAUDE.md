@@ -558,6 +558,26 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Una ronda contra el cambio de proveedor (K2r), cerrada en su primer paso:** con aumentos hacia un tracking
     automático en los partidos de la DFL (`entrenar.py --robusto`), el modelo de solo la DFL pasa de −0,015 y −0,010 a
     −0,004 y −0,002 en SkillCorner con el `D` de las etiquetas, pero con el propio sigue en −0,008 y −0,005.
+  - **Dos refinamientos sin reentrenar, los dos apagados** (17/11, rama `exp/k2-refinar`;
+    `validation/resultados/2026-11-17_refinamientos_k2.md` y `docs/decisiones.md`, 17/11):
+    - **K4, el logit de K2 promediado con el del campo en espejo, se cierra:** gana en la DFL (+0,005 con control) y
+      empata en SkillCorner y en Metrica.
+    - **K3, la media a partes iguales del logit de K2 y del de B5** (`possession/refinamientos.py`,
+      `aprendida.evidence_k3`), gana a `main` (B5) en todo lo medido: de +0,032 a +0,054 con control en la DFL, de
+      +0,017 a +0,023 en SkillCorner y de +0,014 a +0,029 en Metrica. Partido a partido queda por debajo de `main` en 3
+      casos de 136; K2, en 12.
+    - **K3 no queda recomendada por encima de K2.** El punto que lo decidía (¿deja de perder donde K2 pierde?) no se
+      puede leer: una réplica de K2 entrenada solo con la DFL no repite en SkillCorner la pérdida publicada (queda en
+      −0,005 y +0,001, no en −0,015 y −0,010). Con esa réplica K3 gana a `main` (+0,008 a +0,011).
+    - **K3 es más prudente que K2 en los cambios de posesión:** predice un 2 % menos de posesiones que `main`, se queda
+      con la mitad de la mejora de K2 en recuperaciones (74,9 %, frente a 70,3 % de `main` y 80,0 % de K2) y, con el
+      flag y en Metrica, queda por debajo de K2.
+    - **Las tres conclusiones de David en la ventana pública se repiten en los 20 partidos abiertos**
+      (`validation/conjunto/detalle_abiertos.py`): vemos pocos cambios, pero bien puestos (de los directos entre
+      equipos en la DFL con control, `main` ve el 35 %, K2 el 48 % y K3 el 44 %); predecimos menos posesiones de las
+      que hay; y las de menos de 2 s no las encuentra ninguna versión.
+    - Si algo de esa rama sigue adelante, antes hay que repetir el criterio C0 desde ella: añade un envoltorio a
+      `possession/aprendida.py`.
   - **Lo que sale para la fase siguiente:** lo que cojea ahora es el cambio de proveedor, no la arquitectura. El
     instrumento para medirlo es dejar un proveedor fuera (`entrenar.py --solo` y `medir.py --alfa`).
   - **Lo que no se hizo del análisis de fuera:** el `D` dentro del modelo (el harness no puede validarlo con el balón) y
