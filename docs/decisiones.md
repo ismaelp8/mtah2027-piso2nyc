@@ -5681,3 +5681,6 @@ frames vivos, no solo donde el flag y control coinciden.
   los vivos), y ahí cambian.
 - Es una apuesta de convención declarada («exigir control», 12/11). Como las etiquetas de control salen de una regla de
   proximidad, el número con control sale favorecido. Pesan el flag (como límite) y SkillCorner.
+
+**B13 en SkillCorner `ENTRENAMIENTO`** (descriptivo, `..._skillcorner_entrenamiento_b13.md`): pierde en las cuatro celdas
+frente a `main`, de −0,010 a −0,024 (de 1 a 4 de 10). **B13 se cierra.**
