@@ -5702,3 +5702,46 @@ Qué se decide: la excepción que dejaba abierta la entrada «B11 y B12: resulta
 
 Por qué: es la tercera excepción a «lo que no ha ganado en el harness no entra», tras los contraataques y el balón
 fuera. A diferencia de esas dos, B12 sí se mide en datos abiertos y gana en todo salvo en el «6 de 7» de una celda.
+
+### 2026-11-17 · candidatos · B12, examen de SkillCorner: no pasa; B12 se queda cerrado y apagado
+
+Quién: Claude, en la sesión de Ismael del ordenador del trabajo, con la excepción que decidió Ismael (entrada anterior).
+Son datos abiertos.
+
+Cómo se midió:
+- **El comando:** `python validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso`, sobre `lector.EXAMEN`
+  (10 partidos).
+- **Qué se compara:**
+  - `main` es B5, `dead_state` y `decode_cortas_a_d`;
+  - B12, con el modelo de los 7 partidos de la DFL;
+  - bootstrap pareado de 1.000.
+- **Con qué pesos:** desde una copia con los pesos de B12 escritos como números (`possession/secuencia_pesos.py`), que se
+  comprobó que son idénticos bit a bit a los medidos (sha256 de la fuente `ba31988a…db76`).
+
+**Resultado [medido]:**
+
+| `D` | condición | `main` | B12 | frente a `main` [5–95 %] | gana en |
+|---|---|---|---|---|---|
+| de las etiquetas | «detectado» | 0,509 | 0,513 | +0,004 [−0,003 a +0,012] | 6 de 10 |
+| de las etiquetas | «detectado, suavizado» | 0,504 | 0,510 | +0,007 [−0,001 a +0,015] | 7 de 10 |
+| propio | «detectado» | 0,389 | 0,394 | +0,006 [−0,001 a +0,013] | 7 de 10 |
+| propio | «detectado, suavizado» | 0,384 | 0,394 | +0,009 [+0,002 a +0,017] | 7 de 10 |
+
+B12 predice más posesiones que `main` (2.512 frente a 2.283, con el `D` de las etiquetas y «detectado»). Las reales son
+3.152.
+
+**Con la regla escrita antes** (+0,005 o más y ganar en 7 de 10, en las cuatro celdas): **no pasa.** Cumple tres de las
+cuatro celdas. Falla «detectado» con el `D` de las etiquetas: +0,004 y gana en 6 de 10.
+
+**Decisión** (la que se escribió antes de abrir el examen):
+- B12 se queda cerrado y apagado;
+- a `main` va solo el registro, no el código ni los pesos;
+- el examen de SkillCorner queda usado para B12;
+- no se prueba ninguna variante de B12.
+
+Lectura [inferencia]:
+- En el examen, B12 gana menos que en la mitad de entrenamiento: de +0,004 a +0,009, frente a +0,011 a +0,014. Parte de
+  la ventaja era de esa mitad.
+- Las cuatro celdas siguen siendo positivas, pero ninguna se aleja del ruido.
+
+Lo que no se hace: buscar otra excepción para B12. Sería buscar hasta que salga.

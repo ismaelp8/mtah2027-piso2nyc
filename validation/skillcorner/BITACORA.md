@@ -142,7 +142,7 @@ tabla lleva la cuenta por candidato, no un único uso global.
 | fecha | candidato | quién lo autorizó | resultado |
 |---|---|---|---|
 | 16/11/2026 | «cortas a `D`» (idea 1.3), corte de 125 frames, con `validation/scripts/cortas_a_d_skillcorner.py --examen --confirmo-el-unico-uso` | Ismael dio el permiso el 16/11; Manuel lo autorizó en el momento | **Pasa:** +0,009 (10 de 10) con «detectado» y +0,008 (10 de 10) con «detectado, suavizado», sobre un umbral escrito antes de +0,005 y 7 de 10 |
-| 17/11/2026 | B12 (GRU bidireccional, `aprendida.evidence_b12`), con `validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso` | Ismael, en el momento (17/11, 10:20) | (se rellena al acabar) |
+| 17/11/2026 | B12 (GRU bidireccional, `aprendida.evidence_b12`), con `validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso` | Ismael, en el momento (17/11, 10:20) | **No pasa:** con el `D` de las etiquetas, +0,004 (6 de 10) con «detectado» y +0,007 (7 de 10) con «detectado, suavizado»; con el propio, +0,006 y +0,009 (7 de 10). Falla una celda del umbral escrito antes (+0,005 y 7 de 10 en las cuatro). B12 se queda cerrado |
 
 El detalle está en `docs/decisiones.md`, entrada «la idea 1.3 («cortas a `D`») se desaparca».
 
