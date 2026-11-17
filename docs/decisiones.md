@@ -6522,3 +6522,105 @@ Lo que se lee [inferencia, sobre lo medido]:
 Descartado: cerrar K6 por esto, como decía la regla. Tampoco lleva nada a la entrega.
 
 Estado: K6 queda en espera, detrás de K7 y K8. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · modelo conjunto: K7, Metrica como un proveedor más en el entrenamiento, puntuado en SkillCorner (candidatos y regla, antes de entrenar)
+
+Quién: Claude, en otra sesión de Ismael (17/11), con la revisión de la sesión que coordina. Rama `exp/k2-siguiente`.
+Escrita antes de entrenar ni medir ningún candidato de K7. Lo único medido antes son las comprobaciones del
+instrumento y la medida del signo de z sin balón (abajo), que decide la limpieza de los datos de entrenamiento y no
+mira ningún resultado de K7.
+
+**Por qué así.** K7 era «una salida por forma de etiquetar y, después, Metrica como tercer proveedor». Un piloto de K7
+con un solo pliegue no ve nada dentro del proveedor: entre dos entrenamientos iguales hay hasta 0,010 en SkillCorner,
+así que no vería nada menor de unos 0,02. Donde K7 debería notarse es fuera del proveedor, y para ese eje ya hay una
+referencia de ruido: los tres modelos de solo la DFL, puntuados en SkillCorner. Por eso las dos partes de K7 se prueban
+juntas dejando un proveedor fuera. Se entrena con la DFL y Metrica, sin SkillCorner, y se puntúa en SkillCorner.
+
+**Los candidatos** (`validation/conjunto/entrenar_k7.py`; pliegue «todos» de la DFL y de Metrica; en la CPU, 3.000
+pasos, la `CONFIG` de K2):
+- **K7c:** una sola z, como K2. Las etiquetas de Metrica (de eventos) van a la misma salida que las de control de la
+  DFL. Es la receta de K2 con otro segundo proveedor. Se entrena primero.
+- **K7s:** una z por proveedor, y nada más: las salidas de cambio y la del flag son compartidas. Cada trozo aprende con
+  la z de su proveedor. **En un proveedor que no ha visto se usa la media de las dos z, fijada desde ahora.** Como la
+  última capa es lineal, esa media es una sola fila de pesos: `juntar_k7.py` la escribe así y `possession/conjunto.py`
+  la puntúa sin cambiar nada. Cada z por separado se enseña sin voto.
+- **Metrica es un cuarto del lote** (8 trozos de 32), para que cada partido pese parecido: son 3 de 10 partidos, el
+  30 %. Con la mitad, cada partido de Metrica se vería 2,3 veces más que uno de la DFL, y el piloto de K2 ya midió que
+  con ±12 s de 22 jugadores una red se aprende los partidos.
+  - **Qué cambia respecto a la referencia:** los modelos de solo la DFL veían 32 trozos de la DFL por paso, y estos
+    ven 24, con los mismos 3.000 pasos.
+- **Metrica no tiene flag:** ese término se enmascara, como en SkillCorner.
+- **El balón de Metrica en los `D` se queda como viene.** Se ve en el 24,7, el 14,8 y el 19,7 % de los frames `D` de
+  sus tres partidos [medido]. Lo que se tapa en la DFL no es el balón en los `D`, sino un artefacto: el proveedor congela
+  la posición mientras está muerto y la hace saltar al reanudar. En Metrica el tracking es de verdad. En el ATD el balón
+  sí se ve en las paradas (el 68 % de los frames de las ventanas `SET PIECES`, entrada de K2 del 17/11). K2, K3 y K6a
+  se midieron en Metrica con ese mismo balón, y los trozos de la DFL siguen con su `p_a_la_vista`.
+
+**La limpieza de las etiquetas de Metrica, decidida antes de entrenar:**
+- **El problema.** En Metrica, K2 acierta el signo de z en el 44,7 % de los 41.550 frames vivos sin balón, y hay
+  30.166 frames `D` con el balón a la vista. Las dos cosas apuntan a que las etiquetas de eventos y el balón no casan
+  en los bordes de las paradas. Si esos frames «vivos sin balón» son en realidad paradas con la etiqueta del equipo
+  anterior, entrenar con ellos enseña algo falso justo donde el ATD pierde el balón.
+- **La medida** (`validation/conjunto/signo_sin_balon.py`): el acierto del signo de z de K2 en los frames vivos sin
+  balón de la DFL «como el ATD», con las etiquetas de control y el pliegue que no vio cada partido.
+  - **60 % o más:** lo de Metrica es de sus etiquetas, no de K2. En los trozos de Metrica, los frames vivos sin balón
+    crudo (sin balón en «tal cual», antes de los aumentos) no cuentan en la pérdida de z ni en la de cambios. La
+    máscara se calcula de lo exportado.
+  - **Menos del 60 %:** la exclusión no está justificada y Metrica entra entera.
+- Sin voto: lo mismo con el flag, con «sin bloques», con B5 y en SkillCorner.
+
+**Las comprobaciones del instrumento:**
+- **La exportación de Metrica es la del lector:** balón, slots y etiquetas frame a frame, en las dos condiciones
+  (`comprobar_k7.py metrica`). [medido: pasa]
+- **`entrenar_k7.py c --parte-metrica 0` es `entrenar.py todos --solo dfl`:** con la misma semilla y 20 pasos, los 20
+  tensores de pesos son iguales bit a bit (`comprobar_k7.py pasos`). [medido: pasa]
+- **Paridad de numpy con torch** de los pesos exportados (la fila media en K7s), en un partido de SkillCorner, con una
+  diferencia máxima de z por debajo de 0,01 (`comprobar_k7.py paridad`). Se hace después de cada entrenamiento y antes
+  de puntuar.
+- **La medida tiene que dar lo publicado** de `main` y de las réplicas 1 y 2 en SkillCorner (`k7.py`). Si no, no se lee
+  nada.
+
+**Cómo se mide** (`validation/conjunto/k7.py`): en los 10 partidos de `lector.ENTRENAMIENTO` de SkillCorner, que ningún
+modelo de K7 vio, con α = 4, frente a `main` (B5), como las réplicas. El examen no se abre. Las 4 celdas: «detectado» y
+«detectado, suavizado», con el `D` de las etiquetas y con el propio. Se compara con los tres modelos de solo la DFL:
+- el original (GPU), cuyos pesos no están aquí: entra solo con sus cifras publicadas, −0,015, −0,010, −0,007 y −0,004;
+- las réplicas 1 y 2 (CPU): −0,005, +0,001, −0,000 y +0,003, y −0,007, −0,003, −0,003 y −0,001.
+
+**Regla.** Una variante **«se traslada mejor»** si cumple las dos cosas:
+- en las 4 celdas queda en lo mejor de los tres modelos o por encima (frente a `main`: −0,005, +0,001, −0,000 y
+  +0,003);
+- la media de sus 4 celdas llega a +0,004, que es +0,008 sobre la media de los tres.
+
+**Si queda al límite** (la media entre +0,002 y +0,006, o una sola celda por debajo de su referencia por 0,002 o menos)
+se entrena una segunda semilla de esa variante, y la regla se lee con la media de las diferencias de las dos.
+
+Qué significa cada resultado:
+- **Pasa K7s y no K7c:** lo que ayuda es la z por proveedor. Lo siguiente es K7 con los tres proveedores y una z por
+  proveedor, en una ronda de pliegues, con su regla.
+- **Pasa K7c:** lo que ayuda es un proveedor más, con o sin z propia.
+- **No pasa ninguna:** la lectura es «Metrica no ayuda a trasladarse a un tracking automático», no «las z por proveedor
+  no sirven». La z por proveedor en el montaje de la entrega (DFL y SkillCorner) queda sin probar, apuntada para una
+  ronda con GPU, no cerrada. Se pasa a K8.
+- **El límite, escrito antes:** SkillCorner es el sentido difícil (de un tracking limpio a uno automático), y Metrica es
+  limpia como la DFL. Que pase dice «un proveedor más se traslada mejor», no que vaya a pasar en el ATD. Se toma como
+  motivo para seguir, no como prueba.
+
+Sin voto:
+- el intervalo pareado de cada variante frente a cada réplica, y en cuántos partidos gana;
+- frente al original, solo la diferencia con lo publicado;
+- cada z de K7s por separado;
+- las posesiones predichas;
+- la tabla descriptiva del entrenamiento: acierto y pérdida de z en SkillCorner.
+
+Avisado antes de medir:
+- **Metrica deja de valer como prueba** para los modelos que se entrenen con ella. Las cifras de K2, K3 y K6a en Metrica
+  siguen valiendo, y como banco de pruebas Metrica da poco (±0,01, K6a).
+- **Cada variante es un solo entrenamiento,** y entre dos entrenamientos iguales hay hasta 0,010: por eso se compara con
+  lo mejor de los tres y no con su media.
+- **Coste:** unas 2 horas de CPU, un entrenamiento detrás de otro.
+
+Lo que no cambia: `entrenar.py`, `red.py`, `exportar.py`, `possession/conjunto.py`, los pesos de K2, `pipeline.PIECES`,
+`DELIVERY_LAYERS` y la entrega. Lo nuevo es `exportar_metrica.py`, `entrenar_k7.py`, `juntar_k7.py`, `comprobar_k7.py`,
+`k7.py` y `signo_sin_balon.py`. Los pesos se quedan fuera de git (`conjunto_cache/`).
+
+Estado: escrita antes de entrenar. La medida del signo sin balón se apunta debajo antes de entrenar.
