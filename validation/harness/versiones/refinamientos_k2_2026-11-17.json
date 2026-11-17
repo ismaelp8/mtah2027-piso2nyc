@@ -1,0 +1,13 @@
+{
+  "main": {
+    "nota": "la entrega: B5 (aprendida.evidence_b5), dead_state y decode_cortas_a_d; el harness deja fuera el partido que puntúa"
+  },
+  "K2: modelo conjunto en lugar de B5": {
+    "nota": "docs/decisiones.md, 17/11, «modelo conjunto»: el logit de K2 puntuado como B5, con el pliegue que no vio el partido",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_k2", "dejar_fuera": true}}
+  },
+  "K3: mezcla de K2 y B5": {
+    "nota": "docs/decisiones.md, 17/11, «dos refinamientos de K2 sin reentrenar»: la media a partes iguales del logit de K2 y del de B5, cada uno en su escala y con el pliegue que no vio el partido, puntuada como B5 (possession/refinamientos.py)",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_k3", "dejar_fuera": true}}
+  }
+}

@@ -433,6 +433,17 @@ def evidence_k2(trk, fuera=None):
     return conjunto.evidence(trk, fuera)
 
 
+def evidence_k3(trk, fuera=None):
+    """K3 (17/11, apagado): la mezcla a partes iguales del logit de K2 y del de B5, puntuada como B5.
+
+    Como `evidence_k2`, solo es la puerta para que el harness y `--pieza candidates=aprendida.evidence_k3` lleguen a
+    `refinamientos.evidence_k3` sin tocar `pipeline.py`. `fuera` es a la vez el pliegue de K2 y el de B5: el partido
+    de la DFL que el harness está puntuando. Se importa aquí dentro porque `refinamientos` importa este módulo.
+    """
+    from possession import refinamientos
+    return refinamientos.evidence_k3(trk, fuera, fuera)
+
+
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------
 # >>> COEFICIENTES
 # Los escribe validation/apuesta_b/entrenar.py. «todos»: los 7 partidos de la DFL (la entrega); cada
