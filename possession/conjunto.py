@@ -1,4 +1,7 @@
-"""Modelo conjunto: evidencia de equipo aprendida mirando a los jugadores uno a uno. APAGADO.
+"""Modelo conjunto: evidencia de equipo aprendida mirando a los jugadores uno a uno.
+
+**Va en la entrega desde el 17/11,** dentro de K3: `pipeline.PIECES` usa `aprendida.evidence_k3`, la media de este
+logit y el de B5 (`possession/refinamientos.py`; docs/decisiones.md, «se enciende K2» y «se enciende K3»).
 
 **Qué es** (docs/decisiones.md, 17/11, «modelo conjunto»). B5 resume cada frame en unos pocos agregados y los pesa
 con una recta. Este modelo recibe a cada jugador (dónde está respecto al balón, cómo se mueve, dónde está en el
@@ -8,8 +11,9 @@ partidos abiertos (A-League 2024/25, MIT), con el balón «como el ATD». No sus
 
 **Cómo entra en el pipeline.** `evidence(trk, fuera=None)` devuelve `(score, allowed)` como B5: el logit z del
 modelo, puntuado con `aprendida.puntuacion_de("b5", …)` (−α·|z| al equipo que pierde y el +1 de N1 donde se ve el
-balón). Es el candidato K2. No está en `pipeline.PIECES`: una entrega de prueba lo usa con
-`--pieza candidates=aprendida.evidence_k2`. `capa_cambios(trk)` es el candidato K1: una capa `(score, allowed)` que
+balón). Es el candidato K2. Solo, se usa en una entrega de prueba con
+`--pieza candidates=aprendida.evidence_k2` (así salió `equipo_v10`). `capa_cambios(trk)` es el candidato K1: una
+capa `(score, allowed)` que
 se suma a las piezas de la entrega (`--capa conjunto.capa_cambios`) y empuja hacia el equipo nuevo después de cada
 cambio que ve el modelo, con el mecanismo de `cambios.capa`.
 

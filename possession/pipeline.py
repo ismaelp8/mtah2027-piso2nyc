@@ -55,7 +55,10 @@ DELIVERY_LAYERS = (transiciones.evidence_equipo, dead_ball.ball_out)
 # Desde el 17/11 la evidencia de equipo es K2, el modelo conjunto (`aprendida.evidence_k2`, `possession/conjunto.py`):
 # cumplió los cuatro puntos de su regla, con el examen de SkillCorner y la entrega de prueba `prueba_k2`, y David decidió
 # encenderlo (docs/decisiones.md, «se enciende K2»). Antes era B5 (`aprendida.evidence_b5`).
-PIECES = {"ball": "clean", "candidates": "aprendida.evidence_k2", "dead_state": "evidence",
+# Desde el 17/11 por la tarde es K3 (`aprendida.evidence_k3`, `possession/refinamientos.py`): la media a partes
+# iguales del logit de K2 y del de B5, puntuada como B5. Pasó su entrega de prueba frente a `equipo_v10` (C0 a C6) e
+# Ismael decidió encenderla (docs/decisiones.md, «se enciende K3»). Antes era K2 sola (`aprendida.evidence_k2`).
+PIECES = {"ball": "clean", "candidates": "aprendida.evidence_k3", "dead_state": "evidence",
           "temporal": "decode_cortas_a_d"}
 MODULES = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal,
            "aprendida": aprendida}

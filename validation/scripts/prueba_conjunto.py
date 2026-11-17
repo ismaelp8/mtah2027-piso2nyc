@@ -11,7 +11,7 @@ Con el partido inventado del harness (`puntuar.partido_de_prueba`) y unos pesos 
 - los slots: añadir columnas vacías no cambia nada (bit a bit) y barajar las columnas, solo el redondeo;
 - un tramo cuyo largo no es múltiplo de 5;
 - la red: las sumas término a término de `conjunto.py` dan lo mismo que una versión con matrices escrita aparte;
-- el envoltorio `aprendida.evidence_k2` y que la pieza no está en la entrega (`pipeline.PIECES`);
+- el envoltorio `aprendida.evidence_k2` y que la pieza va en la entrega dentro de K3 (`pipeline.PIECES`);
 - si están los pesos de verdad (`possession/conjunto_pesos.npz`): los 8 pliegues, sus formas y su α.
 
 No usa datos del partido ni de la DFL. Sale con código 1 si falla alguna comprobación. Claude puede ejecutarlo.
@@ -163,14 +163,14 @@ def main():
             conjunto._CACHE.clear()
 
     print("La entrega:")
-    comprobar("es la evidencia de equipo de la entrega (encendida el 17/11, docs/decisiones.md, «se enciende K2»)",
-              pipeline.PIECES["candidates"] == "aprendida.evidence_k2")
+    comprobar("va en la entrega dentro de K3 (`aprendida.evidence_k3`, encendida el 17/11; docs/decisiones.md, «se "
+              "enciende K3»)", pipeline.PIECES["candidates"] == "aprendida.evidence_k3")
     comprobar("ni en DELIVERY_LAYERS", not any(capa.__module__.endswith("conjunto") for capa in
                                                pipeline.DELIVERY_LAYERS))
 
     print("Los pesos de verdad ({}):".format(os.path.basename(conjunto.PESOS)))
     if not os.path.isfile(conjunto.PESOS):
-        print("  no están: se salta (la pieza está apagada y solo los necesita una entrega de prueba)")
+        comprobar("están los pesos de verdad: la entrega los necesita", False)
     else:
         juegos = {}
         try:

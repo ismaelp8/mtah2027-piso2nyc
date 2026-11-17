@@ -9,8 +9,11 @@
 - **Reglas escritas antes de medir:** `docs/decisiones.md`, 17/11 (`d96fce8`, candidatos y regla; `017c4fe`, la lectura
   de la semilla nueva). Los resultados, en las entradas «K4 se cierra; K3 pasa dos de sus tres puntos» y «la semilla
   nueva del modelo de un solo proveedor».
-- **Mientras tanto, David encendió K2** en su rama `feat/encender-k2` (`equipo_v10`, reproducida en su máquina). Esta
-  rama sale de antes de eso y no toca `pipeline.py`: lo que sigue compara K3 y K2 con B5, que aquí sigue siendo `main`.
+- **Mientras tanto, David encendió K2** en su rama `feat/encender-k2` (`equipo_v10`, reproducida en su máquina). Todo
+  lo que sigue compara K3 y K2 con B5, que es a lo que estas tablas llaman `main`.
+- **Después (17/11 por la tarde): K3 pasó su entrega de prueba frente a `equipo_v10` e Ismael decidió encenderla,**
+  en la rama `feat/encender-k3` (`docs/decisiones.md`, «se enciende K3»). Es una decisión del equipo: con la regla
+  de abajo, K3 no quedaba recomendada por encima de K2. Los pasos que faltan, en `validation/conjunto/COMPROBAR_K3.md`.
 - **Etiquetas:** [medido] en esta sesión, con la salida en `validation/conjunto/salidas/2026-11-17_refinar_*`;
   [inferencia] es una lectura mía.
 

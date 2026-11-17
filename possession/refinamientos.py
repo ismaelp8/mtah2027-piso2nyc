@@ -1,4 +1,7 @@
-"""Refinamientos de K2 que no reentrenan nada: K3 (la mezcla con B5), K4 (el espejo) y K5. APAGADOS.
+"""Refinamientos de K2 que no reentrenan nada: K3 (la mezcla con B5), K4 (el espejo) y K5.
+
+**K3 es la evidencia de equipo de la entrega desde el 17/11 por la tarde** (`pipeline.PIECES`, por
+`aprendida.evidence_k3`; docs/decisiones.md, «se enciende K3»). K4 y K5 están apagadas.
 
 **Por qué** (docs/decisiones.md, 17/11, «dos refinamientos de K2 sin reentrenar»). K2 (`possession/conjunto.py`)
 gana a B5 con partidos de un proveedor que ha visto y no se traslada de un proveedor a otro; B5 sí se traslada. El
@@ -13,7 +16,7 @@ partido es de un tercer proveedor. Aquí no se entrena nada: se combinan dos log
 - **K5:** K3 con el logit de K4. Solo se mide si K3 y K4 pasan los dos.
 
 **No toca nada de K2 ni de B5.** `conjunto.evidence`, `aprendida.evidence_b5`, sus pesos y sus coeficientes no
-cambian: este módulo solo los lee. Nada de aquí está en `pipeline.PIECES`.
+cambian: este módulo solo los lee.
 
 **Reproducible bit a bit, con un matiz.** La mezcla y el promedio son productos y sumas de numpy término a término, y
 la puntuación va redondeada a `aprendida.DECIMALES`. K4 no pasa por ninguna exponencial, como K2. K3 y K5 heredan el

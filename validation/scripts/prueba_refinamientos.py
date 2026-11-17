@@ -13,7 +13,8 @@ comprueba:
 - la interfaz de K3, K4 y K5: arrays (n, 3), puntuación finita, columna `D` a cero, cero fuera de los tramos y todo
   permitido; dos ejecuciones dan lo mismo bit a bit; no escriben en el tracking; cambiar los equipos intercambia las
   columnas `H` y `A`;
-- que ninguna está en la entrega (`pipeline.PIECES`) y que el pipeline corre con cada una;
+- que K3 es la evidencia de equipo de la entrega (`pipeline.PIECES`) y K4 y K5 no, que la entrega sin opciones da lo
+  mismo que pasando K3 a mano, y que el pipeline corre con cada una;
 - si están los pesos de verdad, que las tres corren con los de la entrega.
 
 No usa datos del partido ni de la DFL. Sale con código 1 si falla alguna comprobación. Claude puede ejecutarlo.
@@ -119,9 +120,15 @@ def main():
                 comprobar("{}: el pipeline entero corre con ella".format(nombre), len(codigos) == n)
             comprobar("K3 no es ni K2 ni B5", not iguales(rf.evidence_k3(trk), conjunto.evidence(trk))
                       and not iguales(rf.evidence_k3(trk), aprendida.evidence_b5(trk)))
-            comprobar("ninguna está en la entrega (`pipeline.PIECES`)",
-                      all("refinamientos" not in valor and "k3" not in valor and "k4" not in valor
-                          and "k5" not in valor for valor in pipeline.PIECES.values()))
+            comprobar("K3 es la evidencia de equipo de la entrega (`pipeline.PIECES`), y K4 y K5 no están",
+                      pipeline.PIECES["candidates"] == "aprendida.evidence_k3"
+                      and pipeline.default_piece("candidates") is aprendida.evidence_k3
+                      and all("k4" not in valor and "k5" not in valor for valor in pipeline.PIECES.values()))
+            comprobar("el envoltorio `aprendida.evidence_k3` es `refinamientos.evidence_k3`",
+                      iguales(aprendida.evidence_k3(trk), rf.evidence_k3(trk)))
+            comprobar("la entrega sin opciones da lo mismo que pasando K3 a mano (como en `--pieza`)",
+                      np.array_equal(pipeline.run(trk),
+                                     pipeline.run(trk, pieces={"candidates": aprendida.evidence_k3})))
         finally:
             conjunto.PESOS = de_verdad
             conjunto._CACHE.clear()

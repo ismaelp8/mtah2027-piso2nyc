@@ -3,11 +3,13 @@
 Todas las piezas reciben un `Tracking` y devuelven arrays por frame de vídeo. El mismo código corre con el
 ATD del partido y con los partidos abiertos de la Bundesliga que prepara `validation/harness/`. Por eso
 ninguna pieza abre ficheros por su cuenta, salvo `dead_ball.py` y, desde el 15/11, `transiciones.py`, que
-usan los ficheros del partido (el Smart Tagging) solo cuando `pipeline.build` les pasa las rutas.
+usan los ficheros del partido (el Smart Tagging) solo cuando `pipeline.build` les pasa las rutas. La otra
+excepción, desde el 17/11, es `conjunto.py`, que lee sus pesos (`possession/conjunto_pesos.npz`): son parte del
+código, salen de datos abiertos y no son un fichero del partido.
 
 Contrato de las piezas de evidencia (`candidates`, `dead_state`, `dead_ball`): cada una tiene una función
-`evidence(trk, ...)` que devuelve `(score, allowed)`. La pieza de equipo de la entrega es, desde el 14/11,
-`aprendida.evidence_b5` (la apuesta B; `pipeline.PIECES`), con la misma interfaz:
+`evidence(trk, ...)` que devuelve `(score, allowed)`. La pieza de equipo de la entrega es, desde el 17/11,
+`aprendida.evidence_k3` (la media de K2 y B5; `pipeline.PIECES`), con la misma interfaz:
 
 - `score`: array (n, 3) de float, una columna por estado en el orden `H`, `A`, `D`. Es aditiva: el pipeline
   suma las de todas las piezas. Más alto es más probable. Solo cuentan las diferencias entre las columnas

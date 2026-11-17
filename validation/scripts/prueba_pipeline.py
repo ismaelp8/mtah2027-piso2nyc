@@ -71,8 +71,8 @@ def no_files():
     Es la guarda de la regla nº 1 para esta prueba. Si una pieza acabara leyendo un fichero del partido
     al llamarla sin rutas, fallaría aquí en vez de leerlo.
 
-    La única excepción son los pesos del modelo conjunto (K2, `possession/conjunto_pesos.npz`, la evidencia de
-    equipo de la entrega desde el 17/11): son parte del código, viven en possession/ y salen de datos abiertos.
+    La única excepción son los pesos del modelo conjunto (K2, `possession/conjunto_pesos.npz`, que la evidencia de
+    equipo de la entrega usa desde el 17/11): son parte del código, viven en possession/ y salen de datos abiertos.
     Se admite solo esa ruta exacta y solo para leer.
     """
     real_open, real_io_open = builtins.open, io.open
@@ -266,9 +266,9 @@ def check_pieces(rng):
     trk = synthetic_tracking(400, [(50, 350)], (105.0, 68.0), rng, slots_per_team=5)
     block = slice(50, 350)
     explicit = {name: pipeline.default_piece(name) for name in pipeline.PIECES}
-    check("PIECES nombra las funciones que usa `run` por defecto (la de equipo, K2 desde el 17/11; el "
+    check("PIECES nombra las funciones que usa `run` por defecto (la de equipo, K3 desde el 17/11; el "
           "decodificador, «cortas a D» desde el 16/11)",
-          explicit == {"ball": ball.clean, "candidates": aprendida.evidence_k2,
+          explicit == {"ball": ball.clean, "candidates": aprendida.evidence_k3,
                        "dead_state": dead_state.evidence, "temporal": temporal.decode_cortas_a_d})
     base = pipeline.run(trk)
     check("sin `pieces`, con {} y con las de PIECES una a una sale lo mismo",
@@ -620,7 +620,7 @@ def check_main(codes, folder):
           raises(ValueError, lambda: pipeline.overrides(["decoder=temporal.decode"]))
           and raises(ValueError, lambda: pipeline.overrides(["candidates=aprendida.no_existe"]))
           and raises(ValueError, lambda: pipeline.overrides((), ["os.remove"]))
-          and pipeline.PIECES["candidates"] == "aprendida.evidence_k2")
+          and pipeline.PIECES["candidates"] == "aprendida.evidence_k3")
     real_root = pipeline.ROOT
     pipeline.ROOT = folder  # una carpeta que no es un repositorio de git
     try:

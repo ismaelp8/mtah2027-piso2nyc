@@ -53,7 +53,9 @@ def main():
             trk = puntuar.solo_lectura(trk)
             for modo in MODOS:
                 extra = [puntuar.d_oraculo(gt)] if modo == "oraculo" else []
-                for nombre, piezas in (("main", None), ("K2", {"candidates": aprendida.evidence_k2})):
+                # `main` es B5 a mano: desde el 17/11 la pieza de `pipeline.PIECES` ya no es B5
+                for nombre, piezas in (("main", {"candidates": aprendida.evidence_b5}),
+                                       ("K2", {"candidates": aprendida.evidence_k2})):
                     recuentos[(nombre, condicion, modo)].append(
                         puntuar.contar(gt, pipeline.run(trk, extra=extra, pieces=piezas)))
         print("# hecho {}".format(id_), file=sys.stderr, flush=True)

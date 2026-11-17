@@ -234,14 +234,24 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v10`** (17/11, con K2; `docs/decisiones.md`, «se enciende K2» y «`equipo_v10`»):
+- **Entrega en preparación: `equipo_v11`, con K3** (17/11 por la tarde; `docs/decisiones.md`, «se enciende K3»): la
+  evidencia de equipo es la media de K2 y B5 (`aprendida.evidence_k3`). Lo decidió Ismael, tras comentarlo con el
+  equipo, en la rama `feat/encender-k3`.
+  - **Todavía no existe.** Hay que regenerarla en el entorno limpio desde esa rama, validarla y reproducirla en una
+    segunda máquina. Se espera la huella de la entrega de prueba `prueba_k3` (`811658cd…c04b`, generada con numpy
+    1.26.4), con 198 posesiones y 116 paradas.
+  - Frente a `equipo_v10` cambian 4.219 frames (2,7 %): 2.719 de un equipo al otro y 1.500 entre un equipo y `D`
+    [medido por David con la entrega de prueba].
+  - Hasta que esté regenerada y la rama entre en `main`, la entrega vigente es la que dé `main`.
+- **Entrega con K2: `equipo_v10`** (17/11; `docs/decisiones.md`, «se enciende K2» y «`equipo_v10`»):
   `equipo_v9` con la evidencia de equipo de K2 (`aprendida.evidence_k2`, el modelo conjunto) en lugar de B5. Lo decidió
   David.
   - sha256 `784e65e5…acbc`, el mismo que la entrega de prueba `prueba_k2` de Ismael. David la regeneró en su máquina
     (Python 3.13.1, numpy 2.5.4, rama `feat/encender-k2` en `7e0c2cc`, sin cambios locales): 0 conflictos, válida,
     203 posesiones de 16,9 s de media. **Reproducida en dos máquinas.**
   - Frente a `equipo_v9` cambian 7.666 frames (4,8 %): 5.181 de un equipo al otro y 2.485 entre un equipo y `D`.
-  - Vale cuando `feat/encender-k2` entre en `main`. El documento técnico tiene que contar K2.
+  - Es la entrega de la rama `feat/encender-k2` (PR 26), y la vuelta atrás si K3 no se regenera a tiempo. El documento
+    técnico tiene que contar K2.
 - **Entrega anterior: `equipo_v9`** (16/11 por la noche): `equipo_v8` más «cortas a `D`»
   (`temporal.decode_cortas_a_d`, en `pipeline.PIECES` desde el 16/11; Ismael: «si enciendela»; `docs/decisiones.md`).
   - Es la entrega de prueba `prueba_cortas_a_d`: sha256 `d9706dfb…be63`, válida, con 201 posesiones de 17,0 s de
@@ -581,8 +591,6 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       +0,003 y −0,015 frente a `main` en SkillCorner, sin ganar en ninguno. La media de dos semillas queda en +0,002 a
       +0,004 y, mezclada con B5, en +0,007 a +0,017 [lectura, con solo dos semillas]. Queda por probar un K2 con
       varias semillas promediadas (pide la GPU), con su regla.
-    - **Los scripts de esa rama (`refinar.py`, `detalle_abiertos.py`) se niegan a medir si `PIECES` ya no tiene B5:**
-      llaman `main` a la entrega con B5. Con K2 encendido hay que decidir antes qué se llama `main`.
     - **K3 es más prudente que K2 en los cambios de posesión:** predice un 2 % menos de posesiones que `main`, se queda
       con la mitad de la mejora de K2 en recuperaciones (74,9 %, frente a 70,3 % de `main` y 80,0 % de K2) y, con el
       flag y en Metrica, queda por debajo de K2.
@@ -590,10 +598,12 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
       (`validation/conjunto/detalle_abiertos.py`): vemos pocos cambios, pero bien puestos (de los directos entre
       equipos en la DFL con control, `main` ve el 35 %, K2 el 48 % y K3 el 44 %); predecimos menos posesiones de las
       que hay; y las de menos de 2 s no las encuentra ninguna versión.
-    - **Pendiente: la entrega de prueba de K3 frente a `equipo_v10`** (la pidió Ismael el 17/11). Sus criterios de
-      daño están escritos antes de generarla (`docs/decisiones.md`, 17/11) y los pasos para quien la ejecute, en
-      `validation/conjunto/COMPROBAR_K3.md`. Empieza por C0 desde esa rama, que añade un envoltorio a
-      `possession/aprendida.py`.
+    - **K3 pasó su entrega de prueba frente a `equipo_v10`** (C0 a C6, medido por David con solo agregados) **e
+      Ismael decidió encenderla el 17/11 por la tarde** (`docs/decisiones.md`, «se enciende K3»): en la rama
+      `feat/encender-k3`, `pipeline.PIECES["candidates"]` es `aprendida.evidence_k3`. Es una decisión del equipo, no
+      un veredicto de la regla. Los pasos que faltan están en `validation/conjunto/COMPROBAR_K3.md`.
+    - **En los scripts del estudio, `main` es B5 fijada a mano** (`validation/conjunto/medir.py`, `metrica.py`,
+      `refinar.py`), no la pieza de la entrega.
   - **Lo que sale para la fase siguiente:** lo que cojea ahora es el cambio de proveedor, no la arquitectura. El
     instrumento para medirlo es dejar un proveedor fuera (`entrenar.py --solo` y `medir.py --alfa`).
   - **Lo que no se hizo del análisis de fuera:** el `D` dentro del modelo (el harness no puede validarlo con el balón) y

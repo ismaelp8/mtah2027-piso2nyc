@@ -7005,3 +7005,67 @@ Decisión y por qué:
   y elegir entre `equipo_v10` y K3 es del equipo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
 
 Estado: K3 apagada, con su entrega de prueba pasada. Pendiente de lo que decida el equipo.
+
+### 2026-11-17 · candidatos · se enciende K3: `pipeline.PIECES["candidates"]` pasa a `aprendida.evidence_k3`
+
+Quién: Ismael (17/11, por la tarde): «lo he comentado con el equipo pero ya te digo yo me decanto por K3 de momento»,
+y pidió juntar la rama de los refinamientos con la de David. El cambio de código lo hace Claude en la rama
+`feat/encender-k3`, que junta `feat/encender-k2` (hasta `02313a9`, sin el notebook) y `exp/k2-refinar`.
+
+Qué se enciende: K3, la media a partes iguales del logit de K2 y del de B5, puntuada como B5
+(`possession/refinamientos.py`, por el envoltorio `aprendida.evidence_k3`), como evidencia de equipo de la entrega en
+lugar de K2 sola. El `D` (`dead_state`, `dead_ball`), el decodificador (`decode_cortas_a_d`) y las capas del partido
+(`DELIVERY_LAYERS`) no cambian. No se entrena nada: usa los pesos de K2 y los coeficientes de B5 que ya estaban.
+
+Por qué [medido; entradas del 17/11 sobre los refinamientos]:
+- **Gana a B5 en todo lo medido:** de +0,034 a +0,056 con control en la DFL (con las α de la entrega), de +0,017 a
+  +0,023 en SkillCorner y de +0,014 a +0,029 en Metrica.
+- **Falla menos partido a partido:** queda por debajo de B5 en 3 de 136 casos (el peor, −0,007); K2, en 12 (el peor,
+  −0,026).
+- **Fuera del proveedor aguanta mejor que K2:** con K2 entrenada con un solo proveedor, K3 queda de −0,020 a +0,014
+  frente a B5, y K2 sola, de −0,083 a +0,003.
+- **Pasó su entrega de prueba frente a `equipo_v10`** (C0 a C6): cambia el 2,7 % de los frames, con 198 posesiones y
+  116 paradas.
+
+Lo que se sabe en contra, y se asume:
+- **Con la regla escrita antes de medir, K3 no quedaba recomendada por encima de K2:** su punto 2 no se pudo leer. Lo
+  que se midió después va a su favor, pero no en la prueba que la regla nombraba. Encenderla es una decisión del
+  equipo, no un veredicto de la regla.
+- **Gana menos donde K2 funciona:** con el flag, de 0,015 a 0,023 menos que K2; en Metrica, de 0,006 a 0,012 menos; con
+  control, hasta 0,008 menos.
+- **Es más prudente en los cambios de posesión:** de los cambios directos entre equipos en la DFL ve el 44 % (K2, el
+  48 %; B5, el 35 %), y se queda con la mitad de la mejora de K2 en recuperaciones.
+- Nada de esto se ha medido en el partido con etiquetas. Sigue siendo una apuesta, más prudente que la de K2.
+
+Qué cambia en el código:
+- `pipeline.PIECES["candidates"]` pasa a `"aprendida.evidence_k3"`.
+- Las pruebas sin datos que fijaban K2 como pieza de equipo dicen ahora K3 (`prueba_pipeline`, `prueba_harness`,
+  `prueba_balon_fuera`, `prueba_conjunto`, `prueba_refinamientos`). Pasan 24 de 25; `prueba_silbato` necesita `ffmpeg`
+  y falla igual sin este cambio.
+- **`main`, en los scripts del estudio, vuelve a ser B5 fijada a mano** (`validation/conjunto/medir.py`, `metrica.py` y
+  las dos definiciones de versiones del harness): con K2 o K3 en la entrega, tomarla de `pipeline.PIECES` comparaba
+  la red consigo misma. El candado de `refinar.py` que se negaba a medir deja de hacer falta y se quita.
+- `validation/partido/probar_entrega.py` compara por defecto con `equipo_v11`.
+- Los comentarios de `possession/` que decían «apagado» o B5 están al día. Son código de la entrega: van en este
+  mismo cambio, antes de regenerar.
+
+Lo que hay que hacer, en este orden:
+1. **Regenerar en el entorno limpio** (`requirements-entrega.txt`), desde esta rama y sin cambios locales:
+   `python -m possession.pipeline --name equipo_v11`. Tiene que salir con 0 conflictos, 198 posesiones y, si numpy
+   2.5.4 da los mismos bytes que 1.26.4 como pasó con B5 y con K2, sha256 `811658cd…c04b`. Si sale otra huella, la
+   buena es la del entorno limpio, y se apunta.
+2. **Validar** ese mismo fichero con `evaluation/validate_submission.py`.
+3. **Reproducirla en una segunda máquina.** K3 hereda el `np.exp` de los rasgos de B5.
+4. **El documento técnico** tiene que contar K2 y K3: los datos de entrenamiento y su origen, que es una apuesta y qué
+   se sabe en contra.
+5. Lo pendiente de la PR 26 que no es de esta rama: la excepción escrita de los pesos (`CONTRIBUTING.md` §7) y los
+   cuatro scripts de SkillCorner que dan por hecho que la entrega no vio esos partidos.
+
+Vuelta atrás: `equipo_v10` (K2) sigue siendo la entrega de `feat/encender-k2`, reproducida en dos máquinas, y
+`equipo_v9` (B5), la de `main`. Volver a cualquiera de las dos es no mergear esta rama.
+
+Descartado: mezclar con ¾ de K2 (se vio sin voto y elegirlo ahora sería elegir mirando el resultado); esperar a los
+pesos de la máquina de la GPU para leer el punto 2 (no llegan hoy).
+
+Estado: encendida en `feat/encender-k3`. **`equipo_v11` no existe todavía:** hasta que alguien la regenere y la valide,
+la entrega vigente es la que haya en `main`.

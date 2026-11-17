@@ -73,8 +73,8 @@ def _piezas(trk, gt, partido_b5):
     """Las piezas de la entrega sobre un tracking: B5, el estado de `D`, el `D` de las etiquetas y lo que hace
     falta para puntuar un logit como B5."""
     limpio = pipeline.default_piece("ball")(trk)
-    b5 = (aprendida.evidence_b5(limpio, fuera=partido_b5) if partido_b5 else
-          pipeline.default_piece("candidates")(limpio))
+    # B5 a mano, y no la pieza de `pipeline.PIECES`: desde el 17/11 la de la entrega es K3, que vio SkillCorner
+    b5 = aprendida.evidence_b5(limpio, fuera=partido_b5 or None)
     estado = pipeline.default_piece("dead_state")(limpio)
     todos = aprendida.equipo_mas_cercano(limpio)
     cercano = np.full(len(limpio.bx), -1, dtype=np.int8)

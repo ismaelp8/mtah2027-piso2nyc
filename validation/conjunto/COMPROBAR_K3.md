@@ -1,6 +1,8 @@
-# K3: qué es y qué falta por comprobar (17/11/2026)
+# K3: qué es y qué falta para entregar con ella (17/11/2026)
 
-Para quien vaya a hacer las comprobaciones. Rama `exp/k2-refinar`. El detalle está en
+**Estado, 17/11 por la tarde:** K3 pasó su entrega de prueba frente a `equipo_v10` e Ismael decidió encenderla. Está
+encendida en la rama `feat/encender-k3`, que junta la de David (`feat/encender-k2`) con la de los refinamientos
+(`exp/k2-refinar`). **Falta regenerar la entrega, validarla y reproducirla en otra máquina.** El detalle está en
 `validation/resultados/2026-11-17_refinamientos_k2.md` y en `docs/decisiones.md` (entradas del 17/11).
 
 ## Qué es K3
@@ -11,8 +13,8 @@ Para quien vaya a hacer las comprobaciones. Rama `exp/k2-refinar`. El detalle es
   visitante). K3 los promedia a partes iguales y lo demás no cambia: el mismo balón muerto, el mismo decodificador y
   las mismas capas del partido.
 - **No se ha entrenado nada nuevo.** Usa los pesos de K2 que ya están en el repo y los coeficientes de B5.
-- **Está apagada.** El código es `possession/refinamientos.py` y un envoltorio, `aprendida.evidence_k3`. La entrega no
-  cambia.
+- **Está encendida en `feat/encender-k3`:** `pipeline.PIECES["candidates"]` es `aprendida.evidence_k3`. El código es
+  `possession/refinamientos.py` y ese envoltorio. En `main` todavía no está.
 
 ## Para qué sirve
 
@@ -37,48 +39,59 @@ Ganancia de `spellF1` sobre B5 (`equipo_v9`). Por debajo de ±0,01 es ruido.
 - **En contra:** gana menos donde K2 funciona, y es más prudente justo en los cambios de posesión. De los cambios
   directos entre equipos en la Bundesliga, B5 ve el 35 %, K2 el 48 % y K3 el 44 %. En recuperaciones anotadas por
   personas: 70 %, 80 % y 75 %.
-- **Con la regla que se escribió antes de medir, K3 no queda recomendada por encima de K2.** Pasa dos de sus tres
-  puntos; el tercero no se pudo leer (ver el paso 3).
+- **Con la regla que se escribió antes de medir, K3 no quedaba recomendada por encima de K2:** pasa dos de sus tres
+  puntos y el tercero no se pudo leer (ver el paso 4). Encenderla es una decisión del equipo, no de la regla.
 
-## Lo que falta por comprobar
+## Lo que ya salió en el partido
 
-### 1. La entrega de prueba en el partido
+La entrega de prueba `prueba_k3` (la ejecutó David con la rama `exp/k2-refinar` en `4a67424`; solo agregados) pasa los
+criterios escritos antes de generarla:
 
-La hace una persona con los datos del partido y el entorno limpio (`requirements-entrega.txt`). Unos 10 minutos.
+| criterio | qué ha salido |
+|---|---|
+| C0 | `equipo_v9_rama` con `d9706dfb…be63` y `prueba_k2_rama` con `784e65e5…acbc` |
+| C1 | válida y con 0 frames en conflicto; sha256 `811658cd…c04b` |
+| C3 | frente a K2 cambian 4.219 frames (2,7 %): 2.719 de un equipo al otro y 1.500 entre un equipo y `D` |
+| C4 | 198 posesiones, 116 paradas y el 45,8 % de `D` |
+| C5 | ninguna posesión de menos de 12 frames ni de 25 |
+| C6 | en la ventana pública no baja (macroF1 de 0,873 a 0,876 y spellF1 de 0,680 a 0,693, que es ruido) |
+
+**Ojo:** se generó con Python 3.12.10 y numpy 1.26.4, no con el entorno limpio. En ese entorno B5 y K2 dieron sus
+huellas de siempre, así que se espera la misma para K3, pero hay que confirmarlo.
+
+## Lo que falta para entregar con K3
+
+### 1. Regenerar la entrega en el entorno limpio
+
+La hace una persona con los datos del partido y el entorno de `requirements-entrega.txt` (Python 3.13 y numpy 2.5.4),
+sin cambios locales:
 
     git fetch origin
-    git switch --detach origin/exp/k2-refinar
-    python -m possession.pipeline --name equipo_v9_rama
-    python -m possession.pipeline --name prueba_k2_rama --pieza candidates=aprendida.evidence_k2
-    python validation/partido/probar_entrega.py prueba_k3 --pieza candidates=aprendida.evidence_k3 --contra prueba_k2_rama
-    python evaluation/validate_submission.py evaluation/results/prueba_k3.csv
-    python evaluation/run_evaluation.py
+    git switch --detach origin/feat/encender-k3
+    python -m possession.pipeline --name equipo_v11
+    python evaluation/validate_submission.py evaluation/results/equipo_v11.csv
 
-Qué tiene que salir (los criterios están en `docs/decisiones.md`, «K3: la entrega de prueba frente a `equipo_v10`»,
-escritos antes de generarla):
+Tiene que salir: «sin cambios locales», 0 frames en conflicto, 198 posesiones, 116 paradas y el validador en verde. La
+huella esperada es `811658cd…c04b`. Si sale otra, la buena es la del entorno limpio: se apunta y se le dice a Claude.
 
-| criterio | qué se pide |
-|---|---|
-| C0 | `equipo_v9_rama` con sha256 `d9706dfb…be63` y `prueba_k2_rama` con `784e65e5…acbc` (el de `equipo_v10`) |
-| C1 | `prueba_k3` válida y con 0 frames en conflicto |
-| C3 | frente a `prueba_k2_rama` cambia como mucho el 7 % de los frames evaluados; de un equipo al otro, el 3,5 %; entre un equipo y `D`, el 3,5 % |
-| C4 | entre 183 y 213 posesiones, entre 108 y 122 paradas y entre el 44,4 y el 47,4 % de `D` |
-| C5 | ninguna posesión de menos de 12 frames y como mucho 4 de menos de 25 |
-| C6 | en la ventana pública, frente a `equipo_v10`: el macroF1 no baja más de 0,03 ni el spellF1 más de 0,10 |
-
-**Qué se le pega a Claude:** la salida de los comandos tal cual. Solo lleva agregados (huellas, recuentos, porcentajes).
-Nunca el CSV ni tablas frame a frame.
+**Qué se le pega a Claude:** la salida de los comandos tal cual (huella, recuentos, versiones). Nunca el CSV.
 
 ### 2. Reproducirla en una segunda máquina
 
-Otra persona repite el comando de `prueba_k3` y compara el sha256. Hace falta solo si el equipo decide entregar con K3:
-K3 hereda una exponencial de B5 y, como con B5 y con K2, hay que ver que sale igual en dos máquinas.
+Otra persona repite los mismos comandos y compara el sha256 entero. K3 hereda una exponencial de B5 y, como con B5 y con
+K2, hay que ver que sale igual en dos máquinas antes de entregar.
 
-### 3. El punto que quedó sin leer de la regla de K3
+### 3. Contarla en el documento técnico
+
+K2 y K3: los datos de entrenamiento y su origen (los 7 partidos de la Bundesliga de Bassek et al., 2025, CC BY 4.0, y
+los 10 de entrenamiento de SkillCorner, MIT), que la entrega usa solo los pesos en numpy, que K3 es la media de la red
+y de la regresión, y que es una apuesta con lo que se sabe en contra.
+
+### 4. El punto que quedó sin leer de la regla de K3 (no bloquea)
 
 La regla preguntaba si K3 deja de perder donde K2 pierde. Para eso hace falta el modelo de K2 que perdía: el que se
-entrenó el 17/11 solo con la Bundesliga. Sus pesos no están en el repo. Están en el ordenador donde se entrenó K2 (el
-de la tarjeta gráfica RTX 3060), en la carpeta de datos abiertos:
+entrenó el 17/11 solo con la Bundesliga. Sus pesos no están en el repo. Están en el ordenador de casa de Ismael (el de
+la tarjeta gráfica RTX 3060), en la carpeta de datos abiertos:
 
     <datos abiertos>/conjunto_cache/pesos/solo_dfl_todos.pt
     <datos abiertos>/conjunto_cache/pesos/solo_sc_todos.pt
@@ -98,25 +111,21 @@ suben a git. Dos maneras:
   K3 «quita la pérdida» si queda en −0,005 o más frente a `main` en las cuatro celdas. Es datos abiertos: la salida se
   puede pegar entera.
 
-No bloquea la entrega de prueba.
+### Los 5 minutos públicos
 
-### 4. Los 5 minutos públicos
+Sirven para ver que nada se ha roto y para entender qué tipo de errores hacemos. **No sirven para elegir entre K2 y
+K3:** son 17 posesiones, y por debajo de 0,42 de diferencia todo es ruido.
 
-Sirven para ver que nada se ha roto (el criterio C6) y para entender qué tipo de errores hacemos
-(`notebooks/ventana_publica_detalle.ipynb`, de David). **No sirven para elegir entre K2 y K3:** son 17 posesiones, y
-por debajo de 0,42 de diferencia todo es ruido. Para elegir están las medidas de arriba.
+## Si hay que volver atrás
 
-## Si el equipo decide entregar con K3
+- **A K2:** la entrega es `equipo_v10` (`784e65e5…acbc`), de la rama `feat/encender-k2`, reproducida en dos máquinas.
+- **A B5:** la entrega es `equipo_v9` (`d9706dfb…be63`), la que da `main` hoy.
 
-1. `pipeline.PIECES["candidates"]` pasa a `"aprendida.evidence_k3"`.
-2. Se regenera la entrega: tiene que salir byte a byte igual que `prueba_k3`.
-3. Se reproduce en una segunda máquina.
-4. Se cuenta en el documento técnico.
-
-Si no, la entrega sigue siendo la que haya: `equipo_v10` con K2 cuando `feat/encender-k2` entre en `main`.
+Volver a cualquiera de las dos es no mergear `feat/encender-k3`.
 
 ## Lo que no hay que hacer
 
 - Elegir entre K2 y K3 mirando la ventana pública.
 - Subir a git los `.pt`, los CSV de las entregas o cualquier dato.
 - Pegarle a Claude nada del partido que no sean agregados.
+- Tocar `possession/` después de regenerar: cuenta como código de la entrega y obligaría a regenerar otra vez.

@@ -166,7 +166,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--procesos", type=int, default=2)
     args = parser.parse_args()
-    refinar.exigir_b5_en_main()
     lc = refinar.lector_metrica()
     trabajos = ([("dfl", p) for p in cj.DFL] + [("sc", p) for p in cj.SKILLCORNER]
                 + [("metrica", p) for p in lc.partidos()])
