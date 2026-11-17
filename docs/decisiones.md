@@ -6010,4 +6010,30 @@ la entrega de prueba. Sobre K2 solo tiene sentido si el equipo enciende K2.
 Avisado: son 2 configuraciones elegidas antes, más 14 candidatos de las rondas anteriores; con la regla de 6 de 7 en
 cuatro celdas, un candidato que no aporta nada pasaría pocas veces, pero no ninguna.
 
-Estado: en marcha. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+Estado: medida el 17/11 (entrada siguiente).
+
+### 2026-11-17 · temporal · detector de cambios con el balón del ATD, encima de K2 y de `main`: ninguno pasa; se cierra
+
+Quién: David (17/11), con Claude. Salida: `validation/cambios/salidas/2026-11-17_sobre_k2.md` (`sobre_k2.py`; los 7
+partidos de la DFL, con `decode_cortas_a_d`; cada pieza aprendida con el pliegue que no vio el partido).
+
+Comprobación del instrumento [medido]: B5 da 0,728 / 0,498 y K2 0,780 / 0,542 («como el ATD», `D` de las etiquetas),
+las mismas cifras que la entrada de K2.
+
+Resultado [medido], diferencia con su base (rango de las cuatro celdas):
+
+| candidato | base | control (gana en) | flag |
+|---|---|---|---|
+| R1 (20°, 60 %, 20 frames; γ 4, W 50) | `main` (B5) | +0,006 a +0,011 (5, 5, 7 y 6 de 7) | +0,010 a +0,013 |
+| R2 (30°, 40 %, 20 frames; γ 4, W 100) | `main` (B5) | +0,004 a +0,013 (5, 4, 6 y 5 de 7) | +0,007 a +0,010 |
+| R1 | K2 | +0,002 a +0,008 (4, 5, 4 y 6 de 7) | +0,010 a +0,012 |
+| R2 | K2 | +0,005 a +0,008 (4, 4, 6 y 4 de 7) | +0,006 a +0,007 |
+
+Decisión y por qué: **ninguno pasa el punto 1** (todos fallan por el número de partidos; ninguno pierde con el flag).
+Con la regla escrita antes, no siguen a SkillCorner y el detector de cambios queda cerrado para esta entrega, con el
+balón del ATD y con el del vídeo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+Lectura [inferencia]: el detector con el balón del ATD aporta algo pequeño y siempre del mismo signo (+0,002 a +0,013,
+nunca negativo), pero no gana en suficientes partidos. Encima de K2 aporta menos que encima de B5: K2 ya corrige parte
+de los cambios que tarda en ver B5. Es material para el documento técnico y para el Innovation Challenge, junto con el
+techo (+0,096 con control).
