@@ -3,7 +3,7 @@
 - **Qué es:** cinco redes que sustituirían a B5 como evidencia de equipo (`H` frente a `A`), todas apagadas, fuera de
   `pipeline.PIECES`. La entrega no cambia.
 - **Datos:** solo abiertos. Se entrena en la DFL (7 partidos; cada partido se puntúa con el pliegue que no lo vio) y se
-  comprueba en la mitad de entrenamiento de SkillCorner. El examen de SkillCorner no se ha abierto para ninguna.
+  comprueba en la mitad de entrenamiento de SkillCorner. El examen de SkillCorner solo se ha abierto para B12, por excepción de Ismael, y no pasó.
 - **Regla:** la del límite de daño del 16/11, frente a `main` (`docs/decisiones.md`).
 - **Rama:** `claude/serene-lumiere-16245d`. El detalle de cada una está en `docs/decisiones.md` (17/11) y las salidas, en
   `validation/secuencia/salidas/2026-11-17_*`.
@@ -29,7 +29,7 @@ y 6 de 7, con los dos modos del `D`; con el flag, no perder más de 0,005.
 | | control, `D` de las etiquetas | control, `D` propio | flag | SkillCorner `ENTRENAMIENTO` (4 celdas) | posesiones (`main` 1.661; reales 1.736 control) |
 |---|---|---|---|---|---|
 | B11 | +0,012 (4) / +0,007 (4) | +0,023 (5) / +0,014 (5) | +0,10 (7) | pierde o empata | 1.989 |
-| B12 | +0,034 (7) / +0,028 (**5**) | +0,034 (7) / +0,028 (**5**) | +0,05 (7) | **gana las 4** (+0,011 a +0,014, 7–9 de 10) | 1.774 |
+| B12 | +0,034 (7) / +0,028 (**5**) | +0,034 (7) / +0,028 (**5**) | +0,05 (7) | gana las 4 (+0,011 a +0,014, 7–9 de 10); el EXAMEN no pasa (+0,004 a +0,009) | 1.774 |
 | B13 | +0,021 (6) / +0,003 (4) | +0,025 (5) / +0,007 (3) | +0,09 (7) | pierde las 4 (−0,010 a −0,024) | 1.865 |
 | B14 | **+0,048 (7) / +0,027 (7)** | **+0,053 (7) / +0,030 (7)** | +0,11 a +0,12 (7) | pierde o empata (−0,017 a +0,002) | 1.904 |
 | B15 | (pendiente) | | | | |
@@ -37,9 +37,7 @@ y 6 de 7, con los dos modos del `D`; con el flag, no perder más de 0,005.
 ## Lectura
 
 - **Ninguna pasa la regla, de momento.** **B14 es la primera que pasa los puntos 1 y 3 en la DFL, con margen** (7 de 7 en
-  todo), pero en SkillCorner pierde con el `D` de las etiquetas y empata con el propio. B12 es la otra que más se acerca: gana con control en las cuatro celdas, con el
-  intervalo por encima de cero, y en SkillCorner, pero en «sin bloques» gana en 5 de 7 partidos y se piden 6. Ismael
-  tiene pendiente decidir si se le hace una excepción (como la del balón fuera) y se abre su examen de SkillCorner.
+  todo), pero en SkillCorner pierde con el `D` de las etiquetas y empata con el propio. B12 es la otra que más se acerca (gana con control en las cuatro celdas y en SkillCorner `ENTRENAMIENTO`, pero en «sin bloques» gana en 5 de 7). Ismael le hizo la excepción y **su examen de SkillCorner no pasa**: +0,004 a +0,009, falla una celda (+0,004 y 6 de 10). B12 queda cerrado y el examen, usado para B12.
 - **Las redes que miran más fino (B11 y B13) cambian de equipo de más.** Ganan mucho con el flag (+0,09 a +0,10), que
   cambia en el primer toque, pero poco con control y pierden en SkillCorner. Predicen demasiadas posesiones. B15 ataca
   justo eso: aprende de los toques breves del rival que no son un cambio.
