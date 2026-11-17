@@ -6491,8 +6491,8 @@ Por qué [medido; entradas del 17/11 sobre K2]:
   B13 y el detector de cambios no lo consiguieron.
 - **En el partido, el modelo se comporta como en la DFL:** sus salidas caen dentro del rango de la DFL y lo que cambia
   frente a `equipo_v9` (el 4,8 % de los frames) es lo que cambiaba allí.
-- **Reproducción:** según David, Ismael la repitió en su máquina y sale la misma huella [sin verificar en el repo: falta
-  pegar la línea del sha256 con la máquina y las versiones].
+- **Reproducción:** según David, Ismael la repitió en su máquina y sale la misma huella [sin verificar en el repo]. La
+  de David, en otra máquina, sí está medida: entrada siguiente.
 
 El riesgo, que se asume: entrenado con un solo proveedor, K2 pierde en el otro, y el ATD es un tercero. Nada de lo
 medido es en el ATD con etiquetas. Es una apuesta con todas las señales medibles a favor y ninguna en contra.
@@ -6514,3 +6514,19 @@ commit anterior o vuelve a medir su referencia.
 
 Descartado: dejar B5 (la entrega de hoy, `equipo_v9`), que es lo seguro; se cambia porque K2 gana en todo lo que se ha
 podido medir.
+
+### 2026-11-17 · infraestructura · `equipo_v10`, con K2: misma huella que `prueba_k2`, reproducida en la máquina de David
+
+Quién: lo ejecutó David en su Windows, en un entorno limpio creado con `requirements-entrega.txt` (Python 3.13.1 y numpy
+2.5.4), con la rama `feat/encender-k2` en `7e0c2cc` y sin cambios locales en el código de la entrega. Pegó solo
+agregados.
+
+Resultado [medido, agregados del partido]:
+- `python -m possession.pipeline --name equipo_v10`: 0 frames con piezas en conflicto y sha256
+  `784e65e5825a7fe52f7fe5f3a51c9f5e1bccf2c9f89a1372b7b344a3f882acbc`, **byte a byte igual que `prueba_k2`**, que
+  generó Ismael en su máquina con Python 3.13.9.
+- El validador da `Valid`: 199.319 filas, 203 posesiones de 16,9 s de media.
+
+Qué significa: K2 da lo mismo en dos máquinas distintas y con dos versiones de Python 3.13, que era lo que faltaba
+antes de entregar con él (`possession/conjunto.py` es código numérico nuevo). **`equipo_v10` es la entrega vigente**
+cuando `feat/encender-k2` entre en `main`; hasta entonces, `main` sigue dando `equipo_v9`.

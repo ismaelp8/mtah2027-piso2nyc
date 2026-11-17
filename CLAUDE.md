@@ -234,7 +234,15 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v9`** (16/11 por la noche): `equipo_v8` más «cortas a `D`»
+- **Entrega vigente: `equipo_v10`** (17/11, con K2; `docs/decisiones.md`, «se enciende K2» y «`equipo_v10`»):
+  `equipo_v9` con la evidencia de equipo de K2 (`aprendida.evidence_k2`, el modelo conjunto) en lugar de B5. Lo decidió
+  David.
+  - sha256 `784e65e5…acbc`, el mismo que la entrega de prueba `prueba_k2` de Ismael. David la regeneró en su máquina
+    (Python 3.13.1, numpy 2.5.4, rama `feat/encender-k2` en `7e0c2cc`, sin cambios locales): 0 conflictos, válida,
+    203 posesiones de 16,9 s de media. **Reproducida en dos máquinas.**
+  - Frente a `equipo_v9` cambian 7.666 frames (4,8 %): 5.181 de un equipo al otro y 2.485 entre un equipo y `D`.
+  - Vale cuando `feat/encender-k2` entre en `main`. El documento técnico tiene que contar K2.
+- **Entrega anterior: `equipo_v9`** (16/11 por la noche): `equipo_v8` más «cortas a `D`»
   (`temporal.decode_cortas_a_d`, en `pipeline.PIECES` desde el 16/11; Ismael: «si enciendela»; `docs/decisiones.md`).
   - Es la entrega de prueba `prueba_cortas_a_d`: sha256 `d9706dfb…be63`, válida, con 201 posesiones de 17,0 s de
     media, 116 paradas y el 46,2 % de `D` en lo evaluado. Ismael la generó en el entorno limpio y Manuel en su
