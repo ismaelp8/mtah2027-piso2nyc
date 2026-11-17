@@ -117,7 +117,7 @@ que faltan, los scripts y los resultados. El porqué está en
 | `partido/probar_entrega.py` | **lee el partido:** una entrega de prueba con un solo comando. La genera con `--pieza` o `--capa`, cuenta el balón fuera y la compara con `equipo_v3`, para pegar una sola salida | **datos del partido: solo una persona** |
 | `posesiones_cortas/puerta_no_lineal.py` | fase 3, puerta: una red de una capa con los rasgos de B9 y de los jugadores, fuera de muestra | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 | `conjunto/exportar.py` | modelo conjunto (17/11): exporta los partidos abiertos como arrays crudos por jugador, con el balón de las condiciones que votan | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
-| `conjunto/entrenar.py`, `conjunto/red.py` | entrena el modelo conjunto en un pliegue, con torch en la GPU (entorno `mtah2027-conjunto`), y guarda sus salidas fuera de muestra | la caché de `conjunto/exportar.py` |
+| `conjunto/entrenar.py`, `conjunto/red.py` | entrena el modelo conjunto en un pliegue, con torch en la GPU (entorno `mtah2027-conjunto`) o en la CPU (`--dispositivo cpu`, más lento), y guarda sus salidas fuera de muestra | la caché de `conjunto/exportar.py` |
 | `conjunto/juntar.py` | junta los pesos de los 8 pliegues en `possession/conjunto_pesos.npz`, con la α y la γ elegidas | ninguno (lee los pesos de torch) |
 | `conjunto/medir.py` | K1 y K2 frente a `main` con la regla del 17/11, en la DFL y en SkillCorner; con `--con-la-pieza`, con la predicción en numpy; el examen de SkillCorner solo con `--examen --examen-con-permiso --candidato` | DFL y SkillCorner |
 | `conjunto/paridad.py` | la predicción en numpy de `possession/conjunto.py` frente a la de torch | la caché de `conjunto/exportar.py` |
@@ -127,8 +127,11 @@ que faltan, los scripts y los resultados. El porqué está en
 | `conjunto/como_el_atd.py` | descriptivo: K2 y `main` con los slots de P4 y el balón 4 frames tarde, los dos rasgos medidos del ATD | DFL |
 | `conjunto/metrica.py` | descriptivo: K2 frente a `main` en Metrica, un proveedor que el modelo no ha visto; con `--pesos`, con otros pesos | Metrica sample-data |
 | `conjunto/potencia_c2.py` | descriptivo: ¿habría saltado el criterio C2 con los modelos de un solo proveedor en el otro proveedor, donde se sabe que fallan? | la caché de `conjunto/exportar.py` |
+| `conjunto/refinar.py` | refinamientos de K2 sin reentrenar (17/11): K3 (la mezcla con B5), K4 (el espejo) y K5 frente a `main` y a K2, con la regla escrita antes; con `--pesos`, con otros pesos de K2 (un solo proveedor, o la media de varios); con `--solo-por-partido`, las tablas descriptivas. No tiene bandera para el examen | DFL, SkillCorner (`lector.ENTRENAMIENTO`) y Metrica |
+| `conjunto/cuanto_cambia_k3.py` | descriptivo: cuánto cambia la salida del pipeline con K3 en lugar de B5, y de K2 a K3, para los criterios de una entrega de prueba | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 | `partido/conjunto_en_el_partido.py` | **lee el partido** (ATD): las entradas y las salidas del modelo conjunto en el partido frente al rango de los datos abiertos. Criterio C2 del punto 4 de K2 (`docs/decisiones.md`, 17/11). Solo agregados. Lo ejecuta una persona | **datos del partido: solo una persona** |
 | `scripts/prueba_conjunto.py` | prueba `possession/conjunto.py` con un partido inventado: interfaz, determinismo, antisimetría exacta, slots, la red frente a una versión con matrices y los pesos | ninguno |
+| `scripts/prueba_refinamientos.py` | prueba `possession/refinamientos.py` con un partido inventado: que no cambia K2 ni B5, la mezcla, el espejo, la interfaz y el determinismo | ninguno |
 | `scripts/prueba_conjunto_en_el_partido.py` | prueba la comparación de `partido/conjunto_en_el_partido.py` con números inventados | ninguno |
 
 Se ejecutan desde la raíz del repo, con el entorno de siempre:
