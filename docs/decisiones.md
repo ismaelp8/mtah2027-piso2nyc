@@ -5518,4 +5518,112 @@ más cambios de equipo (recuperaciones y duelos con cambio), y eso le hace ganar
 cuando no debe (duelos sin cambio), y con un tracking de otro proveedor esas posesiones de más no aciertan. Las
 etiquetas de control y SkillCorner, que exigen control, no ven la mejora.
 
-Estado: B11 se cierra. B12, pendiente de terminar de entrenar.
+**B12: cómo se midió.**
+- Terminó de entrenar a tiempo: el último pliegue, a las 03:58 (el plazo era a las 04:00).
+- La medida es la oficial: el harness con el fichero de versiones commiteado, desde un árbol limpio (código `bfc9566`,
+  sin cambios) y con los pesos de los dos modelos (sha256 `ba31988a…db76`).
+- Las cifras de B11 salen iguales que arriba.
+- SkillCorner, otra vez con `--candidatos b11 b12`, también fuera del orden de la regla, como en B11.
+- Salidas en `validation/secuencia/salidas/2026-11-17_*oficial*`, con la tabla por partido en
+  `..._harness_oficial_por_partido.md`.
+
+**B12, resultado [medido], frente a `main`** (diferencia [5–95 %], en cuántos de 7 gana):
+
+| convención | `D` | «como el ATD» | «como el ATD, sin bloques» |
+|---|---|---|---|
+| control | de las etiquetas | +0,034 [+0,022 a +0,046], 7 de 7 | +0,028 [+0,016 a +0,039], **5 de 7** |
+| control | propio | +0,034 [+0,023 a +0,046], 7 de 7 | +0,028 [+0,017 a +0,039], **5 de 7** |
+| flag | de las etiquetas | +0,056 [+0,046 a +0,066], 7 de 7 | +0,061 [+0,051 a +0,071], 7 de 7 |
+| flag | propio | +0,046 [+0,038 a +0,055], 7 de 7 | +0,053 [+0,044 a +0,062], 7 de 7 |
+
+- **Por partido, con control y «sin bloques»,** pierde en J03WPY (−0,006 con el `D` de las etiquetas, −0,000 con el
+  propio) y en J03WQQ (−0,025 y −0,004).
+- **Posesiones predichas** (`D` de las etiquetas, «como el ATD»): 1.774, frente a 1.661 de `main`. Las reales son 1.736
+  con control y 3.061 con el flag.
+- **SkillCorner, `ENTRENAMIENTO`** (frente a `main`, umbral escrito antes: +0,005 y 7 de 10):
+
+  | `D` | «detectado» | «detectado, suavizado» |
+  |---|---|---|
+  | de las etiquetas | +0,011 [+0,004 a +0,018], 7 de 10 | +0,014 [+0,006 a +0,021], 7 de 10 |
+  | propio | +0,012 [+0,005 a +0,019], 9 de 10 | +0,014 [+0,007 a +0,022], 9 de 10 |
+
+  Cumple las cuatro celdas. Predice 2.465 posesiones frente a 2.270 de `main` (las reales son 3.228).
+- **Eventos humanos** («como el ATD», frente a `main`, descriptivo): recuperaciones +9,2 puntos [+5,1 a +13,3], duelos
+  con cambio +8,7 [+5,2 a +12,7] y duelos sin cambio −6,2 [−10,4 a −1,4]: un **compromiso**, más suave que el de B11.
+- **Cuánto cambia la salida frente a `main`** (descriptivo, con el `D` propio;
+  `validation/secuencia/cambios_frente_a_main.py`):
+  - con otra etiqueta, el 3,8–4,1 % de los frames en la DFL y el 6,4–6,7 % en SkillCorner;
+  - entran o salen de `D` el 1,1 % en la DFL y el 3,8 % en SkillCorner, pero el `D` total se mueve 0,4 puntos como
+    mucho y las paradas casi no cambian;
+  - las posesiones suben un 4–6 % en la DFL y un 9–10 % en SkillCorner;
+  - hay menos posesiones de menos de 25 frames que con `main`.
+- **Con los jugadores degradados como los del ATD** (descriptivo):
+  - medido con `validation/apuesta_b/jugadores.py --versiones` y el fichero de hoy, con el `D` de las etiquetas, en
+    las tres variantes del 14/11, que salen sin voto; salida en `..._jugadores_como_el_atd.md`;
+  - frente a `main`, B12 sigue ganando: con control de +0,017 a +0,041 (5 a 7 de 7) y con el flag de +0,049 a
+    +0,061 (7 de 7);
+  - B11, con control, pierde en dos de las tres variantes (de −0,010 a −0,039).
+- **Descriptivo:**
+  - acierto por frame en el partido que no vio, del 91,2 al 94,4 %;
+  - α = 8 en los 8 pliegues, el borde de la rejilla fijada;
+  - numpy frente a torch: diferencia máxima de z de 2,4·10⁻⁵ en la DFL, sin ningún signo distinto.
+
+**Veredicto de B12, con la regla escrita antes: no pasa.**
+- **Punto 1, DFL con control: no pasa.** Gana entre +0,028 y +0,034 en las cuatro celdas, con el intervalo por encima
+  de cero, pero en «sin bloques» gana en 5 de 7 partidos con los dos modos del `D`, y se pedían 6.
+- **Punto 3, DFL con el flag: pasa, y gana:** +0,046 a +0,061, 7 de 7.
+- **SkillCorner, `ENTRENAMIENTO`:** cumpliría las cuatro celdas, pero se midió fuera del orden de la regla y no la
+  rescata.
+- **§5.8 frente a `main`:** tampoco pasa (+0,028 con control en «sin bloques», por debajo de +0,03).
+- **El examen de SkillCorner no se abre:** la regla solo lo abre si pasan los puntos 1 y 3.
+
+Lectura [inferencia]:
+- B12 es el primer candidato de la evidencia de equipo que gana con las dos convenciones en la DFL y, además, en
+  SkillCorner. Se queda fuera por dos partidos con pérdidas pequeñas en una condición.
+- B11 encuentra más cambios, pero muchos falsos (1.989 posesiones). B12 añade menos (1.774) y acierta más.
+- Una GRU de 16 que ve la parte entera saca más que una convolucional de ±5 s. Ver toda la parte parece contar más que
+  la forma fina de los cambios.
+
+**Decisión: con la regla escrita antes, B11 y B12 se cierran y quedan apagados** (`aprendida.evidence_b11` y
+`evidence_b12`). `pipeline.PIECES` y la entrega no cambian. No se prueban más variantes.
+
+**Lo que queda abierto, para Ismael (no lo decide esta sesión):** una excepción para B12, como la de `ball_out` del
+16/11.
+- **A favor:** gana con control en las cuatro celdas de la DFL (+0,028 a +0,034, con el intervalo por encima de cero),
+  con el flag en todas (7 de 7) y en SkillCorner, que es otro proveedor y exige control.
+- **En contra:**
+  - falla el «6 de 7» que se escribió antes de medir;
+  - α cae en el borde de la rejilla;
+  - el harness no degrada a los jugadores, y B12 usa sus canales sin promediar. Con los jugadores como los del ATD
+    aguanta (arriba), pero esas variantes no votan: el ATD tiene además slots duplicados que no se imitan;
+  - su recurrencia usa `np.exp` y `np.tanh` en 14.000 pasos por parte. La puntuación va redondeada a 6 decimales, pero
+    si entra hay que reproducir la entrega una vez en otra máquina antes de entregar.
+- **Si la decide, el orden es este:**
+  1. Se avisa a la planificadora y se abre el examen de SkillCorner una vez, para B12, con el umbral escrito arriba
+     (+0,005 o más y 7 de 10, en las cuatro celdas). Son datos abiertos: lo puede ejecutar Claude.
+
+         python validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso
+
+     El uso se apunta en `validation/skillcorner/BITACORA.md` («Usos del examen») y aquí.
+  2. Si el examen pasa, Ismael genera la entrega de prueba con el python del entorno limpio:
+
+         C:\Users\34656\.venvs\mtah2027-entrega\Scripts\python.exe validation/partido/probar_entrega.py prueba_b12 --pieza candidates=aprendida.evidence_b12
+
+  3. Encenderla (`pipeline.PIECES["candidates"]`) es otra decisión, con la entrega regenerada y validada.
+
+**Criterios de daño de esa entrega de prueba frente a `equipo_v9`.** Se escriben antes de generarla y solo valen si hay
+excepción y el examen pasa. Las bandas salen de lo que B12 cambia en abierto (arriba). Si falla uno, B12 no entra, diga
+lo que diga el examen:
+1. 0 frames con piezas en conflicto (si no, el pipeline no escribe el CSV).
+2. Ninguna posesión de menos de 25 frames en los dos tramos, como `equipo_v9`. En abierto, B12 da menos que `main`.
+3. **El `D` casi no se mueve:**
+   - el `D` de los frames evaluados, a 0,5 puntos o menos del 46,2 % de `equipo_v9`;
+   - entre 111 y 121 paradas (116 en `equipo_v9`);
+   - los frames que entran o salen de `D` (en `comparar_entregas.py`), como mucho el 4 % de los evaluados, unos 6.350.
+4. **Posesiones:** entre 197 y 227 (201 en `equipo_v9`, de −2 a +13 %). En abierto suben de un 4 a un 10 %.
+5. **Frames con otra etiqueta:** como mucho el 10 % de los evaluados, unos 15.900. En abierto, del 3,8 al 6,7 %.
+6. **Balón fuera** (`balon_fuera.py`): no más de 2 rachas «tarde» más que `equipo_v9` con el mismo script (el de
+   `equipo_v9` sale de `python validation/partido/balon_fuera.py --entrega equipo_v9`).
+7. El validador, en verde.
+
+Estado: B11 y B12 cerrados por la regla y apagados. La excepción de B12 queda pendiente de Ismael.
