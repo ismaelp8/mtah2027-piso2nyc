@@ -1,9 +1,9 @@
 # Posesión del balón frame a frame: documento técnico
 
 **Equipo:** [PENDIENTE: `<NOMBRE_EQUIPO>`, el mismo que puso cada uno al inscribirse]
-**Entrega:** `<NOMBRE_EQUIPO>.csv`, hoy igual byte a byte a nuestra versión interna `equipo_v8` (sha256
-`d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2`). [PENDIENTE: sha256 final si la
-entrega cambia antes del cierre]
+**Entrega:** `<NOMBRE_EQUIPO>.csv`, hoy igual byte a byte a nuestra versión interna `equipo_v9` (sha256
+`d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63`). [PENDIENTE: sha256 final si la
+entrega cambia antes del cierre, por ejemplo si se enciende K2 (§8)]
 [PENDIENTE: idioma del documento, que decide el equipo; si se queda en español, un resumen en inglés de unas
 150 palabras al principio]
 
@@ -32,12 +32,15 @@ fijo por cada cambio de estado. La evidencia de equipo es una regresión logíst
 con proximidad al balón y forma de los equipos. El estado de `D` es otra regresión logística (E2) que solo
 mira a los jugadores. Se añaden cuatro capas pequeñas: el tramo antes del saque de la 2ª parte, el hueco sin
 balón (de 5 a 60 s) antes de cada reinicio del Smart Tagging que no es un saque inicial, los contraataques
-del Smart Tagging y el balón visto fuera del campo.
+del Smart Tagging y el balón visto fuera del campo. Al final, una regla pasa a `D` las posesiones de menos de
+5 s que llegan con un cambio directo desde el otro equipo y acaban en una parada («cortas a `D`»).
 
 **Por qué así.** No hay etiquetas del partido que se puedan usar, y la ventana pública no sirve para elegir
 (§6.5). Por eso todo se eligió en partidos abiertos de otras ligas, con piezas pequeñas que se miden por
-separado. Cada pieza entró solo si ganaba en el harness con una regla escrita antes de medir (§6.1); tres
-capas que el harness no puede medir entraron por reglas de daño (§8).
+separado. Cada pieza entró solo si pasaba una regla escrita antes de medir (§6.1). B5 y E2 ganaron en el
+harness. «Cortas a `D`» entró por una regla de límite de daño: gana con control en la DFL y en SkillCorner y no
+pierde más de 0,005 con el flag. Tres capas que el harness no puede medir entraron por reglas de daño, con
+agregados del partido (§8).
 
 **La validación, en datos de otros partidos** (spellF1). Estas tres cifras miden solo `H` frente a `A`,
 porque usan el `D` oráculo:
@@ -47,10 +50,11 @@ porque usan el `D` oráculo:
   [medido].
 - Metrica (3 partidos): **+0,118** sobre el baseline, en 3 de 3 [medido].
 
-Con nuestro propio `D` bajan a 0,416 (flag) y 0,616 (control) en la DFL, frente a 0,310 y 0,353 del baseline,
-y a 0,381 en SkillCorner, frente a 0,249 (§6.2 y §6.3) [medido].
+Con nuestro propio `D` bajan a 0,414 (flag) y 0,623 (control) en la DFL, frente a 0,310 y 0,353 del baseline
+(§6.2) [medido]. En SkillCorner bajan a 0,381, frente a 0,249; esa cifra es de antes de «cortas a `D`», que allí
+suma de +0,008 a +0,010 (§6.3) [medido].
 
-**Qué nivel cabe esperar.** Entre **0,33 y 0,51** de spellF1 en el partido, con unos **0,38** como punto
+**Qué nivel cabe esperar.** Entre **0,33 y 0,51** de spellF1 en el partido, con unos **0,39** como punto
 central [inferencia]. El número del harness es optimista (§6.6).
 
 ## 1. El problema y lo que manda el diseño
@@ -89,7 +93,7 @@ Cadena de la entrega (`possession/pipeline.py`), en este orden:
 | 3 | anclas de `D` (`dead_ball.evidence`) | solo `D` en los 2.934 frames antes del saque de la 2ª parte; `D` prohibido en el frame del saque de cada parte; +1 en `D` en el hueco sin balón de 5 a 60 s antes de cada reinicio que no es saque inicial | 5 s y 60 s; `GAP_SCORE` = 1 |
 | 4 | contraataques (`transiciones.evidence_equipo`) | +8 por frame al equipo de cada «Attacking Transition», 5 s | `WEIGHT` = 8; `CAP_S` = 5 |
 | 5 | balón fuera (`dead_ball.ball_out`) | +5 en `D` con el balón visto a más de 1 m fuera | 1 m; cola de 16 frames |
-| 6 | decodificador (`temporal.decode`) | Viterbi sobre {`H`, `A`, `D`}, por tramo | 25 por cada cambio |
+| 6 | decodificador (`temporal.decode_cortas_a_d`) | Viterbi sobre {`H`, `A`, `D`}, por tramo; después, «cortas a `D`»: pasa a `D` las posesiones cortas que llegan con un cambio directo desde el otro equipo y acaban en `D` | 25 por cada cambio; corte de 125 frames (5 s) |
 
 **B5, evidencia de equipo.** Regresión logística de `H` frente a `A` con 30 rasgos «local menos visitante»,
 sin término independiente ni identidad de slot: 20 del balón (qué equipo tiene al más cercano, núcleos
@@ -130,6 +134,20 @@ balón del ATD.
 no está ajustado: con B5, 12 y 50 empatan con él según la regla de §6.1 (con el flag 50 pierde un poco y 12
 empata; con control 50 gana un poco y 12 pierde), y con un empate se queda lo que hay [medido].
 
+**Cortas a `D`.** Después del Viterbi, en cada tramo, una posesión de menos de 125 frames que llega con un
+cambio directo desde el otro equipo y acaba en `D` pasa a `D`. No se toca si `D` está prohibido en alguno de sus
+frames (el del saque de cada parte). Solo puede pasar frames de un equipo a `D`. El fallo que ataca: si nuestro
+`D` llega tarde, el equipo que va a sacar se acerca al balón y le damos una posesión que no existe; con un F1
+sobre posesiones, resta dos veces, porque sobra ella y estropea el final de la anterior. En la DFL hay de 108 a
+160 posesiones así en los 7 partidos; solo del 8 al 26 % se emparejan con una real, y del 39 al 58 % de sus
+frames son `D` de verdad [medido]. Entró por la regla de límite de daño (§6.1), con el `D` propio [medido]:
+- DFL con control: de +0,007 a +0,019, ganando en 6 o 7 de 7 partidos en cada celda;
+- SkillCorner: +0,010 y +0,009 en la mitad de entrenamiento, y +0,009 y +0,008 en la de examen, en 10 de 10;
+- DFL con el flag: de −0,002 a +0,004; la peor celda pierde 0,0024, dentro del límite de 0,005.
+
+El corte de 5 s viene de la regla del sondeo que la propuso, escrita antes de medir; no se compararon cortes
+para elegirlo (§8).
+
 **Tracking que falta o con ruido.** Sin balón, B5 opina con la forma de los equipos y con ventanas largas, y
 el decodificador mantiene el estado salvo que la evidencia pague el cambio. Los slots se tratan sin identidad.
 El ATD se comprueba al leerlo y cualquier línea rara para la entrega.
@@ -152,6 +170,9 @@ El ATD se comprueba al leerlo y cualquier línea rara para la entrega.
   cambios de 25. El equipo que reanuda no se arrastra a través de la parada: en el partido J03WMX de la DFL
   cambia en el 90 % de ellas [medido, un solo partido]. Tras un reinicio, la posesión es del equipo que la
   evidencia da después.
+- **Posesión corta justo antes de una parada.** Si una posesión de menos de 5 s llega con un cambio directo
+  desde el otro equipo y acaba en `D`, se escribe `D` («cortas a `D`», §2): ese cambio se trata como un `D` que
+  pusimos tarde, no como un control del rival. No crea paradas nuevas: alarga hacia atrás una que ya existe.
 - **La `X`.** Solo fuera de los tramos evaluados (40.462 frames). Dentro, siempre `H`, `A` o `D`, también en
   oclusiones largas: el scorer rellena la `X` con la etiqueta anterior para el spellF1 y la cuenta como fallo
   en el macroF1, así que nunca gana.
@@ -250,10 +271,21 @@ empata con lo que hay, se queda lo que hay. Los criterios de cada candidato se e
 Así ganó B5 frente al jugador más cercano. E2 se midió con la misma regla frente a no opinar en `D`, con el
 equipo oráculo, y también ganó (+0,039 y +0,032 con el flag) [medido].
 
-Desde el 16/11 hay una regla de entrada más para cambios pequeños hacia control (+0,005 con control en la
-DFL y en el examen de SkillCorner, sin perder más de 0,005 con el flag en ninguna celda; `docs/decisiones.md`,
-16/11). Hasta hoy no ha entrado nada por ella. [PENDIENTE: si entra la opción de pasar a `D` las posesiones
-muy cortas, citar esta regla] La línea del balón del vídeo tiene su propia regla (§8).
+**Regla de límite de daño** (16/11, escrita antes de medir ningún candidato con ella; `docs/decisiones.md`).
+Es para cambios pequeños hacia control, que §5.8 deja fuera porque con el flag empatan o pierden poco. Un
+candidato entra si cumple todo esto frente a lo que hay:
+1. con control en la DFL, gana +0,005 o más en las dos condiciones del balón que votan, en 6 de 7 partidos en
+   cada una;
+2. en SkillCorner, gana en la mitad de entrenamiento y lo confirma una sola vez en la de examen, con +0,005 o
+   más y en 7 de 10 partidos (cada candidato tiene un solo uso del examen, y cada uso se apunta);
+3. con el flag no pierde más de 0,005 en ninguna celda;
+4. una entrega de prueba pasa unos criterios de daño escritos antes de generarla.
+
+Por qué: el equipo eligió el 12/11 «exigir control», y SkillCorner, que también lo exige, coincide con control.
+El riesgo que se acepta: si la GT se parece al flag, cada cambio así puede costar hasta 0,005. Por esta regla
+entró «cortas a `D`» (§2). Un candidato que toca el `D` se mide con el `D` propio, con el balón tapado y a la
+vista en los `D`, porque con el `D` oráculo la regla no puede actuar. La línea del balón del vídeo tuvo su
+propia regla (§7).
 
 ### 6.2 Tabla principal
 
@@ -270,9 +302,14 @@ muy cortas, citar esta regla] La línea del balón del vídeo tiene su propia re
 Fuente: `validation/investigacion_1116/salidas/2026-11-16_s1_dfl_oraculo.md` (código `f19fcc7`, bootstrap de
 200 remuestreos).
 
-Sin oráculo, cada uno con su propio `D`, bajamos a 0,416 (flag) y 0,616 (control) en «como el ATD», y el
-baseline a 0,310 y 0,353 [medido]. Ese número no decide: con el balón tapado en los `D`, «no hay balón» casi
-equivale a «`D`».
+«Cortas a `D`» no cambia esta tabla. Con el `D` oráculo, `D` está prohibido donde las etiquetas tienen juego,
+así que la regla no convierte nada: la salida del harness es idéntica byte a byte antes y después [medido].
+
+Sin oráculo, cada uno con su propio `D`, sacamos 0,414 (flag) y 0,623 (control) en «como el ATD» (0,416 y
+0,616 antes de «cortas a `D`»), y el baseline 0,310 y 0,353 [medido]. Ese número no sirve para elegir entre
+evidencias de equipo, porque con el balón tapado en los `D` «no hay balón» casi equivale a «`D`». Se usó, como
+excepción declarada, para «cortas a `D`», que toca el `D` y con el oráculo no se puede medir. Por eso se midió
+en los dos modos del balón en los `D` (§6.1).
 
 ### 6.3 SkillCorner y Metrica
 
@@ -280,7 +317,8 @@ equivale a «`D`».
   el balón que detecta SkillCorner, tal cual y suavizado como el del ATD), en 20 de 20, y +0,059 y +0,065
   sobre el jugador más cercano en 19 de 20 [medido]. Sin oráculo, cada uno con su propio `D` (el baseline,
   el suyo: `D` donde nadie tiene el balón en ±50; nosotros, E2), el baseline saca 0,249, muy cerca de su
-  0,2433 oficial, y nosotros 0,381 [medido].
+  0,2433 oficial, y nosotros 0,381 [medido]. Estas cifras son de antes de «cortas a `D`», que con el `D`
+  propio suma +0,010 y +0,009 en la mitad de entrenamiento y +0,009 y +0,008 en la de examen (§2) [medido].
 - **Metrica** (etiquetas derivadas de eventos): +0,118 sobre el baseline en 3 de 3 [medido]. Ojo: en esos
   datos el balón va pegado al jugador (a menos de 0,3 m del más cercano en el 45,6 % de los frames de juego
   con balón, frente al 6,4 % en la DFL sin degradar [medido]), así que no prueba nada sobre los rasgos de
@@ -303,7 +341,8 @@ En la DFL y en 10 de los 20 partidos de SkillCorner (la mitad de entrenamiento) 
 
 ### 6.5 La ventana pública, solo como comprobación
 
-`equipo_v8` saca 0,658 de spellF1 y 0,865 de macroF1 en los 5 minutos públicos [medido]; con 17 posesiones,
+`equipo_v9` saca 0,680 de spellF1 y 0,874 de macroF1 en los 5 minutos públicos (`equipo_v8`, sin «cortas a
+`D`», 0,658 y 0,865) [medido]; con 17 posesiones,
 una diferencia de hasta 0,39 es ruido, y en el repo oficial el que gana en la ventana (`smooth125`, 0,4242)
 pierde en el partido frente a `smooth50` (0,2242 frente a 0,2433; `EVALUATION.md`). No elegimos ninguna
 versión ni ningún parámetro con ella; su uso descriptivo está en §4 y §10.
@@ -312,9 +351,10 @@ versión ni ningún parámetro con ella; su uso descriptivo está en §4 y §10.
 
 El baseline oficial (`baseline_smooth50`) saca 0,2433 en el partido. En el harness, con su propio `D`, saca
 0,310, 0,346, 0,353 y 0,397 en las cuatro celdas que deciden [medido]. Si a nuestra nota con nuestro `D` en
-cada celda (0,416, 0,433, 0,616 y 0,642) le quitamos lo que esa celda regala al baseline, quedamos entre
-0,33 y 0,51 [inferencia]. En SkillCorner, donde el baseline saca casi su nota oficial (0,249), sacamos 0,381
-[medido]; de ahí el punto central de 0,38. Las cifras oficiales solo describen (§10).
+cada celda (0,414, 0,431, 0,623 y 0,651) le quitamos lo que esa celda regala al baseline, quedamos entre
+0,33 y 0,51 [inferencia]. En SkillCorner, donde el baseline saca casi su nota oficial (0,249), sacábamos 0,381
+antes de «cortas a `D`», que allí suma de +0,008 a +0,010 [medido]; de ahí el punto central de unos 0,39
+[inferencia]. Las cifras oficiales solo describen (§10).
 
 Por qué el harness es optimista:
 - **la cadena completa nunca se ha puntuado con etiquetas:** el harness no ejecuta las anclas del Smart
@@ -421,18 +461,26 @@ El comando imprime solo agregados: versiones, commit y si hay cambios sin commit
 posesiones y paradas por tramo, rachas cortas, conflictos y el sha256. Se niega a escribir el CSV si el ATD
 tiene alguna línea rara o si dos piezas se contradicen en un frame evaluado.
 
-**Huella esperada:** `d78c514dcf5e8ad9bcff5f76da0aadf409c01ce89ad65ad0435421daf31ce2b2` [PENDIENTE: final].
-`equipo_v8`: 219 posesiones de 15,8 s de media, 116 paradas y `D` en el 45,4 % de los frames evaluados
+**Huella esperada:** `d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63` [PENDIENTE: final].
+`equipo_v9`: 201 posesiones de 17,0 s de media, 116 paradas y `D` en el 46,2 % de los frames evaluados
 [medido].
 
-**Máquinas:** generada en Windows y reproducida tres veces en un Mac M1 (macOS, ARM, Python 3.13.7,
-numpy 2.5.4) con el mismo sha256 [medido]. El Python y numpy exactos de `equipo_v8` en Windows no constan
-[sin verificar]; el mismo fichero, generado antes como `prueba_d7_v5`, salió con Python 3.13.9 y numpy 2.5.4
-[medido]. [PENDIENTE: Python y numpy de la primera línea que imprime el comando en el ensayo del congelado en
-Windows con el `main` final] No hay azar, los empates se resuelven siempre igual y nada depende del orden de
-los ficheros ni de la hora. B5 usa `np.exp`, que en teoría puede variar en el último bit según la CPU. El
-redondeo a 6 decimales lo hace improbable, pero no lo damos por supuesto: comprobamos el sha256 del fichero
-en cada máquina, y en Windows x86 y en macOS ARM sale el mismo.
+**Máquinas.** `equipo_v9` sale con el mismo sha256 en dos máquinas Windows [medido]:
+- la de Ismael, en el entorno limpio (Python 3.13.9 y numpy 2.5.4), con `main` en `1e71d72` y sin cambios
+  locales;
+- la de Manuel (Python 3.14.4 y numpy 2.4.4), que generó el mismo fichero como entrega de prueba desde la rama
+  de «cortas a `D`».
+
+La versión anterior, `equipo_v8`, salió igual en tres máquinas [medido]: esas dos y un Mac M1 (macOS, ARM,
+Python 3.13.7 y numpy 2.5.4), donde se generó tres veces. Que `equipo_v9` también salga igual en ARM es
+[inferencia]: el paso nuevo solo mueve etiquetas según duraciones en frames, sin cálculos con decimales.
+[PENDIENTE: reproducir `equipo_v9` en el Mac, y Python y numpy de la primera línea que imprime el comando en el
+congelado con el `main` final]
+
+No hay azar, los empates se resuelven siempre igual y nada depende del orden de los ficheros ni de la hora. B5
+usa `np.exp`, que en teoría puede variar en el último bit según la CPU. El redondeo a 6 decimales lo hace
+improbable, pero no lo damos por supuesto: comprobamos el sha256 del fichero en cada máquina, y con
+`equipo_v8` sale el mismo en Windows x86 y en macOS ARM.
 
 ## 10. Declaraciones y referencias
 
