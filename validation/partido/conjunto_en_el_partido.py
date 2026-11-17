@@ -6,8 +6,9 @@
 
 Es parte del punto 4 de la regla del candidato K2 (docs/decisiones.md, 17/11, «modelo conjunto»). El modelo se
 entrenó con la DFL y con SkillCorner, y el harness no puede decir si el ATD se les parece. Este script calcula en el
-ATD los mismos agregados que `validation/conjunto/referencia.py` calculó en las 34 vistas de los 17 partidos abiertos
-(`validation/conjunto/referencia_abiertos.json`, fijada antes) y dice cuáles caen fuera de su rango.
+ATD los mismos agregados que `validation/conjunto/referencia.py` calculó en las 48 vistas de los 17 partidos abiertos
+(`validation/conjunto/referencia_abiertos.json`, fijada antes; 14 de ellas, con el balón a la vista en las paradas,
+como en el ATD) y dice cuáles caen fuera de su rango.
 
 - Imprime solo agregados del partido entero: medianas, percentiles, medias y porcentajes sobre decenas de miles de
   grupos de 5 frames. Nada por frame: la salida se puede pegar a Claude.

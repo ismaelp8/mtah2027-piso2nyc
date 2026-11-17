@@ -5738,5 +5738,11 @@ Son tres comprobaciones **descriptivas**: no cambian la regla de K2 ni abren un 
    motivo. Se añaden las 14 vistas de la DFL con el balón a la vista en los `D` (48 vistas en total) y se regenera el
    JSON. **Es una enmienda al criterio C2, hecha antes de que nadie ejecute nada sobre el partido.** El resto de C2 no
    cambia.
+4. **Metrica** (añadido antes de ejecutarlo; `validation/conjunto/metrica.py`). Los 3 partidos de Metrica sample-data,
+   que el modelo de los 17 partidos nunca vio y que son de un tercer proveedor, con las condiciones de
+   `validation/metrica/medir.py`. Solo se dice lo que sale, con dos avisos ya medidos: sus etiquetas vienen de eventos
+   (un toque con impacto, no control) y su balón va pegado al jugador (S10), así que favorece a la proximidad. Si K2
+   pierde más de 0,005 frente a `main` en la condición que vota con el `D` de las etiquetas, se apunta como otro aviso
+   de proveedor; si gana, no prueba nada por sí solo.
 
 Estado: escrita antes de medir. Los resultados van en la entrada siguiente.

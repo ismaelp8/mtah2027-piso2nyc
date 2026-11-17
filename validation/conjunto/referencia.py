@@ -5,8 +5,10 @@
 Datos abiertos de otros partidos (la caché de `exportar.py`). Lo puede ejecutar cualquiera, Claude incluido, con el
 entorno del equipo. Solo imprime agregados. No lee el examen de SkillCorner.
 
-Calcula `agregados.agregados` en las 34 vistas (17 partidos × sus dos condiciones del balón que votan), cada partido
-con el pliegue que no lo vio, y guarda el mínimo y el máximo de cada agregado en `referencia_abiertos.json`.
+Calcula `agregados.agregados` en 48 vistas, cada partido con el pliegue que no lo vio, y guarda el mínimo y el máximo
+de cada agregado en `referencia_abiertos.json`. Las vistas: los 17 partidos con sus dos condiciones del balón que
+votan (34) y, en los 7 de la DFL, las mismas dos con el balón a la vista en los `D` (14), porque en el ATD el balón se
+ve en la mayoría de los frames de las paradas.
 `validation/partido/conjunto_en_el_partido.py` compara con ese rango lo que sale en el ATD del partido.
 """
 
@@ -43,7 +45,9 @@ def main():
     inicio = time.time()
     for dominio, partidos in (("dfl", cj.DFL), ("sc", cj.SKILLCORNER)):
         for partido in partidos:
-            for j in ("0", "1"):
+            # En la DFL, también el balón a la vista en los `D` (d0, d1): en el ATD se ve en las paradas (enmienda
+            # del 17/11 al criterio C2, antes de ejecutar nada sobre el partido).
+            for j in (("0", "1", "d0", "d1") if dominio == "dfl" else ("0", "1")):
                 trk = paridad.tracking_de(dominio, partido, j)
                 vistas["{}:{}:{}".format(dominio, partido, j)] = ag.agregados(trk, fuera=cj.pliegue_de(dominio, partido))
             print("# hecho {} {} ({:.0f} s)".format(dominio, partido, time.time() - inicio), file=sys.stderr, flush=True)

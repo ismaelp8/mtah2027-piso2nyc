@@ -2,6 +2,7 @@
 
     python validation/conjunto/entrenar.py J03WMX     # el pliegue sin J03WMX y sin sus dos partidos de SkillCorner
     python validation/conjunto/entrenar.py todos      # el de los 17 partidos (la entrega y el examen)
+    python validation/conjunto/entrenar.py todos --solo sc --etiqueta solo_sc   # solo SkillCorner: se puntúa en la DFL
 
 Hace falta el entorno `mtah2027-conjunto` (torch con CUDA) y la caché de `exportar.py`. Datos abiertos de otros
 partidos (DFL, CC BY 4.0; SkillCorner, MIT): lo puede ejecutar cualquiera, Claude incluido. Solo imprime agregados.
@@ -12,6 +13,9 @@ DFL y mitad de SkillCorner, con los aumentos hacia el ATD; entropía cruzada de 
 de control (en SkillCorner, las suyas) y del auxiliar con el flag; AdamW, pasos fijos y semilla fija, sin parada
 temprana. Al final escribe los pesos y, para los partidos que el pliegue no vio, z y las probabilidades de cambio a
 25 Hz (`cj_comun.fichero_salida`), con cada balón que mide el harness.
+
+Con `--solo dfl` o `--solo sc` (comprobación del 17/11, «el otro proveedor») entrena con los partidos de un solo
+proveedor y guarda las salidas de todos los del otro, que no ha visto.
 """
 
 import argparse
@@ -283,8 +287,10 @@ def describir(modelo, partidos, titulo):
                 flush=True)
 
 
-def guardar_salidas(modelo, m, etiqueta, pliegue):
+def guardar_salidas(modelo, m, etiqueta, pliegue, solo=None):
     datos = {"pliegue": np.array(pliegue)}
+    if solo is not None:
+        datos["solo"] = np.array(solo)  # el único proveedor con el que se entrenó
     for j, (bx, by) in enumerate(m["balones"]):
         clave = "{}{}".format("d" if j >= 2 else "", j % 2)  # 0, 1: las condiciones; d0, d1: balón a la vista en D
         z, p = predecir(modelo, m, bx, by)
@@ -299,9 +305,13 @@ def main():
     parser.add_argument("pliegue", choices=cj.PLIEGUES)
     parser.add_argument("--etiqueta", default="piloto", help="nombre de la tanda: pesos y salidas van con él")
     parser.add_argument("--config", default=None, help="JSON con los valores de CONFIG que se cambian")
+    parser.add_argument("--solo", choices=("dfl", "sc"), default=None,
+                        help="entrena con un solo proveedor (pliegue «todos») y guarda las salidas del otro")
     parser.add_argument("--describir-dentro", action="store_true",
                         help="enseña también la tabla en dos partidos que el pliegue sí vio")
     args = parser.parse_args()
+    if args.solo and args.pliegue != "todos":
+        parser.error("--solo va con el pliegue «todos»")
     cfg = dict(CONFIG)
     if args.config:
         cambios = json.loads(args.config)
@@ -318,6 +328,8 @@ def main():
 
     fuera_dfl, fuera_sc = cj.fuera_de(args.pliegue)
     inicio = time.time()
+    if args.solo:  # el otro proveedor entero queda fuera
+        fuera_dfl, fuera_sc = (cj.DFL, ()) if args.solo == "sc" else ((), cj.SKILLCORNER)
     dentro = {"dfl": [cargar("dfl", p, device) for p in cj.DFL if p not in fuera_dfl],
               "sc": [cargar("sc", p, device) for p in cj.SKILLCORNER if p not in fuera_sc]}
     print("# Modelo conjunto · tanda «{}» · pliegue {} · semilla {}\n".format(args.etiqueta, args.pliegue, semilla))
@@ -337,11 +349,14 @@ def main():
 
     plan = torch.optim.lr_scheduler.LambdaLR(opt, tasa)
     mitad = cfg["lote"] // 2
+    reparto_del_lote = [("dfl", mitad), ("sc", cfg["lote"] - mitad)]
+    if args.solo:
+        reparto_del_lote = [(args.solo, cfg["lote"])]
     acumulado, cuenta = {}, 0
     for paso in range(cfg["pasos"]):
         modelo.train()
         elegidos = []
-        for dominio, cuantos in (("dfl", mitad), ("sc", cfg["lote"] - mitad)):
+        for dominio, cuantos in reparto_del_lote:
             reparto = np.bincount(rng.integers(0, len(dentro[dominio]), size=cuantos), minlength=len(dentro[dominio]))
             elegidos += [(m, int(c)) for m, c in zip(dentro[dominio], reparto) if c]
         lote = aumentar(lote_de(elegidos, rng, cfg, device), cfg, gen)
@@ -368,10 +383,10 @@ def main():
     if fuera:
         describir(modelo, fuera, "## Fuera de muestra: los partidos que el pliegue no vio (descriptivo, umbral 0,5)")
         for m in fuera:
-            guardar_salidas(modelo, m, args.etiqueta, args.pliegue)
+            guardar_salidas(modelo, m, args.etiqueta, args.pliegue, args.solo)
     if args.describir_dentro or not fuera:
-        describir(modelo, [dentro["dfl"][0], dentro["sc"][0]],
-                  "## Dentro de muestra: dos partidos que el pliegue sí vio (descriptivo)")
+        describir(modelo, [lista[0] for lista in dentro.values() if lista],
+                  "## Dentro de muestra: partidos que el pliegue sí vio (descriptivo)")
     if args.pliegue == "todos":
         # El de todos no tiene partidos fuera: sus salidas en los 17 son dentro de muestra y no se guardan.
         pass

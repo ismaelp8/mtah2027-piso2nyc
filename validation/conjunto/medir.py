@@ -135,13 +135,16 @@ def _guardadas(etiqueta, dominio, partido, con_la_pieza):
         return None
     with np.load(cj.fichero_salida(etiqueta, dominio, partido)) as d:
         guardadas = {k: d[k] for k in d.files}
-    if str(guardadas["pliegue"]) != cj.pliegue_de(dominio, partido):
+    if "solo" in guardadas:  # la comprobación del otro proveedor: el modelo solo vio partidos del otro
+        if str(guardadas["solo"]) == dominio:
+            raise ValueError("las salidas de {} son de un modelo que vio este proveedor".format(partido))
+    elif str(guardadas["pliegue"]) != cj.pliegue_de(dominio, partido):
         raise ValueError("las salidas de {} no son del pliegue que no lo vio".format(partido))
     return guardadas
 
 
 def medir_dfl(trabajo):
-    partido, etiqueta, comprobar, con_la_pieza = trabajo
+    partido, etiqueta, comprobar, con_la_pieza, valores = trabajo
     inicio = time.time()
     cargado = dfl.cargar(partido)
     gts = cargado["gt"]
@@ -158,7 +161,7 @@ def medir_dfl(trabajo):
                     for nombre, igual in _de_comprobacion(piezas, p, modo, partido).items():
                         recuentos[(nombre, condicion, modo, "iguales")] = igual
                     continue
-                for (clave, convencion), valor in _recuentos(_versiones(piezas, z, p, modo, CANDIDATOS), gts).items():
+                for (clave, convencion), valor in _recuentos(_versiones(piezas, z, p, modo, valores), gts).items():
                     recuentos[(clave, condicion, modo, convencion)] = valor
     return partido, recuentos, time.time() - inicio
 
@@ -197,12 +200,13 @@ def nota(recuentos, partidos, clave, celdas):
     return float(np.mean([cc.spell([recuentos[p][(clave,) + celda] for p in partidos]) for celda in celdas]))
 
 
-def elegir(recuentos, partidos, familia, celdas):
-    """{partido o «todos»: valor}: el que más saca en los demás (o en todos); en el empate, el más pequeño."""
+def elegir(recuentos, partidos, familia, celdas, lista):
+    """{partido o «todos»: valor}: el de `lista` que más saca en los demás (o en todos); en el empate, el más
+    pequeño."""
     elegidos = {}
     for fuera in list(partidos) + ["todos"]:
         resto = [p for p in partidos if p != fuera] or list(partidos)  # con un solo partido (piloto), con él
-        elegidos[fuera] = max(CANDIDATOS[familia], key=lambda v: (nota(recuentos, resto, (familia, v), celdas), -v))
+        elegidos[fuera] = max(lista, key=lambda v: (nota(recuentos, resto, (familia, v), celdas), -v))
     return elegidos
 
 
@@ -220,11 +224,11 @@ def rango(intervalo):
     return "[–]" if intervalo is None else "[{:+.3f} a {:+.3f}]".format(*intervalo)
 
 
-def informe_dfl(recuentos, partidos, etiqueta, n_draws, guardar):
+def informe_dfl(recuentos, partidos, etiqueta, n_draws, guardar, valores):
     celdas_eleccion = [(c, m, v) for c in dfl.VOTAN for m in ("oraculo", "propio") for v in dfl.CONVENCIONES]
     veredictos, elegidos_todos = [], {}
-    for familia in CANDIDATOS:
-        elegidos = elegir(recuentos, partidos, familia, celdas_eleccion)
+    for familia, lista in valores.items():
+        elegidos = elegir(recuentos, partidos, familia, celdas_eleccion, lista)
         elegidos_todos[familia] = elegidos
         cuenta = collections.Counter(elegidos[p] for p in partidos)
         print("\n## Candidato {}\n".format(familia))
@@ -271,7 +275,7 @@ def informe_dfl(recuentos, partidos, etiqueta, n_draws, guardar):
         print("| {} | {} |".format(LETRA[familia], " | ".join(
             "{}, {}, `D` {}".format(v, c, NOMBRE_MODO[m]) for c, m, v in columnas)))
         print("|---|" + "---|" * len(columnas))
-        for valor in CANDIDATOS[familia]:
+        for valor in lista:
             celdas = []
             for celda in columnas:
                 _, _, dif, _, gana, _, _, _ = fila(recuentos, partidos, lambda p: (familia, valor), celda, 0)
@@ -293,8 +297,7 @@ def informe_dfl(recuentos, partidos, etiqueta, n_draws, guardar):
 def informe_sc(recuentos, partidos, valores, n_draws, con_regla):
     for familia, lista in valores.items():
         if con_regla:
-            print("\n## Candidato {} · {} = {:g}, elegida en la DFL con los 7\n".format(familia, LETRA[familia],
-                                                                                    lista[0]))
+            print("\n## Candidato {} · {} = {:g}, fijada desde la DFL\n".format(familia, LETRA[familia], lista[0]))
         else:
             print("\n## Candidato {} (descriptivo: todos los valores de {}, sin elegir)\n".format(familia,
                                                                                                LETRA[familia]))
@@ -330,6 +333,9 @@ def main():
     parser.add_argument("--sin-elegidos", action="store_true",
                         help="SkillCorner, solo para el piloto: enseña todos los valores, sin regla")
     parser.add_argument("--no-guardar", action="store_true", help="DFL: no escribe `elegidos.json`")
+    parser.add_argument("--alfa", type=float, default=None,
+                        help="mide K2 solo con esta α, sin elegir ni leer `elegidos.json` (comprobaciones)")
+    parser.add_argument("--gamma", type=float, default=None, help="lo mismo para la γ de K1")
     parser.add_argument("--examen", action="store_true", help="SkillCorner: la mitad de examen (ver arriba)")
     parser.add_argument("--examen-con-permiso", action="store_true",
                         help="confirma que este es el único uso del examen para este candidato")
@@ -338,14 +344,22 @@ def main():
     args = parser.parse_args()
 
     elegidos, examen = None, False
+    fijos = collections.OrderedDict()
+    if args.gamma is not None:
+        fijos["K1"] = (float(args.gamma),)
+    if args.alfa is not None:
+        fijos["K2"] = (float(args.alfa),)
+    if fijos and args.examen:
+        parser.error("el examen va con los valores elegidos en la DFL, no con --alfa ni --gamma")
     if args.dominio == "dfl":
         if args.examen:
             parser.error("el examen es de SkillCorner: --dominio sc")
         partidos = list(args.partidos or cj.DFL)
-        trabajos = [(p, args.etiqueta, args.comprobar, args.con_la_pieza) for p in partidos]
+        valores = fijos or CANDIDATOS
+        trabajos = [(p, args.etiqueta, args.comprobar, args.con_la_pieza, valores) for p in partidos]
         funcion = medir_dfl
     else:
-        valores = dict(CANDIDATOS)
+        valores = fijos or dict(CANDIDATOS)
         if args.examen:
             if not (args.examen_con_permiso and args.candidato) or args.partidos or args.comprobar \
                     or args.sin_elegidos:
@@ -355,7 +369,7 @@ def main():
         else:
             partidos = [int(p) for p in (args.partidos or cj.SKILLCORNER)]
             lector.exigir_solo_entrenamiento(partidos)
-        if not args.sin_elegidos and not args.comprobar:
+        if not args.sin_elegidos and not args.comprobar and not fijos:
             with open(fichero_elegidos(args.etiqueta), encoding="utf-8") as f:
                 elegidos = json.load(f)
             familias = (args.candidato,) if args.candidato else tuple(CANDIDATOS)
@@ -384,9 +398,9 @@ def main():
             total, ", ".join(distintos) or "ninguna"))
         sys.exit(1 if distintos else 0)
     if args.dominio == "dfl":
-        informe_dfl(recuentos, partidos, args.etiqueta, args.bootstrap, not args.no_guardar)
+        informe_dfl(recuentos, partidos, args.etiqueta, args.bootstrap, not args.no_guardar and not fijos, valores)
     else:
-        informe_sc(recuentos, partidos, valores, args.bootstrap, elegidos is not None)
+        informe_sc(recuentos, partidos, valores, args.bootstrap, elegidos is not None or bool(fijos))
 
 
 if __name__ == "__main__":
