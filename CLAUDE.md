@@ -234,7 +234,26 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
   - **Su diagnóstico** (`validation/scripts/diagnostico_spell.py`, descriptivo): con una evidencia perfecta
     el decodificador casi no pierde nada. La mayor pérdida está en la evidencia de equipo con el balón a la
     vista, sobre todo en recuperaciones y posesiones de 2 a 5 s; la segunda, en el `D` propio.
-- **Entrega vigente: `equipo_v9`** (16/11 por la noche): `equipo_v8` más «cortas a `D`»
+- **Entrega en preparación: `equipo_v11`, con K3** (17/11 por la tarde; `docs/decisiones.md`, «se enciende K3»): la
+  evidencia de equipo es la media de K2 y B5 (`aprendida.evidence_k3`). Lo decidió Ismael, tras comentarlo con el
+  equipo. Está en `main` desde el 17/11 por la tarde (merge de `feat/encender-k3`, que lleva dentro la rama de David).
+  - **Todavía no existe.** Hay que regenerarla en el entorno limpio desde `main`, validarla y reproducirla en una
+    segunda máquina. Se espera la huella de la entrega de prueba `prueba_k3` (`811658cd…c04b`, generada con numpy
+    1.26.4), con 198 posesiones y 116 paradas.
+  - Frente a `equipo_v10` cambian 4.219 frames (2,7 %): 2.719 de un equipo al otro y 1.500 entre un equipo y `D`
+    [medido por David con la entrega de prueba].
+  - Hasta que esté regenerada y validada no hay entrega vigente con K3. La vuelta atrás es `equipo_v10` (K2) o
+    `equipo_v9` (B5): `docs/decisiones.md`, «se enciende K3».
+- **Entrega con K2: `equipo_v10`** (17/11; `docs/decisiones.md`, «se enciende K2» y «`equipo_v10`»):
+  `equipo_v9` con la evidencia de equipo de K2 (`aprendida.evidence_k2`, el modelo conjunto) en lugar de B5. Lo decidió
+  David.
+  - sha256 `784e65e5…acbc`, el mismo que la entrega de prueba `prueba_k2` de Ismael. David la regeneró en su máquina
+    (Python 3.13.1, numpy 2.5.4, rama `feat/encender-k2` en `7e0c2cc`, sin cambios locales): 0 conflictos, válida,
+    203 posesiones de 16,9 s de media. **Reproducida en dos máquinas.**
+  - Frente a `equipo_v9` cambian 7.666 frames (4,8 %): 5.181 de un equipo al otro y 2.485 entre un equipo y `D`.
+  - Es la vuelta atrás si K3 no se regenera a tiempo: desde `main`, con `--pieza candidates=aprendida.evidence_k2`
+    sale con esa misma huella. El documento técnico tiene que contar K2 y K3.
+- **Entrega anterior: `equipo_v9`** (16/11 por la noche): `equipo_v8` más «cortas a `D`»
   (`temporal.decode_cortas_a_d`, en `pipeline.PIECES` desde el 16/11; Ismael: «si enciendela»; `docs/decisiones.md`).
   - Es la entrega de prueba `prueba_cortas_a_d`: sha256 `d9706dfb…be63`, válida, con 201 posesiones de 17,0 s de
     media, 116 paradas y el 46,2 % de `D` en lo evaluado. Ismael la generó en el entorno limpio y Manuel en su
@@ -510,6 +529,87 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - Antonio: la línea del vídeo, cerrada;
     - Claude (sesión de Ismael): el borrador del documento técnico (PR 21). Está escrito para `equipo_v8`: hay que
       ponerlo al día con `equipo_v9`.
+- **17/11: el modelo conjunto, K2, ha cumplido su regla entera, pero no se traslada de un proveedor a otro** (rama
+  `exp/modelo-conjunto`; `validation/resultados/2026-11-17_modelo_conjunto.md` y `docs/decisiones.md`, 17/11). **No está
+  en la entrega: encenderlo es una apuesta, sin señales en contra, que decide el equipo.**
+  - **Qué es:** una evidencia de equipo que mira a cada jugador (una red por jugador, suma y máximo por equipo y una
+    convolucional temporal de ±12,6 s, 36.260 pesos). Se entrenó con las etiquetas de control en la DFL y con las de
+    SkillCorner, y sustituye solo al logit de B5 (`aprendida.evidence_k2`): el `D`, el decodificador y las capas del
+    partido no cambian. En la entrega corre en numpy puro (`possession/conjunto.py`, pesos en
+    `possession/conjunto_pesos.npz`); torch solo hizo falta para entrenar.
+  - **Lo medido** (K2 frente a `main`, cada partido con un modelo que no lo vio):
+    - DFL con control, de +0,036 a +0,051 (6 o 7 de 7); DFL con el flag, de +0,033 a +0,044 (7 de 7);
+    - SkillCorner, de +0,021 a +0,024 en la mitad de entrenamiento y de +0,021 a +0,028 en el examen, usado una vez
+      para K2 (`validation/skillcorner/BITACORA.md`);
+    - gana también con la regla de §5.8 frente a `main`, y mejora las recuperaciones (+9,7 puntos) y los duelos con
+      cambio (+5,2) de los eventos humanos de la DFL;
+    - predice las mismas posesiones que `main`: no inventa más, las coloca mejor.
+  - **El aviso** (medido después, con la lectura escrita antes): todo eso es con partidos del mismo proveedor en el
+    entrenamiento. Entrenado solo con la DFL pierde en SkillCorner (−0,010 a −0,015), y entrenado solo con SkillCorner
+    pierde en la DFL (−0,075 a −0,096 con control). El partido es de un tercer proveedor.
+  - **Lo que hay a favor de la apuesta:**
+    - en Metrica, el único tercer proveedor abierto, el modelo de los dos proveedores gana (+0,035) y más que
+      cualquiera de un solo proveedor (3 partidos, con sus avisos);
+    - con los slots y el balón como los del partido (P4 y el retraso de 4 frames) sigue ganando por +0,040 a +0,068, y
+      le cuestan menos que a B5.
+  - **Qué mide el criterio C2 del punto 4:** si el partido se parece, para el modelo, a un proveedor conocido. No
+    detecta un modelo que falla: las salidas que lo hacen saltar separan la DFL de SkillCorner también cuando el modelo
+    funciona. Pasar C2 no cuenta como prueba de que K2 acierte.
+  - **El punto 4, en el partido: pasa los siete criterios (C0 a C6)** [medido por Ismael el 17/11, en el entorno
+    limpio y con la rama en `73c3787`; solo agregados]:
+    - la rama no cambia la entrega: `equipo_v9_rama` sale con `d9706dfb…be63`;
+    - la entrega de prueba `prueba_k2` (sha256 `784e65e5…acbc`) es válida, con 0 conflictos, 203 posesiones de 16,9 s
+      de media, 115 paradas y el 45,9 % de `D`;
+    - frente a `equipo_v9` cambian 7.666 frames (4,8 %): 5.181 de un equipo al otro y 2.485 entre un equipo y `D`;
+    - ninguna posesión de menos de 12 frames y una de menos de 25;
+    - las seis salidas del modelo caen dentro del rango de los datos abiertos, y también dentro del de la DFL sola; la
+      única entrada fuera es la que se esperaba (más de 11 slots en el 13,2 % de los grupos);
+    - en la ventana pública no se rompe nada: spellF1 0,680 las dos, macroF1 de 0,874 a 0,873.
+  - **Qué significa:** la apuesta se queda sin señales en contra, y el modelo se comporta en el partido como en la DFL.
+    Sigue siendo una apuesta: el punto 4 dice que el ATD no le resulta raro al modelo, no que K2 gane en él.
+  - **Si el equipo lo enciende:** `"aprendida.evidence_k2"` en `pipeline.PIECES["candidates"]`, la rama a `main` y
+    regenerar. Tiene que salir byte a byte igual que `prueba_k2` (`784e65e5…acbc`). Antes de entregar hay que
+    reproducirla en otra máquina (`possession/conjunto.py` es código numérico nuevo y solo se ha ejecutado en la de
+    Ismael) y contar K2 en el documento técnico.
+  - **Lo que no pasó:** K1, la capa de cambios aprendida (`conjunto.capa_cambios`, apagada): gana con el flag, pero con
+    control solo en 4–6 de 7 partidos. Una red 9 veces mayor se aprende los partidos de memoria. Y decodificar a riesgo
+    mínimo con K2 no merece construirse (las muestras se fragmentan).
+  - **Una ronda contra el cambio de proveedor (K2r), cerrada en su primer paso:** con aumentos hacia un tracking
+    automático en los partidos de la DFL (`entrenar.py --robusto`), el modelo de solo la DFL pasa de −0,015 y −0,010 a
+    −0,004 y −0,002 en SkillCorner con el `D` de las etiquetas, pero con el propio sigue en −0,008 y −0,005.
+  - **Dos refinamientos sin reentrenar, los dos apagados** (17/11, rama `exp/k2-refinar`;
+    `validation/resultados/2026-11-17_refinamientos_k2.md` y `docs/decisiones.md`, 17/11):
+    - **K4, el logit de K2 promediado con el del campo en espejo, se cierra:** gana en la DFL (+0,005 con control) y
+      empata en SkillCorner y en Metrica.
+    - **K3, la media a partes iguales del logit de K2 y del de B5** (`possession/refinamientos.py`,
+      `aprendida.evidence_k3`), gana a `main` (B5) en todo lo medido: de +0,029 a +0,054 con control en la DFL, de
+      +0,017 a +0,023 en SkillCorner y de +0,014 a +0,029 en Metrica. Partido a partido queda por debajo de `main` en 3
+      casos de 136; K2, en 12.
+    - **K3 no queda recomendada por encima de K2.** El punto que lo decidía (¿deja de perder donde K2 pierde?) no se
+      puede leer: dos réplicas de K2 entrenadas solo con la DFL no repiten en SkillCorner la pérdida publicada en las
+      dos celdas que pedía la regla. Con las dos, K3 gana a `main` (+0,005 a +0,011) y a K2 solo (+0,008 a +0,015).
+    - **El aviso de proveedor de K2, con su tamaño:** en tres entrenamientos del modelo de solo la DFL, K2 queda entre
+      +0,003 y −0,015 frente a `main` en SkillCorner, sin ganar en ninguno. La media de dos semillas queda en +0,002 a
+      +0,004 y, mezclada con B5, en +0,007 a +0,017 [lectura, con solo dos semillas]. Queda por probar un K2 con
+      varias semillas promediadas (pide la GPU), con su regla.
+    - **K3 es más prudente que K2 en los cambios de posesión:** predice un 2 % menos de posesiones que `main`, se queda
+      con la mitad de la mejora de K2 en recuperaciones (74,9 %, frente a 70,3 % de `main` y 80,0 % de K2) y, con el
+      flag y en Metrica, queda por debajo de K2.
+    - **Las tres conclusiones de David en la ventana pública se repiten en los 20 partidos abiertos**
+      (`validation/conjunto/detalle_abiertos.py`): vemos pocos cambios, pero bien puestos (de los directos entre
+      equipos en la DFL con control, `main` ve el 35 %, K2 el 48 % y K3 el 44 %); predecimos menos posesiones de las
+      que hay; y las de menos de 2 s no las encuentra ninguna versión.
+    - **K3 pasó su entrega de prueba frente a `equipo_v10`** (C0 a C6, medido por David con solo agregados) **e
+      Ismael decidió encenderla el 17/11 por la tarde** (`docs/decisiones.md`, «se enciende K3»): en la rama
+      `feat/encender-k3`, `pipeline.PIECES["candidates"]` es `aprendida.evidence_k3`. Es una decisión del equipo, no
+      un veredicto de la regla. Los pasos que faltan están en `validation/conjunto/COMPROBAR_K3.md`.
+    - **En los scripts del estudio, `main` es B5 fijada a mano** (`validation/conjunto/medir.py`, `metrica.py`,
+      `refinar.py`), no la pieza de la entrega.
+  - **Lo que sale para la fase siguiente:** lo que cojea ahora es el cambio de proveedor, no la arquitectura. El
+    instrumento para medirlo es dejar un proveedor fuera (`entrenar.py --solo` y `medir.py --alfa`).
+  - **Lo que no se hizo del análisis de fuera:** el `D` dentro del modelo (el harness no puede validarlo con el balón) y
+    el balón del vídeo. La pregunta a la organización sobre la regla de posesión está en borrador, sin enviar
+    (`validation/conjunto/pregunta_organizacion.md`): su repo tiene los issues cerrados.
 - **17/11 por la mañana: los modelos de secuencia para la evidencia de equipo (B11–B15).** Están en la rama
   `claude/serene-lumiere-16245d`; el registro, en `docs/decisiones.md` (17/11). Ninguno entra.
   - **B11 (convolución temporal) y B13 (red sobre las trayectorias) se cierran:**

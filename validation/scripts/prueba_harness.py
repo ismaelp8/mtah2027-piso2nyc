@@ -161,11 +161,13 @@ def comprobar_dejar_fuera(carpeta):
         comprobar("con «dejar_fuera», «fuera» en las opciones da error", da_error(lambda: puntuar.leer_versiones(ruta)))
         principal = versiones["main"]
         piezas = puntuar.piezas_para(principal.get("piezas"), principal.get("fuera"), "J03WMX")
-        comprobar("la versión que no nombra la pieza de equipo usa la de la entrega (B5) dejando fuera el partido",
+        comprobar("la versión que no nombra la pieza de equipo usa la de la entrega (K3 desde el 17/11) dejando "
+                  "fuera el partido",
                   isinstance(piezas.get("candidates"), functools.partial)
-                  and piezas["candidates"].func is aprendida.evidence_b5
+                  and piezas["candidates"].func is aprendida.evidence_k3
                   and piezas["candidates"].keywords == {"fuera": "J03WMX"})
-        comprobar("puntuar sin decir el partido la versión de main (B5 por defecto) da error",
+        comprobar("puntuar sin decir el partido la versión de main (la de la entrega, que deja fuera un partido) da "
+                  "error",
                   da_error(lambda: puntuar.ejecutar(principal, trk, gt, "oraculo")))
         # Un espía como pieza de la entrega: ejecutar le pasa el partido aunque la versión no la nombre, también
         # con las versiones de VERSIONES, que no llevan la clave «piezas».
