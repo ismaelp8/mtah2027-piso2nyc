@@ -36,12 +36,17 @@ UMBRAL = 0.005
 GANA_DE = 7
 MODOS = ("oraculo", "propio")
 CANDIDATOS = {"b11": aprendida.evidence_b11, "b12": aprendida.evidence_b12, "b13": aprendida.evidence_b13,
-              "b14": aprendida.evidence_b14, "b15": aprendida.evidence_b15}
+              "b14": aprendida.evidence_b14, "b15": aprendida.evidence_b15, "b16": aprendida.evidence_b16}
+# B16 se entrenó con SkillCorner ENTRENAMIENTO: en esa mitad, cada partido se puntúa con el pliegue que no lo vio (scA para
+# los 5 primeros, scB para los otros 5). En EXAMEN, con el de todos.
+MITAD_SC = {id_: ("scA" if k < 5 else "scB") for k, id_ in enumerate(lc.ENTRENAMIENTO)}
 
 
-def ejecutar(nombre, trk, gt, modo):
+def ejecutar(nombre, trk, gt, modo, id_=None):
     extra = [puntuar.d_oraculo(gt)] if modo == "oraculo" else []
     piezas = None if nombre == "main" else {"candidates": CANDIDATOS[nombre]}
+    if nombre == "b16" and id_ in MITAD_SC:
+        piezas = {"candidates": lambda t: aprendida.evidence_b16(t, fuera=MITAD_SC[id_])}
     return pipeline.run(trk, extra=extra, pieces=piezas)
 
 
@@ -74,7 +79,7 @@ def main():
             trk = puntuar.solo_lectura(trk)
             for modo in MODOS:
                 for nombre in nombres:
-                    rec[(modo, cond, nombre)].append(puntuar.contar(gt, ejecutar(nombre, trk, gt, modo)))
+                    rec[(modo, cond, nombre)].append(puntuar.contar(gt, ejecutar(nombre, trk, gt, modo, id_)))
         print("partido {} en {:.0f} s".format(id_, time.time() - t0), file=sys.stderr, flush=True)
 
     print("SkillCorner, mitad de {} ({} partidos). main = B5, dead_state y decode_cortas_a_d; los candidatos, con el "

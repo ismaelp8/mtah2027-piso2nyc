@@ -5767,3 +5767,10 @@ B14, medido (`ae25415`; salidas en `validation/secuencia/salidas/2026-11-17_*b14
 
 **B14 no pasa la regla** por SkillCorner, y el examen no se abre. Sigue cambiando de equipo de más; B15 (entrenada con
 control) ataca eso.
+
+B16 (se prueba; `aprendida.evidence_b16`, apagada) es B15 entrenada también con los 10 partidos de SkillCorner
+`ENTRENAMIENTO` (`validation/trayectorias/exportar_sc.py`), con sus etiquetas, que exigen control.
+- Para que la comprobación en SkillCorner siga fuera de muestra, hay dos pliegues más: «scA» (sin los 5 primeros
+  partidos) y «scB» (sin los otros 5). Cada partido de `ENTRENAMIENTO` se puntúa con el que no lo vio
+  (`skillcorner.py`).
+- Los pliegues de la DFL usan los 10 de SkillCorner. `EXAMEN` no se toca.

@@ -32,9 +32,16 @@ from possession import aprendida, ball, pipeline, secuencia, trayectorias, traye
 
 # B13 (17/11, possession/trayectorias.py): la misma elección, con la rejilla ampliada a 16 y 32 (B12 cayó en el borde, 8).
 ALFAS_B13 = comun.ALFAS + (16.0, 32.0)
-MODELOS = secuencia.MODELOS + ("b13", "b14", "b15")
-PROPIOS = {"b13": trayectorias, "b14": trayectorias2, "b15": trayectorias2}  # los modelos con módulo y pesos propios
-FICHERO_DE = {"b13": trayectorias.PESOS, "b14": trayectorias2.PESOS, "b15": trayectorias2.PESOS_B15}
+MODELOS = secuencia.MODELOS + ("b13", "b14", "b15", "b16")
+PROPIOS = {"b13": trayectorias, "b14": trayectorias2, "b15": trayectorias2, "b16": trayectorias2}
+FICHERO_DE = {"b13": trayectorias.PESOS, "b14": trayectorias2.PESOS, "b15": trayectorias2.PESOS_B15,
+              "b16": trayectorias2.PESOS_B16}
+# B16 tiene además los pliegues sin cada mitad de SkillCorner; su α se elige como la de «todos» (los 7 de la DFL).
+PLIEGUES_SC = ("scA", "scB")
+
+
+def pliegues_de(modelo):
+    return comun.PLIEGUES + (PLIEGUES_SC if modelo == "b16" else ())
 
 
 def alfas_de(modelo):
@@ -112,7 +119,7 @@ def elegir(modelo, procesos, seleccion=comun.PLIEGUES):
 def escribir(modelos=secuencia.MODELOS):
     datos = collections.OrderedDict()
     for modelo in modelos:
-        for pliegue in comun.PLIEGUES:
+        for pliegue in pliegues_de(modelo):
             with np.load(comun.fichero_pesos(modelo, pliegue)) as d:
                 for k in sorted(d.files):
                     datos["{}/{}/{}".format(modelo, pliegue, k)] = np.asarray(d[k])
@@ -132,13 +139,14 @@ def main():
     parser.add_argument("--procesos", type=int, default=7)
     parser.add_argument("--modelos", nargs="+", choices=MODELOS, default=list(secuencia.MODELOS),
                         help="con «escribir»: los modelos que se juntan (por defecto, B11 y B12; B13 va solo)")
-    parser.add_argument("--pliegues", nargs="+", choices=comun.PLIEGUES, default=list(comun.PLIEGUES),
+    parser.add_argument("--pliegues", nargs="+", choices=comun.PLIEGUES + PLIEGUES_SC, default=None,
                         help="al elegir α: solo estos pliegues (por defecto, los 8); cada uno se elige igual")
     args = parser.parse_args()
     if args.que == "escribir":
         escribir(tuple(args.modelos))
     else:
-        elegir(args.que, args.procesos, [p for p in comun.PLIEGUES if p in args.pliegues])
+        todos = pliegues_de(args.que)
+        elegir(args.que, args.procesos, [p for p in todos if args.pliegues is None or p in args.pliegues])
 
 
 if __name__ == "__main__":

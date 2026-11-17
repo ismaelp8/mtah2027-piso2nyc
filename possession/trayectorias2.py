@@ -26,6 +26,9 @@ from possession.trayectorias import TOPE_BALON, TOPE_VECINO, TOPE_VEL_BALON, VEL
 PESOS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trayectorias2_pesos.npz")
 # B15 (17/11): la misma red, entrenada con la etiqueta de control en todos los frames vivos. Sus pesos, aparte.
 PESOS_B15 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trayectorias2_b15_pesos.npz")
+# B16 (17/11): B15 entrenada también con SkillCorner ENTRENAMIENTO. Además de los pliegues de la DFL, «scA» y «scB» (sin
+# cada mitad de SkillCorner), para comprobarla en SkillCorner fuera de muestra.
+PESOS_B16 = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trayectorias2_b16_pesos.npz")
 N_JUGADOR = 14
 N_BALON = 6
 CANALES_DEL_BALON = (4, 5, 6, 7, 10, 11, 12, 13)

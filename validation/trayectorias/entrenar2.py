@@ -4,6 +4,8 @@
     python validation/trayectorias/entrenar2.py todos      # el de los 7 (la entrega y SkillCorner)
     python validation/trayectorias/entrenar2.py todos --fontaneria
     python validation/trayectorias/entrenar2.py J03WMX --control  # B15: la etiqueta de control en todos los vivos
+    python validation/trayectorias/entrenar2.py J03WMX --skillcorner   # B16: B15 más SkillCorner ENTRENAMIENTO
+    python validation/trayectorias/entrenar2.py scA --skillcorner      # B16 sin la mitad A de SkillCorner (comprobación)
 
 Hace falta torch (el entorno `mtah2027-balon`) y los rasgos de `exportar2.py`. Datos abiertos de otros partidos (DFL,
 CC BY 4.0): lo puede ejecutar cualquiera, Claude incluido. Solo imprime agregados.
@@ -121,6 +123,33 @@ def leer(partidos, copias=COPIAS):
     return crudas
 
 
+# B16: las dos mitades de SkillCorner ENTRENAMIENTO para la validación cruzada (`exportar_sc.py`). «scA» se entrena con
+# la DFL entera y la mitad B, y se comprueba en la A; «scB», al revés. Los pliegues de la DFL usan las 10.
+SC_ENTRENAMIENTO = (1874553, 1899585, 1927964, 1959846, 1996435, 2006229, 2007448, 2010085, 2013725, 2016236)
+SC_MITADES = {"scA": SC_ENTRENAMIENTO[:5], "scB": SC_ENTRENAMIENTO[5:]}
+SC_CONDICIONES = ("detectado", "detectado, suavizado")
+
+
+def nombre_sc(id_, condicion, parte, clave):
+    return paquetes.carpeta() / "sc_{}_{}_{}_{}.npy".format(id_, SC_CONDICIONES.index(condicion), parte, clave)
+
+
+def leer_sc(ids):
+    """Las secuencias de SkillCorner de `exportar_sc.py` (etiquetas de SkillCorner en todos los vivos), con memmap."""
+    crudas = []
+    for id_ in ids:
+        for condicion in SC_CONDICIONES:
+            k = 0
+            while nombre_sc(id_, condicion, k, "y").exists():
+                c = {clave: np.load(nombre_sc(id_, condicion, k, clave), mmap_mode="r") for clave in paquetes.CLAVES}
+                c["partido"], c["copia"], c["parte"] = "sc{}".format(id_), 0, k
+                crudas.append(c)
+                k += 1
+    if not crudas:
+        raise FileNotFoundError("no hay rasgos de SkillCorner: python validation/trayectorias/exportar_sc.py")
+    return crudas
+
+
 def con_control(secuencias):
     """B15: la etiqueta (1 si control dice `H`) y la máscara (frames vivos con control) de `etiquetas_control.py`."""
     for c in secuencias:
@@ -128,10 +157,22 @@ def con_control(secuencias):
         c["m"] = np.load(paquetes.nombre_control(c["partido"], c["parte"], "m"))
 
 
+def rellenar_a(x, s):
+    """Rellena con ceros la dimensión de los slots (la 1) hasta `s`."""
+    if x.shape[1] >= s:
+        return x
+    return np.concatenate([x, np.zeros((x.shape[0], s - x.shape[1]) + x.shape[2:], x.dtype)], axis=1)
+
+
+SLOTS = {"s": 0}  # el máximo de slots de las secuencias del pliegue (lo fija `main`)
+
+
 def tensores(c, a, largo, sin_balon=None, espejo=False):
     d = {}
     for clave in CLAVES:
         x = c[clave][a:a + largo].astype(np.float32)
+        if not clave.endswith("balon"):
+            x = rellenar_a(x, SLOTS["s"])
         if clave.endswith("balon"):
             if sin_balon is not None:
                 x[sin_balon] = 0.0
@@ -144,7 +185,7 @@ def tensores(c, a, largo, sin_balon=None, espejo=False):
                 x[:, :, list(trayectorias2.ESPEJO_JUGADOR)] *= -1.0
         d[clave] = torch.from_numpy(x + 0.0)
     for clave in ("hay_h", "hay_a"):
-        d[clave] = torch.from_numpy(c[clave][a:a + largo].astype(np.float32))
+        d[clave] = torch.from_numpy(rellenar_a(c[clave][a:a + largo].astype(np.float32), SLOTS["s"]))
     return d
 
 
@@ -203,22 +244,33 @@ def acierto(modelo, secuencias):
 def main():
     global PASOS
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("pliegue", choices=comun.PLIEGUES)
+    parser.add_argument("pliegue", choices=comun.PLIEGUES + tuple(SC_MITADES))
     parser.add_argument("--fontaneria", action="store_true", help="3 pasos y los pesos a un fichero aparte")
     parser.add_argument("--hilos", type=int, default=b13.HILOS, help="hilos de torch (solo cambia la velocidad)")
     parser.add_argument("--control", action="store_true",
                         help="B15: entrena con la etiqueta de control en todos los frames vivos (etiquetas_control.py)")
+    parser.add_argument("--skillcorner", action="store_true",
+                        help="B16: B15 (control) más SkillCorner ENTRENAMIENTO (exportar_sc.py), con scA y scB")
     args = parser.parse_args()
-    modelo_nombre = "b15" if args.control else "b14"
+    if args.skillcorner:
+        args.control = True
+    if args.pliegue in SC_MITADES and not args.skillcorner:
+        raise SystemExit("scA y scB son pliegues de B16: hace falta --skillcorner")
+    modelo_nombre = "b16" if args.skillcorner else "b15" if args.control else "b14"
     if args.fontaneria:
         PASOS = 3
     torch.set_num_threads(args.hilos)
-    semilla = comun.SEMILLA + (300 if args.control else 200) + comun.indice_pliegue(args.pliegue)
+    indice = comun.indice_pliegue(args.pliegue) if args.pliegue in comun.PLIEGUES else 8 + list(SC_MITADES).index(args.pliegue)
+    semilla = comun.SEMILLA + (400 if args.skillcorner else 300 if args.control else 200) + indice
     torch.manual_seed(semilla)
     inicio = time.time()
     secuencias = leer([p for p in comun.PARTIDOS if p != args.pliegue])
     if args.control:
         con_control(secuencias)
+    if args.skillcorner:
+        fuera_sc = SC_MITADES.get(args.pliegue, ())
+        secuencias += leer_sc([i for i in SC_ENTRENAMIENTO if i not in fuera_sc])
+    SLOTS["s"] = max(max(c["hay_h"].shape[1], c["hay_a"].shape[1]) for c in secuencias)
     print(modelo_nombre + " · pliegue {} · {} secuencias · {} slots tras empaquetar · semilla {}".format(
         args.pliegue, len(secuencias), secuencias[0]["hay_h"].shape[1], semilla), flush=True)
     modelo = entrenar(secuencias, semilla)
@@ -235,10 +287,13 @@ def main():
     linea = "acierto por frame (descriptivo, copia 0): dentro {:.1f} % (pérdida {:.4f})".format(
         100.0 * bien / total, perdida)
     fuera = []
-    if args.pliegue != "todos":
+    if args.pliegue in SC_MITADES:
+        fuera = leer_sc(SC_MITADES[args.pliegue])
+    elif args.pliegue != "todos":
         fuera = leer([args.pliegue], copias=(0,))
         if args.control:
             con_control(fuera)
+    if fuera:
         total, bien, perdida = acierto(modelo, fuera)
         linea += " · fuera ({}) {:.1f} % (pérdida {:.4f})".format(args.pliegue, 100.0 * bien / total, perdida)
     print(linea)
