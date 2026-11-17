@@ -6860,3 +6860,14 @@ Lo que se ve, sin voto [inferencia, sobre lo medido]:
 
 Estado: K7 medido; no pasa. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian. Lo siguiente de la cola es la
 K2 de la CPU en el pliegue de `J03WMX` y K8.
+
+**La K2 de la CPU del piloto de K8 se entrena con `entrenar_k8.py --lambda-crf 0`, no con `entrenar.py`** (17/11, 17:22,
+antes de terminar de entrenarla y sin ver nada de K8). Comando: `entrenar_k8.py J03WMX --etiqueta k2cpu_s26
+--lambda-crf 0 --semilla 20261126`.
+- **Es el mismo entrenamiento salvo redondeo:** tras 20 pasos, una diferencia máxima de 3e-6 con `entrenar.py`, con la
+  misma semilla (`comprobar_k8.py pasos`, arriba).
+- **Lo que gana:**
+  - puntos de control, si la máquina vuelve a cortar;
+  - sale del mismo script que K8, así que la comparación pareada es más limpia.
+- **La referencia de ruido no cambia:** sigue siendo esta K2 frente a la original de la GPU.
+- Lo acordó la sesión que coordina.
