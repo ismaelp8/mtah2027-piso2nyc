@@ -80,10 +80,20 @@ def _usar_pesos(ruta):
         conjunto._CACHE.clear()
 
 
-def _logits(limpio, fuera_k2, alfa_k2, fuera_b5):
-    """Los tres logits ya en su escala: K2, K2 con el espejo y B5."""
-    z = conjunto.salidas(limpio, fuera_k2)[0]
-    espejo = conjunto.salidas(rf.en_espejo(limpio), fuera_k2)[0]
+def _logits(limpio, fuera_k2, alfa_k2, fuera_b5, pesos=()):
+    """Los tres logits ya en su escala: K2, K2 con el espejo y B5. Con varios ficheros de `pesos` (el promedio de
+    semillas), la z de K2 es la media de las de cada fichero."""
+    en_espejo = rf.en_espejo(limpio)
+    if len(pesos) > 1:
+        z, espejo = 0.0, 0.0
+        for ruta in pesos:
+            _usar_pesos(ruta)
+            z = z + conjunto.salidas(limpio, fuera_k2)[0]
+            espejo = espejo + conjunto.salidas(en_espejo, fuera_k2)[0]
+        z, espejo = z / float(len(pesos)), espejo / float(len(pesos))
+    else:
+        z = conjunto.salidas(limpio, fuera_k2)[0]
+        espejo = conjunto.salidas(en_espejo, fuera_k2)[0]
     return {"k2": alfa_k2 * z, "k2e": alfa_k2 * (0.5 * (z + espejo)), "b5": rf.logit_b5(limpio, fuera_b5)}
 
 
@@ -120,7 +130,7 @@ def _apuntar(recuentos, versiones, gts, celda, comprobar):
 def medir_dfl(trabajo):
     partido, pesos, comprobar = trabajo
     inicio = time.time()
-    _usar_pesos(pesos)
+    _usar_pesos(pesos[0] if pesos else None)
     fuera_k2 = None if pesos else partido
     alfa_k2 = conjunto.pesos(fuera_k2)["alfa"]
     cargado = dfl.cargar(partido)
@@ -130,7 +140,7 @@ def medir_dfl(trabajo):
             trk = puntuar.solo_lectura(d_propio.con_balon_en_d(cargado, condicion) if vista
                                        else dfl.tracking_de(cargado, condicion))
             piezas = medir._piezas(trk, cargado["gt"]["flag"], partido)
-            logits = _logits(piezas["limpio"], fuera_k2, alfa_k2, partido)
+            logits = _logits(piezas["limpio"], fuera_k2, alfa_k2, partido, pesos)
             for modo in (("vista",) if vista else ("oraculo", "propio")):
                 _apuntar(recuentos, _versiones(piezas, logits, modo, comprobar), cargado["gt"], (condicion, modo),
                          comprobar)
@@ -141,7 +151,7 @@ def medir_sc(trabajo):
     id_, pesos, comprobar = trabajo
     inicio = time.time()
     lector.exigir_solo_entrenamiento([id_])
-    _usar_pesos(pesos)
+    _usar_pesos(pesos[0] if pesos else None)
     fuera_k2 = None if pesos else cj.pliegue_de("sc", id_)
     alfa_k2 = conjunto.pesos(None)["alfa"]  # la de todos, como `medir.py` en SkillCorner
     crudo = lector.leer_crudo(id_)
@@ -149,7 +159,7 @@ def medir_sc(trabajo):
     for condicion in lector.VOTAN:
         trk, gt = lector.tracking_de(crudo, condicion, id_)
         piezas = medir._piezas(puntuar.solo_lectura(trk), gt, None)
-        logits = _logits(piezas["limpio"], fuera_k2, alfa_k2, None)
+        logits = _logits(piezas["limpio"], fuera_k2, alfa_k2, None, pesos)
         for modo in ("oraculo", "propio"):
             _apuntar(recuentos, _versiones(piezas, logits, modo, comprobar), {"sc": gt}, (condicion, modo), comprobar)
     return id_, recuentos, time.time() - inicio
@@ -158,7 +168,7 @@ def medir_sc(trabajo):
 def medir_metrica(trabajo):
     id_, pesos, comprobar = trabajo
     inicio = time.time()
-    _usar_pesos(pesos)
+    _usar_pesos(pesos[0] if pesos else None)
     lc = lector_metrica()
     alfa_k2 = conjunto.pesos(None)["alfa"]
     crudo = lc.leer(id_)
@@ -166,7 +176,7 @@ def medir_metrica(trabajo):
     for condicion in lc.CONDICIONES:
         trk, gt = lc.tracking_de(crudo, condicion, id_)
         piezas = medir._piezas(puntuar.solo_lectura(trk), gt, None)
-        logits = _logits(piezas["limpio"], None, alfa_k2, None)
+        logits = _logits(piezas["limpio"], None, alfa_k2, None, pesos)
         for modo in ("oraculo", "propio"):
             _apuntar(recuentos, _versiones(piezas, logits, modo, comprobar), {"eventos": gt}, (condicion, modo),
                      comprobar)
@@ -308,8 +318,9 @@ def main():
     parser.add_argument("--partidos", nargs="*", default=None, help="por defecto, todos los del dominio")
     parser.add_argument("--procesos", type=int, default=2)
     parser.add_argument("--bootstrap", type=int, default=1000)
-    parser.add_argument("--pesos", default=None,
-                        help="otros pesos para K2 (clave «todos»): los de un modelo entrenado con un solo proveedor")
+    parser.add_argument("--pesos", nargs="+", default=None,
+                        help="otros pesos para K2 (clave «todos»): los de un modelo entrenado con un solo proveedor. "
+                             "Con varios ficheros, la z de K2 es la media de las de todos (el promedio de semillas)")
     parser.add_argument("--entrenado-con", choices=("dfl", "sc"), default=None,
                         help="con --pesos: el único proveedor que vio ese modelo")
     parser.add_argument("--comprobar", action="store_true",
@@ -347,7 +358,7 @@ def main():
             sys.exit("los recuentos guardados son de otros partidos")
     else:
         recuentos = {}
-        trabajos = [(p, args.pesos, args.comprobar) for p in partidos]
+        trabajos = [(p, tuple(args.pesos or ()), args.comprobar) for p in partidos]
         with concurrent.futures.ProcessPoolExecutor(max(1, args.procesos)) as pool:
             for partido, valor, segundos in pool.map(funcion, trabajos):
                 recuentos[partido] = valor
@@ -360,8 +371,10 @@ def main():
     donde = {"dfl": "DFL", "sc": "SkillCorner, mitad de entrenamiento", "metrica": "Metrica"}[args.dominio]
     print("# Refinamientos de K2 sin reentrenar · {} · {} partidos\n".format(donde, len(partidos)))
     if args.pesos:
-        de_k2 = "los de `{}` (sha256 {}…), de un modelo que solo vio {}".format(
-            os.path.basename(args.pesos), huella(args.pesos), {"dfl": "la DFL", "sc": "SkillCorner"}[args.entrenado_con])
+        de_k2 = "{}{}, de {} que solo vio {}".format(
+            "la media de las z de " if len(args.pesos) > 1 else "los de ",
+            " y ".join("`{}` (sha256 {}…)".format(os.path.basename(r), huella(r)) for r in args.pesos),
+            "modelos" if len(args.pesos) > 1 else "un modelo", {"dfl": "la DFL", "sc": "SkillCorner"}[args.entrenado_con])
     else:
         de_k2 = "los de `conjunto_pesos.npz` (sha256 {}…): {}".format(huella(conjunto.PESOS), {
             "dfl": "cada partido con el pliegue que no lo vio", "sc": "cada partido con el pliegue que no lo vio",

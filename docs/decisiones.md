@@ -6068,3 +6068,41 @@ Lo que se deja fuera: reentrenar el modelo de los dos proveedores (semillas, aum
 y sería otro candidato con su regla; el examen de SkillCorner; cualquier cambio en `pipeline.PIECES`.
 
 Estado: escrita antes de medir. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+### 2026-11-17 · candidatos · modelo conjunto: una semilla más del modelo de un solo proveedor (lectura, antes de entrenarla)
+
+Quién: Claude, en la sesión de Ismael (17/11). Escrita antes de entrenar o medir la semilla nueva. La primera réplica ya
+está medida y vista (salida en `validation/conjunto/salidas/2026-11-17_refinar_replica_solo_dfl_en_skillcorner.md`); su
+lectura con la regla de K3 va en la entrada de resultados.
+
+Por qué: la réplica del modelo de solo la DFL (misma configuración, otros números al azar, en la CPU) no repite en
+SkillCorner la pérdida publicada. K2 con ella queda en −0,005, +0,001, −0,000 y +0,003 frente a `main`; con el modelo
+original eran −0,015, −0,010, −0,007 y −0,004. Frame a frame los dos modelos aciertan lo mismo en esos 10 partidos
+[medido: 84,0 % frente a 83,8 % con el balón detectado, y la misma pérdida, 0,762 frente a 0,766]. Que la nota difiera
+en 0,010 con el mismo acierto apunta a ruido del entrenamiento [inferencia: es una sola réplica, que además cambia de
+GPU a CPU, de 48 a 33 columnas y de versión de torch].
+
+Qué se hace: **una** réplica más del modelo de solo la DFL, con la semilla 20261125 (`entrenar.py --semilla`), la misma
+configuración y en la CPU. Se puntúa en los 10 partidos de `lector.ENTRENAMIENTO` con α = 4, como la primera. Con lo
+que salga se decide si se entrena una tercera.
+
+Lectura, escrita antes:
+- **«La pérdida publicada depende del entrenamiento»** si K2 con la semilla nueva queda otra vez a 0,005 o menos de
+  `main` en las dos celdas con el `D` de las etiquetas. Serían dos entrenamientos de tres en empate, y el aviso sobre
+  K2 pasa a decirse así: fuera de su proveedor, un entrenamiento de K2 queda entre un empate y una pérdida de 0,015.
+- **«La pérdida es del modelo»** si pierde más de 0,005 en las dos. Serían dos de tres con pérdida, y el aviso se queda
+  como estaba.
+- En otro caso se dice el rango, sin más.
+- **La mezcla con otra semilla:** se dice si K3 con la semilla nueva queda en −0,005 o más frente a `main` en las
+  cuatro celdas, y cuánto saca a K2.
+- **El promedio de las dos semillas** (la media de sus z, `refinar.py --pesos` con los dos ficheros) se enseña frente
+  a `main` y frente a cada semilla por separado. Es una lectura, no un candidato para la entrega: la entrega usaría el
+  modelo de los dos proveedores, y promediar semillas de ese modelo pide entrenarlas en la GPU.
+
+Lo que no cambia: **el veredicto de K3 con su regla.** Esta ronda es descriptiva: sirve para decir cuánto pesa el aviso
+de proveedor de K2 y qué entrenar después.
+
+Lo que se deja: la réplica de solo SkillCorner (el sentido sin voto) se para para dejarle la CPU a esta. Si no da
+tiempo a terminarla, se dice.
+
+Estado: escrita antes de entrenar.

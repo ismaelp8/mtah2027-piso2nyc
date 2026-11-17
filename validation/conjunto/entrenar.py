@@ -365,6 +365,9 @@ def main():
     parser.add_argument("--dispositivo", choices=("cuda", "cpu"), default="cuda",
                         help="dónde entrena; en la CPU salen otros números al azar que en la GPU")
     parser.add_argument("--hilos", type=int, default=None, help="hilos de torch en la CPU (por defecto, los suyos)")
+    parser.add_argument("--semilla", type=int, default=None,
+                        help="otra semilla (por defecto, la del pliegue): para medir cuánto cambia el resultado de un "
+                             "entrenamiento a otro con la misma configuración")
     parser.add_argument("--columnas", type=int, default=SLOTS,
                         help="columnas de slots por partido (por defecto {}); con menos, la CPU hace menos cuentas "
                              "sobre columnas vacías. Cambia los números al azar, no el modelo".format(SLOTS))
@@ -385,7 +388,7 @@ def main():
     device = torch.device(args.dispositivo)
     if args.hilos:
         torch.set_num_threads(args.hilos)
-    semilla = cj.SEMILLA + cj.PLIEGUES.index(args.pliegue)
+    semilla = args.semilla if args.semilla is not None else cj.SEMILLA + cj.PLIEGUES.index(args.pliegue)
     torch.manual_seed(semilla)
     rng = np.random.default_rng(semilla)
     gen = torch.Generator(device=device)
