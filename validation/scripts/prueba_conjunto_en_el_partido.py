@@ -59,6 +59,22 @@ def main():
     comprobar("el texto dice que las salidas se salen", "LAS SALIDAS SE SALEN" in texto and "FUERA" in texto)
     texto = "\n".join(cp.para_imprimir(*cp.comparar(dentro, referencia), referencia))
     comprobar("y que puede seguir si caen dentro", "K2 puede seguir" in texto and "FUERA" not in texto)
+    comprobar("sin rangos por proveedor no añade nada", cp.por_proveedor(dentro, referencia) == {}
+              and "mismo proveedor" not in texto)
+    con_dominios = dict(referencia, por_dominio={
+        "dfl": {"salida · |z| con balón · mediana": [3.0, 4.0],
+                "salida · cambios de signo de z por minuto evaluado": [3.0, 4.0],
+                "entrada por jugador · velocidad x · mediana": [9.0, 9.5]},
+        "sc": {"salida · |z| con balón · mediana": [2.0, 2.5],
+               "salida · cambios de signo de z por minuto evaluado": [4.5, 5.0],
+               "entrada por jugador · velocidad x · mediana": [1.0, 2.0]}})
+    parecido = cp.por_proveedor({**dentro, "salida · |z| con balón · mediana": 3.5,
+                                 "salida · cambios de signo de z por minuto evaluado": 3.2}, con_dominios)
+    comprobar("por proveedor: solo miran las salidas y dicen cuáles caen fuera",
+              parecido == {"dfl": [], "sc": ["cambios de signo de z por minuto evaluado", "|z| con balón · mediana"]})
+    texto = "\n".join(cp.para_imprimir(*cp.comparar(dentro, con_dominios), con_dominios))
+    comprobar("el texto añade la línea descriptiva de cada proveedor", "mismo proveedor" in texto
+              and "la DFL" in texto and "SkillCorner" in texto)
 
     if os.path.isfile(conjunto.PESOS):
         valores = agregados.agregados(puntuar.partido_de_prueba(), fuera=None)

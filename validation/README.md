@@ -124,6 +124,9 @@ que faltan, los scripts y los resultados. El porqué está en
 | `conjunto/cuanto_cambia.py` | descriptivo: cuánto cambia la salida del pipeline con K2 en lugar de B5 (frames, posesiones, paradas, rachas cortas), para los criterios de la entrega de prueba | DFL y SkillCorner (`lector.ENTRENAMIENTO`) |
 | `conjunto/referencia.py`, `conjunto/agregados.py` | las entradas y las salidas del modelo conjunto en las 34 vistas de los partidos abiertos (`conjunto/referencia_abiertos.json`): la referencia para el partido | la caché de `conjunto/exportar.py` |
 | `conjunto/riesgo_minimo_k2.py` | el sondeo S2 del 16/11 (decodificar a riesgo mínimo) repetido con la evidencia de K2 | DFL |
+| `conjunto/como_el_atd.py` | descriptivo: K2 y `main` con los slots de P4 y el balón 4 frames tarde, los dos rasgos medidos del ATD | DFL |
+| `conjunto/metrica.py` | descriptivo: K2 frente a `main` en Metrica, un proveedor que el modelo no ha visto; con `--pesos`, con otros pesos | Metrica sample-data |
+| `conjunto/potencia_c2.py` | descriptivo: ¿habría saltado el criterio C2 con los modelos de un solo proveedor en el otro proveedor, donde se sabe que fallan? | la caché de `conjunto/exportar.py` |
 | `partido/conjunto_en_el_partido.py` | **lee el partido** (ATD): las entradas y las salidas del modelo conjunto en el partido frente al rango de los datos abiertos. Criterio C2 del punto 4 de K2 (`docs/decisiones.md`, 17/11). Solo agregados. Lo ejecuta una persona | **datos del partido: solo una persona** |
 | `scripts/prueba_conjunto.py` | prueba `possession/conjunto.py` con un partido inventado: interfaz, determinismo, antisimetría exacta, slots, la red frente a una versión con matrices y los pesos | ninguno |
 | `scripts/prueba_conjunto_en_el_partido.py` | prueba la comparación de `partido/conjunto_en_el_partido.py` con números inventados | ninguno |

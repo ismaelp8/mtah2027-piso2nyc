@@ -1,5 +1,5 @@
 {
- "commit": "56ee7c6",
+ "commit": "8c46846",
  "por_dominio": {
   "dfl": {
    "entrada por grupo · balón visible · mediana": [
@@ -12,51 +12,51 @@
    ],
    "entrada por grupo · balón: distancia al eje · mediana": [
     0.0,
-    0.13383230321547562
+    0.5782352896297679
    ],
    "entrada por grupo · balón: distancia al eje · p90": [
     0.752974588730756,
-    0.8410305833816529
+    1.0149999997195076
    ],
    "entrada por grupo · balón: rapidez · mediana": [
     0.0,
-    0.2304298204071582
+    0.2556327195435483
    ],
    "entrada por grupo · balón: rapidez · p90": [
     0.9574286380056459,
-    1.1343085436543205
+    1.1730127360652696
    ],
    "entrada por grupo · balón: velocidad x · mediana": [
     0.0,
-    0.07797455787658691
+    0.08962464332580566
    ],
    "entrada por grupo · balón: velocidad x · p90": [
     0.6659198760986327,
-    0.7941495418548584
+    0.8332846641540524
    ],
    "entrada por grupo · balón: velocidad y · mediana": [
     0.0,
-    0.07295060157775879
+    0.08315038681030273
    ],
    "entrada por grupo · balón: velocidad y · p90": [
     0.5312504768371582,
-    0.7747255802154547
+    0.8031328678131111
    ],
    "entrada por grupo · balón: x en la dirección de ataque · mediana": [
     0.0,
-    0.12054096040271578
+    0.5881904238746279
    ],
    "entrada por grupo · balón: x en la dirección de ataque · p90": [
     0.657751474289667,
-    0.7719123709542411
+    1.012952386765253
    ],
    "entrada por grupo · balón: y · mediana": [
     0.0,
-    0.13383230321547562
+    0.5782352896297679
    ],
    "entrada por grupo · balón: y · p90": [
     0.752974588730756,
-    0.8410305833816529
+    1.0149999997195076
    ],
    "entrada por jugador · distancia al balón con tope · mediana": [
     1.0,
@@ -68,27 +68,27 @@
    ],
    "entrada por jugador · núcleo 1 m · mediana": [
     0.0,
-    0.0005731218171699482
+    0.001777837409028868
    ],
    "entrada por jugador · núcleo 1 m · p90": [
     0.006444443991488682,
-    0.0094657494054785
+    0.022808155799466084
    ],
    "entrada por jugador · núcleo 2,5 m · mediana": [
     0.0,
-    0.0035711574366041397
+    0.011008253565031382
    ],
    "entrada por jugador · núcleo 2,5 m · p90": [
     0.0389366898082211,
-    0.05631432626351728
+    0.12715711466278462
    ],
    "entrada por jugador · núcleo 6 m · mediana": [
     0.0,
-    0.02022035714783444
+    0.06024274295656257
    ],
    "entrada por jugador · núcleo 6 m · p90": [
     0.18865194023826926,
-    0.2550765107213559
+    0.45524434070212566
    ],
    "entrada por jugador · parte del grupo presente · mediana": [
     1.0,
@@ -100,19 +100,19 @@
    ],
    "entrada por jugador · se acerca al balón · mediana": [
     0.0,
-    0.13349889657612266
+    0.27247885764015234
    ],
    "entrada por jugador · se acerca al balón · p90": [
     1.1809119619998336,
-    1.440445106355167
+    1.499307636787208
    ],
    "entrada por jugador · velocidad x respecto al balón · mediana": [
     0.0,
-    0.12668132781982422
+    0.26510047912597656
    ],
    "entrada por jugador · velocidad x respecto al balón · p90": [
     1.1731004238128662,
-    1.391500473022461
+    1.4696974754333496
    ],
    "entrada por jugador · velocidad x · mediana": [
     0.1725006103515625,
@@ -124,11 +124,11 @@
    ],
    "entrada por jugador · velocidad y respecto al balón · mediana": [
     0.0,
-    0.13049983978271484
+    0.24499988555908203
    ],
    "entrada por jugador · velocidad y respecto al balón · p90": [
     0.9849004745483398,
-    1.4482002258300781
+    1.504599142074585
    ],
    "entrada por jugador · velocidad y · mediana": [
     0.11749935150146484,
@@ -148,11 +148,11 @@
    ],
    "entrada por jugador · x respecto al balón · mediana": [
     0.0,
-    0.31445533752441407
+    1.6477997398376463
    ],
    "entrada por jugador · x respecto al balón · p90": [
     2.604947986602783,
-    3.258146450042726
+    4.763399824142456
    ],
    "entrada por jugador · y en el campo · mediana": [
     0.2715882245232077,
@@ -164,15 +164,15 @@
    ],
    "entrada por jugador · y respecto al balón · mediana": [
     0.0,
-    0.28484392166137695
+    1.3758880615234375
    ],
    "entrada por jugador · y respecto al balón · p90": [
     1.9579679679870607,
-    2.6337952365875252
+    3.318993643045426
    ],
    "frames evaluados con balón · %": [
     42.075854225386934,
-    58.55983701570129
+    99.98946222206611
    ],
    "grupos con un equipo de más de 11 slots · %": [
     0.4485571998728499,
@@ -180,27 +180,27 @@
    ],
    "salida · cambios de signo de z por minuto evaluado": [
     2.952796131053743,
-    4.293652129988214
+    4.630512641193549
    ],
    "salida · frames con aviso de cambio (p ≥ 0,5) · %": [
     0.4513955114756183,
-    0.7910358635709017
+    0.8212441603147282
    ],
    "salida · z de acuerdo con el más cercano, con balón · %": [
-    74.78803955475715,
+    71.21853136398971,
     80.5252811618235
    ],
    "salida · |z| con balón · mediana": [
-    3.3108849942787937,
+    2.6811154046417096,
     5.364269259332279
    ],
    "salida · |z| con balón · p90": [
-    7.751227191912578,
+    7.425914648750557,
     10.297856845506622
    ],
    "salida · |z| sin balón · mediana": [
-    2.107975773211259,
-    4.000189454657232
+    1.8673703133401114,
+    6.823890949304673
    ],
    "slots presentes por equipo · media": [
     10.548440645639813,
@@ -425,27 +425,27 @@
   ],
   "entrada por grupo · balón: distancia al eje · mediana": [
    0.0,
-   0.2569647171918083
+   0.5782352896297679
   ],
   "entrada por grupo · balón: distancia al eje · p90": [
    0.752974588730756,
-   0.9037694081138162
+   1.0149999997195076
   ],
   "entrada por grupo · balón: rapidez · mediana": [
    0.0,
-   0.23662912495643346
+   0.2556327195435483
   ],
   "entrada por grupo · balón: rapidez · p90": [
    0.8685868624793288,
-   1.137680824694939
+   1.1730127360652696
   ],
   "entrada por grupo · balón: velocidad x · mediana": [
    0.0,
-   0.08486485481262207
+   0.08962464332580566
   ],
   "entrada por grupo · balón: velocidad x · p90": [
    0.6012153029441833,
-   0.8159999847412109
+   0.8332846641540524
   ],
   "entrada por grupo · balón: velocidad y · mediana": [
    0.0,
@@ -453,23 +453,23 @@
   ],
   "entrada por grupo · balón: velocidad y · p90": [
    0.5312504768371582,
-   0.7929999828338623
+   0.8031328678131111
   ],
   "entrada por grupo · balón: x en la dirección de ataque · mediana": [
    0.0,
-   0.16810564724904184
+   0.5881904238746279
   ],
   "entrada por grupo · balón: x en la dirección de ataque · p90": [
    0.657751474289667,
-   0.7719123709542411
+   1.012952386765253
   ],
   "entrada por grupo · balón: y · mediana": [
    0.0,
-   0.2569647171918083
+   0.5782352896297679
   ],
   "entrada por grupo · balón: y · p90": [
    0.752974588730756,
-   0.9037694081138162
+   1.0149999997195076
   ],
   "entrada por jugador · distancia al balón con tope · mediana": [
    1.0,
@@ -481,27 +481,27 @@
   ],
   "entrada por jugador · núcleo 1 m · mediana": [
    0.0,
-   0.001366528472544123
+   0.001777837409028868
   ],
   "entrada por jugador · núcleo 1 m · p90": [
    0.006444443991488682,
-   0.01805235365045818
+   0.022808155799466084
   ],
   "entrada por jugador · núcleo 2,5 m · mediana": [
    0.0,
-   0.008479688067545689
+   0.011008253565031382
   ],
   "entrada por jugador · núcleo 2,5 m · p90": [
    0.0389366898082211,
-   0.10284253019377254
+   0.12715711466278462
   ],
   "entrada por jugador · núcleo 6 m · mediana": [
    0.0,
-   0.04692853465069493
+   0.06024274295656257
   ],
   "entrada por jugador · núcleo 6 m · p90": [
    0.18865194023826926,
-   0.39435082039486014
+   0.45524434070212566
   ],
   "entrada por jugador · parte del grupo presente · mediana": [
    1.0,
@@ -561,11 +561,11 @@
   ],
   "entrada por jugador · x respecto al balón · mediana": [
    0.0,
-   1.0501200342178345
+   1.6477997398376463
   ],
   "entrada por jugador · x respecto al balón · p90": [
    2.604947986602783,
-   3.3308200454711914
+   4.763399824142456
   ],
   "entrada por jugador · y en el campo · mediana": [
    0.2715882245232077,
@@ -577,15 +577,15 @@
   ],
   "entrada por jugador · y respecto al balón · mediana": [
    0.0,
-   0.9977200317382813
+   1.3758880615234375
   ],
   "entrada por jugador · y respecto al balón · p90": [
    1.9579679679870607,
-   3.0907999420166012
+   3.318993643045426
   ],
   "frames evaluados con balón · %": [
    42.075854225386934,
-   64.5376090608573
+   99.98946222206611
   ],
   "grupos con un equipo de más de 11 slots · %": [
    0.3240396948626207,
@@ -597,10 +597,10 @@
   ],
   "salida · frames con aviso de cambio (p ≥ 0,5) · %": [
    0.15872262204345203,
-   0.7910358635709017
+   0.8212441603147282
   ],
   "salida · z de acuerdo con el más cercano, con balón · %": [
-   73.67237130649062,
+   71.21853136398971,
    84.18544603402853
   ],
   "salida · |z| con balón · mediana": [
@@ -613,12 +613,12 @@
   ],
   "salida · |z| sin balón · mediana": [
    0.46688061883643406,
-   4.000189454657232
+   6.823890949304673
   ],
   "slots presentes por equipo · media": [
    7.420627313590693,
    11.021252949423793
   ]
  },
- "vistas": 34
+ "vistas": 48
 }

@@ -12,15 +12,20 @@
 
 ## En pocas líneas
 
-1. **K2 gana a `main` en todo lo que se puede medir sin el partido** [medido]: en la DFL con control (+0,036 a +0,051),
-   en la DFL con el flag (+0,033 a +0,044) y en SkillCorner (+0,021 a +0,028), examen incluido.
-2. **Es el primer candidato que pasa las tres cosas a la vez.** La red de una capa, B9, el detector de cambios y B11
-   ganaban con el flag, empataban con control y no pasaban SkillCorner.
-3. **No inventa posesiones: las coloca mejor.** Predice casi las mismas que `main` (1.651 frente a 1.661 en la DFL) y
+1. **K2 gana a `main` donde ha visto partidos de ese proveedor** [medido]: en la DFL con control (+0,036 a +0,051),
+   en la DFL con el flag (+0,033 a +0,044) y en SkillCorner (+0,021 a +0,028), examen incluido. Pasa su regla y gana
+   también con §5.8.
+2. **Pero no se traslada de un proveedor a otro** [medido]: entrenado solo con la DFL pierde en SkillCorner (−0,010 a
+   −0,015), y entrenado solo con SkillCorner pierde en la DFL (−0,075 a −0,096 con control). El partido es de un
+   tercer proveedor. **Por eso no se recomienda para la entrega sin más: es una apuesta.**
+3. **No es una apuesta a ciegas** [medido]: en Metrica, el único tercer proveedor abierto, el modelo de los dos
+   proveedores gana (+0,035) y más que cualquiera de un solo proveedor; aguanta los slots de más y el balón tarde del
+   ATD mejor que B5; y hay una alarma (el criterio C2) que salta donde se sabe que el modelo falla.
+4. **No inventa posesiones: las coloca mejor.** Predice casi las mismas que `main` (1.651 frente a 1.661 en la DFL) y
    acierta más recuperaciones y más duelos con cambio en los eventos humanos.
-4. **No está en la entrega.** Falta el punto 4 de su regla, que es del partido y lo ejecuta una persona: cuatro
+5. **No está en la entrega, y lo decide el equipo.** El punto 4 de su regla, en el partido, está listo: cuatro
    comandos, con los criterios de daño ya escritos.
-5. **K1, la capa de cambios aprendida, no pasa:** gana con el flag, pero con control solo gana en 4–6 de 7 partidos.
+6. **K1, la capa de cambios aprendida, no pasa,** y decodificar a riesgo mínimo con K2 tampoco merece construirse.
 
 ## Qué es K2
 
@@ -93,6 +98,38 @@ grandes pierden:
 Con ±12 s de contexto, la posición de 22 jugadores identifica el momento del partido, y una red grande se lo aprende de
 memoria. Con 17 partidos, el modelo tiene que ser pequeño. El piloto no cambió nada de lo escrito antes.
 
+## El cambio de proveedor [medido]
+
+Todo lo de arriba se midió con partidos del mismo proveedor en el entrenamiento. Para ver qué pasa sin ellos se
+entrenaron dos modelos con un solo proveedor cada uno, y se puntuó todo también en Metrica, que ninguno vio. K2 con
+α = 4 frente a `main`, con el `D` de las etiquetas:
+
+| entrenado con | en la DFL, control | en SkillCorner, entrenamiento | en Metrica |
+|---|---|---|---|
+| solo la DFL | – | −0,015 y −0,010 | +0,023 y +0,026 |
+| solo SkillCorner | −0,096 y −0,075 | – | −0,022 y −0,021 |
+| los dos (K2) | +0,051 y +0,046 (cruzado) | +0,023 y +0,024 (cruzado); examen, +0,023 y +0,028 | +0,035 y +0,036 |
+
+- **Con un solo proveedor, K2 no se traslada al otro.** El de solo la DFL pierde en SkillCorner lo mismo que B11.
+- **Con los dos, gana en el tercero,** y más que cualquiera de un solo proveedor. Metrica son 3 partidos, con un balón
+  pegado al jugador y etiquetas sacadas de eventos: es una señal, no una prueba.
+- **B5 sí se traslada:** gana al baseline en SkillCorner y en Metrica sin haberlos visto. Un modelo de 30 agregados
+  generaliza mejor que uno de 36.000 pesos que ve a cada jugador.
+
+**Los dos rasgos medidos del ATD** (`como_el_atd.py`, DFL): con los tracklets cortados, un slot de más en el 12,9 % de
+los frames y el balón 4 frames tarde, K2 gana a `main` por +0,040 a +0,068 con control. A `main` esas degradaciones le
+cuestan hasta 0,013; a K2, nada.
+
+**La alarma** (`potencia_c2.py`): el criterio C2 del punto 4 compara las salidas del modelo en el partido con su rango
+en los datos abiertos. Con los modelos de un solo proveedor, salta en 22 de las 28 vistas de la DFL y en las 20 de
+SkillCorner. En el partido es menos sensible, porque el rango junta dos proveedores.
+
+## Decodificar para la métrica [medido]
+
+El sondeo de riesgo mínimo del 16/11, repetido con K2: la duda del modelo ahora sí dice algo (AUC de 0,68 y 0,70),
+pero las muestras se siguen fragmentando (2.196 posesiones por parte, cuando hay unas 220) y la elección por parte
+pierde con control (−0,019). No merece construirse. Haría falta entrenar el modelo como un CRF.
+
 ## Qué parte del análisis de fuera era cierta [inferencia, sobre lo medido]
 
 - **Cierto:** el cuello de botella era la evidencia de equipo, y un modelo que mira a los jugadores uno a uno y en el
@@ -100,10 +137,13 @@ memoria. Con 17 partidos, el modelo tiene que ser pequeño. El piloto no cambió
 - **No hizo falta:** cambiar la pregunta («¿dónde cambia?») ni el decodificador. La salida de cambios por sí sola (K1) no
   pasó, y K2 gana con el Viterbi de coste fijo de siempre.
 - **Lo que decidió** fue lo que el análisis ponía como detalle del entrenamiento: las etiquetas de control en todos los
-  frames vivos (B11, sin ellas, ganaba solo con el flag) y entrenar también con SkillCorner (B11, sin él, perdía allí).
+  frames vivos (B11, sin ellas, ganaba solo con el flag [inferencia: no se ha medido K2 sin ellas]) y entrenar también
+  con SkillCorner (medido: sin él, K2 pierde allí).
+- **Lo que el análisis no veía:** el problema que queda no es de arquitectura, sino de proveedor. Un modelo que mira a
+  cada jugador aprende también las manías del tracking con el que se entrena.
 - **No se probó:** meter el `D` en el modelo (el harness no puede validarlo con el balón) ni el balón del vídeo.
 
-## Lo que falta: el punto 4, en el partido
+## Si el equipo quiere mirarlo: el punto 4, en el partido
 
 Lo ejecuta una persona, con el python del entorno limpio, desde la carpeta de la rama:
 
@@ -122,7 +162,9 @@ unos 3 puntos de un equipo al otro; las posesiones suben entre el 0 y el 4 %; ni
 
 ## Lo que no he podido comprobar
 
-- **Nada del partido.** Si el ATD se parece lo bastante a los datos de entrenamiento lo dice el punto 4, no el harness.
+- **Nada del partido.** Si el ATD se parece lo bastante a los datos de entrenamiento no lo dice el harness. El punto 4
+  puede dar la alarma, pero no puede probar que K2 gane allí: no hay ni un partido del ATD con etiquetas, y la ventana
+  pública no sirve para elegir.
 - **La reproducción en otra máquina.** La pieza está escrita para dar lo mismo bit a bit (sin exponenciales, sin BLAS y
   sin `np.interp`), pero solo se ha ejecutado en esta.
 - **El entrenamiento no es reproducible bit a bit** (GPU). Los pesos sí: están en el repo, y la entrega solo usa los
@@ -140,6 +182,7 @@ unos 3 puntos de un equipo al otro; las posesiones suben entre el 0 y el 4 %; ni
 | `validation/conjunto/medir.py` | K1 y K2 frente a `main`, con la regla; con `--con-la-pieza`, en numpy; el examen, cerrado salvo con dos banderas |
 | `validation/conjunto/paridad.py` | numpy frente a torch |
 | `validation/conjunto/cuanto_cambia.py`, `referencia.py`, `agregados.py`, `referencia_abiertos.json` | lo que cabe esperar en la entrega de prueba y la referencia para el partido |
+| `validation/conjunto/como_el_atd.py`, `metrica.py`, `potencia_c2.py`, `riesgo_minimo_k2.py` | las comprobaciones: los rasgos del ATD, el tercer proveedor, la alarma y el riesgo mínimo |
 | `validation/partido/conjunto_en_el_partido.py` | **lee el partido:** las entradas y las salidas del modelo en el ATD frente a la referencia |
 | `validation/scripts/prueba_conjunto.py`, `prueba_conjunto_en_el_partido.py` | pruebas sin datos |
 | `validation/harness/versiones/conjunto_2026-11-17.json` | las versiones del harness oficial |

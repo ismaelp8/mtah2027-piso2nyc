@@ -5760,3 +5760,74 @@ cuánto vale lo segundo y cuánto protege el criterio C2, dos medidas más, tamb
    alarma; si no, pasar C2 no dice que el modelo funcione en el ATD, y se le dice así a quien decida.
 
 Estado: escrita antes de medir. Los resultados van en la entrada siguiente.
+
+### 2026-11-17 · candidatos · modelo conjunto: K2 no se traslada de un proveedor a otro; no se recomienda para la entrega sin más
+
+Quién: Claude, en la sesión de Ismael (17/11). La lectura es la de la entrada anterior, escrita antes de medir
+(`bf15c4b`, `4845078` y `8c46846`). Salidas en `validation/conjunto/salidas/`.
+
+Resultado [medido]:
+
+1. **El otro proveedor: «no aguanta».** K2 con α = 4 frente a `main`, con el modelo entrenado con un solo proveedor y
+   puntuado en el otro:
+
+   | entrenado solo con | puntuado en | `D` de las etiquetas | `D` propio |
+   |---|---|---|---|
+   | la DFL (7 partidos) | SkillCorner, entrenamiento (10) | −0,015 [−0,023 a −0,007] (3 de 10) y −0,010 [−0,018 a −0,002] (5 de 10) | −0,007 y −0,004 |
+   | SkillCorner (10) | la DFL, con control (7) | −0,096 [−0,110 a −0,082] y −0,075 [−0,088 a −0,061] (0 de 7) | −0,062 y −0,045 |
+   | SkillCorner (10) | la DFL, con el flag (7) | −0,060 y −0,041 (0 de 7) | −0,036 y −0,024 |
+
+   - El modelo entrenado solo con la DFL pierde en SkillCorner lo mismo que B11 (−0,012 y −0,009). **Entrenar con
+     SkillCorner hacía falta para ganar en SkillCorner**: eso ya no es una lectura, está medido.
+   - El modelo entrenado solo con SkillCorner pierde mucho en la DFL. Acierta el 83–90 % de los frames vivos, cuando el
+     de los dos proveedores acierta el 90–95 %.
+   - **Todo lo que K2 pasó (la DFL, SkillCorner y su examen) lo pasó con partidos de ese mismo proveedor en el
+     entrenamiento.** El partido es de otro.
+   - Un matiz [inferencia]: aquí se mezclan dos cambios, el de los datos y el de las etiquetas. SkillCorner etiqueta
+     la posesión a su manera (6,05 posesiones por minuto, frente a 4,71 con control), así que parte de la pérdida es de
+     convención.
+2. **Los slots y el balón como los del partido: «aguanta».** Con los tracklets cortados, un slot de más en el 12,9 % de
+   los frames y el balón 4 frames tarde, todo junto, K2 gana a `main` por +0,068 (7 de 7), +0,055, +0,054 y +0,040 con
+   control y por +0,042 a +0,052 con el flag. A `main` las dos degradaciones le cuestan hasta 0,013 con control; a K2,
+   entre −0,002 y +0,004. Los aumentos del entrenamiento hacen lo que tenían que hacer.
+3. **La referencia de C2** se regeneró con 48 vistas (`8c46846`), las 14 nuevas con el balón a la vista en los `D`. El
+   script del partido dice ahora, además y sin voto, si las seis salidas caen dentro del rango de un mismo proveedor.
+4. **Metrica, con el modelo de los 17 partidos:** +0,035 [+0,019 a +0,051] (2 de 3) en la condición que vota y +0,036
+   (3 de 3) en la otra, con el `D` de las etiquetas; +0,021 y +0,024 con el propio.
+5. **Metrica, con los modelos de un solo proveedor:** el de la DFL gana (+0,023 [+0,007 a +0,040] y +0,026) y el de
+   SkillCorner pierde (−0,022 [−0,045 a +0,001] y −0,021). **Metrica sí distingue,** y el modelo de los dos proveedores
+   es el que más gana de los tres. Es una señal a favor de que entrenar con dos ayuda en un tercero; con 3 partidos y un
+   balón pegado al jugador, no es una prueba.
+6. **C2 habría saltado donde el modelo falla:** con el modelo de solo SkillCorner, en 22 de las 28 vistas de la DFL
+   (sobre todo por |z| sin balón y por los cambios de signo por minuto); con el de solo la DFL, en las 20 vistas de
+   SkillCorner (los cambios de signo por minuto, en las 20). **C2 sirve de alarma.** Dos avisos: aquí la referencia era
+   dentro de muestra, más estrecha; y en el partido el rango junta dos proveedores, más ancho (los cambios de signo van
+   de 3,0 a 8,1 por minuto), así que es menos sensible. Por eso se añadió la línea por proveedor del punto 3.
+
+Decisión y por qué, con la lectura escrita antes:
+- **Por la comprobación 1, K2 no se recomienda para la entrega sin más.** Lo que el harness mide es lo que gana K2 en
+  proveedores que ha visto, y el partido es de uno que no ha visto. Encenderlo es una apuesta, y se dice así.
+- **No es una apuesta a ciegas** [inferencia, sobre lo medido]:
+  - a favor: gana en el único tercer proveedor abierto (4 y 5); aguanta los dos rasgos medidos del ATD mejor que B5
+    (2); y hay una alarma que funciona donde se sabe que falla (6);
+  - en contra: con un solo proveedor no se traslada (1), y del ATD no hay ni un partido con etiquetas para comprobarlo.
+    La ventana pública no vale para eso: con 17 posesiones no distingue nada, y no se puede elegir con ella.
+- **Lo decide el equipo.** K2 sigue apagado: `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega (`equipo_v9`) no cambian.
+  Si el equipo quiere mirarlo, el punto 4 está listo (C0 a C6, entrada «K2 pasa los puntos 1, 2 y 3»), con C2 leído
+  así: si las salidas se salen, no se enciende; si caen dentro, la apuesta sigue siendo una apuesta, pero sin señales
+  en contra.
+
+Lo que queda para el documento técnico y para la fase siguiente:
+- **El techo dentro del proveedor es alto:** mirar a cada jugador da de +0,04 a +0,05 sobre B5 cuando el modelo ha
+  visto partidos de ese proveedor.
+- **Lo que cojea ahora es el cambio de proveedor,** no la arquitectura ni el decodificador. Con etiquetas de unos pocos
+  partidos del mismo tracking que el del reto, este modelo se podría entrenar para él. Sin ellas, lo que queda es
+  acercar los datos de entrenamiento al ATD (jugadores que faltan como en SkillCorner, ruido de tracking automático) y
+  medirlo dejando un proveedor fuera, que es el instrumento que ha salido de aquí.
+- **B5 sí se traslada** (gana al baseline en SkillCorner y en Metrica sin haberlos visto): un modelo de 30 agregados
+  generaliza mejor que uno de 36.000 pesos que ve a cada jugador. Es la razón de que siga en la entrega.
+
+Descartado: recomendar K2 por sus cifras dentro del proveedor; abrir ahora una ronda de entrenamiento «más robusto»
+(sería otro candidato, con su regla y sin examen disponible); usar la ventana pública para decidir.
+
+Estado: K2 apagado, medido y documentado. El punto 4 espera a que el equipo decida si lo quiere mirar.

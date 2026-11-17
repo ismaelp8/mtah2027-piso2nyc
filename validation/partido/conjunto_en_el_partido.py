@@ -90,7 +90,35 @@ def para_imprimir(filas, salidas_fuera, entradas_fuera, referencia):
                "Regla: " + ("LAS SALIDAS SE SALEN del rango de los datos abiertos: K2 no se enciende sin mirarlo antes."
                             if salidas_fuera else
                             "las salidas caen dentro del rango de los datos abiertos: por este lado, K2 puede seguir.")]
+    parecido = por_proveedor({f[0]: f[1] for f in filas}, referencia)
+    if parecido:
+        lineas += ["",
+                   "Descriptivo, sin voto: ¿se parecen las seis salidas a las de un mismo proveedor? (el rango de "
+                   "arriba junta los dos, y por eso es más ancho)"]
+        lineas += ["- {}: {}".format(NOMBRE_PROVEEDOR.get(dominio, dominio),
+                                     "las seis dentro de su rango" if not fuera else
+                                     "{} fuera ({})".format(len(fuera), "; ".join(fuera)))
+                   for dominio, fuera in parecido.items()]
     return lineas
+
+
+NOMBRE_PROVEEDOR = {"dfl": "la DFL", "sc": "SkillCorner"}
+
+
+def por_proveedor(valores, referencia, margen=MARGEN):
+    """{proveedor: salidas que caen fuera de su rango ensanchado}. Vacío si la referencia no trae los rangos por
+    proveedor. Es descriptivo: la regla usa el rango de todas las vistas juntas (`comparar`)."""
+    resultado = {}
+    for dominio, rangos in sorted(referencia.get("por_dominio", {}).items()):
+        fuera = []
+        for nombre, (minimo, maximo) in sorted(rangos.items()):
+            if not es_salida(nombre):
+                continue
+            ancho = maximo - minimo
+            if not (minimo - margen * ancho <= valores[nombre] <= maximo + margen * ancho):
+                fuera.append(nombre.replace("salida · ", ""))
+        resultado[dominio] = fuera
+    return resultado
 
 
 def medir(data_dir=None):

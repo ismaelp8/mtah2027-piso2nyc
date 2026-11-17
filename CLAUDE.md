@@ -510,8 +510,9 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - Antonio: la línea del vídeo, cerrada;
     - Claude (sesión de Ismael): el borrador del documento técnico (PR 21). Está escrito para `equipo_v8`: hay que
       ponerlo al día con `equipo_v9`.
-- **17/11: el modelo conjunto, K2, ha pasado todo menos el partido** (rama `exp/modelo-conjunto`;
-  `validation/resultados/2026-11-17_modelo_conjunto.md` y `docs/decisiones.md`, 17/11). **No está en la entrega.**
+- **17/11: el modelo conjunto, K2, gana donde ha visto el proveedor, pero no se traslada a otro** (rama
+  `exp/modelo-conjunto`; `validation/resultados/2026-11-17_modelo_conjunto.md` y `docs/decisiones.md`, 17/11). **No está
+  en la entrega, y no se recomienda sin más: encenderlo es una apuesta que decide el equipo.**
   - **Qué es:** una evidencia de equipo que mira a cada jugador (una red por jugador, suma y máximo por equipo y una
     convolucional temporal de ±12,6 s, 36.260 pesos). Se entrenó con las etiquetas de control en la DFL y con las de
     SkillCorner, y sustituye solo al logit de B5 (`aprendida.evidence_k2`): el `D`, el decodificador y las capas del
@@ -524,16 +525,29 @@ Lee esto para saber en qué punto está el equipo. El detalle está en los fiche
     - gana también con la regla de §5.8 frente a `main`, y mejora las recuperaciones (+9,7 puntos) y los duelos con
       cambio (+5,2) de los eventos humanos de la DFL;
     - predice las mismas posesiones que `main`: no inventa más, las coloca mejor.
-  - **Lo que falta, y lo ejecuta una persona:** el punto 4 de su regla, con los criterios de daño C0 a C6 escritos
-    antes (`docs/decisiones.md`, 17/11). Con el python del entorno limpio, desde la carpeta de la rama:
+  - **El aviso** (medido después, con la lectura escrita antes): todo eso es con partidos del mismo proveedor en el
+    entrenamiento. Entrenado solo con la DFL pierde en SkillCorner (−0,010 a −0,015), y entrenado solo con SkillCorner
+    pierde en la DFL (−0,075 a −0,096 con control). El partido es de un tercer proveedor.
+  - **Lo que hay a favor de la apuesta:**
+    - en Metrica, el único tercer proveedor abierto, el modelo de los dos proveedores gana (+0,035) y más que
+      cualquiera de un solo proveedor (3 partidos, con sus avisos);
+    - con los slots y el balón como los del partido (P4 y el retraso de 4 frames) sigue ganando por +0,040 a +0,068, y
+      le cuestan menos que a B5;
+    - el criterio C2 salta en 22 de 28 y en 20 de 20 vistas donde se sabe que el modelo falla.
+  - **Si el equipo quiere mirarlo, lo ejecuta una persona:** el punto 4 de su regla, con los criterios de daño C0 a C6
+    escritos antes (`docs/decisiones.md`, 17/11). Con el python del entorno limpio, desde la carpeta de la rama:
     - `python -m possession.pipeline --name equipo_v9_rama` (tiene que dar el sha256 de `equipo_v9`);
     - `python validation/partido/conjunto_en_el_partido.py`;
     - `python validation/partido/probar_entrega.py prueba_k2 --pieza candidates=aprendida.evidence_k2 --contra equipo_v9_rama`;
     - `python evaluation/validate_submission.py evaluation/results/prueba_k2.csv` y `/evaluar`.
-  - **Si pasa,** encenderlo es una decisión del equipo: `pipeline.PIECES["candidates"]` pasa a
-    `"aprendida.evidence_k2"`, se regenera (`equipo_v10`) y se reproduce en otra máquina antes de entregar.
+  - **Si pasa,** la apuesta se queda sin señales en contra, pero sigue siendo una apuesta: el punto 4 puede dar la
+    alarma, no probar que K2 gane en el ATD. Encenderlo sería poner `"aprendida.evidence_k2"` en
+    `pipeline.PIECES["candidates"]`, regenerar (`equipo_v10`) y reproducirlo en otra máquina antes de entregar.
   - **Lo que no pasó:** K1, la capa de cambios aprendida (`conjunto.capa_cambios`, apagada): gana con el flag, pero con
-    control solo en 4–6 de 7 partidos. Una red 9 veces mayor se aprende los partidos de memoria.
+    control solo en 4–6 de 7 partidos. Una red 9 veces mayor se aprende los partidos de memoria. Y decodificar a riesgo
+    mínimo con K2 no merece construirse (las muestras se fragmentan).
+  - **Lo que sale para la fase siguiente:** lo que cojea ahora es el cambio de proveedor, no la arquitectura. El
+    instrumento para medirlo es dejar un proveedor fuera (`entrenar.py --solo` y `medir.py --alfa`).
   - **Lo que no se hizo del análisis de fuera:** el `D` dentro del modelo (el harness no puede validarlo con el balón) y
     el balón del vídeo. La pregunta a la organización sobre la regla de posesión está en borrador, sin enviar
     (`validation/conjunto/pregunta_organizacion.md`): su repo tiene los issues cerrados.
