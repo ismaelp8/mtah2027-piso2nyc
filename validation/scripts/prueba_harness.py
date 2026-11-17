@@ -161,9 +161,10 @@ def comprobar_dejar_fuera(carpeta):
         comprobar("con «dejar_fuera», «fuera» en las opciones da error", da_error(lambda: puntuar.leer_versiones(ruta)))
         principal = versiones["main"]
         piezas = puntuar.piezas_para(principal.get("piezas"), principal.get("fuera"), "J03WMX")
-        comprobar("la versión que no nombra la pieza de equipo usa la de la entrega (B5) dejando fuera el partido",
+        comprobar("la versión que no nombra la pieza de equipo usa la de la entrega (K2 desde el 17/11) dejando "
+                  "fuera el partido",
                   isinstance(piezas.get("candidates"), functools.partial)
-                  and piezas["candidates"].func is aprendida.evidence_b5
+                  and piezas["candidates"].func is aprendida.evidence_k2
                   and piezas["candidates"].keywords == {"fuera": "J03WMX"})
         comprobar("puntuar sin decir el partido la versión de main (B5 por defecto) da error",
                   da_error(lambda: puntuar.ejecutar(principal, trk, gt, "oraculo")))

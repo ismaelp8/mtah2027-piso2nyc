@@ -163,8 +163,8 @@ def main():
             conjunto._CACHE.clear()
 
     print("La entrega:")
-    comprobar("la pieza no está en pipeline.PIECES",
-              not any("conjunto" in v or "k2" in v for v in pipeline.PIECES.values()))
+    comprobar("es la evidencia de equipo de la entrega (encendida el 17/11, docs/decisiones.md, «se enciende K2»)",
+              pipeline.PIECES["candidates"] == "aprendida.evidence_k2")
     comprobar("ni en DELIVERY_LAYERS", not any(capa.__module__.endswith("conjunto") for capa in
                                                pipeline.DELIVERY_LAYERS))
 

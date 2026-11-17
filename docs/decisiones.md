@@ -6472,3 +6472,45 @@ Lectura [inferencia]: el detector con el balón del ATD aporta algo pequeño y s
 nunca negativo), pero no gana en suficientes partidos. Encima de K2 aporta menos que encima de B5: K2 ya corrige parte
 de los cambios que tarda en ver B5. Es material para el documento técnico y para el Innovation Challenge, junto con el
 techo (+0,096 con control).
+
+### 2026-11-17 · candidatos · se enciende K2: `pipeline.PIECES["candidates"]` pasa a `aprendida.evidence_k2`
+
+Quién: David (17/11): «quiero encender yo K2 […] Es la última opción que nos queda para mejorarlo, aunque sea un poco».
+Cualquiera del equipo puede decidir (decisión del 15/11). El cambio de código, en la rama `feat/encender-k2` (sale de
+`exp/modelo-conjunto` con `main` y `exp/cambios-sobre-k2` juntados).
+
+Qué se enciende: K2, el modelo conjunto (`possession/conjunto.py`, pesos en `possession/conjunto_pesos.npz`), como
+evidencia de equipo de la entrega en lugar de B5. El `D` (`dead_state`, `dead_ball`), el decodificador
+(`decode_cortas_a_d`) y las capas del partido (`DELIVERY_LAYERS`) no cambian.
+
+Por qué [medido; entradas del 17/11 sobre K2]:
+- **Cumplió su regla entera,** los cuatro puntos, con todo escrito antes de medir: DFL con control, de +0,036 a +0,051
+  (6–7 de 7); con el flag, de +0,033 a +0,044 (7 de 7); SkillCorner, de +0,021 a +0,024 en entrenamiento y de +0,021 a
+  +0,028 en el examen (8–10 de 10); y la entrega de prueba `prueba_k2` pasa los siete criterios de daño (C0 a C6).
+- **Es el único candidato de equipo que gana con las dos convenciones y en un examen que no había visto.** B9, B11, B12,
+  B13 y el detector de cambios no lo consiguieron.
+- **En el partido, el modelo se comporta como en la DFL:** sus salidas caen dentro del rango de la DFL y lo que cambia
+  frente a `equipo_v9` (el 4,8 % de los frames) es lo que cambiaba allí.
+- **Reproducción:** según David, Ismael la repitió en su máquina y sale la misma huella [sin verificar en el repo: falta
+  pegar la línea del sha256 con la máquina y las versiones].
+
+El riesgo, que se asume: entrenado con un solo proveedor, K2 pierde en el otro, y el ATD es un tercero. Nada de lo
+medido es en el ATD con etiquetas. Es una apuesta con todas las señales medibles a favor y ninguna en contra.
+
+Lo que hay que hacer después del merge:
+- regenerar la entrega con el entorno limpio (`python -m possession.pipeline`): tiene que salir byte a byte igual que
+  `prueba_k2`, sha256 `784e65e5…acbc`, válida, con 0 conflictos y 203 posesiones; será `equipo_v10`;
+- reproducirla en una segunda máquina distinta de la que generó `prueba_k2`, si no se ha hecho ya;
+- contar K2 en el documento técnico: los datos de entrenamiento (los 7 partidos de la DFL de Bassek et al., 2025,
+  CC BY 4.0, y los 10 de entrenamiento de SkillCorner, MIT), las etiquetas (control en la DFL y las de SkillCorner), que
+  se entrenó con torch en una GPU y que la entrega usa solo los pesos, en numpy.
+
+Cambios en las pruebas sin datos: las que comprobaban que la pieza de equipo era B5 (`prueba_pipeline`, `prueba_harness`,
+`prueba_balon_fuera`) o que K2 estaba apagado (`prueba_conjunto`) dicen ahora K2. `prueba_pipeline` deja a las piezas
+leer, y solo leer, el fichero de pesos de K2, que es parte del código; cualquier otro fichero sigue siendo un error.
+
+El harness: su versión de `main` (`{}`) pasa a ser K2. Quien compare con «main» usando tablas de antes fija `main` en un
+commit anterior o vuelve a medir su referencia.
+
+Descartado: dejar B5 (la entrega de hoy, `equipo_v9`), que es lo seguro; se cambia porque K2 gana en todo lo que se ha
+podido medir.

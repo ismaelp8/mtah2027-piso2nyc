@@ -173,7 +173,7 @@ def comprobar_capa():
               "solo la columna D, con su peso, y no prohíbe nada")
     comprobar(not score[3000:, tracking.D].any(), "fuera de los tramos evaluados no puntúa (la racha de 3200)")
     import inspect
-    comprobar(pipeline.PIECES["candidates"] == "aprendida.evidence_b5" and "ball_out" not in str(pipeline.PIECES)
+    comprobar(pipeline.PIECES["candidates"] == "aprendida.evidence_k2" and "ball_out" not in str(pipeline.PIECES)
               and "DELIVERY_LAYERS" not in inspect.getsource(pipeline.run),
               "el harness no la ve: no es una pieza de PIECES, y pipeline.run no suma DELIVERY_LAYERS")
     comprobar(pipeline.DELIVERY_LAYERS[-1] is dead_ball.ball_out

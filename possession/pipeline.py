@@ -52,7 +52,10 @@ DELIVERY_LAYERS = (transiciones.evidence_equipo, dead_ball.ball_out)
 # después, las posesiones cortas que vienen de un cambio directo y acaban en `D` pasan a `D`. Pasó las cuatro
 # condiciones del límite de daño, con el examen de SkillCorner, e Ismael decidió encenderlo (docs/decisiones.md,
 # «se enciende "cortas a D"»). Antes era `decode`.
-PIECES = {"ball": "clean", "candidates": "aprendida.evidence_b5", "dead_state": "evidence",
+# Desde el 17/11 la evidencia de equipo es K2, el modelo conjunto (`aprendida.evidence_k2`, `possession/conjunto.py`):
+# cumplió los cuatro puntos de su regla, con el examen de SkillCorner y la entrega de prueba `prueba_k2`, y David decidió
+# encenderlo (docs/decisiones.md, «se enciende K2»). Antes era B5 (`aprendida.evidence_b5`).
+PIECES = {"ball": "clean", "candidates": "aprendida.evidence_k2", "dead_state": "evidence",
           "temporal": "decode_cortas_a_d"}
 MODULES = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal,
            "aprendida": aprendida}
