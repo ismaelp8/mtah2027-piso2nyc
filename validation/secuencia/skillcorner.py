@@ -35,7 +35,8 @@ from possession import aprendida, pipeline  # noqa: E402
 UMBRAL = 0.005
 GANA_DE = 7
 MODOS = ("oraculo", "propio")
-CANDIDATOS = {"b11": aprendida.evidence_b11, "b12": aprendida.evidence_b12}
+CANDIDATOS = {"b11": aprendida.evidence_b11, "b12": aprendida.evidence_b12, "b13": aprendida.evidence_b13,
+              "b14": aprendida.evidence_b14}
 
 
 def ejecutar(nombre, trk, gt, modo):

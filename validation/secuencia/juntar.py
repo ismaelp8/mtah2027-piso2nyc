@@ -28,19 +28,20 @@ import numpy as np
 import comun
 import dfl
 import puntuar
-from possession import aprendida, ball, pipeline, secuencia, trayectorias
+from possession import aprendida, ball, pipeline, secuencia, trayectorias, trayectorias2
 
 # B13 (17/11, possession/trayectorias.py): la misma elección, con la rejilla ampliada a 16 y 32 (B12 cayó en el borde, 8).
 ALFAS_B13 = comun.ALFAS + (16.0, 32.0)
-MODELOS = secuencia.MODELOS + ("b13",)
+MODELOS = secuencia.MODELOS + ("b13", "b14")
+PROPIOS = {"b13": trayectorias, "b14": trayectorias2}  # los modelos con módulo y fichero de pesos propios
 
 
 def alfas_de(modelo):
-    return ALFAS_B13 if modelo == "b13" else comun.ALFAS
+    return ALFAS_B13 if modelo in PROPIOS else comun.ALFAS
 
 
 def logit_de(modelo, trk, pesos):
-    return trayectorias.logit(trk, pesos) if modelo == "b13" else secuencia.logit(trk, modelo, pesos)
+    return PROPIOS[modelo].logit(trk, pesos) if modelo in PROPIOS else secuencia.logit(trk, modelo, pesos)
 
 
 def fichero_alfa(modelo, pliegue):
@@ -116,9 +117,10 @@ def escribir(modelos=secuencia.MODELOS):
                     datos["{}/{}/{}".format(modelo, pliegue, k)] = np.asarray(d[k])
             with open(fichero_alfa(modelo, pliegue), encoding="utf-8") as f:
                 datos["{}/{}/alfa".format(modelo, pliegue)] = np.array(float(json.load(f)["alfa"]))
-    destino = trayectorias.PESOS if modelos == ("b13",) else secuencia.PESOS
-    if "b13" in modelos and modelos != ("b13",):
-        raise ValueError("B13 va en su propio fichero: --modelos b13 solo")
+    propios = [m for m in modelos if m in PROPIOS]
+    if propios and len(modelos) != 1:
+        raise ValueError("B13 y B14 van cada uno en su propio fichero: --modelos con uno solo")
+    destino = PROPIOS[modelos[0]].PESOS if propios else secuencia.PESOS
     np.savez_compressed(destino, **datos)
     print("escritos {} arrays en {}".format(len(datos), destino))
 

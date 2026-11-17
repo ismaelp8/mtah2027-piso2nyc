@@ -450,6 +450,13 @@ def evidence_b13(trk, fuera=None):
     return trayectorias.evidencia(trk, "b13", fuera)
 
 
+def evidence_b14(trk, fuera=None):
+    """B14: la red de trayectorias con rasgos de control, atención conjunta y dominio aleatorizado como el ATD
+    (17/11; possession/trayectorias2.py). Apagada."""
+    from possession import trayectorias2
+    return trayectorias2.evidencia(trk, "b14", fuera)
+
+
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------
 # >>> COEFICIENTES
 # Los escribe validation/apuesta_b/entrenar.py. «todos»: los 7 partidos de la DFL (la entrega); cada

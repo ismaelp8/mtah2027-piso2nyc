@@ -5660,3 +5660,11 @@ del 16/11, frente a `main`. B13 (`possession/trayectorias.py`, apagada):
 - se entrena en la DFL con el balón de las dos condiciones que votan y también sin balón a trozos.
 
 Se mide en el harness con `validation/harness/versiones/b13_trayectorias_2026-11-17.json`.
+
+B14 (`possession/trayectorias2.py`, apagada) es B13 con tres cambios:
+- rasgos de control por jugador: núcleos de 1 y 3 m, co-movimiento y acercamiento al balón;
+- atención conjunta sobre los dos equipos;
+- entrenada con dominio aleatorizado como el ATD (`exportar2.py`): dos copias más de cada partido, con jugadores
+  degradados, tracklets cortados, slots fantasma y el balón con otra semilla y de 0 a 6 frames tarde, y espejo en y.
+
+Se mide igual, frente a `main`.
