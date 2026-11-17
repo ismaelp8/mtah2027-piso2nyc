@@ -6772,3 +6772,44 @@ Estado: escrita antes de entrenar.
 - **Lo que significa para el piloto:** K8 y la K2 de la CPU empiezan con los mismos pesos y ven los mismos trozos y
   aumentos. Pero un entrenamiento amplifica cualquier diferencia, así que «pareado» quiere decir eso, no que el resto del
   camino sea el mismo. El ruido entre entrenamientos lo da la K2 de la GPU, como estaba escrito.
+
+### 2026-11-17 · candidatos · modelo conjunto: K7c (la DFL y Metrica, una sola z) no se traslada mejor a SkillCorner
+
+Quién: Claude, en otra sesión de Ismael (17/11), con la regla de K7, escrita antes de entrenar (`ccbfa26`). Salidas en
+`validation/conjunto/salidas/2026-11-17_entrenamiento_k7c.md` y `…_k7c_en_skillcorner.md`.
+
+**El entrenamiento.**
+- El primer intento se cortó por falta de memoria en el paso 2.500 y está al principio del registro.
+- El segundo terminó (3.000 pasos, 46 minutos en la CPU) sin NaN; la pérdida de z bajó de 0,697 a 0,104.
+- Con la limpieza de Metrica dejaron de contar 41.550 de 280.343 frames vivos.
+- La paridad de numpy con torch da una diferencia máxima de z de 3,2e-6, sin cambios de signo.
+
+**El instrumento da lo publicado:** `main` y las réplicas 1 y 2 en las 4 celdas.
+
+Resultado [medido], 10 partidos de la mitad de entrenamiento de SkillCorner, α = 4:
+
+| `D` | condición | K7c − `main` [5–95 %] | lo mejor de los tres | − réplica 1 [5–95 %] · gana en | − réplica 2 [5–95 %] · gana en | − original (publicado) |
+|---|---|---|---|---|---|---|
+| etiquetas | detectado | −0,007 [−0,015 a +0,000] | −0,005 | −0,003 [−0,008 a +0,003] · 3 de 10 | −0,000 [−0,006 a +0,005] · 4 | +0,008 |
+| etiquetas | detectado, suavizado | +0,003 [−0,005 a +0,011] | +0,001 | +0,002 [−0,003 a +0,008] · 6 | +0,006 [+0,001 a +0,013] · 8 | +0,013 |
+| propio | detectado | +0,000 [−0,007 a +0,007] | −0,000 | +0,001 [−0,004 a +0,006] · 5 | +0,004 [−0,002 a +0,009] · 6 | +0,007 |
+| propio | detectado, suavizado | +0,008 [+0,000 a +0,015] | +0,003 | +0,005 [+0,000 a +0,010] · 6 | +0,009 [+0,003 a +0,015] · 8 | +0,012 |
+
+**Con la regla: K7c no se traslada mejor.**
+- En la primera celda queda 0,0025 por debajo de lo mejor de los tres modelos de solo la DFL.
+- La media de sus 4 celdas es +0,001, y se pedía +0,004.
+- **No es un caso al límite:** la media queda por debajo de +0,002, y la celda que falla se queda corta por más de 0,002.
+  No se entrena otra semilla.
+
+Sin voto:
+- Frente a la media de los tres modelos de solo la DFL (−0,004), K7c saca +0,005: dentro de lo que se separan entre sí.
+- Predice 2.494 posesiones (las réplicas, 2.491 y 2.447; `main`, 2.270; hay 3.228).
+- Acierta el signo de z en el 84 % de los frames de SkillCorner, como las réplicas.
+
+Lo que se lee [inferencia, sobre lo medido]:
+- Añadir Metrica, con la misma z, no hace que el modelo se traslade mejor a un tracking automático: queda dentro del
+  rango de los de solo la DFL.
+- Lo que falta por ver es K7s, la z por proveedor, que se entrena ahora.
+- El veredicto de K7 se apunta cuando estén las dos.
+
+Estado: K7c, medido. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
