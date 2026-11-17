@@ -32,10 +32,11 @@ y 6 de 7, con los dos modos del `D`; con el flag, no perder más de 0,005.
 | B12 | +0,034 (7) / +0,028 (**5**) | +0,034 (7) / +0,028 (**5**) | +0,05 (7) | gana las 4 (+0,011 a +0,014, 7–9 de 10); el EXAMEN no pasa (+0,004 a +0,009) | 1.774 |
 | B13 | +0,021 (6) / +0,003 (4) | +0,025 (5) / +0,007 (3) | +0,09 (7) | pierde las 4 (−0,010 a −0,024) | 1.865 |
 | B14 | **+0,048 (7) / +0,027 (7)** | **+0,053 (7) / +0,030 (7)** | +0,11 a +0,12 (7) | pierde o empata (−0,017 a +0,002) | 1.904 |
-| B15 | (pendiente) | | | | |
+| **B15** | **+0,054 (7) / +0,042 (7)** | **+0,050 (7) / +0,035 (7)** | **+0,034 a +0,048 (6–7)** | +0,006 en las 4 (7, 6, 8 y 6 de 10) | 1.655 |
 
 ## Lectura
 
+- **B15 gana a `main` con la regla de §5.8 en la DFL** (+0,03 o más con control y con el flag, 6–7 de 7, con los dos modos del `D`), el primer candidato que lo consigue desde B5. En SkillCorner `ENTRENAMIENTO` es positiva en las cuatro celdas (+0,006) pero no llega al «7 de 10» en dos. Entrenar con la etiqueta de control quitó los cambios de equipo de sobra de B14. El examen de SkillCorner de B15 y la entrega de prueba quedan para la decisión de Ismael. B16 (B15 entrenada también con SkillCorner) se está entrenando.
 - **Ninguna pasa la regla, de momento.** **B14 es la primera que pasa los puntos 1 y 3 en la DFL, con margen** (7 de 7 en
   todo), pero en SkillCorner pierde con el `D` de las etiquetas y empata con el propio. B12 es la otra que más se acerca (gana con control en las cuatro celdas y en SkillCorner `ENTRENAMIENTO`, pero en «sin bloques» gana en 5 de 7). Ismael le hizo la excepción y **su examen de SkillCorner no pasa**: +0,004 a +0,009, falla una celda (+0,004 y 6 de 10). B12 queda cerrado y el examen, usado para B12.
 - **Las redes que miran más fino (B11 y B13) cambian de equipo de más.** Ganan mucho con el flag (+0,09 a +0,10), que

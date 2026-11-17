@@ -5774,3 +5774,35 @@ B16 (se prueba; `aprendida.evidence_b16`, apagada) es B15 entrenada también con
   partidos) y «scB» (sin los otros 5). Cada partido de `ENTRENAMIENTO` se puntúa con el que no lo vio
   (`skillcorner.py`).
 - Los pliegues de la DFL usan los 10 de SkillCorner. `EXAMEN` no se toca.
+
+### 2026-11-17 · candidatos · B15: gana a `main` con §5.8 en la DFL; en SkillCorner, positiva pero sin el «7 de 10»
+
+B15 (`f3f7e9b`, salidas en `validation/secuencia/salidas/2026-11-17_*b15*`) es la red de B14 entrenada con la etiqueta
+de control en todos los frames vivos. Frente a `main` [medido]:
+
+| convención | `D` | «como el ATD» | «sin bloques» |
+|---|---|---|---|
+| control | de las etiquetas | +0,054 [+0,041 a +0,066], 7 de 7 | +0,042 [+0,030 a +0,053], 7 de 7 |
+| control | propio | +0,050 [+0,037 a +0,062], 7 de 7 | +0,035 [+0,022 a +0,046], 7 de 7 |
+| flag | de las etiquetas | +0,048 [+0,038 a +0,058], 6 de 7 | +0,037 [+0,027 a +0,047], 6 de 7 |
+| flag | propio | +0,043 [+0,034 a +0,053], 7 de 7 | +0,034 [+0,025 a +0,044], 7 de 7 |
+
+- **Regla de §5.8 frente a `main`** (+0,03 o más con las dos convenciones, 6 de 7 e intervalo por encima de cero, en las
+  dos condiciones que votan): **gana, con el `D` de las etiquetas y con el propio.** Es el primer candidato que lo
+  consigue desde B5.
+  - La entrada del 16/11 («el flag pasa de veto a límite de daño») deja a §5.8 lo que gana con las dos convenciones.
+  - El límite de daño era para los cambios pequeños hacia control.
+- **Posesiones:** 1.655 (`main` 1.661; reales 1.736 con control y 3.061 con el flag). Ya no cambia de equipo de más,
+  como B11, B13 y B14.
+- **Eventos humanos frente a `main`:** «mejora» (recuperaciones +7,2 puntos [+1,5 a +12,8]; duelos con cambio +2,2 y sin
+  cambio −2,4, los dos sin separarse de cero).
+- **SkillCorner `ENTRENAMIENTO`** (modelo de los 7 de la DFL; SkillCorner no se usó para entrenarla): +0,006 en las cuatro
+  celdas.
+  - Gana en 7, 6, 8 y 6 de 10 partidos; los intervalos van de −0,002 a +0,013.
+  - Con el umbral del límite de daño (+0,005 y 7 de 10 en las cuatro celdas) falla dos celdas por el «7 de 10».
+  - Predice 2.322 posesiones (`main` 2.270; reales 3.228).
+- **Cuidado:** se entrenó con la etiqueta de control. Su número con control sale favorecido, porque esas etiquetas salen
+  de una regla de proximidad. Por eso pesa que gane también con el flag y que no pierda en SkillCorner.
+
+Estado: B15 apagada. Abrir su examen de SkillCorner y, si pasa, generar la entrega de prueba lo deciden Ismael y la
+planificadora.
