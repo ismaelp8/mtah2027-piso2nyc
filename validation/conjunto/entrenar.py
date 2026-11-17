@@ -42,7 +42,13 @@ CONFIG = {
     # aumentos hacia el ATD, por trozo
     "retraso_max": 5, "p_hueco": 0.3, "hueco": (25, 100), "p_falta": 0.06, "p_rato": 0.10, "rato": (25, 125),
     "p_duplicado": 0.25, "sigma_duplicado": 0.4, "p_a_la_vista": 0.5,
+    # aumentos hacia un tracking automático, solo en los trozos de la DFL (ronda K2r). Apagados por defecto: con estos
+    # valores el entrenamiento es el de K2.
+    "visibilidad_min": 1.0, "p_10hz": 0.0, "p_ruido": 0.0, "sigma_ruido": 0.2,
 }
+# La única configuración de la ronda K2r (docs/decisiones.md, 17/11, «una ronda contra el cambio de proveedor»).
+ROBUSTO = {"visibilidad_min": 0.65, "p_10hz": 0.5, "p_ruido": 0.5}
+HZ_ORIGEN = 10.0  # la frecuencia de SkillCorner, que su lector pasa a 25 fps por interpolación
 
 
 def clases(gt, semiancho=cj.SEMIANCHO):
@@ -127,7 +133,7 @@ def lote_de(partidos, rng, cfg, device):
     frames = grupos * cj.GRUPO
     p = red.PASO_VEL
     campos = {k: [] for k in ("px", "py", "bx", "by", "team", "direccion", "largo", "ancho", "gt", "clase", "flag",
-                              "con_flag")}
+                              "con_flag", "es_dfl")}
     for m, cuantos in partidos:
         largos = np.array([b - a for a, b in m["blocks"]], dtype=np.float64)
         for _ in range(cuantos):
@@ -153,10 +159,12 @@ def lote_de(partidos, rng, cfg, device):
             campos["flag"].append(m["flag"][centros] if m["flag"] is not None
                                   else torch.full((grupos,), 3, dtype=torch.int64, device=device))
             campos["con_flag"].append(m["flag"] is not None)
+            campos["es_dfl"].append(m["dominio"] == "dfl")
     salida = {k: torch.stack(v) for k, v in campos.items() if k in ("px", "py", "bx", "by", "team", "gt", "clase",
                                                                     "flag")}
     for k in ("direccion", "largo", "ancho"):
         salida[k] = torch.tensor(campos[k], dtype=torch.float32, device=device)
+    salida["es_dfl"] = torch.tensor(campos["es_dfl"], dtype=torch.bool, device=device)
     return salida
 
 
@@ -186,9 +194,51 @@ def aumentar(lote, cfg, gen):
     px[:, :, slots - 1] = torch.where(duplicado[:, None], px[filas, :, origen] + ruido[:, :1], nan)
     py[:, :, slots - 1] = torch.where(duplicado[:, None], py[filas, :, origen] + ruido[:, 1:], nan)
     team[:, slots - 1] = torch.where(duplicado, team[filas, origen], -1)
-    # slots que faltan todo el trozo o un rato
     t = torch.arange(frames, device=device)
+    es_dfl = lote["es_dfl"]
+    # datos a 10 Hz (solo en trozos de la DFL): se remuestrea a 10 Hz y se interpola de vuelta, como hace el lector de
+    # SkillCorner; con una de las dos muestras ausente, el valor falta
+    if cfg["p_10hz"] > 0:
+        elegido = es_dfl & (azar(n) < cfg["p_10hz"])
+        paso = 25.0 / HZ_ORIGEN
+        muestras = int((frames - 1) / paso) + 1
+        instante = torch.arange(muestras, device=device) * paso
+        bajo = instante.floor().long()
+        alto = (bajo + 1).clamp(max=frames - 1)
+        peso = instante - bajo
+        vuelta = t / paso
+        antes = vuelta.floor().long().clamp(max=muestras - 1)
+        despues = (antes + 1).clamp(max=muestras - 1)
+        peso_vuelta = vuelta - antes
+
+        def a_10hz(valores):  # valores (n, frames, ...) -> lo mismo, pasado por 10 Hz
+            forma = (1, -1) + (1,) * (valores.dim() - 2)
+            w = peso.view(forma)
+            lento = torch.where(w < 1e-6, valores[:, bajo], (1.0 - w) * valores[:, bajo] + w * valores[:, alto])
+            w = peso_vuelta.view(forma)
+            exacto = (w < 1e-6) | (despues == antes).view(forma)
+            return torch.where(exacto, lento[:, antes], (1.0 - w) * lento[:, antes] + w * lento[:, despues])
+
+        px = torch.where(elegido[:, None, None], a_10hz(px), px)
+        py = torch.where(elegido[:, None, None], a_10hz(py), py)
+        bx = torch.where(elegido[:, None], a_10hz(bx), bx)
+        by = torch.where(elegido[:, None], a_10hz(by), by)
+    # ruido lento de posición (solo en trozos de la DFL): un desplazamiento por jugador que cambia cada segundo
+    if cfg["p_ruido"] > 0:
+        elegido = es_dfl & (azar(n) < cfg["p_ruido"])
+        nudos = frames // 25 + 2
+        valor = torch.randn(n, nudos, slots, 2, generator=gen, device=device) * cfg["sigma_ruido"]
+        u = t / 25.0
+        i0 = u.floor().long()
+        w = (u - i0).view(1, -1, 1, 1)
+        desplazamiento = (1.0 - w) * valor[:, i0] + w * valor[:, i0 + 1]
+        desplazamiento = desplazamiento * elegido[:, None, None, None]
+        px, py = px + desplazamiento[..., 0], py + desplazamiento[..., 1]
+    # slots que faltan todo el trozo o un rato
     falta = azar(n, slots) < cfg["p_falta"]
+    if cfg["visibilidad_min"] < 1.0:  # jugadores que faltan como en SkillCorner (solo en trozos de la DFL)
+        se_ven = cfg["visibilidad_min"] + (1.0 - cfg["visibilidad_min"]) * azar(n)
+        falta = falta | (es_dfl[:, None] & (azar(n, slots) < (1.0 - se_ven)[:, None]))
     rato = azar(n, slots) < cfg["p_rato"]
     inicio = entero(0, frames - 1, n, slots)
     largo = entero(cfg["rato"][0], cfg["rato"][1], n, slots)
@@ -307,12 +357,16 @@ def main():
     parser.add_argument("--config", default=None, help="JSON con los valores de CONFIG que se cambian")
     parser.add_argument("--solo", choices=("dfl", "sc"), default=None,
                         help="entrena con un solo proveedor (pliegue «todos») y guarda las salidas del otro")
+    parser.add_argument("--robusto", action="store_true",
+                        help="la configuración de la ronda K2r: los aumentos de `ROBUSTO` en los trozos de la DFL")
     parser.add_argument("--describir-dentro", action="store_true",
                         help="enseña también la tabla en dos partidos que el pliegue sí vio")
     args = parser.parse_args()
     if args.solo and args.pliegue != "todos":
         parser.error("--solo va con el pliegue «todos»")
     cfg = dict(CONFIG)
+    if args.robusto:
+        cfg.update(ROBUSTO)
     if args.config:
         cambios = json.loads(args.config)
         desconocidas = sorted(set(cambios) - set(cfg))

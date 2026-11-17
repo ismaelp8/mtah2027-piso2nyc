@@ -5831,3 +5831,45 @@ Descartado: recomendar K2 por sus cifras dentro del proveedor; abrir ahora una r
 (sería otro candidato, con su regla y sin examen disponible); usar la ventana pública para decidir.
 
 Estado: K2 apagado, medido y documentado. El punto 4 espera a que el equipo decida si lo quiere mirar.
+
+### 2026-11-17 · candidatos · modelo conjunto: una ronda contra el cambio de proveedor (K2r), con una sola configuración (antes de entrenar)
+
+Quién: Claude, en la sesión de Ismael (17/11). Escrita antes de entrenar o medir nada de esta ronda.
+
+Por qué se abre, cuando la entrada anterior la descartaba: Ismael pidió el 16/11 que, si una ronda falla, se abra otra
+con su regla en vez de cerrar. Y esta es barata: no cambia la red ni la pieza en numpy, solo los aumentos del
+entrenamiento, es decir, los pesos. Se corrige aquí lo que decía «Descartado» en la entrada anterior.
+
+Qué se prueba: si el modelo entrenado **solo con la DFL** deja de perder en SkillCorner cuando sus partidos de
+entrenamiento se parecen más a un tracking automático. Es el sentido que importa para el partido: de un tracking limpio
+a uno automático. Una sola configuración, `entrenar.ROBUSTO`, que añade tres aumentos **a los trozos de la DFL** (los de
+SkillCorner ya son así) y no toca nada más:
+- **jugadores que faltan, como en SkillCorner:** en cada trozo se sortea cuántos se ven, entre el 65 y el 100 %, y cada
+  slot falta todo el trozo con la probabilidad que toque (en SkillCorner se ven de 7,4 a 8,7 jugadores por equipo; en
+  la DFL, de 10,5 a 11,0; en el partido, unos 10);
+- **datos a 10 Hz,** en la mitad de los trozos: los jugadores y el balón se remuestrean a 10 Hz y se interpolan de
+  vuelta, como hace el lector de SkillCorner;
+- **ruido lento de posición,** en la mitad de los trozos: un desplazamiento por jugador de 0,2 m de desviación, que
+  cambia cada segundo y se interpola en medio.
+
+Regla, en dos pasos:
+- **Paso A.** El modelo entrenado solo con la DFL con esos aumentos, puntuado en los 10 partidos de
+  `lector.ENTRENAMIENTO` con α = 4 (lo mismo que la comprobación 1, que dio −0,015, −0,010, −0,007 y −0,004):
+  - **«se traslada»** si gana a `main` por +0,005 o más en las cuatro celdas;
+  - **«deja de perder»** si queda en −0,005 o más en las cuatro, sin llegar a lo anterior;
+  - si pierde más de 0,005 en alguna celda, **la ronda se cierra aquí,** sin probar otros aumentos.
+- **Paso B,** solo si A «se traslada» o «deja de perder». Se entrenan los 8 pliegues del modelo de los dos proveedores
+  con esos aumentos (K2r, tanda `v2`) y se mide como K2: puntos 1 y 3 en la DFL, la mitad de entrenamiento de
+  SkillCorner con los pliegues cruzados, Metrica y `como_el_atd.py`. K2r sustituye a K2 como candidato para el punto 4
+  si pasa los puntos 1 y 3 y SkillCorner cruzado, y no queda más de 0,005 por debajo de K2 en ninguna celda de control
+  de la DFL ni en Metrica. Si no, K2 se queda como está.
+- **El examen de SkillCorner no se abre para K2r:** es una variante de un candidato ya examinado, y el equipo no ha
+  decidido si eso cuenta como candidato nuevo (`validation/skillcorner/BITACORA.md`). Se dice con el resultado.
+
+Avisado antes de medir:
+- Que el paso A salga bien no prueba que K2r gane en el ATD: prueba que estos aumentos acercan un tracking limpio a uno
+  automático de otro proveedor. Es la mejor imitación que hay de lo que le pasará con el partido.
+- Los tres aumentos se eligieron por lo medido en `referencia.py` y por cómo lee SkillCorner su lector, no mirando
+  ningún resultado. No se prueban uno a uno ni se ajustan sus valores.
+
+Estado: escrita antes de entrenar. El resultado va en la entrada siguiente.
