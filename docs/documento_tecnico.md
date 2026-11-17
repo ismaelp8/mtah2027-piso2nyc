@@ -37,9 +37,10 @@ del Smart Tagging y el balón visto fuera del campo. Al final, una regla pasa a 
 
 **Por qué así.** No hay etiquetas del partido que se puedan usar, y la ventana pública no sirve para elegir
 (§6.5). Por eso todo se eligió en partidos abiertos de otras ligas, con piezas pequeñas que se miden por
-separado. Cada pieza entró solo si pasaba una regla escrita antes de medir (§6.1). B5 y E2 ganaron en el
-harness. «Cortas a `D`» entró por una regla de límite de daño: gana con control en la DFL y en SkillCorner y no
-pierde más de 0,005 con el flag. Tres capas que el harness no puede medir entraron por reglas de daño, con
+separado. Cada pieza entró por una regla escrita antes (§6.1). B5 y E2 ganaron en el harness. «Cortas a `D`»
+entró por una regla de límite de daño: gana con control en la DFL y en SkillCorner y no pierde más de 0,005 con
+el flag. Esa regla se escribió cuando ya se conocían sus cifras en la DFL; a ciegas solo estaban el examen de
+SkillCorner y la entrega de prueba. Tres capas que el harness no puede medir entraron por reglas de daño, con
 agregados del partido (§8).
 
 **La validación, en datos de otros partidos** (spellF1). Estas tres cifras miden solo `H` frente a `A`,
@@ -284,7 +285,9 @@ candidato entra si cumple todo esto frente a lo que hay:
 
 Por qué: el equipo eligió el 12/11 «exigir control», y SkillCorner, que también lo exige, coincide con control.
 El riesgo que se acepta: si la GT se parece al flag, cada cambio así puede costar hasta 0,005. Por esta regla
-entró «cortas a `D`» (§2). Un candidato que toca el `D` se mide con el `D` propio, con el balón tapado y a la
+entró «cortas a `D`» (§2). Ojo: era la candidata que motivó la regla, así que sus cifras en la DFL y en la mitad
+de entrenamiento de SkillCorner ya se conocían al escribir los umbrales. Lo que se midió a ciegas, con el umbral
+escrito antes, fue el examen de SkillCorner (10 de 10) y la entrega de prueba. Un candidato que toca el `D` se mide con el `D` propio, con el balón tapado y a la
 vista en los `D`, porque con el `D` oráculo la regla no puede actuar. La línea del balón del vídeo tuvo su
 propia regla (§7).
 
@@ -318,8 +321,8 @@ en los dos modos del balón en los `D` (§6.1).
   el balón que detecta SkillCorner, tal cual y suavizado como el del ATD), en 20 de 20, y +0,059 y +0,065
   sobre el jugador más cercano en 19 de 20 [medido]. Sin oráculo, cada uno con su propio `D` (el baseline,
   el suyo: `D` donde nadie tiene el balón en ±50; nosotros, E2), el baseline saca 0,249, muy cerca de su
-  0,2433 oficial, y nosotros 0,381 [medido]. Estas cifras son de antes de «cortas a `D`», que con el `D`
-  propio suma +0,010 y +0,009 en la mitad de entrenamiento y +0,009 y +0,008 en la de examen (§2) [medido].
+  0,2433 oficial, y nosotros 0,381 [medido]. Ese 0,381 es de antes de «cortas a `D`», que con el `D` propio
+  suma +0,010 y +0,009 en la mitad de entrenamiento y +0,009 y +0,008 en la de examen (§2) [medido].
 - **Metrica** (etiquetas derivadas de eventos): +0,118 sobre el baseline en 3 de 3 [medido]. Ojo: en esos
   datos el balón va pegado al jugador (a menos de 0,3 m del más cercano en el 45,6 % de los frames de juego
   con balón, frente al 6,4 % en la DFL sin degradar [medido]), así que no prueba nada sobre los rasgos de
@@ -387,7 +390,7 @@ En el harness o con agregados del partido, cada uno con su regla escrita antes [
   abarata ese cambio en el decodificador. Con un detector perfecto subiríamos de 0,728 a 0,824 con control
   [medido, techo descriptivo], pero los detectores reales dan demasiados avisos falsos (solo es bueno del 23 al
   37 %) [medido]. Ninguno pasa su regla: ni en la DFL, ni en la mitad de entrenamiento de SkillCorner (de −0,005
-  a +0,003), ni encima de K2 (§8).
+  a +0,003), ni encima de K2 (§8; registrado en la rama `exp/cambios-sobre-k2`).
 - **Modelos de secuencia para la evidencia de equipo** (17/11): redes entrenadas en la DFL que leen la
   evidencia en el tiempo, con la inferencia en numpy. Son una convolución temporal (B11), una GRU bidireccional
   (B12), una red sobre las trayectorias de los jugadores (B13) y esa red con rasgos de control, entrenada con la
@@ -396,10 +399,13 @@ En el harness o con agregados del partido, cada uno con su regla escrita antes [
   - B11 y B13 ganan con control solo en 3 a 6 de 7 partidos, según la celda; en SkillCorner, B11 empata o
     pierde y B13 pierde (de −0,010 a −0,024);
   - B14 pasa en la DFL con margen (con control, de +0,027 a +0,053, en 7 de 7), pero en la mitad de
-    entrenamiento de SkillCorner pierde con el `D` de las etiquetas (−0,017 y −0,013) y empata con el propio;
-  - B12, la mejor con control (de +0,028 a +0,034), gana solo en 5 de 7 partidos en una condición, y se pedían
-    6. Por una excepción, decidida y escrita antes de medir, se abrió su examen de SkillCorner: cumple 3 de las 4
-    celdas, y en la que falla gana +0,004, en 6 de 10. Se queda fuera, sin probar variantes;
+    entrenamiento de SkillCorner pierde con el `D` de las etiquetas (−0,017 y −0,013) y empata con el propio
+    (registrado en la rama `claude/serene-lumiere-16245d`, donde están el código y los pesos de B11 a B16);
+  - B12 es la única que también gana en la mitad de entrenamiento de SkillCorner (de +0,011 a +0,014, en las
+    cuatro celdas). En la DFL, con control, gana de +0,028 a +0,034, pero en una condición solo en 5 de 7
+    partidos, y se pedían 6. Por una excepción, decidida después de ese resultado y escrita antes de abrir el
+    examen, se abrió su examen de SkillCorner: cumple 3 de las 4 celdas, y en la que falla gana +0,004, en 6 de
+    10. Se queda fuera, sin probar variantes;
   - [PENDIENTE: B15 y B16, que se estaban entrenando al escribir esto; poner su resultado o «sin medir antes
     del corte»].
 
@@ -443,6 +449,8 @@ En el harness o con agregados del partido, cada uno con su regla escrita antes [
   3,53 por minuto de juego vivo, cuando en datos abiertos, con nuestro `D`, salen de 4,1 a 4,3 [medido]. Gana
   porque empareja mejor las que quedan [inferencia]. Además:
   - si la GT se parece al flag, cuesta hasta 0,002 [medido, DFL];
+  - la regla de límite de daño se escribió con sus cifras de la DFL ya conocidas; a ciegas solo estaban el
+    examen de SkillCorner y la entrega de prueba (§6.1);
   - con el balón tapado en los `D`, el extremo bajo del intervalo del 5–95 % con control (+0,003 y +0,004) queda
     por debajo de los +0,005 de la regla, que se escribió con valores centrales [medido];
   - el corte de 5 s se heredó del sondeo. Uno de 3 s también pasaría en la DFL, sin pérdida con el flag [medido
@@ -458,7 +466,8 @@ pseudoetiquetas o con seguimiento en el tiempo; §7), y los tiempos de eventos c
 medir mejor dónde cambia la posesión.
 
 **Lo que puede cambiar la entrega antes del cierre: K2.** [PENDIENTE: lo decide el equipo antes del corte.
-Según lo que decida, este bloque se queda como «probado y no encendido» o se reescribe como parte del método]
+Según lo que decida, este bloque se queda como «probado y no encendido» o se reescribe como parte del método.
+Hoy su registro está solo en la rama `exp/modelo-conjunto`]
 - **Qué es:** una evidencia de equipo que mira a cada jugador: una red por jugador, la suma y el máximo por
   equipo y una convolución temporal de ±12,6 s, con 36.260 pesos. Sustituye solo al logit de B5; el `D`, el
   decodificador y las capas del partido no cambian. Se entrenó con las etiquetas de control de la DFL y con las de
@@ -551,7 +560,8 @@ improbable, pero no lo damos por supuesto: comprobamos el sha256 del fichero en 
 documentación, diseñar medidas en datos abiertos e investigar métodos. Las decisiones de método las tomaron
 personas y están en `docs/decisiones.md` con su autor; Claude propuso candidatos y reglas de lectura y fijó
 el reparto entrenamiento/examen de SkillCorner. También ejecutó en datos abiertos las medidas y los tres usos de
-ese examen, cada uno autorizado por una persona del equipo y con el umbral escrito antes. El LLM no interviene
+ese examen, con el permiso que dio Ismael el 16/11 (una vez por candidato) y el umbral escrito antes; dos de
+ellos los autorizó además una persona en el momento. El LLM no interviene
 al generar las etiquetas. Los commits no
 llevan su firma, pero los documentos del repo lo nombran.
 
