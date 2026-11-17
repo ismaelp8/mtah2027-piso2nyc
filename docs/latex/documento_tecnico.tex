@@ -1,0 +1,636 @@
+% GENERADO por docs/latex/md_a_latex.py a partir de docs/documento_tecnico.md.
+% No lo edites a mano: cambia el .md (o docs/latex/plantilla.tex) y regenera.
+% Plantilla del documento técnico en LaTeX.
+%
+% md_a_latex.py la rellena con el contenido de docs/documento_tecnico.md y escribe
+% docs/latex/documento_tecnico.tex. El aspecto (letra, colores, márgenes, cajas) se cambia
+% aquí; el texto se cambia en el .md y se regenera. Las marcas %%ASÍ%% las sustituye el script.
+%
+% Compila con pdflatex (TeX Live, MiKTeX u Overleaf), sin nada más que los paquetes estándar.
+\documentclass[11pt,a4paper]{article}
+
+% --- Letra e idioma --------------------------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english,spanish,es-noshorthands,es-tabla,es-nodecimaldot]{babel}
+\usepackage{lmodern}          % monoespaciada (código)
+\usepackage{charter}          % texto
+\usepackage[scale=0.92]{tgheros} % títulos
+\usepackage{textcomp}
+\usepackage{microtype}
+
+% Caracteres que el texto usa y pdflatex no conoce de serie.
+\DeclareUnicodeCharacter{2212}{\textminus}
+\DeclareUnicodeCharacter{03B1}{\ensuremath{\alpha}}
+\DeclareUnicodeCharacter{2194}{\ensuremath{\leftrightarrow}}
+\DeclareUnicodeCharacter{2192}{\ensuremath{\rightarrow}}
+\DeclareUnicodeCharacter{2190}{\ensuremath{\leftarrow}}
+\DeclareUnicodeCharacter{2264}{\ensuremath{\leq}}
+\DeclareUnicodeCharacter{2265}{\ensuremath{\geq}}
+\DeclareUnicodeCharacter{2248}{\ensuremath{\approx}}
+\DeclareUnicodeCharacter{2260}{\ensuremath{\neq}}
+\DeclareUnicodeCharacter{00A0}{~}
+
+% --- Página -----------------------------------------------------------------------------------
+\usepackage[a4paper,left=2.4cm,right=2.4cm,top=2.6cm,bottom=2.6cm,headheight=14pt]{geometry}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.55em plus 0.2em}
+\setlength{\emergencystretch}{3em}
+\raggedbottom
+
+% --- Colores ----------------------------------------------------------------------------------
+\usepackage{xcolor}
+\definecolor{acento}{HTML}{1F3A5F}
+\definecolor{gris}{HTML}{5F6670}
+\definecolor{etiq}{HTML}{2E6E6A}
+\definecolor{codigo}{HTML}{2B2B2B}
+
+% --- Tablas, listas, títulos ------------------------------------------------------------------
+\usepackage{array,booktabs,longtable,xltabular}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\LTpre}{0.4em}
+\setlength{\LTpost}{0.6em}
+
+\usepackage{enumitem}
+\setlist{itemsep=0.25em,parsep=0.2em,topsep=0.3em}
+\setlist[itemize,1]{label=\textcolor{acento}{\textbullet}}
+\setlist[itemize,2]{label=\textcolor{acento}{\textendash}}
+\setlist[itemize,3]{label=\textcolor{acento}{\textperiodcentered}}
+\setlist[enumerate,1]{label=\arabic*.}
+
+\usepackage{titlesec}
+\titleformat{\section}{\sffamily\Large\bfseries\color{acento}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\sffamily\large\bfseries\color{acento}}{\thesubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.5em}{0.5em}
+\titlespacing*{\subsection}{0pt}{1.1em}{0.35em}
+
+\usepackage[titles]{tocloft}
+\setlength{\cftsecnumwidth}{2em}     % que «10.» no se pegue al título
+\renewcommand{\cftsecaftersnum}{.}   % «0.», como en los títulos
+\setlength{\cftsubsecnumwidth}{2.6em}
+\setlength{\cftbeforesecskip}{0.45em}
+
+% --- Cajas y código ---------------------------------------------------------------------------
+\usepackage{fvextra}
+\usepackage[skins,breakable]{tcolorbox}
+\usepackage{seqsplit}
+
+\newtcolorbox{nota}{enhanced,breakable,colback=acento!4,colframe=acento!35,boxrule=0.4pt,
+  arc=2pt,left=7pt,right=7pt,top=4pt,bottom=4pt,fontupper=\small,before skip=0.6em,after skip=0.6em}
+\newtcolorbox{resumen}[1]{enhanced,breakable,colback=white,colframe=acento,boxrule=0.6pt,
+  arc=2pt,left=8pt,right=8pt,top=5pt,bottom=5pt,title={#1},fonttitle=\sffamily\bfseries\small,
+  coltitle=white,colbacktitle=acento,before skip=0.8em,after skip=0.8em}
+\newtcolorbox{bloquecodigo}{enhanced,breakable,colback=gray!6,colframe=gray!35,boxrule=0.4pt,
+  arc=2pt,left=5pt,right=5pt,top=2pt,bottom=2pt,before skip=0.5em,after skip=0.7em}
+
+% Código en línea; md_a_latex.py ya escapa los caracteres especiales y marca dónde puede partirse.
+\newcommand{\code}[1]{\texttt{\textcolor{codigo}{#1}}}
+% Etiquetas de evidencia del documento: [medido], [inferencia], [sin verificar]...
+\newcommand{\etiqueta}[1]{{\small\textcolor{etiq}{[#1]}}}
+% Lo que falta por rellenar antes de entregar: sale en rojo para que no se escape.
+\newcommand{\pendiente}[1]{{\color{red!75!black}\bfseries[#1]}}
+
+% --- Cabecera y pie ---------------------------------------------------------------------------
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\sffamily\footnotesize\color{gris}Piso2 NYC Team}
+\fancyhead[R]{\sffamily\footnotesize\color{gris}Posesión del balón frame a frame}
+\fancyfoot[C]{\sffamily\footnotesize\color{gris}\thepage\ de \pageref*{LastPage}}
+\renewcommand{\headrulewidth}{0.3pt}
+\fancypagestyle{portada}{\fancyhf{}\renewcommand{\headrulewidth}{0pt}%
+  \fancyfoot[C]{\sffamily\footnotesize\color{gris}\thepage\ de \pageref*{LastPage}}}
+
+% --- Enlaces ----------------------------------------------------------------------------------
+\usepackage[unicode]{hyperref}
+\usepackage{bookmark}
+\usepackage{xurl}             % las URL largas pueden partirse en cualquier carácter
+\hypersetup{colorlinks=true,linkcolor=acento,urlcolor=acento!75!black,citecolor=acento,
+  pdftitle={Posesión del balón frame a frame: documento técnico},pdfauthor={Piso2 NYC Team},pdflang={es-ES}}
+\urlstyle{tt}
+
+% El documento numera desde la sección 0, como el .md.
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+
+\begin{document}
+
+\thispagestyle{portada}
+{\sffamily\small\color{gris}\MakeUppercase{More than a Hack 2027 · Frame-level Ball Possession}\par}
+\vspace{1.4em}
+{\sffamily\bfseries\fontsize{25}{30}\selectfont\color{acento}Posesión del balón frame a frame\par}
+\vspace{0.5em}
+{\sffamily\Large\color{gris}Documento técnico\par}
+\vspace{0.9em}
+{\color{acento}\rule{\linewidth}{0.9pt}}\par
+\vspace{0.2em}
+{\sffamily\large\bfseries Piso2 NYC Team}\hfill{\sffamily\color{gris}17 de noviembre de 2026}\par
+\vspace{0.6em}
+
+\textbf{Entrega:} \code{Piso2 NYC Team.\allowbreak{}csv}, igual byte a byte a nuestra versión interna \code{equipo\_\allowbreak{}v11} (sha256 \code{\seqsplit{811658cd52267cbd75607270c2c359e2244b05b8a6d091d6ce8330d2d971c04b}}).
+
+\begin{resumen}{Summary (English)}
+\begin{otherlanguage}{english}
+We label every frame of the tactical video as \code{H}, \code{A} or \code{D} with one command that uses only numpy and reads the automatic tracking (ATD) and the Smart Tagging. Every component scores \code{H}, \code{A} and \code{D} per frame; the scores are added and a Viterbi decoder picks the best sequence, paying a fixed cost for each change of state. Team evidence (K3) averages the logits of a logistic regression (B5) and of a small per-player neural network (K2). Dead-ball evidence is a logistic regression on player aggregates (E2), plus four small layers (second-half kick-off, ball gaps before Smart Tagging restarts, counter-attacks, ball seen out of play) and a rule that turns short possessions ending in a stoppage into \code{D}. We require controlled possession, as \code{CHALLENGE.\allowbreak{}md} says. Everything was trained and chosen on open data from other games (Bundesliga, Bassek et al. 2025; SkillCorner Open Data), never on the provided game or its public window. The rest of this document is in Spanish.
+\end{otherlanguage}
+\end{resumen}
+
+\begin{nota}
+Etiquetas: \textbf{\etiqueta{medido}} es una medida; \textbf{\etiqueta{inferencia}} es una conclusión razonada que no se ha medido; \textbf{\etiqueta{sin verificar}} es algo que no hemos podido comprobar. Lo que no lleva etiqueta describe el código o una regla nuestra. Del partido solo damos agregados (recuentos y porcentajes); los únicos números de frame que aparecen son los oficiales (\code{games.\allowbreak{}py}, \code{DATA.\allowbreak{}md}, \code{FAQ.\allowbreak{}md}).
+\end{nota}
+
+\begin{nota}
+\textbf{Términos.} \textbf{La DFL:} el dataset abierto de 7 partidos de la Bundesliga de Bassek et al. (2025) (\hyperref[sec:5]{\S5}). \textbf{El flag:} su etiqueta de posesión por frame (\code{BallPossession}), que cambia en el primer toque del rival aunque no controle. \textbf{Control:} esas etiquetas corregidas para exigir control (\hyperref[sec:3]{\S3}). \textbf{Harness:} nuestro banco de pruebas en esos 7 partidos; corre las piezas de la entrega que no dependen del Smart Tagging ni del balón fuera y las puntúa con el scorer oficial (\hyperref[sec:6.1]{\S6.1}). \textbf{«Como el ATD»:} el balón de la DFL degradado para parecerse al del partido, con huecos y suavizado. \textbf{\code{D} oráculo:} el \code{D} copiado de las etiquetas, para medir solo \code{H} frente a \code{A}. \textbf{Pliegue:} cada uno de los 7 entrenamientos que dejan fuera un partido.
+\end{nota}
+
+\newpage
+{\hypersetup{linkcolor=black}\tableofcontents}
+\vspace{1em}
+
+\setcounter{section}{-1}
+\section{Resumen}\label{sec:0}
+
+\textbf{Qué entregamos.} Un CSV \code{frame,label} de 199.319 filas que da \code{H}, \code{A} o \code{D} en cada frame de los dos tramos evaluados y \code{X} fuera de ellos. Lo genera un solo comando, solo con numpy, a partir del tracking automático (ATD) y del Smart Tagging del partido.
+
+\textbf{El método en un párrafo.} Cada pieza da, en cada frame, una puntuación para \code{H}, \code{A} y \code{D}. Las puntuaciones se suman y un decodificador de Viterbi elige la secuencia con más puntuación, pagando un coste fijo por cada cambio de estado. La evidencia de equipo (K3) es la media de dos modelos: una regresión logística (B5) entrenada en la DFL con proximidad al balón y forma de los equipos, y una red pequeña que mira a cada jugador (K2), entrenada en la DFL y en 10 partidos de SkillCorner. El estado de \code{D} es otra regresión logística (E2) que solo mira a los jugadores. Se añaden cuatro capas pequeñas: el tramo antes del saque de la 2ª parte, el hueco sin balón (de 5 a 60 s) antes de cada reinicio del Smart Tagging que no es un saque inicial, los contraataques del Smart Tagging y el balón visto fuera del campo. Al final, una regla pasa a \code{D} las posesiones de menos de 5 s que llegan con un cambio directo desde el otro equipo y acaban en una parada («cortas a \code{D}»).
+
+\textbf{Por qué así.} No hay etiquetas del partido que se puedan usar, y la ventana pública no sirve para elegir (\hyperref[sec:6.5]{\S6.5}). Por eso todo se eligió en partidos abiertos de otras ligas, con piezas pequeñas que se miden por separado. Cada pieza entró por una regla escrita antes (\hyperref[sec:6.1]{\S6.1}). B5 y E2 ganaron en el harness. «Cortas a \code{D}» entró por una regla de límite de daño: gana con control en la DFL y en SkillCorner y no pierde más de 0,005 con el flag. Esa regla se escribió cuando ya se conocían sus cifras en la DFL; a ciegas solo estaban el examen de SkillCorner y la entrega de prueba. Tres capas que el harness no puede medir entraron por reglas de daño, con agregados del partido (\hyperref[sec:8]{\S8}). K2 cumplió su regla entera, pero no se traslada bien de un proveedor de tracking a otro; K3, su media con B5, gana a B5 en todo lo medido y falla menos partido a partido. Las dos entraron el 17/11 por decisión del equipo, no por veredicto de una regla, y son una apuesta (\hyperref[sec:2]{\S2} y \hyperref[sec:8]{\S8}).
+
+\textbf{La validación, en datos de otros partidos} (spellF1). Estas tres cifras son de la cadena con B5 (\code{equipo\_\allowbreak{}v9}) y miden solo \code{H} frente a \code{A}, porque usan el \code{D} oráculo:
+
+\begin{itemize}
+  \item DFL, balón «como el ATD»: \textbf{0,498} frente a 0,406 del baseline con el flag, y \textbf{0,728} frente a 0,464 con control; gana en 7 de 7 \etiqueta{medido}.
+  \item SkillCorner (20 partidos, tracking automático de retransmisión): \textbf{+0,131} sobre el baseline, en 20 de 20 \etiqueta{medido}.
+  \item Metrica (3 partidos): \textbf{+0,118} sobre el baseline, en 3 de 3 \etiqueta{medido}.
+\end{itemize}
+
+Con nuestro propio \code{D} bajan a 0,414 (flag) y 0,623 (control) en la DFL, frente a 0,310 y 0,353 del baseline (\hyperref[sec:6.2]{\S6.2}) \etiqueta{medido}. En SkillCorner bajan a 0,381, frente a 0,249; esa cifra es de antes de «cortas a \code{D}», que allí suma de +0,008 a +0,010 (\hyperref[sec:6.3]{\S6.3}) \etiqueta{medido}.
+
+\textbf{K3, la evidencia de la entrega, frente a B5} \etiqueta{medido, cada partido con modelos que no lo vieron}: de +0,034 a +0,056 con control y de +0,014 a +0,025 con el flag en la DFL; de +0,017 a +0,023 en SkillCorner; y de +0,014 a +0,029 en Metrica (\hyperref[sec:6.2]{\S6.2} y \hyperref[sec:6.3]{\S6.3}).
+
+\textbf{Qué nivel cabe esperar.} Entre \textbf{0,35 y 0,56} de spellF1 en el partido, con unos \textbf{0,41} como punto central \etiqueta{inferencia}. El número del harness es optimista (\hyperref[sec:6.6]{\S6.6}).
+
+\section{El problema y lo que manda el diseño}\label{sec:1}
+
+La nota es el spellF1: cada posesión es un objeto, se empareja una a una con las reales por IoU temporal y se promedia el F1 con umbrales de 0,3 a 0,7 (\code{EVALUATION.\allowbreak{}md}). De ahí salen dos consecuencias:
+
+\begin{itemize}
+  \item \textbf{Fragmentar es lo peor:} cada posesión inventada es un falso positivo. El baseline sin suavizar inventa muchísimas y saca 0,049 en el partido.
+  \item \textbf{Un cambio desplazado baja el IoU de las dos posesiones que separa.} La tabla oficial de retrasos lo ilustra (8 frames: 0,89; 1 s: 0,65); solo la usamos para describir (\hyperref[sec:10]{\S10}).
+\end{itemize}
+
+Por eso la salida no es un voto frame a frame, sino un \textbf{decodificador temporal} que ve la evidencia de los dos lados de cada cambio y lo coloca donde la evidencia lo pide, con un coste por cambio que hace de histéresis.
+
+La dificultad central es el balón del ATD: falta en el 40,7~\% de los frames evaluados (\code{DATA.\allowbreak{}md}: se ve en 94.214 de 158.857), y viene suavizado unos 25 frames y retrasado unos 4 respecto a los jugadores \etiqueta{medido, agregados del partido}. Por eso casi nada se apoya en cambios bruscos de la velocidad del balón.
+
+\section{El enfoque, pieza a pieza}\label{sec:2}
+
+Todas las piezas cumplen el mismo contrato (\code{possession/\allowbreak{}tracking.\allowbreak{}py}): reciben un \code{Tracking} (arrays indexados por frame de vídeo, en metros, con 46 slots sin identidad y su equipo) y devuelven \code{(score, allowed)}, dos arrays (n, 3) con columnas \code{H}, \code{A}, \code{D}. \code{score} se suma; \code{allowed =\allowbreak{} False} prohíbe un estado y se reserva para lo que se sabe seguro. Así el código que se mide en datos abiertos es el mismo que se entrega.
+
+Cadena de la entrega (\code{possession/\allowbreak{}pipeline.\allowbreak{}py}), en este orden:
+
+{\small
+\begin{xltabular}{\linewidth}{@{}l>{\raggedright\arraybackslash\hsize=0.738\hsize}X>{\raggedright\arraybackslash\hsize=1.622\hsize}X>{\raggedright\arraybackslash\hsize=0.640\hsize}X@{}}
+\toprule
+\textbf{\#} & \textbf{pieza} & \textbf{qué aporta} & \textbf{constantes clave} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{\#} & \textbf{pieza} & \textbf{qué aporta} & \textbf{constantes clave} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+0 & lector del ATD y \code{ball.\allowbreak{}clean} & balón y jugadores en metros; la limpieza es la v0 (deja el balón tal cual) & campo 105,3 × 68,0 m \\
+1 & equipo, K3 (\code{aprendida.\allowbreak{}evidence\_\allowbreak{}k3}) & s = media a partes iguales de α·z de B5 y de K2 (z = logit de \code{H} frente a \code{A}); −round(|s|, 6) al equipo que la mezcla no da como poseedor; +1 al equipo del jugador más cercano si se ve el balón & α = 4 en los dos; B5: 30 rasgos; K2: 36.260 pesos \\
+2 & estado de \code{D}, E2 (\code{dead\_\allowbreak{}state.\allowbreak{}evidence}) & log-odds de «juego parado» en la columna \code{D} & recorte ±8; escala 1 \\
+3 & anclas de \code{D} (\code{dead\_\allowbreak{}ball.\allowbreak{}evidence}) & solo \code{D} en los 2.934 frames antes del saque de la 2ª parte; \code{D} prohibido en el frame del saque de cada parte; +1 en \code{D} en el hueco sin balón de 5 a 60 s antes de cada reinicio que no es saque inicial & 5 s y 60 s; \code{GAP\_\allowbreak{}SCORE} = 1 \\
+4 & contraataques (\code{transiciones.\allowbreak{}evidence\_\allowbreak{}equipo}) & +8 por frame al equipo de cada «Attacking Transition», 5 s & \code{WEIGHT} = 8; \code{CAP\_\allowbreak{}S} = 5 \\
+5 & balón fuera (\code{dead\_\allowbreak{}ball.\allowbreak{}ball\_\allowbreak{}out}) & +5 en \code{D} con el balón visto a más de 1 m fuera & 1 m; cola de 16 frames \\
+6 & decodificador (\code{temporal.\allowbreak{}decode\_\allowbreak{}cortas\_\allowbreak{}a\_\allowbreak{}d}) & Viterbi sobre \{\code{H}, \code{A}, \code{D}\}, por tramo; después, «cortas a \code{D}»: pasa a \code{D} las posesiones cortas que llegan con un cambio directo desde el otro equipo y acaban en \code{D} & 25 por cada cambio; corte de 125 frames (5 s) \\
+\end{xltabular}
+}
+
+\textbf{B5, evidencia de equipo.} Regresión logística de \code{H} frente a \code{A} con 30 rasgos «local menos visitante», sin término independiente ni identidad de slot: 20 del balón (qué equipo tiene al más cercano, núcleos gaussianos de 1, 2,5 y 6 m y distancia del más cercano con tope de 15 m, en ventanas de 1, 13, 51 y 151 frames) y 10 de los jugadores (posición del juego y del balón en la dirección de ataque, velocidad hacia delante y dispersión; cuatro de ellos repetidos solo sin balón cerca). Por qué así:
+
+\begin{itemize}
+  \item solo decide entre \code{H} y \code{A}: en la DFL el balón se tapa en los \code{D}, y un \code{D} aprendido allí sería «sin balón = \code{D}»;
+  \item simétrica, para no aprender la ventaja de campo de siete partidos de otra liga;
+  \item castiga al equipo que el modelo no da y suma el +1 del más cercano: la versión que premiaba (B2) empujaba hacia un equipo en las paradas y solo veía el 31,6~\% de ellas, y sin el +1 (B4) decía \code{D} de más \etiqueta{medido};
+  \item coeficientes escritos en el módulo, para que el pipeline solo dependa de numpy.
+\end{itemize}
+
+B5 fue la evidencia de equipo de la entrega del 14/11 al 17/11 (\code{equipo\_\allowbreak{}v9}). Hoy es la mitad de K3.
+
+\textbf{K2, la red que mira a cada jugador.} Lee 14 números por jugador: dónde está respecto al balón, cómo se mueve, si se acerca al balón y dónde está en el campo. Una red pequeña, la misma para todos los jugadores, los procesa uno a uno; por equipo se toman la suma y el máximo; y una convolución temporal ve ±12,6 s a 5 Hz. Tiene 36.260 pesos y no necesita identidades ni un número fijo de jugadores. Como B5, solo decide entre \code{H} y \code{A}: el \code{D}, el decodificador y las capas del partido no cambian. Se entrenó con torch (\hyperref[sec:5]{\S5}); en la entrega corre en numpy puro, sin exponenciales, en \code{possession/\allowbreak{}conjunto.\allowbreak{}py}, con los pesos en \code{possession/\allowbreak{}conjunto\_\allowbreak{}pesos.\allowbreak{}npz} (1,2 MB). Por qué: el análisis de errores decía que la pérdida está en la evidencia de equipo con el balón a la vista (\hyperref[sec:6.4]{\S6.4}), y B5 solo mira unos pocos agregados por frame.
+
+\textbf{K3, la mezcla de K2 y B5.} La media a partes iguales de los dos logits, cada uno en su escala, puntuada como B5 (\code{possession/\allowbreak{}refinamientos.\allowbreak{}py}). No se entrena nada: usa los pesos de K2 y los coeficientes de B5. El peso ½ se fijó antes de medir. Por qué: K2 gana mucho con partidos de un proveedor que ha visto, pero no se traslada bien a otro (\hyperref[sec:8]{\S8}), y el partido es de un tercer proveedor. B5 sí se traslada. Si K2 falla en el ATD, B5 sigue opinando; si acierta, la mezcla se queda con parte de su ganancia.
+
+\textbf{E2, estado de \code{D}.} Regresión logística con 11 agregados de los jugadores (velocidades, jugadores casi parados, fuera de las líneas o en un área, distancia entre equipos, dispersión y cuántos están en su mitad). No usa el balón: en la DFL va tapado en los \code{D}, y en el ATD que falte no significa \code{D}. Da el estado, no el instante: las fronteras las pone el decodificador.
+
+\textbf{Anclas de \code{D}.} Los 2.934 frames entre el primer frame evaluado de la 2ª parte (110.808) y su saque (113.742) son \code{D} según el FAQ y se fuerzan a \code{D}; en la 1ª parte el primer frame evaluado ya es el saque. Los saques salen de las constantes oficiales (\hyperref[sec:10]{\S10}), no de un detector: buscar el golpeo con el balón del ATD no lo encontró en ninguno de los 6 saques de centro que marca el Smart Tagging \etiqueta{medido}. El hueco antes del reinicio solo puntúa: «sin balón = \code{D}» se descartó porque mete retraso y parpadeo \etiqueta{medido}.
+
+\textbf{Contraataques.} El equipo de las «Attacking Transition» coincide con el que controla el balón en el 93,1~\% de los frames de control claro según el balón del ATD, y en 17 de los 24 contraataques nuestra etiqueta pasaba a ese equipo de 2 a 10 s después del inicio de la fase del Smart Tagging \etiqueta{medido, agregados del partido, sin GT}. El 8 y los 5 s se fijaron antes con una simulación en la DFL (una pista perfecta que marca los contraataques, con peso 8 y un máximo de 5 s) y no se retocaron.
+
+\textbf{Balón fuera.} En SkillCorner un balón visto fuera es \code{D} el 93–94~\% de las veces; con una versión anterior de la entrega decíamos \code{H} o \code{A} en el 36~\% de esos frames del partido \etiqueta{medido}. La prueba se abrió tras el visionado de la ventana pública (\hyperref[sec:10]{\S10}); la tarea ya estaba en el plan. El peso 5 se razonó con el juego vivo típico de la DFL (mediana de E2) y la cola de 16 frames con el suavizado (12) y el retraso (4) del balón del ATD.
+
+\textbf{Decodificador.} Viterbi en cada tramo evaluado, con costes \code{H}↔\code{A}, a \code{D} y desde \code{D} de 25. El coste 25 no está ajustado: con B5, 12 y 50 empatan con él según la regla de \hyperref[sec:6.1]{\S6.1} (con el flag 50 pierde un poco y 12 empata; con control 50 gana un poco y 12 pierde), y con un empate se queda lo que hay \etiqueta{medido}.
+
+\textbf{Cortas a \code{D}.} Después del Viterbi, en cada tramo, una posesión de menos de 125 frames que llega con un cambio directo desde el otro equipo y acaba en \code{D} pasa a \code{D}. No se toca si \code{D} está prohibido en alguno de sus frames (el del saque de cada parte). Solo puede pasar frames de un equipo a \code{D}. El fallo que ataca: si nuestro \code{D} llega tarde, el equipo que va a sacar se acerca al balón y le damos una posesión que no existe; con un F1 sobre posesiones, resta dos veces, porque sobra ella y estropea el final de la anterior. En la DFL hay de 108 a 160 posesiones así en los 7 partidos; solo del 8 al 26~\% se emparejan con una real, y del 39 al 58~\% de sus frames son \code{D} de verdad \etiqueta{medido}. Entró por la regla de límite de daño (\hyperref[sec:6.1]{\S6.1}), con el \code{D} propio \etiqueta{medido}:
+
+\begin{itemize}
+  \item DFL con control: de +0,007 a +0,019, ganando en 6 o 7 de 7 partidos en cada celda;
+  \item SkillCorner: +0,010 y +0,009 en la mitad de entrenamiento, y +0,009 y +0,008 en la de examen, en 10 de 10;
+  \item DFL con el flag: de −0,002 a +0,004; la peor celda pierde 0,0024, dentro del límite de 0,005.
+\end{itemize}
+
+El corte de 5 s viene de la regla del sondeo que la propuso, escrita antes de medir; no se compararon cortes para elegirlo (\hyperref[sec:8]{\S8}).
+
+\textbf{Tracking que falta o con ruido.} Sin balón, B5 opina con la forma de los equipos y con ventanas largas, y K2 con las posiciones y los movimientos de cada jugador; el decodificador mantiene el estado salvo que la evidencia pague el cambio. K2 se entrenó con aumentos hacia el ATD: el balón hasta 5 frames tarde, slots que faltan y duplicados, y huecos de balón. Los slots se tratan sin identidad. El ATD se comprueba al leerlo y cualquier línea rara para la entrega.
+
+\section{Las reglas de posesión implementadas}\label{sec:3}
+
+\begin{itemize}
+  \item \textbf{Balón suelto o disputado.} La posesión sigue con el último equipo que la tuvo. No hay ninguna regla explícita de «último toque»: el coste de cambio exige evidencia sostenida del rival para cambiar, y un toque aislado no la da.
+  \item \textbf{Toques sin control y desvíos.} Hemos elegido \textbf{exigir control}, como dice \code{CHALLENGE.\allowbreak{}md}. El flag cambia en el primer toque del rival aunque no controle (en el 72–85~\% de esos casos \etiqueta{medido}). Por eso B5 se entrenó solo donde el flag coincide con una corrección por control (una racha del rival que no sigue a un \code{D} se queda solo si el mismo jugador está a 1 m o menos durante 12 frames, o si su equipo encadena dos toques en 2 s). K2 se entrenó con esa corrección en todos los frames vivos de la DFL y con las etiquetas de SkillCorner, cuya posesión también exige control.
+  \item \textbf{Duelos aéreos ganados sin control.} No hay regla propia: sin retención o encadenamiento del rival no hay evidencia sostenida para pagar el cambio \etiqueta{inferencia}.
+  \item \textbf{Balón muerto y reinicios.} \code{D} sale de la suma de E2 (jugadores parados o fuera de sitio), el balón visto fuera, el hueco sin balón de 5 a 60 s antes de cada reinicio del Smart Tagging que no es un saque inicial, y el tramo antes del saque de la 2ª parte. Una parada solo se crea si la evidencia paga dos cambios de 25. El equipo que reanuda no se arrastra a través de la parada: en el partido J03WMX de la DFL cambia en el 90~\% de ellas \etiqueta{medido, un solo partido}. Tras un reinicio, la posesión es del equipo que la evidencia da después.
+  \item \textbf{Posesión corta justo antes de una parada.} Si una posesión de menos de 5 s llega con un cambio directo desde el otro equipo y acaba en \code{D}, se escribe \code{D} («cortas a \code{D}», \hyperref[sec:2]{\S2}): ese cambio se trata como un \code{D} que pusimos tarde, no como un control del rival. No crea paradas nuevas: alarga hacia atrás una que ya existe.
+  \item \textbf{La \code{X}.} Solo fuera de los tramos evaluados (40.462 frames). Dentro, siempre \code{H}, \code{A} o \code{D}, también en oclusiones largas: el scorer rellena la \code{X} con la etiqueta anterior para el spellF1 y la cuenta como fallo en el macroF1, así que nunca gana.
+\end{itemize}
+
+\section{Datos usados y descartados}\label{sec:4}
+
+\textbf{Del partido.}
+
+{\small
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash\hsize=0.376\hsize}X>{\raggedright\arraybackslash\hsize=1.624\hsize}X@{}}
+\toprule
+\textbf{fuente} & \textbf{uso} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{fuente} & \textbf{uso} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+ATD táctico (tracking y metadatos) & entrada principal. 199.319 líneas, todas válidas \etiqueta{medido} \\
+Smart Tagging & \code{SET PIECES} para el hueco antes del reinicio; «Attacking Transition» con su \code{Team} para los contraataques. Nunca prohíbe nada ni se copia como etiqueta, pero en los 5 primeros segundos de cada contraataque el empujón (8 por frame, 1.000 frente a un coste de cambio de 25) fuerza el cambio al equipo de la fase, salvo que B5 diga con mucha fuerza lo contrario \etiqueta{inferencia, por construcción} \\
+constantes de saque (\code{starter/\allowbreak{}load\_\allowbreak{}smart\_\allowbreak{}tagging.\allowbreak{}py}) & anclas de \code{D} (\hyperref[sec:2]{\S2}) \\
+GT pública (5 min) & comprobar formato y alineación y, como pide \code{CHALLENGE.\allowbreak{}md} («Use it to understand what is expected»), entender qué significan las etiquetas (\hyperref[sec:6.5]{\S6.5} y \hyperref[sec:10]{\S10}). No entrenó, no fijó ningún parámetro y no eligió ninguna versión \\
+vídeo táctico & lo miraron personas para entender el juego y la GT pública (\hyperref[sec:10]{\S10}). Además, un detector de balón automático lo procesó en local, primero en una muestra de 10 minutos y después en el partido entero, para la línea del balón del vídeo, que se descartó (\hyperref[sec:7]{\S7}) \\
+homografía & no la usa la entrega. La usó la línea del balón del vídeo, descartada (\hyperref[sec:7]{\S7}), para llevar las detecciones al campo y medir el balón en píxeles \\
+broadcast & descartado: no está sincronizado, no hay herramienta pública para alinearlo y su homografía solo vale en el 65,8~\% \\
+audio (silbato) & sondeado y descartado: no pasó su criterio porque la señal sale sucia \etiqueta{sin verificar: el resultado no quedó escrito en \code{validation/\allowbreak{}silbato/\allowbreak{}}} \\
+\end{xltabular}
+}
+
+Algunos valores salen de agregados del partido, sin ninguna etiqueta: el umbral de 5 s de los huecos largos, la cola de 16 frames del balón fuera y la degradación «como el ATD», que salen del perfil del balón del ATD (suavizado de unos 25 frames y retraso de unos 4). Además, las capas del hueco antes del reinicio, de los contraataques y del balón fuera entraron con recuentos del partido, frente a reglas de daño escritas antes de medir (\hyperref[sec:8]{\S8}), y «cortas a \code{D}» cerró así el último punto de su regla, con una entrega de prueba (\hyperref[sec:6.1]{\S6.1}). Nada de esto está ligado a frames concretos ni sale de la ventana pública. \code{RULES.\allowbreak{}md} permite «inspecting the data to understand them, debug your pipeline and design features» y prohíbe convertir lo visto en «labels, corrections, or rules and constants tied to specific frames of the game». Lo declaramos para que la organización lo pueda juzgar.
+
+\textbf{Abiertos, de otros partidos.}
+
+{\small
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash\hsize=0.639\hsize}X>{\raggedright\arraybackslash\hsize=1.361\hsize}X@{}}
+\toprule
+\textbf{dataset} & \textbf{uso} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{dataset} & \textbf{uso} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+Bundesliga, Bassek et al. (2025), 7 partidos & entrenamiento de B5, E2 y K2 y harness (\hyperref[sec:5]{\S5}, \hyperref[sec:6]{\S6}) \\
+SkillCorner Open Data, 20 partidos de la A-League 2024/25 & validación y, desde el 17/11, entrenamiento de K2 con 10 de ellos. La medida de \hyperref[sec:6.3]{\S6.3} usa los 20. Después se partieron en 10 de entrenamiento y 10 de examen; el examen lo abre cada candidato una sola vez, con el umbral escrito antes. Lo abrieron «cortas a \code{D}» (pasa y está en la entrega), K2 (pasa y está en la entrega, dentro de K3) y B12 (no pasa, \hyperref[sec:7]{\S7}). Los pesos de K2 de la entrega vieron los 10 de entrenamiento; en ellos, cada partido se mide con un modelo que no lo vio \\
+Metrica sample-data, 3 partidos & solo validación \\
+dataset del detector de balón (Roboflow, clips de la Bundesliga, CC BY 4.0) & solo para medir el detector de la línea del vídeo (125 imágenes de su parte de test; \hyperref[sec:7]{\S7}). No entrena nada nuestro \\
+StatsBomb, Wyscout, SoccerNet, PFF FC y otros & inventariados o descartados: licencia dudosa, sin balón medido o sin aportar nada a lo anterior \\
+\end{xltabular}
+}
+
+No se usa ningún dato humano de este partido (Opta, StatsBomb, Wyscout, LaLiga…), ni agregados de la temporada 2024-25.
+
+\section{Datos de entrenamiento}\label{sec:5}
+
+Tres modelos de la entrega están entrenados: B5 y E2 con la DFL, y K2 con la DFL y 10 partidos de SkillCorner. K3 no se entrena: mezcla B5 y K2. El detector de balón que se probó para la línea del vídeo no entra en la entrega (\hyperref[sec:7]{\S7}).
+
+{\small
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash\hsize=0.934\hsize}X>{\raggedright\arraybackslash\hsize=1.323\hsize}X>{\raggedright\arraybackslash\hsize=0.742\hsize}Xl@{}}
+\toprule
+\textbf{dataset} & \textbf{quién etiquetó} & \textbf{cuánto} & \textbf{lo usan} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{dataset} & \textbf{quién etiquetó} & \textbf{cuánto} & \textbf{lo usan} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+Bundesliga (DFL), Bassek et al. (2025), CC BY 4.0 & el proveedor, con el tracking revisado; las etiquetas de control las deriva nuestro código & 7 partidos, 1.002.644 frames & B5, E2 y K2 \\
+SkillCorner Open Data, A-League 2024/25, MIT & SkillCorner (\code{possession.\allowbreak{}group}); el \code{D} sale de sus fases de juego & 10 partidos (la mitad de entrenamiento) & K2 \\
+\end{xltabular}
+}
+
+\textbf{La DFL.}
+
+\begin{itemize}
+  \item \textbf{Fuente:} Bassek, Rein, Weber y Memmert (2025), \emph{An integrated dataset of spatiotemporal and event data in elite soccer}, Scientific Data 12, 195. Licencia CC BY 4.0, con autorización de la DFL.
+  \item \textbf{Contenido:} 7 partidos de 1ª y 2ª Bundesliga 2022-23, tracking TRACAB a 25 Hz revisado por operadores, 1.002.644 frames \etiqueta{medido}, con \code{BallStatus} (vivo o muerto) y \code{BallPossession} en cada frame.
+  \item \textbf{Quién etiquetó:} el proveedor; las etiquetas por frame vienen con el tracking revisado, pero cómo genera la DFL esos flags no está documentado \etiqueta{sin verificar}. Las de control las deriva nuestro código.
+\end{itemize}
+
+\textbf{SkillCorner.} Tracking automático sacado de la retransmisión, con \code{possession.\allowbreak{}group} por frame, que exige control; nuestro código pone \code{D} fuera de sus fases de juego. Cómo produce SkillCorner ese campo: \etiqueta{sin verificar}. Los 20 partidos tienen 6.380 posesiones y un 46,5~\% de frames \code{D} \etiqueta{medido}.
+
+\textbf{B5.} Etiqueta: el flag, solo en frames vivos donde coincide con la corrección por control; uno de cada 5 frames; balón degradado «como el ATD»; jugadores sin degradar y slots barajados. Unas 87.000–90.000 filas por pliegue de 6 partidos \etiqueta{medido}. Newton con 25 iteraciones y L2 = 1, sin azar. α se eligió en una rejilla de 1/8 a 8 por el spellF1 medio en los partidos de entrenamiento de cada pliegue, con la pieza de \code{D} dentro y sin oráculo: salió 4 en cinco de los siete pliegues, 2 en uno y 8 en otro; el ajuste con los 7 partidos, el de la entrega, también da 4 \etiqueta{medido}. El ajuste con los 7 partidos usa 103.135 filas, de 12.415 a 16.142 por partido (\code{python validation/\allowbreak{}apuesta\_\allowbreak{}b/\allowbreak{}entrenar.\allowbreak{}py -\allowbreak{}-\allowbreak{}seco}) \etiqueta{medido}.
+
+\textbf{E2.} Etiqueta: \code{D} o juego según \code{BallStatus}. Uno de cada 5 frames de los 7 partidos: 200.532 frames, 44,8~\% \code{D}. scikit-learn 1.7.2 (C = 1, sin azar) solo para entrenar; los coeficientes van escritos en el módulo.
+
+\textbf{K2.} Etiquetas: la corrección por control en todos los frames vivos de los 7 partidos de la DFL y \code{possession.\allowbreak{}group} en los 10 partidos de entrenamiento de SkillCorner, con el balón «como el ATD» y aumentos hacia el ATD (\hyperref[sec:2]{\S2}). Se entrenó con torch en una GPU: 3.000 pasos, semilla fija (20261124), unos 155 s para el modelo de la entrega, que ve los 17 partidos. Para medir hay siete modelos más, con semillas fijas: cada uno deja fuera un partido de la DFL y uno o dos de los 10 de SkillCorner. El entrenamiento en GPU no se repite bit a bit; por eso los pesos van en el repo (\code{possession/\allowbreak{}conjunto\_\allowbreak{}pesos.\allowbreak{}npz}), la entrega solo los lee y la inferencia en numpy coincide con torch.
+
+\textbf{Cómo se evitó entrenar con el partido.} Ninguna etiqueta de entrenamiento sale del partido: ni la GT pública, ni etiquetas a mano, ni datos humanos. Lo único del partido que llega al entrenamiento de B5 y K2 es el perfil agregado del balón con el que se degrada la DFL (\hyperref[sec:4]{\S4}), sin etiquetas. Los modelos se validaron dejando un partido fuera. En el harness con nuestro \code{D}, E2 va con el modelo de los 7 partidos, en muestra; dejando uno fuera cambia 0,001 o menos \etiqueta{medido}. En Metrica y en el examen de SkillCorner se usan los pesos de la entrega, que nunca vieron esos partidos. Regenerar la entrega no reentrena nada.
+
+\textbf{Etiquetas usadas solo para validar} (no entrenan nada de la entrega):
+
+\begin{itemize}
+  \item \textbf{Eventos de la DFL}, anotados por personas en el mismo dataset \etiqueta{sin verificar quién}: 195 recuperaciones, 229 duelos con cambio de posesión y 211 sin cambio, como referencia descriptiva (\hyperref[sec:8]{\S8}) \etiqueta{medido}.
+  \item \textbf{SkillCorner}, los 10 partidos de examen (los 10 de entrenamiento entrenan K2, como dice la tabla).
+  \item \textbf{Metrica}, 3 partidos: etiquetas derivadas por nuestro código de sus eventos. Son 879 posesiones y un 34,8~\% de frames \code{D} \etiqueta{medido}.
+\end{itemize}
+
+\section{Validación y resultados}\label{sec:6}
+
+\subsection{El harness y las reglas de decisión}\label{sec:6.1}
+
+El harness ejecuta \code{pipeline.\allowbreak{}run} sobre los 7 partidos de la DFL y puntúa con el scorer oficial. El balón se degrada como el del ATD: tapado en los \code{D} y 5 frames a cada lado (la DFL lo congela mientras está muerto), microcortes, el 11,3~\% del juego en bloques de 5 a 15 s y una media móvil de 25 frames. Los slots se barajan. Se puntúa con \textbf{dos convenciones}, el flag (el mismo tipo de etiqueta que la GT del reto) y control. La segunda favorece a la proximidad por construcción, así que un candidato tiene que ganar con las dos.
+
+\textbf{Regla (\code{docs/\allowbreak{}investigacion\_\allowbreak{}metodos.\allowbreak{}md} §5.8):} un candidato gana si mejora en \textbf{0,03 o más}, con el intervalo 5–95~\% del bootstrap por encima de cero y en 6 de 7 partidos o más, en las dos condiciones del balón que cuentan para decidir («como el ATD» y «como el ATD, sin bloques») y con las dos convenciones. Si empata con lo que hay, se queda lo que hay. Los criterios de cada candidato se escribieron antes de medir. Así ganó B5 frente al jugador más cercano. E2 se midió con la misma regla frente a no opinar en \code{D}, con el equipo oráculo, y también ganó (+0,039 y +0,032 con el flag) \etiqueta{medido}.
+
+\textbf{Regla de límite de daño} (16/11, escrita antes de medir ningún candidato con ella; \code{docs/\allowbreak{}decisiones.\allowbreak{}md}). Es para cambios pequeños hacia control, que §5.8 deja fuera porque con el flag empatan o pierden poco. Un candidato entra si cumple todo esto frente a lo que hay:
+
+\begin{enumerate}
+  \item con control en la DFL, gana +0,005 o más en las dos condiciones del balón que votan, en 6 de 7 partidos en cada una;
+  \item en SkillCorner, gana en la mitad de entrenamiento y lo confirma una sola vez en la de examen, con +0,005 o más y en 7 de 10 partidos (cada candidato tiene un solo uso del examen, y cada uso se apunta);
+  \item con el flag no pierde más de 0,005 en ninguna celda;
+  \item una entrega de prueba pasa unos criterios de daño escritos antes de generarla.
+\end{enumerate}
+
+Por qué: el equipo eligió el 12/11 «exigir control», y SkillCorner, que también lo exige, coincide con control. El riesgo que se acepta: si la GT se parece al flag, cada cambio así puede costar hasta 0,005. Por esta regla entró «cortas a \code{D}» (\hyperref[sec:2]{\S2}). Ojo: era la candidata que motivó la regla, así que sus cifras en la DFL y en la mitad de entrenamiento de SkillCorner ya se conocían al escribir los umbrales. Lo que se midió a ciegas, con el umbral escrito antes, fue el examen de SkillCorner (10 de 10) y la entrega de prueba. Un candidato que toca el \code{D} se mide con el \code{D} propio, con el balón tapado y a la vista en los \code{D}, porque con el \code{D} oráculo la regla no puede actuar. La línea del balón del vídeo tuvo su propia regla (\hyperref[sec:7]{\S7}).
+
+\subsection{Tabla principal}\label{sec:6.2}
+
+\code{D} oráculo (mide solo \code{H} frente a \code{A}); los 7 partidos juntos; cada partido se puntúa con B5 entrenado sin él \etiqueta{medido}:
+
+{\small
+\begin{longtable}{@{}llllll@{}}
+\toprule
+\textbf{etiquetas} & \textbf{balón} & \textbf{baseline} & \textbf{nosotros} & \textbf{diferencia [5–95~\%]} & \textbf{gana en} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{etiquetas} & \textbf{balón} & \textbf{baseline} & \textbf{nosotros} & \textbf{diferencia [5–95~\%]} & \textbf{gana en} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+flag & como el ATD & 0,406 & 0,498 & +0,093 [+0,080, +0,104] & 7 de 7 \\
+flag & sin bloques & 0,435 & 0,512 & +0,078 [+0,066, +0,088] & 7 de 7 \\
+control & como el ATD & 0,464 & 0,728 & +0,265 [+0,250, +0,278] & 7 de 7 \\
+control & sin bloques & 0,494 & 0,748 & +0,254 [+0,240, +0,267] & 7 de 7 \\
+\end{longtable}
+}
+
+Fuente: \code{validation/\allowbreak{}investigacion\_\allowbreak{}1116/\allowbreak{}salidas/\allowbreak{}2026-\allowbreak{}11-\allowbreak{}16\_\allowbreak{}s1\_\allowbreak{}dfl\_\allowbreak{}oraculo.\allowbreak{}md} (código \code{f19fcc7}, bootstrap de 200 remuestreos).
+
+«Cortas a \code{D}» no cambia esta tabla. Con el \code{D} oráculo, \code{D} está prohibido donde las etiquetas tienen juego, así que la regla no convierte nada: la salida del harness es idéntica byte a byte antes y después \etiqueta{medido}.
+
+\textbf{K2 y K3 frente a esta cadena} (la de \code{equipo\_\allowbreak{}v9}, con B5), cada partido con modelos que no lo vieron \etiqueta{medido; \code{validation/\allowbreak{}resultados/\allowbreak{}2026-\allowbreak{}11-\allowbreak{}17\_\allowbreak{}modelo\_\allowbreak{}conjunto.\allowbreak{}md} y \code{2026-\allowbreak{}11-\allowbreak{}17\_\allowbreak{}refinamientos\_\allowbreak{}k2.\allowbreak{}md}}:
+
+{\small
+\begin{xltabular}{\linewidth}{@{}>{\raggedright\arraybackslash\hsize=1.142\hsize}X>{\raggedright\arraybackslash\hsize=1.019\hsize}X>{\raggedright\arraybackslash\hsize=0.839\hsize}X@{}}
+\toprule
+\textbf{etiquetas} & \textbf{K2} & \textbf{K3} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{etiquetas} & \textbf{K2} & \textbf{K3} \\
+\midrule
+\endhead
+\bottomrule
+\endlastfoot
+control (\code{D} oráculo y propio, las dos condiciones) & de +0,036 a +0,051, en 6 o 7 de 7 & de +0,034 a +0,056, en 7 de 7 \\
+flag (las mismas celdas) & de +0,033 a +0,044, en 7 de 7 & de +0,014 a +0,025 \\
+\end{xltabular}
+}
+
+Con el \code{D} oráculo y el balón «como el ATD», K2 pasa de 0,728 a 0,780 con control y de 0,498 a 0,542 con el flag. K2 gana también con la regla de §5.8; K3, con esa regla, empata o no concluye. Las cifras de K3 son con la α de la entrega en todos los pliegues. Partido a partido, K3 queda por debajo de B5 en 3 de 136 casos (partido y celda) y K2 en 12 \etiqueta{medido}.
+
+Sin oráculo, cada uno con su propio \code{D}, sacamos 0,414 (flag) y 0,623 (control) en «como el ATD» (0,416 y 0,616 antes de «cortas a \code{D}»), y el baseline 0,310 y 0,353 \etiqueta{medido}. Ese número no sirve para elegir entre evidencias de equipo, porque con el balón tapado en los \code{D} «no hay balón» casi equivale a «\code{D}». Se usó, como excepción declarada, para «cortas a \code{D}», que toca el \code{D} y con el oráculo no se puede medir. Por eso se midió en los dos modos del balón en los \code{D} (\hyperref[sec:6.1]{\S6.1}).
+
+\subsection{SkillCorner y Metrica}\label{sec:6.3}
+
+\begin{itemize}
+  \item \textbf{SkillCorner} (tracking automático, posesión que exige control): +0,131 y +0,135 sobre el baseline (con el balón que detecta SkillCorner, tal cual y suavizado como el del ATD), en 20 de 20, y +0,059 y +0,065 sobre el jugador más cercano en 19 de 20 \etiqueta{medido}. Sin oráculo, cada uno con su propio \code{D} (el baseline, el suyo: \code{D} donde nadie tiene el balón en ±50; nosotros, E2), el baseline saca 0,249, muy cerca de su 0,2433 oficial, y nosotros 0,381 \etiqueta{medido}. Ese 0,381 es de antes de «cortas a \code{D}», que con el \code{D} propio suma +0,010 y +0,009 en la mitad de entrenamiento y +0,009 y +0,008 en la de examen (\hyperref[sec:2]{\S2}) \etiqueta{medido}. Frente a esa cadena, K2 gana de +0,021 a +0,024 en la mitad de entrenamiento (cada partido con un modelo que no lo vio) y de +0,021 a +0,028 en la de examen, abierta una vez para K2; K3, de +0,017 a +0,023 en la mitad de entrenamiento \etiqueta{medido}. Con el \code{D} propio, la cadena con B5 saca 0,391 y K3 le suma +0,017 \etiqueta{medido}.
+  \item \textbf{Metrica} (etiquetas derivadas de eventos): +0,118 sobre el baseline en 3 de 3 \etiqueta{medido}. Frente a la cadena con B5, K2 gana de +0,021 a +0,036 y K3 de +0,014 a +0,029, con los pesos de la entrega \etiqueta{medido}. Ojo: en esos datos el balón va pegado al jugador (a menos de 0,3 m del más cercano en el 45,6~\% de los frames de juego con balón, frente al 6,4~\% en la DFL sin degradar \etiqueta{medido}), así que no prueba nada sobre los rasgos de proximidad; solo que el pipeline corre con otro proveedor.
+\end{itemize}
+
+Los criterios de SkillCorner y Metrica se escribieron antes de puntuar, pero no se subieron a git antes, así que el historial no lo prueba. Estos dos resultados confirman y no decidieron nada.
+
+\subsection{Diagnóstico de errores (descriptivo)}\label{sec:6.4}
+
+Con la cadena de B5, en la DFL y en 10 de los 20 partidos de SkillCorner (la mitad de entrenamiento) \etiqueta{medido}:
+
+\begin{itemize}
+  \item \textbf{casi nunca partimos una posesión} (1–4~\% de las que no encontramos);
+  \item \textbf{cambiamos de equipo de menos:} con el flag predecimos 1.661 posesiones frente a 3.061, y en SkillCorner 2.270 frente a 3.228;
+  \item \textbf{las posesiones cortas se pierden:} encontramos el 2~\% de las de menos de 1 s y el 27~\% de las de 2–5 s con el flag, frente al 86~\% de las de 10 s o más;
+  \item con evidencia de equipo perfecta, el decodificador saca 0,970 (flag): la pérdida está en la evidencia de equipo con el balón a la vista (0,40 con el flag) y, después, en el \code{D} propio (0,08–0,11; los bordes de las paradas que ya vemos valen como mucho 0,05–0,07).
+\end{itemize}
+
+\subsection{La ventana pública, solo como comprobación}\label{sec:6.5}
+
+\code{equipo\_\allowbreak{}v11} saca 0,693 de spellF1 y 0,876 de macroF1 en los 5 minutos públicos (\code{equipo\_\allowbreak{}v10}, con K2, 0,680 y 0,873; \code{equipo\_\allowbreak{}v9}, con B5, 0,680 y 0,874; \code{equipo\_\allowbreak{}v8}, sin «cortas a \code{D}», 0,658 y 0,865) \etiqueta{medido}; con 17 posesiones, una diferencia de hasta 0,39 es ruido, y en el repo oficial el que gana en la ventana (\code{smooth125}, 0,4242) pierde en el partido frente a \code{smooth50} (0,2242 frente a 0,2433; \code{EVALUATION.\allowbreak{}md}). No elegimos ninguna versión ni ningún parámetro con ella; su uso descriptivo está en \hyperref[sec:4]{\S4} y \hyperref[sec:10]{\S10}.
+
+\subsection{Qué nivel cabe esperar y por qué el harness es optimista}\label{sec:6.6}
+
+El baseline oficial (\code{baseline\_\allowbreak{}smooth50}) saca 0,2433 en el partido. En el harness, con su propio \code{D}, saca 0,310, 0,346, 0,353 y 0,397 en las cuatro celdas que deciden \etiqueta{medido}. Si a nuestra nota con nuestro \code{D} en cada celda (0,414, 0,431, 0,623 y 0,651) le quitamos lo que esa celda regala al baseline, quedamos entre 0,33 y 0,51 con B5 \etiqueta{inferencia}. K3 suma en esas celdas, con el \code{D} propio, +0,025, +0,017, +0,042 y +0,032 \etiqueta{medido, con la α de cada pliegue}, y quedamos entre 0,35 y 0,56 \etiqueta{inferencia}. En SkillCorner, donde el baseline saca casi su nota oficial (0,249), la cadena con B5 y «cortas a \code{D}» saca 0,391 y 0,388 y K3 le suma +0,017 y +0,021 \etiqueta{medido}; de ahí el punto central de unos 0,41 \etiqueta{inferencia}. Todo esto supone que K3 se comporta en el ATD como en los datos abiertos, que es justo lo que no se puede medir (\hyperref[sec:8]{\S8}). Las cifras oficiales solo describen (\hyperref[sec:10]{\S10}).
+
+Por qué el harness es optimista:
+
+\begin{itemize}
+  \item \textbf{la cadena completa nunca se ha puntuado con etiquetas:} el harness no ejecuta las anclas del Smart Tagging, los contraataques ni el balón fuera;
+  \item en las filas con nuestro \code{D}, E2 se puntúa en los mismos partidos con los que se entrenó (\hyperref[sec:5]{\S5});
+  \item en el harness están los 22 jugadores, sin ruido; en el partido un equipo tiene más de 11 slots en el 12,9~\% de los frames evaluados (imitado en la DFL, cuesta como mucho 0,008) \etiqueta{medido};
+  \item la DFL tiene más disputas visibles que el ATD (20,3~\% frente a 14,5~\%), justo donde la proximidad decide \etiqueta{medido; que nos favorezca, inferencia};
+  \item no sabemos qué convención sigue la GT: con B5 y el \code{D} oráculo, con el flag estamos en 0,498 y con control en 0,728;
+  \item K2 se ha medido en partidos de proveedores que vio al entrenar, salvo Metrica; el ATD es un tercer proveedor (\hyperref[sec:8]{\S8}).
+\end{itemize}
+
+\section{Qué se probó y se descartó}\label{sec:7}
+
+En el harness o con agregados del partido, cada uno con su regla escrita antes \etiqueta{medido}:
+
+\begin{itemize}
+  \item \textbf{Otras evidencias de equipo:} el jugador más cercano (B5 le gana por +0,071 y +0,056 con el flag), dos reglas de radio y retención (frente al jugador más cercano pierden de 0,08 a 0,11 con el flag y empatan con control), otras ocho variantes de la logística y una red de una capa. Empatan o pierden.
+  \item \textbf{Otros modelos del estado de \code{D}:} otras logísticas y árboles de decisión. Ninguno gana a E2.
+  \item \textbf{Decodificador:} la duración mínima, la poda y los costes 12 y 50 empatan con el coste 25.
+  \item \textbf{Limpiar el balón, adelantarlo 4 frames y quitar los slots sobrantes:} empatan; quedan apagados.
+  \item \textbf{El Smart Tagging como pista de equipo sin balón:} acierta el 81,8~\% en control claro, pero alcanza menos del 1~\% de los frames evaluados. Los cambios de equipo entre fases dan 16 casos y la regla pedía 30. Una primera versión de los contraataques, que también puntuaba \code{D}, creaba 18 paradas nuevas.
+  \item \textbf{Anclas fijas para el \code{D}} (del gol al saque, el instante del reinicio, el equipo que reanuda): o no hay un instante fijo, o pasan juego vivo a \code{D}.
+  \item \textbf{Doce sondeos más, el 16/11} (un coste por parte, el encuadre de la cámara, señales nuevas): ninguno gana. Uno de ellos, «cortas a \code{D}», pasó después la regla de límite de daño y está en la entrega (\hyperref[sec:2]{\S2}).
+  \item \textbf{Un detector de cambios de posesión} (16–17/11): una pieza que avisa de que la posesión acaba de cambiar y abarata ese cambio en el decodificador. Con un detector perfecto subiríamos de 0,728 a 0,824 con control \etiqueta{medido, techo descriptivo}, pero los detectores reales dan demasiados avisos falsos (solo es bueno del 23 al 37~\%) \etiqueta{medido}. Ninguno pasa su regla: ni en la DFL, ni en la mitad de entrenamiento de SkillCorner (de −0,005 a +0,003), ni encima de K2 (\hyperref[sec:8]{\S8}; registrado en la rama \code{exp/\allowbreak{}cambios-\allowbreak{}sobre-\allowbreak{}k2}).
+  \item \textbf{Modelos de secuencia para la evidencia de equipo} (17/11): redes entrenadas en la DFL que leen la evidencia en el tiempo, con la inferencia en numpy. Son una convolución temporal (B11), una GRU bidireccional (B12), una red sobre las trayectorias de los jugadores (B13) y esa red con rasgos de control, entrenada con la DFL degradada como el ATD (B14). Con el flag todas ganan mucho en la DFL, de +0,046 a +0,120, pero no lo sostienen con control o en SkillCorner \etiqueta{medido}:
+
+\begin{itemize}
+  \item B11 y B13 ganan con control solo en 3 a 6 de 7 partidos, según la celda; en SkillCorner, B11 empata o pierde y B13 pierde (de −0,010 a −0,024);
+  \item B14 pasa en la DFL con margen (con control, de +0,027 a +0,053, en 7 de 7), pero en la mitad de entrenamiento de SkillCorner pierde con el \code{D} de las etiquetas (−0,017 y −0,013) y empata con el propio (registrado en la rama \code{claude/\allowbreak{}serene-\allowbreak{}lumiere-\allowbreak{}16245d}, donde están el código y los pesos de B11 a B16);
+  \item B12 es la única que también gana en la mitad de entrenamiento de SkillCorner (de +0,011 a +0,014, en las cuatro celdas). En la DFL, con control, gana de +0,028 a +0,034, pero en una condición solo en 5 de 7 partidos, y se pedían 6. Por una excepción, decidida después de ese resultado y escrita antes de abrir el examen, se abrió su examen de SkillCorner: cumple 3 de las 4 celdas, y en la que falla gana +0,004, en 6 de 10. Se queda fuera, sin probar variantes;
+  \item B15 y B16 (la red de B14 entrenada con la etiqueta de control en todos los frames vivos; B16, también con SkillCorner) y B17 (la media de las dos) ganan a B5 con la regla de §5.8 en la DFL: con control, de +0,034 a +0,061, y con el flag, de +0,034 a +0,049. En la mitad de entrenamiento de SkillCorner ganan poco (de +0,002 a +0,016) y no cumplen el «7 de 10» en todas las celdas; frente a K2 empatan en la DFL y pierden en SkillCorner \etiqueta{medido}. Al cerrar este documento seguían apagadas y su examen de SkillCorner, por abrir. No están en la entrega.
+\end{itemize}
+
+Lectura \etiqueta{inferencia}: B11 a B14 encuentran más cambios de equipo. Eso gana con el flag, que cambia en cada toque, pero muchos de esos cambios sobran cuando la posesión exige control, y con el tracking de otro proveedor aciertan menos.
+  \item \textbf{Alrededor de K2} (17/11), cada uno con su regla escrita antes \etiqueta{medido}:
+
+\begin{itemize}
+  \item K1, una salida de K2 que avisa de los cambios y los abarata en el decodificador: gana con el flag, pero con control solo en 4 a 6 de 7 partidos. Una red 9 veces mayor se aprende los partidos de memoria;
+  \item decodificar a riesgo mínimo con las salidas de K2: las muestras se fragmentan, y no merece construirse;
+  \item K2r, entrenar K2 solo con la DFL y con aumentos hacia un tracking automático: en SkillCorner pasa de perder 0,010–0,015 a perder 0,002–0,004 con el \code{D} de las etiquetas, pero con el propio sigue perdiendo;
+  \item K4, el logit de K2 promediado con el del campo en espejo: gana poco en la DFL (+0,005 con control frente a K2) y empata en SkillCorner y en Metrica.
+\end{itemize}
+  \item \textbf{El balón sacado del vídeo táctico} (16/11). La idea era darle a B5 un balón sin el suavizado de casi 1 s del ATD. Se usó un detector público (YOLO11n afinado para balones, AGPL-3.0), en local y en CPU, sobre un recorte de 320 px alrededor del balón del ATD, ampliado ×2. Sus reglas se escribieron antes de medir (\code{validation/\allowbreak{}balon\_\allowbreak{}video/\allowbreak{}BITACORA.\allowbreak{}md}, rama \code{exp/\allowbreak{}balon-\allowbreak{}video}):
+
+\begin{itemize}
+  \item en datos abiertos ve balones de 4–5 px en el 82–91~\% de las imágenes, y en nuestro vídeo el balón mide 5,9 px de mediana \etiqueta{medido};
+  \item en el partido, en una muestra de 10 minutos, el 41~\% de sus detecciones cae a más de 5 m del balón del ATD, y la regla pedía el 10~\% como mucho. Da 2,6 detecciones por frame \etiqueta{medido}, y la mayoría no son el balón \etiqueta{inferencia}. La línea se paró ahí;
+  \item el 17/11 se pasó el detector por el partido entero (1,9 h en CPU) y salió lo mismo: el 42,0~\% de las detecciones a más de 5 m y 2,5 por frame \etiqueta{medido}. La más cercana al balón del ATD queda a 1,33 m de mediana, así que el detector sí ve el balón casi siempre, y lo que sobra son detecciones falsas \etiqueta{inferencia}. La línea siguió parada;
+  \item con la confianza mínima a 0,25 en vez de 0,10 (el otro valor medido en datos abiertos), sigue el 36~\% lejos \etiqueta{medido}: los falsos positivos tienen tanta confianza como el balón \etiqueta{inferencia}. No se probaron más valores, porque sería elegir el umbral con el partido;
+  \item aunque hubiera pasado, en la DFL con un balón como el del vídeo, hasta un detector perfecto le daría a B5 del orden de +0,01, por debajo del ruido del partido \etiqueta{medido, DFL emulada};
+  \item con la línea se quedó sin balón del vídeo, y sin medir, una capa de \code{D} que cerraba cada parada en el golpeo del balón. La variante del detector de cambios con el balón del vídeo se midió en la DFL emulada y, con las cifras de esta puerta, pierde con control.
+\end{itemize}
+\end{itemize}
+
+\section{Limitaciones y qué haríamos con más tiempo}\label{sec:8}
+
+\begin{itemize}
+  \item \textbf{Cambiamos de equipo de menos y tarde} (\hyperref[sec:6.4]{\S6.4}). En los eventos humanos de la DFL, con el balón «como el ATD», acertamos el 74,9~\% de las recuperaciones con K3 (B5, el 70,3~\%; K2, el 80,0~\%; el jugador más cercano, en torno al 84~\%) \etiqueta{medido}. De los cambios directos entre equipos en la DFL con control, K3 ve el 44~\% (B5, el 35~\%; K2, el 48~\%), y las posesiones de menos de 2 s no las encuentra ninguna versión \etiqueta{medido}.
+  \item \textbf{Los bordes del \code{D} son imprecisos:} E2 pone el inicio a 25 frames o menos solo en el 35~\% de las paradas \etiqueta{medido}. Bien puestos valdrían +0,05 a +0,07 \etiqueta{medido, DFL}.
+  \item \textbf{Tres capas entraron sin medida en datos con etiquetas:} el hueco antes del reinicio, los contraataques y el balón fuera entraron por reglas de daño escritas antes y agregados del partido; las dos últimas son excepciones declaradas a «lo que no gana en el harness no entra». El balón fuera, además, falló su criterio de eficacia (seguíamos llegando tarde en el 25,5~\% de las rachas de balón fuera, y se pedía menos del 15~\%) y pasó los de daño. Su efecto en el spellF1 no se conoce.
+  \item \textbf{«Cortas a \code{D}» quita posesiones, y ya predecimos de menos.} Pasamos de 219 a 201 posesiones, de 3,79 a 3,53 por minuto de juego vivo, cuando en datos abiertos, con nuestro \code{D}, salen de 4,1 a 4,3 \etiqueta{medido}; con K3, 198. Gana porque empareja mejor las que quedan \etiqueta{inferencia}. Además:
+
+\begin{itemize}
+  \item si la GT se parece al flag, cuesta hasta 0,002 \etiqueta{medido, DFL};
+  \item la regla de límite de daño se escribió con sus cifras de la DFL ya conocidas; a ciegas solo estaban el examen de SkillCorner y la entrega de prueba (\hyperref[sec:6.1]{\S6.1});
+  \item con el balón tapado en los \code{D}, el extremo bajo del intervalo del 5–95~\% con control (+0,003 y +0,004) queda por debajo de los +0,005 de la regla, que se escribió con valores centrales \etiqueta{medido};
+  \item el corte de 5 s se heredó del sondeo. Uno de 3 s también pasaría en la DFL, sin pérdida con el flag \etiqueta{medido en el sondeo, sin reproducir}, pero elegirlo después de ver los resultados sería ajustar, y no se puede confirmar en el examen sin abrirlo otra vez.
+\end{itemize}
+  \item \textbf{Escalas sin ajustar entre sí:} la escala de E2, \code{GAP\_\allowbreak{}SCORE} y los costes de \code{D} valen 1, 1 y 25 por defecto.
+  \item \textbf{La convención de la GT no está medida.}
+\end{itemize}
+
+Con más tiempo: un detector de balón que no confunda otras cosas con el balón en nuestro vídeo (afinado con pseudoetiquetas o con seguimiento en el tiempo; \hyperref[sec:7]{\S7}), y los tiempos de eventos corregidos a mano (mediana de tres anotadores, según su README) que publica ELASTIC para 3 de los 7 partidos de la DFL, para medir mejor dónde cambia la posesión.
+
+\textbf{K2 y K3 son una apuesta.} Entraron el 17/11: K2 por decisión de David y, esa tarde, K3 por decisión de Ismael, comentada con el equipo (\code{docs/\allowbreak{}decisiones.\allowbreak{}md}). Lo que se sabe en contra:
+
+\begin{itemize}
+  \item \textbf{K2 no se traslada de un proveedor a otro} \etiqueta{medido}. Entrenado solo con la DFL queda entre +0,003 y −0,015 frente a B5 en SkillCorner (tres entrenamientos), y entrenado solo con SkillCorner pierde en la DFL (de −0,075 a −0,096 con control). El partido es de un tercer proveedor, y nada se ha medido en el ATD con etiquetas.
+  \item \textbf{Lo que hay a favor} \etiqueta{medido}: en Metrica, el único tercer proveedor abierto, el modelo de los dos proveedores gana (+0,035, en 3 partidos); con los slots de más y el balón 4 frames tarde, como en el partido, sigue ganando y le cuestan menos que a B5; y en el partido sus salidas caen dentro del rango de los datos abiertos. Esto último dice que el ATD no le resulta raro al modelo, no que acierte en él.
+  \item \textbf{K3 reduce el riesgo, pero no lo quita.} Con K2 entrenado con un solo proveedor, K3 queda de −0,020 a +0,014 frente a B5, y K2 solo, de −0,083 a +0,003 \etiqueta{medido}. A cambio gana menos donde K2 funciona: con el flag, de 0,015 a 0,023 menos que K2; en Metrica, de 0,006 a 0,012 menos; con control, hasta 0,008 menos \etiqueta{medido}.
+  \item \textbf{Con su regla escrita antes, K3 no quedaba recomendada por encima de K2:} el punto que lo decidía (¿deja de perder donde K2 pierde?) no se pudo leer, porque dos réplicas de K2 entrenadas solo con la DFL no repitieron la pérdida. Lo medido después va a su favor, pero no en esa prueba. El peso ½ de la mezcla se fijó antes de medir; con ¾ de K2 se vio sin voto y no se eligió.
+  \item \textbf{En el partido, cada una pasó una entrega de prueba con criterios de daño escritos antes} (C0 a C6) \etiqueta{medido, agregados del partido}: K2 cambia el 4,8~\% de los frames evaluados frente a \code{equipo\_\allowbreak{}v9}, y K3 el 2,7~\% frente a \code{equipo\_\allowbreak{}v10} (K2), con 198 posesiones, 116 paradas, 0 conflictos y ninguna posesión de menos de 25 frames.
+  \item \textbf{Vuelta atrás:} \code{equipo\_\allowbreak{}v10} (K2 sola, sha256 \code{\seqsplit{784e65e5825a7fe52f7fe5f3a51c9f5e1bccf2c9f89a1372b7b344a3f882acbc}}) o \code{equipo\_\allowbreak{}v9} (B5, \code{\seqsplit{d9706dfb4b5389d391146d5d7efd022f01aa2a427d3e61f7ab2c06b3ecccbe63}}); las dos se regeneran desde el mismo código con \code{-\allowbreak{}-\allowbreak{}pieza candidates=\allowbreak{}aprendida.\allowbreak{}evidence\_\allowbreak{}k2} o \code{aprendida.\allowbreak{}evidence\_\allowbreak{}b5}.
+\end{itemize}
+
+Con más tiempo: promediar varias semillas de K2 (en dos semillas del modelo de solo la DFL, la media pasa a +0,002–0,004 en SkillCorner \etiqueta{lectura con poca evidencia}) y entrenar con más proveedores, que es lo que hoy cojea.
+
+\section{Reproducción}\label{sec:9}
+
+\textbf{Código:} \url{https://github.com/ismaelp8/mtah2027-piso2nyc}, en el commit \pendiente{PENDIENTE: etiqueta git de la entrega final y su commit; el código de \code{equipo\_\allowbreak{}v11} es el de \code{main} desde \code{23dcbc1}}.
+
+\textbf{Entorno.} Python 3.13 y \code{requirements-\allowbreak{}entrega.\allowbreak{}txt} (numpy 2.5.4, pandas 3.1.1 y sus dos dependencias). El código de la entrega solo importa numpy y la biblioteca estándar; pandas lo usan el validador y el scorer oficiales. Python 3.11 no sirve, porque numpy 2.5.4 pide 3.12 o más. Los pesos de K2 (\code{possession/\allowbreak{}conjunto\_\allowbreak{}pesos.\allowbreak{}npz}, sha256 \code{\seqsplit{6d16316f85063f13765fe4a8707558d6f26b800b9d43ce877d8dad95ae8c0da2}}) van en el repo: es el único fichero binario que lee la entrega, y no lleva nada del partido (\code{CONTRIBUTING.\allowbreak{}md} §7).
+
+\textbf{Datos.} El paquete del concurso descomprimido tal cual en \code{data/\allowbreak{}} dentro del repo, que es donde \code{games.\allowbreak{}py} busca por defecto, o en otra carpeta con \code{MTAH\_\allowbreak{}DATA\_\allowbreak{}DIR} apuntando a la que contiene \code{tactical/\allowbreak{}}. La entrega lee \code{BAR-\allowbreak{}ATH\_\allowbreak{}tactical\_\allowbreak{}atd.\allowbreak{}xml}, \code{BAR-\allowbreak{}ATH\_\allowbreak{}tactical\_\allowbreak{}atd.\allowbreak{}txt} y \code{BAR-\allowbreak{}ATH\_\allowbreak{}tactical\_\allowbreak{}smart\_\allowbreak{}tagging.\allowbreak{}xml}; si falta alguno, da un error que dice cuál.
+
+\textbf{Comando} (desde la raíz del repo). Windows (PowerShell), la forma probada:
+
+\begin{bloquecodigo}
+\begin{Verbatim}[breaklines,fontsize=\small]
+py -3.13 -m venv <carpeta>
+<carpeta>\Scripts\python -m pip install -r requirements-entrega.txt
+$env:MTAH_DATA_DIR = 'D:\ruta\al\paquete'
+<carpeta>\Scripts\python -m possession.pipeline --name "Piso2 NYC Team"
+<carpeta>\Scripts\python evaluation/validate_submission.py "evaluation/results/Piso2 NYC Team.csv"
+\end{Verbatim}
+\end{bloquecodigo}
+
+Linux y macOS (probada en Linux):
+
+\begin{bloquecodigo}
+\begin{Verbatim}[breaklines,fontsize=\small]
+python3.13 -m venv .venv
+.venv/bin/python -m pip install -r requirements-entrega.txt
+export MTAH_DATA_DIR=/ruta/al/paquete
+.venv/bin/python -m possession.pipeline --name "Piso2 NYC Team"
+.venv/bin/python evaluation/validate_submission.py "evaluation/results/Piso2 NYC Team.csv"
+\end{Verbatim}
+\end{bloquecodigo}
+
+Las comillas hacen falta por los espacios del nombre. Si la ruta de los datos lleva espacios, también va entre comillas. Generar el CSV tarda unos 10 s (9,4 s en un portátil con Linux) \etiqueta{medido}.
+
+El comando imprime solo agregados: versiones, commit y si hay cambios sin commitear, recuento del ATD, posesiones y paradas por tramo, rachas cortas, conflictos y el sha256. Se niega a escribir el CSV si el ATD tiene alguna línea rara o si dos piezas se contradicen en un frame evaluado.
+
+\textbf{Huella esperada:} \code{\seqsplit{811658cd52267cbd75607270c2c359e2244b05b8a6d091d6ce8330d2d971c04b}}. El fichero tiene 198 posesiones de 17,4 s de media (96 en la 1ª parte y 102 en la 2ª), 116 paradas, \code{D} en el 45,8~\% de los frames evaluados, 0 frames con piezas en conflicto y ninguna posesión de menos de 25 frames \etiqueta{medido}.
+
+\textbf{Máquinas.} \code{equipo\_\allowbreak{}v11} (la entrega, con K3) ha salido con ese sha256 \etiqueta{medido}:
+
+\begin{itemize}
+  \item en Windows, en un entorno limpio con \code{requirements-\allowbreak{}entrega.\allowbreak{}txt} (Python 3.13.1 y numpy 2.5.4), con \code{main} en \code{23dcbc1} y sin cambios locales en el código de la entrega;
+  \item como entrega de prueba \code{prueba\_\allowbreak{}k3}, en otra instalación (Python 3.12.10 y numpy 1.26.4);
+  \item en Linux (x86), en un portátil distinto, con un entorno limpio creado con \code{requirements-\allowbreak{}entrega.\allowbreak{}txt} (Python 3.13.9 y numpy 2.5.4), con \code{main} en \code{88259ce} (el mismo código de la entrega que \code{23dcbc1}) y sin cambios locales. El validador da \code{Valid} sobre ese mismo fichero.
+\end{itemize}
+
+Las dos primeras generaciones pueden ser de la misma máquina \etiqueta{sin verificar}; la de Linux es otra seguro.
+
+Las versiones anteriores salieron igual en varias máquinas \etiqueta{medido}: \code{equipo\_\allowbreak{}v10} (K2) en dos Windows, con numpy 2.5.4 y 1.26.4; \code{equipo\_\allowbreak{}v9} (B5) en dos Windows; y \code{equipo\_\allowbreak{}v8} en esas dos y en un Mac M1 (macOS, ARM, Python 3.13.7 y numpy 2.5.4).
+
+No hay azar, los empates se resuelven siempre igual y nada depende del orden de los ficheros ni de la hora. K2 corre sin exponenciales: solo sumas, productos, divisiones, raíces y máximos, término a término. B5, y por tanto K3, usa \code{np.\allowbreak{}exp}, que en teoría puede variar en el último bit según la CPU. El redondeo a 6 decimales lo hace improbable, pero no lo damos por supuesto: comprobamos el sha256 del fichero en cada máquina.
+
+\section{Declaraciones y referencias}\label{sec:10}
+
+\textbf{Uso de un LLM.} El equipo usó Claude (Anthropic), a través de Claude Code, para escribir código y documentación, diseñar medidas en datos abiertos e investigar métodos. Las decisiones de método las tomaron personas y están en \code{docs/\allowbreak{}decisiones.\allowbreak{}md} con su autor; Claude propuso candidatos y reglas de lectura y fijó el reparto entrenamiento/examen de SkillCorner. También ejecutó en datos abiertos las medidas, los entrenamientos de las redes candidatas (K2 incluida) y los tres usos de ese examen, con el permiso que dio Ismael el 16/11 (una vez por candidato) y el umbral escrito antes; dos de ellos los autorizó además una persona en el momento. El LLM no interviene al generar las etiquetas. Los commits no llevan su firma, pero los documentos del repo lo nombran.
+
+\textbf{Datos del partido y el LLM.} Los términos prohíben pasar a un LLM en la nube los materiales del concurso «or any extracts thereof» (\code{OVERVIEW.\allowbreak{}md}). Nuestra regla: al LLM solo le llegaban estadísticas resumen calculadas en local por una persona (métricas, recuentos, porcentajes, cuantiles, tiempos y errores sin valores) y la GT pública de 5 minutos, que el repo oficial publica bajo MIT (\code{LICENSE}). Claude no leía el vídeo, el tracking, el Smart Tagging ni nuestras entregas: escribía los scripts que leen el partido (\code{validation/\allowbreak{}partido/\allowbreak{}}), una persona los ejecutaba y le pegaba los agregados. Sí ejecutaba el validador y el scorer oficiales, que leen las entregas en local e imprimen agregados. Una configuración local (\code{.\allowbreak{}claude/\allowbreak{}settings.\allowbreak{}json}) bloquea algunas vías de lectura de esos ficheros (se probó con ficheros de prueba, en sesiones abiertas en la carpeta del repo; no bloquea, por ejemplo, un \code{open()} desde Python), así que la protección real es la regla. Esos agregados están también en \code{validation/\allowbreak{}resultados/\allowbreak{}}, \code{docs/\allowbreak{}decisiones.\allowbreak{}md} y este documento; nunca valores por frame ni números de frame salvo los oficiales. Desde el 15/11 los scripts del partido tapan como «< 5» los recuentos de 1 a 4 casos; antes no siempre, y en \code{docs/\allowbreak{}decisiones.\allowbreak{}md} quedan algunos recuentos pequeños de diferencias entre entregas. Una vez se escapó una celda y se corrigió (\code{validation/\allowbreak{}resultados/\allowbreak{}2026-\allowbreak{}11-\allowbreak{}15\_\allowbreak{}huecos\_\allowbreak{}y\_\allowbreak{}cambios.\allowbreak{}md}). No llegamos a consultar a la organización si estas estadísticas cuentan como «extracts»; lo declaramos aquí para que lo pueda juzgar.
+
+\textbf{Cifras oficiales.} Creemos que las notas publicadas de los baselines y la tabla de retrasos de \code{EVALUATION.\allowbreak{}md} salen de la GT completa: la documentación no lo dice, y en la ventana pública los valores son otros \etiqueta{inferencia}. Las usamos solo para describir (\hyperref[sec:1]{\S1} y \hyperref[sec:6.6]{\S6.6}), nunca para elegir. El 11/11 preguntamos por email a la organización si se pueden usar para algo más que leer la métrica, y no tuvimos respuesta antes de la entrega.
+
+\textbf{Smart Tagging y constantes de saque.} Usamos el Smart Tagging (automático, permitido por el \code{FAQ.\allowbreak{}md}) en dos capas (\hyperref[sec:2]{\S2}) y las constantes \code{KICKOFF\_\allowbreak{}VIDEO\_\allowbreak{}FRAMES} de \code{starter/\allowbreak{}load\_\allowbreak{}smart\_\allowbreak{}tagging.\allowbreak{}py}: 11.185, el primer frame evaluado y el saque de la 1ª parte (\code{DATA.\allowbreak{}md} y \code{FAQ.\allowbreak{}md}), y 113.742, el saque de la 2ª parte (\code{FAQ.\allowbreak{}md}). Sirven para forzar \code{D} antes del saque de la 2ª parte y prohibirlo en el frame de cada saque. Con los tramos evaluados de \code{games.\allowbreak{}py}, que \code{DATA.\allowbreak{}md} publica como «boundaries, not answers», son las únicas constantes ligadas a frames del partido, y las publica la organización.
+
+\textbf{La ventana pública, el vídeo y un recuento a ojo.}
+
+\begin{itemize}
+  \item \textbf{Lectura descriptiva de la convención} (14–16/11), con reglas escritas antes: el experimento 2, con el tracking de la ventana, quedó sin decidir; un recuento en la GT pública de posesiones cortas entre dos del rival no concluyó; y una revisión externa (\code{docs/\allowbreak{}revision\_\allowbreak{}externa\_\allowbreak{}2026-\allowbreak{}11-\allowbreak{}15.\allowbreak{}md}, anexo A.6) dio 4,23 posesiones por minuto de juego, típico de «exigir control», que la regla de entrada del 16/11 cita como un argumento más \etiqueta{descriptivo}. Nada de esto fijó un parámetro.
+  \item \textbf{Visionado} (15/11): una persona miró junto al vídeo los tramos de la ventana en que una versión anterior de la entrega y la GT pública no coincidían, con reglas escritas antes (\code{docs/\allowbreak{}decisiones.\allowbreak{}md}, 15/11): contar patrones generales, sin tiempos ni recuentos por tramo, y no ajustar ni elegir nada. Salieron hipótesis generales, que se midieron en datos abiertos o con agregados del partido sin etiquetas. Dos acabaron en la entrega:
+
+\begin{itemize}
+  \item el balón visto fuera, que coincidía con una tarea del plan (\hyperref[sec:2]{\S2} y \hyperref[sec:8]{\S8});
+  \item «si nuestro \code{D} llega tarde, damos una posesión al equipo que va a sacar», que es «cortas a \code{D}» (\hyperref[sec:2]{\S2}), medida en la DFL y en SkillCorner.
+\end{itemize}
+
+Ningún peso, margen, cola ni corte sale de la ventana.
+  \item \textbf{Recuento a ojo} (12–13/11): un miembro miró en el vídeo de la ventana las 3 posesiones cortas entre dos del rival y los 12 cambios directos entre equipos de la GT pública, y apuntó si le parecía un toque o un control; otro escribió un protocolo para contarlo frame a frame, que no se llegó a aplicar. Dio una señal de que la GT puede dar la posesión con un toque sin control (1 caso claro y 1 discutible). Se dejó a medias. La revisión externa lo calificó de zona gris frente a \code{RULES.\allowbreak{}md} («No hand labels on the provided game, in any amount and for any purpose»), y por eso lo declaramos. No entró en ningún código, modelo, parámetro ni elección, y la convención elegida el 12/11, exigir control, no cambió. Sus notas están en la PR 1 del repo, que no se fusionó.
+\end{itemize}
+
+\textbf{Licencias.} Bundesliga: CC BY 4.0. SkillCorner Open Data: MIT. Metrica sample-data: sin fichero de licencia; su README pide citar la fuente. Código y GT pública del reto: MIT (Metrica Sports). \pendiente{PENDIENTE: licencia del código propio} Los pesos de K2 (\code{possession/\allowbreak{}conjunto\_\allowbreak{}pesos.\allowbreak{}npz}) derivan de la Bundesliga (CC BY 4.0) y de SkillCorner (MIT), que se citan abajo. El detector de balón que se probó (\hyperref[sec:7]{\S7}) no entra en la entrega: el modelo (\code{martinjolif/\allowbreak{}yolo-\allowbreak{}football-\allowbreak{}ball-\allowbreak{}detection}) y \code{ultralytics} son AGPL-3.0, y su dataset de entrenamiento (Roboflow), CC BY 4.0. Los scripts que lo usan están en la rama \code{exp/\allowbreak{}balon-\allowbreak{}video} y no redistribuyen el modelo.
+
+\textbf{Referencias.}
+
+\begin{itemize}
+  \item Bassek, Rein, Weber y Memmert (2025). An integrated dataset of spatiotemporal and event data in elite soccer. \emph{Scientific Data}, 12, 195. \href{https://doi.org/10.1038/s41597-025-04505-y}{\code{doi:10.1038/s41597-025-04505-y}}. Datos: \href{https://doi.org/10.6084/m9.figshare.28196177}{\code{doi:10.6084/m9.figshare.28196177}}. Con autorización de la DFL.
+  \item SkillCorner. Open Data, \url{https://github.com/SkillCorner/opendata} (commit 4340d2745728).
+  \item Metrica Sports. Sample data, \url{https://github.com/metrica-sports/sample-data}.
+  \item Kim, Choi, Seo, Boomstra, Yoon y Park (2025). ELASTIC: Event-Tracking Data Synchronization in Soccer Without Annotated Event Locations. Workshop MLSA de ECML PKDD 2025. arXiv:2508.09238, \url{https://github.com/hyunsungkim-ds/elastic}.
+  \item Metrica Sports y Barça Innovation Hub (2026). More than a Hack 2027: Frame-level Ball Possession, v1.0.0. \url{https://github.com/metrica-sports/more-than-a-hack-2027} (\code{CITATION.\allowbreak{}cff}).
+\end{itemize}
+
+\end{document}
