@@ -183,8 +183,8 @@ tracking en su entrenamiento.
 
 ## 7. Reproducción
 
-**Código:** https://github.com/ismaelp8/mtah2027-piso2nyc, en el último commit de `main` en el momento de la
-entrega (17/11/2026). El código que genera el CSV no ha cambiado desde el commit `23dcbc1`.
+**Código:** https://github.com/ismaelp8/mtah2027-piso2nyc, en el commit `5df5a8c`
+(`5df5a8cdd4c8d195284e03059bfcf2b97ea606bc`). El código que genera el CSV no ha cambiado desde el commit `23dcbc1`.
 
 **Entorno:** Python 3.13 y `requirements-entrega.txt` (numpy 2.5.4 y pandas 3.1.1). La entrega solo importa numpy
 y la biblioteca estándar; pandas lo usan el validador y el scorer oficiales. Python 3.11 no sirve, porque numpy
