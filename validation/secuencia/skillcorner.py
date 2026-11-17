@@ -50,6 +50,8 @@ def main():
                         help="abre lector.EXAMEN para ESE candidato (una vez; con permiso del equipo)")
     parser.add_argument("--confirmo-el-unico-uso", action="store_true", dest="confirmado")
     parser.add_argument("--bootstrap", type=int, default=1000)
+    parser.add_argument("--candidatos", nargs="+", choices=sorted(CANDIDATOS), default=sorted(CANDIDATOS),
+                        help="en la mitad de entrenamiento: qué candidatos se miden (por defecto, los dos)")
     args = parser.parse_args()
     if args.examen:
         if not args.confirmado:
@@ -59,7 +61,7 @@ def main():
         ids, nombres, mitad = list(lc.EXAMEN), ["main", args.examen], "EXAMEN"
         print("### ATENCIÓN: se abre la mitad de EXAMEN de SkillCorner para {}. Apúntalo.\n".format(args.examen))
     else:
-        ids, nombres, mitad = list(lc.ENTRENAMIENTO), ["main"] + sorted(CANDIDATOS), "ENTRENAMIENTO"
+        ids, nombres, mitad = list(lc.ENTRENAMIENTO), ["main"] + sorted(args.candidatos), "ENTRENAMIENTO"
         lc.exigir_solo_entrenamiento(ids)
 
     rec = collections.defaultdict(list)  # (modo, condición, versión) -> recuento por partido
