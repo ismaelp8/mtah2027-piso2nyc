@@ -1,6 +1,7 @@
 # Refinamientos de K2 sin reentrenar · SkillCorner, mitad de entrenamiento · 10 partidos
 
-Código: 8409165 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `pesos_r_solo_dfl.npz` (sha256 68880ef3193064f2…), de un modelo que solo vio la DFL. B5: los coeficientes de la entrega (nunca vio este proveedor).
+Código: 74f3191 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `pesos_r_solo_dfl.npz` (sha256 68880ef3193064f2…), de un modelo que solo vio la DFL. B5: los coeficientes de la entrega (nunca vio este proveedor).
+α de K2: 4, la de «todos» · este script: sha256 d37f2cd30c97b99d… · recuentos guardados, calculados con el código 74f3191 y el script d37f2cd30c97b99d…
 
 ## Partido a partido, frente a `main` (descriptivo, sin voto)
 

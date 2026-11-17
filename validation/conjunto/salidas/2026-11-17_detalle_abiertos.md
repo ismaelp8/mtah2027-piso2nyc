@@ -1,6 +1,6 @@
 # El detalle de los cambios y de las posesiones en los datos abiertos (descriptivo)
 
-Código: 0e94007 · cuentas de `notebooks/ventana_publica_detalle.ipynb` con el scorer oficial · cambios emparejados a ±25 frames · posesiones encontradas con un solape de 0.5 o más · cada partido con el pliegue que no lo vio.
+Código: 74f3191 · este script: sha256 424e1432b98b1fe7… · cuentas de `notebooks/ventana_publica_detalle.ipynb` con el scorer oficial · cambios emparejados a ±25 frames · posesiones encontradas con un solape de 0.5 o más · cada partido con el pliegue que no lo vio.
 
 ## Con el `D` propio (como en la entrega)
 

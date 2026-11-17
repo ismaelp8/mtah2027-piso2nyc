@@ -1,6 +1,7 @@
 # Refinamientos de K2 sin reentrenar · Metrica · 3 partidos
 
-Código: 8409165 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `conjunto_pesos.npz` (sha256 6d16316f85063f13…): los de la entrega (todos los partidos). B5: los coeficientes de la entrega (nunca vio este proveedor).
+Código: 74f3191 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `conjunto_pesos.npz` (sha256 6d16316f85063f13…): los de la entrega (todos los partidos). B5: los coeficientes de la entrega (nunca vio este proveedor).
+α de K2: 4, la de «todos» · este script: sha256 d37f2cd30c97b99d… · recuentos guardados, calculados con el código 74f3191 y el script d37f2cd30c97b99d…
 
 ## Partido a partido, frente a `main` (descriptivo, sin voto)
 

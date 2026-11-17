@@ -1,6 +1,7 @@
 # Refinamientos de K2 sin reentrenar · Metrica · 3 partidos
 
-Código: 8409165 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `pesos_r_solo_dfl.npz` (sha256 68880ef3193064f2…), de un modelo que solo vio la DFL. B5: los coeficientes de la entrega (nunca vio este proveedor).
+Código: 74f3191 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `pesos_r_solo_dfl.npz` (sha256 68880ef3193064f2…), de un modelo que solo vio la DFL. B5: los coeficientes de la entrega (nunca vio este proveedor).
+α de K2: 4, la de «todos» · este script: sha256 d37f2cd30c97b99d…
 
 ## K2
 
@@ -11,7 +12,7 @@ Código: 8409165 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `de
 | propio | tal cual | eventos | 0.542 | 0.571 | 0.571 | +0.030 [+0.015 a +0.046] | 2 de 3 | +0.000 [+0.000 a +0.000] | 0 de 3 |
 | propio | suavizado 25 | eventos | 0.527 | 0.557 | 0.557 | +0.030 [+0.015 a +0.046] | 2 de 3 | +0.000 [+0.000 a +0.000] | 0 de 3 |
 
-Posesiones predichas en la primera celda: 649 · K2, 649 · `main`, 612 (reales: 879).
+Posesiones predichas en la primera celda: K2, 649 · K2, 649 · `main`, 612 (reales: 879).
 
 ## K3
 
@@ -22,7 +23,7 @@ Posesiones predichas en la primera celda: 649 · K2, 649 · `main`, 612 (reales:
 | propio | tal cual | eventos | 0.542 | 0.571 | 0.569 | +0.028 [+0.015 a +0.040] | 3 de 3 | -0.002 [-0.012 a +0.008] | 1 de 3 |
 | propio | suavizado 25 | eventos | 0.527 | 0.557 | 0.553 | +0.025 [+0.013 a +0.038] | 3 de 3 | -0.005 [-0.015 a +0.006] | 1 de 3 |
 
-Posesiones predichas en la primera celda: 620 · K2, 649 · `main`, 612 (reales: 879).
+Posesiones predichas en la primera celda: K3, 620 · K2, 649 · `main`, 612 (reales: 879).
 
 ## K4
 
@@ -33,7 +34,7 @@ Posesiones predichas en la primera celda: 620 · K2, 649 · `main`, 612 (reales:
 | propio | tal cual | eventos | 0.542 | 0.571 | 0.570 | +0.028 [+0.013 a +0.044] | 2 de 3 | -0.002 [-0.008 a +0.004] | 1 de 3 |
 | propio | suavizado 25 | eventos | 0.527 | 0.557 | 0.561 | +0.033 [+0.018 a +0.049] | 2 de 3 | +0.003 [-0.002 a +0.009] | 2 de 3 |
 
-Posesiones predichas en la primera celda: 644 · K2, 649 · `main`, 612 (reales: 879).
+Posesiones predichas en la primera celda: K4, 644 · K2, 649 · `main`, 612 (reales: 879).
 
 ## K5
 
@@ -44,7 +45,7 @@ Posesiones predichas en la primera celda: 644 · K2, 649 · `main`, 612 (reales:
 | propio | tal cual | eventos | 0.542 | 0.571 | 0.564 | +0.022 [+0.011 a +0.034] | 3 de 3 | -0.007 [-0.018 a +0.003] | 1 de 3 |
 | propio | suavizado 25 | eventos | 0.527 | 0.557 | 0.547 | +0.020 [+0.007 a +0.032] | 3 de 3 | -0.010 [-0.021 a -0.000] | 1 de 3 |
 
-Posesiones predichas en la primera celda: 617 · K2, 649 · `main`, 612 (reales: 879).
+Posesiones predichas en la primera celda: K5, 617 · K2, 649 · `main`, 612 (reales: 879).
 
 ## K3 con 1/4 de K2 (sin voto)
 
@@ -55,7 +56,7 @@ Posesiones predichas en la primera celda: 617 · K2, 649 · `main`, 612 (reales:
 | propio | tal cual | eventos | 0.542 | 0.571 | 0.554 | +0.013 [+0.003 a +0.022] | 3 de 3 | -0.017 [-0.031 a -0.004] | 1 de 3 |
 | propio | suavizado 25 | eventos | 0.527 | 0.557 | 0.546 | +0.018 [+0.009 a +0.029] | 3 de 3 | -0.012 [-0.025 a +0.001] | 1 de 3 |
 
-Posesiones predichas en la primera celda: 613 · K2, 649 · `main`, 612 (reales: 879).
+Posesiones predichas en la primera celda: K3 con 1/4 de K2, 613 · K2, 649 · `main`, 612 (reales: 879).
 
 ## K3 con 3/4 de K2 (sin voto)
 
@@ -66,7 +67,7 @@ Posesiones predichas en la primera celda: 613 · K2, 649 · `main`, 612 (reales:
 | propio | tal cual | eventos | 0.542 | 0.571 | 0.573 | +0.032 [+0.017 a +0.046] | 2 de 3 | +0.002 [-0.004 a +0.007] | 2 de 3 |
 | propio | suavizado 25 | eventos | 0.527 | 0.557 | 0.560 | +0.033 [+0.019 a +0.048] | 3 de 3 | +0.003 [-0.004 a +0.011] | 2 de 3 |
 
-Posesiones predichas en la primera celda: 636 · K2, 649 · `main`, 612 (reales: 879).
+Posesiones predichas en la primera celda: K3 con 3/4 de K2, 636 · K2, 649 · `main`, 612 (reales: 879).
 
 ## El otro proveedor (frente a `main`; «quita la pérdida» es −0.005 o más en todas las celdas)
 

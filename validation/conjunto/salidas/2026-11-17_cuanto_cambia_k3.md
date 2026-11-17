@@ -1,6 +1,6 @@
 # Cuánto cambia la salida con K3 (descriptivo, `D` propio, sin las capas del partido)
 
-Código: 391576a · 7 partidos de la DFL y 10 de SkillCorner, cada uno con el pliegue que no lo vio.
+Código: 74f3191 · este script: sha256 68a7f25e53a4f34d… · 7 partidos de la DFL y 10 de SkillCorner, cada uno con el pliegue que no lo vio.
 
 ## De main a K3
 

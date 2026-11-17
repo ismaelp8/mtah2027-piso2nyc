@@ -1,6 +1,7 @@
 # Refinamientos de K2 sin reentrenar · DFL · 7 partidos
 
-Código: d96fce8 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `conjunto_pesos.npz` (sha256 6d16316f85063f13…): cada partido con el pliegue que no lo vio. B5: el pliegue que no vio el partido (sí vio otros de la DFL).
+Código: 74f3191 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `conjunto_pesos.npz` (sha256 6d16316f85063f13…): cada partido con el pliegue que no lo vio. B5: el pliegue que no vio el partido (sí vio otros de la DFL).
+α de K2: la del pliegue que no vio cada partido (4 u 8) · este script: sha256 d37f2cd30c97b99d…
 
 ## K2
 
@@ -19,7 +20,7 @@ Código: d96fce8 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `de
 | propio, balón a la vista en los D | como el ATD, sin bloques | control | 0.613 | 0.648 | 0.648 | +0.035 [+0.024 a +0.046] | 6 de 7 | +0.000 [+0.000 a +0.000] | 0 de 7 |
 | propio, balón a la vista en los D | como el ATD, sin bloques | flag | 0.409 | 0.438 | 0.438 | +0.029 [+0.020 a +0.037] | 7 de 7 | +0.000 [+0.000 a +0.000] | 0 de 7 |
 
-Posesiones predichas en la primera celda: 1651 · K2, 1651 · `main`, 1661 (reales: 1736).
+Posesiones predichas en la primera celda: K2, 1651 · K2, 1651 · `main`, 1661 (reales: 1736).
 
 ## K3
 
@@ -38,7 +39,7 @@ Posesiones predichas en la primera celda: 1651 · K2, 1651 · `main`, 1661 (real
 | propio, balón a la vista en los D | como el ATD, sin bloques | control | 0.613 | 0.648 | 0.642 | +0.029 [+0.022 a +0.037] | 6 de 7 | -0.006 [-0.014 a +0.002] | 2 de 7 |
 | propio, balón a la vista en los D | como el ATD, sin bloques | flag | 0.409 | 0.438 | 0.422 | +0.013 [+0.007 a +0.020] | 6 de 7 | -0.015 [-0.022 a -0.009] | 1 de 7 |
 
-Posesiones predichas en la primera celda: 1597 · K2, 1651 · `main`, 1661 (reales: 1736).
+Posesiones predichas en la primera celda: K3, 1597 · K2, 1651 · `main`, 1661 (reales: 1736).
 
 ## K4
 
@@ -57,7 +58,7 @@ Posesiones predichas en la primera celda: 1597 · K2, 1651 · `main`, 1661 (real
 | propio, balón a la vista en los D | como el ATD, sin bloques | control | 0.613 | 0.648 | 0.650 | +0.037 [+0.026 a +0.048] | 6 de 7 | +0.002 [-0.002 a +0.006] | 4 de 7 |
 | propio, balón a la vista en los D | como el ATD, sin bloques | flag | 0.409 | 0.438 | 0.439 | +0.030 [+0.021 a +0.039] | 7 de 7 | +0.001 [-0.002 a +0.005] | 4 de 7 |
 
-Posesiones predichas en la primera celda: 1643 · K2, 1651 · `main`, 1661 (reales: 1736).
+Posesiones predichas en la primera celda: K4, 1643 · K2, 1651 · `main`, 1661 (reales: 1736).
 
 ## K5
 
@@ -76,7 +77,7 @@ Posesiones predichas en la primera celda: 1643 · K2, 1651 · `main`, 1661 (real
 | propio, balón a la vista en los D | como el ATD, sin bloques | control | 0.613 | 0.648 | 0.644 | +0.031 [+0.024 a +0.039] | 6 de 7 | -0.004 [-0.012 a +0.004] | 2 de 7 |
 | propio, balón a la vista en los D | como el ATD, sin bloques | flag | 0.409 | 0.438 | 0.424 | +0.015 [+0.009 a +0.021] | 6 de 7 | -0.013 [-0.020 a -0.006] | 2 de 7 |
 
-Posesiones predichas en la primera celda: 1602 · K2, 1651 · `main`, 1661 (reales: 1736).
+Posesiones predichas en la primera celda: K5, 1602 · K2, 1651 · `main`, 1661 (reales: 1736).
 
 ## K3 con 1/4 de K2 (sin voto)
 
@@ -95,7 +96,7 @@ Posesiones predichas en la primera celda: 1602 · K2, 1651 · `main`, 1661 (real
 | propio, balón a la vista en los D | como el ATD, sin bloques | control | 0.613 | 0.648 | 0.630 | +0.017 [+0.013 a +0.023] | 7 de 7 | -0.018 [-0.028 a -0.008] | 1 de 7 |
 | propio, balón a la vista en los D | como el ATD, sin bloques | flag | 0.409 | 0.438 | 0.416 | +0.007 [+0.003 a +0.012] | 5 de 7 | -0.021 [-0.029 a -0.013] | 0 de 7 |
 
-Posesiones predichas en la primera celda: 1589 · K2, 1651 · `main`, 1661 (reales: 1736).
+Posesiones predichas en la primera celda: K3 con 1/4 de K2, 1589 · K2, 1651 · `main`, 1661 (reales: 1736).
 
 ## K3 con 3/4 de K2 (sin voto)
 
@@ -114,7 +115,7 @@ Posesiones predichas en la primera celda: 1589 · K2, 1651 · `main`, 1661 (real
 | propio, balón a la vista en los D | como el ATD, sin bloques | control | 0.613 | 0.648 | 0.649 | +0.036 [+0.027 a +0.045] | 6 de 7 | +0.001 [-0.005 a +0.008] | 4 de 7 |
 | propio, balón a la vista en los D | como el ATD, sin bloques | flag | 0.409 | 0.438 | 0.432 | +0.023 [+0.015 a +0.030] | 7 de 7 | -0.006 [-0.011 a -0.000] | 3 de 7 |
 
-Posesiones predichas en la primera celda: 1615 · K2, 1651 · `main`, 1661 (reales: 1736).
+Posesiones predichas en la primera celda: K3 con 3/4 de K2, 1615 · K2, 1651 · `main`, 1661 (reales: 1736).
 
 ## La regla en la DFL (límite de daño del 16/11, frente a `main`)
 

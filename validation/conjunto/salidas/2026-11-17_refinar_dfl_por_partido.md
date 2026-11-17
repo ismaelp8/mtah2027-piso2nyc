@@ -1,6 +1,7 @@
 # Refinamientos de K2 sin reentrenar · DFL · 7 partidos
 
-Código: 8409165 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `conjunto_pesos.npz` (sha256 6d16316f85063f13…): cada partido con el pliegue que no lo vio. B5: el pliegue que no vio el partido (sí vio otros de la DFL).
+Código: 74f3191 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `conjunto_pesos.npz` (sha256 6d16316f85063f13…): cada partido con el pliegue que no lo vio. B5: el pliegue que no vio el partido (sí vio otros de la DFL).
+α de K2: la del pliegue que no vio cada partido (4 u 8) · este script: sha256 d37f2cd30c97b99d… · recuentos guardados, calculados con el código 74f3191 y el script d37f2cd30c97b99d…
 
 ## Partido a partido, frente a `main` (descriptivo, sin voto)
 

@@ -6196,6 +6196,9 @@ Lo que hay que decir con el número:
   scripts de `validation/conjunto/` entraron en el commit siguiente: `cuanto_cambia_k3.py` en `8409165`,
   `detalle_abiertos.py` en `118e854` y las tablas de `*_por_partido.md` en `3794aaf`. Desde ahora `refinar.py` imprime
   su propia huella y la α, y guarda con cada caché de recuentos el dominio, los pesos y el código con que se calculó.
+  **Regeneradas después** (13:51, con el código de `74f3191`): las once salidas de `refinar.py`,
+  `detalle_abiertos.py` y `cuanto_cambia_k3.py` se volvieron a calcular desde cero y salen idénticas fuera de las
+  líneas de cabecera. Las guardadas en la rama son las regeneradas, con su sello y la huella de cada script.
 
 Lo que haría legible el punto 2: los pesos de los dos modelos de un solo proveedor del 17/11
 (`conjunto_cache/pesos/solo_dfl_todos.pt` y `solo_sc_todos.pt`, en la máquina de la GPU). Con ellos K2 sí pierde, y la

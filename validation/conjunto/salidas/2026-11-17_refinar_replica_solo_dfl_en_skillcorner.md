@@ -1,6 +1,7 @@
 # Refinamientos de K2 sin reentrenar · SkillCorner, mitad de entrenamiento · 10 partidos
 
-Código: 8409165 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `pesos_r_solo_dfl.npz` (sha256 68880ef3193064f2…), de un modelo que solo vio la DFL. B5: los coeficientes de la entrega (nunca vio este proveedor).
+Código: 74f3191 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `decode_cortas_a_d` · pesos de K2: los de `pesos_r_solo_dfl.npz` (sha256 68880ef3193064f2…), de un modelo que solo vio la DFL. B5: los coeficientes de la entrega (nunca vio este proveedor).
+α de K2: 4, la de «todos» · este script: sha256 d37f2cd30c97b99d…
 
 ## K2
 
@@ -11,7 +12,7 @@ Código: 8409165 · bootstrap pareado de 1000 · `main` = B5, `dead_state` y `de
 | propio | detectado | sc | 0.391 | 0.391 | 0.391 | -0.000 [-0.008 a +0.006] | 5 de 10 | +0.000 [+0.000 a +0.000] | 0 de 10 |
 | propio | detectado, suavizado | sc | 0.388 | 0.391 | 0.391 | +0.003 [-0.005 a +0.011] | 6 de 10 | +0.000 [+0.000 a +0.000] | 0 de 10 |
 
-Posesiones predichas en la primera celda: 2491 · K2, 2491 · `main`, 2270 (reales: 3228).
+Posesiones predichas en la primera celda: K2, 2491 · K2, 2491 · `main`, 2270 (reales: 3228).
 
 ## K3
 
@@ -22,7 +23,7 @@ Posesiones predichas en la primera celda: 2491 · K2, 2491 · `main`, 2270 (real
 | propio | detectado | sc | 0.391 | 0.391 | 0.401 | +0.010 [+0.004 a +0.016] | 7 de 10 | +0.011 [+0.006 a +0.015] | 6 de 10 |
 | propio | detectado, suavizado | sc | 0.388 | 0.391 | 0.398 | +0.010 [+0.004 a +0.017] | 7 de 10 | +0.008 [+0.003 a +0.012] | 7 de 10 |
 
-Posesiones predichas en la primera celda: 2307 · K2, 2491 · `main`, 2270 (reales: 3228).
+Posesiones predichas en la primera celda: K3, 2307 · K2, 2491 · `main`, 2270 (reales: 3228).
 
 ## K4
 
@@ -33,7 +34,7 @@ Posesiones predichas en la primera celda: 2307 · K2, 2491 · `main`, 2270 (real
 | propio | detectado | sc | 0.391 | 0.391 | 0.390 | -0.001 [-0.009 a +0.006] | 5 de 10 | -0.001 [-0.003 a +0.002] | 6 de 10 |
 | propio | detectado, suavizado | sc | 0.388 | 0.391 | 0.392 | +0.004 [-0.004 a +0.011] | 6 de 10 | +0.001 [-0.002 a +0.003] | 6 de 10 |
 
-Posesiones predichas en la primera celda: 2512 · K2, 2491 · `main`, 2270 (reales: 3228).
+Posesiones predichas en la primera celda: K4, 2512 · K2, 2491 · `main`, 2270 (reales: 3228).
 
 ## K5
 
@@ -44,7 +45,7 @@ Posesiones predichas en la primera celda: 2512 · K2, 2491 · `main`, 2270 (real
 | propio | detectado | sc | 0.391 | 0.391 | 0.400 | +0.009 [+0.003 a +0.014] | 7 de 10 | +0.009 [+0.005 a +0.014] | 7 de 10 |
 | propio | detectado, suavizado | sc | 0.388 | 0.391 | 0.400 | +0.012 [+0.006 a +0.019] | 7 de 10 | +0.010 [+0.005 a +0.014] | 8 de 10 |
 
-Posesiones predichas en la primera celda: 2309 · K2, 2491 · `main`, 2270 (reales: 3228).
+Posesiones predichas en la primera celda: K5, 2309 · K2, 2491 · `main`, 2270 (reales: 3228).
 
 ## K3 con 1/4 de K2 (sin voto)
 
@@ -55,7 +56,7 @@ Posesiones predichas en la primera celda: 2309 · K2, 2491 · `main`, 2270 (real
 | propio | detectado | sc | 0.391 | 0.391 | 0.403 | +0.011 [+0.007 a +0.016] | 8 de 10 | +0.012 [+0.006 a +0.018] | 7 de 10 |
 | propio | detectado, suavizado | sc | 0.388 | 0.391 | 0.401 | +0.013 [+0.008 a +0.018] | 8 de 10 | +0.010 [+0.004 a +0.016] | 7 de 10 |
 
-Posesiones predichas en la primera celda: 2257 · K2, 2491 · `main`, 2270 (reales: 3228).
+Posesiones predichas en la primera celda: K3 con 1/4 de K2, 2257 · K2, 2491 · `main`, 2270 (reales: 3228).
 
 ## K3 con 3/4 de K2 (sin voto)
 
@@ -66,7 +67,7 @@ Posesiones predichas en la primera celda: 2257 · K2, 2491 · `main`, 2270 (real
 | propio | detectado | sc | 0.391 | 0.391 | 0.398 | +0.007 [+0.000 a +0.013] | 6 de 10 | +0.007 [+0.004 a +0.011] | 8 de 10 |
 | propio | detectado, suavizado | sc | 0.388 | 0.391 | 0.395 | +0.007 [-0.000 a +0.014] | 6 de 10 | +0.004 [+0.001 a +0.007] | 7 de 10 |
 
-Posesiones predichas en la primera celda: 2353 · K2, 2491 · `main`, 2270 (reales: 3228).
+Posesiones predichas en la primera celda: K3 con 3/4 de K2, 2353 · K2, 2491 · `main`, 2270 (reales: 3228).
 
 ## El otro proveedor (frente a `main`; «quita la pérdida» es −0.005 o más en todas las celdas)
 
