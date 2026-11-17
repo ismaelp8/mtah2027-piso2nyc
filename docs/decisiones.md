@@ -6411,3 +6411,64 @@ Lectura [inferencia]:
 - Las cuatro celdas siguen siendo positivas, pero ninguna se aleja del ruido.
 
 Lo que no se hace: buscar otra excepción para B12. Sería buscar hasta que salga.
+
+### 2026-11-17 · temporal · detector de cambios con el balón del ATD, encima de K2 y de `main` (candidatos y regla, antes de medir)
+
+Quién: David (17/11, «haz los 3»), con Claude, en la rama `exp/cambios-sobre-k2`, que sale de `exp/modelo-conjunto`
+en `2b187b9`. Escrita antes de medir nada de esta entrada.
+
+Por qué: el balón del vídeo no se puede usar (la línea está parada y su detector se equivoca en el 18 % de los
+frames), así que queda la variante «respaldo» del detector de cambios, con el balón del ATD. En la segunda ronda se
+quedó cerca (+0,006 a +0,009 con control, 5–6 de 7) frente a un `main` que ya no es el de hoy: entonces decodificaba
+con `decode` y hoy con `decode_cortas_a_d`, y puede que la evidencia de equipo pase a ser K2.
+
+Candidatos, con la configuración fija que eligió la segunda ronda (no se elige nada aquí):
+- **R1:** reglas con giro de 20°, cambio de velocidad del 60 % y 20 frames de confirmación; capa con γ = 4,
+  W = 50, contra el otro equipo; sin rebaja (lo elegido para «D reglas · respaldo» en 6 de 7 pliegues).
+- **R2:** las reglas sin afinar (30°, 40 %, 20 frames); γ = 4, W = 100, contra el otro equipo (lo elegido para «C
+  reglas · respaldo» en los 7 pliegues).
+
+Cada uno se mide sobre dos bases, con el decodificador de la entrega (`decode_cortas_a_d`):
+- **sobre `main`:** B5, la entrega de hoy;
+- **sobre K2:** `aprendida.evidence_k2` en lugar de B5, con el pliegue que no vio el partido.
+
+Son cuatro comparaciones: cada candidato frente a su base (no frente a la otra base).
+
+Regla de entrada, la del límite de daño del 16/11 en la DFL (los 7 partidos, «como el ATD» y «sin bloques», con el
+`D` de las etiquetas y con el propio):
+1. con control, +0,005 o más en las cuatro celdas, ganando en 6 de 7 en cada una;
+2. con el flag, no pierde más de 0,005 en ninguna.
+Si un candidato pasa sobre una base, sigue a SkillCorner (`validation/cambios/medir_skillcorner.py`, mitad de
+entrenamiento; +0,005 y 7 de 10 en las cuatro celdas) y, si pasa, al examen, una sola vez y para un solo candidato, y a
+la entrega de prueba. Sobre K2 solo tiene sentido si el equipo enciende K2.
+
+Avisado: son 2 configuraciones elegidas antes, más 14 candidatos de las rondas anteriores; con la regla de 6 de 7 en
+cuatro celdas, un candidato que no aporta nada pasaría pocas veces, pero no ninguna.
+
+Estado: medida el 17/11 (entrada siguiente).
+
+### 2026-11-17 · temporal · detector de cambios con el balón del ATD, encima de K2 y de `main`: ninguno pasa; se cierra
+
+Quién: David (17/11), con Claude. Salida: `validation/cambios/salidas/2026-11-17_sobre_k2.md` (`sobre_k2.py`; los 7
+partidos de la DFL, con `decode_cortas_a_d`; cada pieza aprendida con el pliegue que no vio el partido).
+
+Comprobación del instrumento [medido]: B5 da 0,728 / 0,498 y K2 0,780 / 0,542 («como el ATD», `D` de las etiquetas),
+las mismas cifras que la entrada de K2.
+
+Resultado [medido], diferencia con su base (rango de las cuatro celdas):
+
+| candidato | base | control (gana en) | flag |
+|---|---|---|---|
+| R1 (20°, 60 %, 20 frames; γ 4, W 50) | `main` (B5) | +0,006 a +0,011 (5, 5, 7 y 6 de 7) | +0,010 a +0,013 |
+| R2 (30°, 40 %, 20 frames; γ 4, W 100) | `main` (B5) | +0,004 a +0,013 (5, 4, 6 y 5 de 7) | +0,007 a +0,010 |
+| R1 | K2 | +0,002 a +0,008 (4, 5, 4 y 6 de 7) | +0,010 a +0,012 |
+| R2 | K2 | +0,005 a +0,008 (4, 4, 6 y 4 de 7) | +0,006 a +0,007 |
+
+Decisión y por qué: **ninguno pasa el punto 1** (todos fallan por el número de partidos; ninguno pierde con el flag).
+Con la regla escrita antes, no siguen a SkillCorner y el detector de cambios queda cerrado para esta entrega, con el
+balón del ATD y con el del vídeo. `pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega no cambian.
+
+Lectura [inferencia]: el detector con el balón del ATD aporta algo pequeño y siempre del mismo signo (+0,002 a +0,013,
+nunca negativo), pero no gana en suficientes partidos. Encima de K2 aporta menos que encima de B5: K2 ya corrige parte
+de los cambios que tarda en ver B5. Es material para el documento técnico y para el Innovation Challenge, junto con el
+techo (+0,096 con control).
