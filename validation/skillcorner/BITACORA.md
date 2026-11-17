@@ -133,3 +133,24 @@ de errores:
 Están en `lector.py` como `ENTRENAMIENTO` y `EXAMEN`. Un script nuevo que entrene o inspeccione errores
 tiene que llamar a `exigir_solo_entrenamiento` antes de leerlos. `medir.py` no lo llama: reproduce la
 medida de la sección 7, que es anterior a este corte.
+
+### Usos del examen
+
+Cada vez que se abre `EXAMEN`, se apunta aquí. **`CLAUDE.md` lo permite una vez por candidato**, así que esta
+tabla lleva la cuenta por candidato, no un único uso global.
+
+| fecha | candidato | quién lo autorizó | resultado |
+|---|---|---|---|
+| 16/11/2026 | «cortas a `D`» (idea 1.3), corte de 125 frames, con `validation/scripts/cortas_a_d_skillcorner.py --examen --confirmo-el-unico-uso` | Ismael dio el permiso el 16/11; Manuel lo autorizó en el momento | **Pasa:** +0,009 (10 de 10) con «detectado» y +0,008 (10 de 10) con «detectado, suavizado», sobre un umbral escrito antes de +0,005 y 7 de 10 |
+| 17/11/2026 | B12 (GRU bidireccional, `aprendida.evidence_b12` de la rama `claude/serene-lumiere-16245d`), con `validation/secuencia/skillcorner.py --examen b12 --confirmo-el-unico-uso` | Ismael, en el momento (17/11, 10:20) | **No pasa:** con el `D` de las etiquetas, +0,004 (6 de 10) con «detectado» y +0,007 (7 de 10) con «detectado, suavizado»; con el propio, +0,006 y +0,009 (7 de 10). Falla una celda del umbral escrito antes (+0,005 y 7 de 10 en las cuatro). B12 se queda cerrado |
+| 17/11/2026 | B17 (media de B15 y B16, redes de trayectorias; `aprendida.evidence_b17` de la rama `claude/serene-lumiere-16245d`), con `validation/secuencia/skillcorner.py --examen b17 --confirmo-el-unico-uso`. Es el único uso para la familia B15–B17 | La sesión planificadora, con la instrucción general de Ismael (no es una decisión suya sobre B17) | **No pasa:** con el `D` de las etiquetas, +0,020 y +0,019 (9 de 10); con el propio, +0,009 (7 de 10) con «detectado» y +0,008 (6 de 10) con «detectado, suavizado». Falla una celda del umbral escrito antes (+0,005 y 7 de 10 en las cuatro). B15–B17 se quedan cerrados |
+
+| 17/11/2026 | K2, el modelo conjunto en lugar de B5 (`aprendida.evidence_k2`, α = 4, con el modelo de los 17 partidos), con `validation/conjunto/medir.py --etiqueta v1 --dominio sc --examen --examen-con-permiso --candidato K2` y el código en `a37010a` | Ismael dio el permiso el 16/11, una vez por candidato; el 17/11 pidió seguir sin preguntar («tira para delante hasta que lo acabes»). El umbral estaba escrito antes, en `b4ec45f` | **Pasa:** con el `D` de las etiquetas, +0,023 (9 de 10) con «detectado» y +0,028 (10 de 10) con «detectado, suavizado»; con el `D` propio, +0,021 (8 de 10) y +0,026 (10 de 10); umbral escrito antes de +0,005 y 7 de 10 en las cuatro celdas |
+
+El detalle está en `docs/decisiones.md`, entradas «la idea 1.3 («cortas a `D`») se desaparca» y «modelo conjunto: K2
+pasa los puntos 1, 2 y 3».
+
+**Pendiente de que lo decida el equipo:** si cambiar un parámetro de una idea ya examinada (por ejemplo el
+mismo «cortas a `D`» con el corte de 75 frames) cuenta como **candidato nuevo**, con su propio uso, o como
+**ajuste del mismo**, que es la fuga de la que el examen protege. Hasta que se decida, no se abre el examen
+para una variante de un candidato ya examinado.

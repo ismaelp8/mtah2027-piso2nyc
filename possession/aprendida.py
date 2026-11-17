@@ -25,8 +25,9 @@ partido con un modelo que no lo vio (`fuera`), y el de los 7 partidos (`fuera=No
 entrega.
 
 Interfaz: `evidence_b1(trk)` … `evidence_b5(trk)` devuelven `(score, allowed)`; ver possession/tracking.py.
-Este módulo no importa ninguna otra pieza: el «más cercano» de B5 es una copia propia (`equipo_mas_cercano`),
-para que B5 no cambie si cambia `candidates.py` y para que no haya importaciones circulares.
+Este módulo no importa ninguna otra pieza al cargarse: el «más cercano» de B5 es una copia propia
+(`equipo_mas_cercano`), para que B5 no cambie si cambia `candidates.py` y para que no haya importaciones
+circulares. Los envoltorios `evidence_k2` y `evidence_k3` importan `conjunto` y `refinamientos` dentro de la función.
 """
 
 import numpy as np
@@ -421,6 +422,30 @@ def evidence_b8(trk, fuera=None):
 def evidence_b9(trk, fuera=None):
     """B9: B5 con la dirección en que se mueve el balón, con sus pesos (15/11, posesiones cortas)."""
     return _evidencia(trk, "b9", fuera)
+
+
+def evidence_k2(trk, fuera=None):
+    """K2 (17/11): el logit del modelo conjunto (`possession/conjunto.py`), puntuado como B5. Va en la entrega
+    dentro de K3 (`evidence_k3`), no sola.
+
+    Solo es la puerta para que el harness y `--pieza candidates=aprendida.evidence_k2` lleguen a `conjunto.evidence`
+    sin tocar `pipeline.py`. Se importa aquí dentro porque `conjunto` importa este módulo.
+    """
+    from possession import conjunto
+    return conjunto.evidence(trk, fuera)
+
+
+def evidence_k3(trk, fuera=None):
+    """K3 (17/11): la mezcla a partes iguales del logit de K2 y del de B5, puntuada como B5. Es la evidencia de
+    equipo de la entrega desde el 17/11 por la tarde (`pipeline.PIECES`; docs/decisiones.md, «se enciende K3»).
+
+    Como `evidence_k2`, es la puerta para que `pipeline.PIECES`, el harness y `--pieza` lleguen a
+    `refinamientos.evidence_k3` sin que `pipeline.py` importe ese módulo. `fuera` es a la vez el pliegue de K2 y el
+    de B5: el partido de la DFL que el harness está puntuando. Se importa aquí dentro porque `refinamientos` importa
+    este módulo.
+    """
+    from possession import refinamientos
+    return refinamientos.evidence_k3(trk, fuera, fuera)
 
 
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------

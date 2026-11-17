@@ -174,7 +174,7 @@ queda ahí aunque se borre después.
 |---|---|---|
 | vídeos (`*.mp4`) | `$MTAH_DATA_DIR/tactical/` y `/broadcast/` | redistribución prohibida; GitHub limita a 100 MB por fichero |
 | ATD, homografía, Smart Tagging (`BAR-ATH_tactical*`, `BAR-ATH_broadcast*`) | `$MTAH_DATA_DIR/...` | redistribución prohibida |
-| cachés y features por frame (`*.npz`, `*.npy`, `*.parquet`, `*.pkl`, `*.feather`, `*.h5`) | `$MTAH_DATA_DIR/cache/` | son datos derivados que permiten reconstruir los originales |
+| cachés y features por frame (`*.npz`, `*.npy`, `*.parquet`, `*.pkl`, `*.feather`, `*.h5`), con una sola excepción escrita más abajo | `$MTAH_DATA_DIR/cache/` | son datos derivados que permiten reconstruir los originales |
 | nuestras entregas (`evaluation/results/*.csv`) e informes (`evaluation/reports/`) | donde están (los ignora `.gitignore`) | son las etiquetas del partido completo |
 | outputs de notebooks | en ningún sitio | llevan datos dentro |
 | PDFs | fuera del repo | `.gitignore` los ignora; el documento técnico se escribe en `.md` y se exporta |
@@ -187,6 +187,17 @@ queda ahí aunque se borre después.
 - **El `.gitignore` de la raíz es oficial y no se toca.** Lo que haya que excluir además, se excluye en
   `.git/info/exclude` de tu copia o no se añade. La única excepción es `validation/.gitignore`, que
   ignora los ficheros de datos dentro de esa carpeta como red de seguridad.
+- **La única excepción a los `*.npz`: los pesos del modelo de la entrega,** `possession/conjunto_pesos.npz`
+  (decisión de Ismael, 17/11; `docs/decisiones.md`).
+  - **Qué es:** los pesos de la red de K2, 8 juegos de 36.260 números (los 7 pliegues y el de todos los partidos).
+    Ocupa 1,2 MB y su sha256 es `6d16316f85063f13765fe4a8707558d6f26b800b9d43ce877d8dad95ae8c0da2`.
+  - **Por qué no le aplica el motivo de la norma:** no es una caché ni lleva rasgos por frame, y no sale del
+    partido. La red se entrenó con datos abiertos de otros partidos (la Bundesliga de Bassek et al., 2025, CC BY
+    4.0, y SkillCorner, MIT). No permite reconstruir nada del partido.
+  - **Por qué tiene que estar en el repo:** la entrega lo necesita, y el entrenamiento en GPU no se repite bit a
+    bit. Sin el fichero, el repo no regenera el CSV con un solo comando.
+  - **Hasta dónde llega:** solo ese fichero. Los pesos de los experimentos (los `.pt` y los demás `.npz`) se quedan
+    fuera del repo. Si cambia, cambia la entrega: hay que regenerarla y apuntar el sha256 nuevo.
 
 ## 8. Notebooks
 

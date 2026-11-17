@@ -48,7 +48,18 @@ DELIVERY_LAYERS = (transiciones.evidence_equipo, dead_ball.ball_out)
 # versiones sin tocar este fichero.
 # Desde el 14/11 la evidencia de equipo es B5 de la apuesta B (`aprendida.evidence_b5`), que ganó con los
 # criterios fijados antes de medir (docs/decisiones.md). Antes era N1 (`candidates.evidence`).
-PIECES = {"ball": "clean", "candidates": "aprendida.evidence_b5", "dead_state": "evidence", "temporal": "decode"}
+# Desde el 16/11 el decodificador es `temporal.decode_cortas_a_d` (idea 1.3, PR 20): el Viterbi de `decode` y,
+# después, las posesiones cortas que vienen de un cambio directo y acaban en `D` pasan a `D`. Pasó las cuatro
+# condiciones del límite de daño, con el examen de SkillCorner, e Ismael decidió encenderlo (docs/decisiones.md,
+# «se enciende "cortas a D"»). Antes era `decode`.
+# Desde el 17/11 la evidencia de equipo es K2, el modelo conjunto (`aprendida.evidence_k2`, `possession/conjunto.py`):
+# cumplió los cuatro puntos de su regla, con el examen de SkillCorner y la entrega de prueba `prueba_k2`, y David decidió
+# encenderlo (docs/decisiones.md, «se enciende K2»). Antes era B5 (`aprendida.evidence_b5`).
+# Desde el 17/11 por la tarde es K3 (`aprendida.evidence_k3`, `possession/refinamientos.py`): la media a partes
+# iguales del logit de K2 y del de B5, puntuada como B5. Pasó su entrega de prueba frente a `equipo_v10` (C0 a C6) e
+# Ismael decidió encenderla (docs/decisiones.md, «se enciende K3»). Antes era K2 sola (`aprendida.evidence_k2`).
+PIECES = {"ball": "clean", "candidates": "aprendida.evidence_k3", "dead_state": "evidence",
+          "temporal": "decode_cortas_a_d"}
 MODULES = {"ball": ball, "candidates": candidates, "dead_state": dead_state, "temporal": temporal,
            "aprendida": aprendida}
 
@@ -126,7 +137,7 @@ def combine(pieces, n):
     return score, allowed, conflict
 
 
-def run(trk, extra=(), params=None, report=None, pieces=None):
+def run(trk, extra=(), params=None, report=None, pieces=None, cambios=None):
     """Etiquetas por frame (códigos de possession/tracking.py) a partir de un `Tracking`.
 
     `extra`: evidencias que se suman a las del tracking. Cada una es `(score, allowed)` ya calculada, o
@@ -138,6 +149,11 @@ def run(trk, extra=(), params=None, report=None, pieces=None):
     `pieces` cambia alguna pieza por otra función con la misma firma, para comparar versiones en el
     harness: un diccionario con claves de `PIECES` ("ball", "candidates", "dead_state" y "temporal"). Sin
     él van las de `PIECES` (`default_piece`), que son las de la entrega.
+
+    `cambios` (candidato del 16/11, apagado: docs/decisiones.md) es la rebaja del coste de cambiar de equipo en
+    cada frame, de forma (n, 2), o una función que recibe el tracking con el balón ya limpio y la devuelve
+    (`cambios.rebaja`). Con ella decodifica `temporal.decode_cambios`, salvo que `pieces` nombre otro
+    decodificador, que tiene que aceptar `bonus`. Con `None`, el valor por defecto, nada cambia.
 
     Si en algún frame evaluado las piezas se contradicen, da error. Con `report` (un diccionario) no da
     error: apunta el recuento en `report["conflictos"]` y sigue.
@@ -160,7 +176,11 @@ def run(trk, extra=(), params=None, report=None, pieces=None):
         report["conflictos"] = conflicts
     elif conflicts:
         raise ValueError("las piezas se contradicen en {} frames evaluados".format(conflicts))
-    return decode(score, allowed, trk.blocks, params)
+    if cambios is None:
+        return decode(score, allowed, trk.blocks, params)
+    if "temporal" not in pieces:
+        decode = temporal.decode_cambios
+    return decode(score, allowed, trk.blocks, params, bonus=cambios(trk) if callable(cambios) else cambios)
 
 
 def write_submission(path, codes):

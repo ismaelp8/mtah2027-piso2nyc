@@ -104,7 +104,8 @@ def comprobar_opciones(carpeta):
         comprobar("y llegan a la función: la prueba con el partido inventado la llama una vez", llamadas == [3.0])
         ruta = escribir(carpeta, json.dumps({"solo opciones": {"piezas": {"temporal": {"opciones": {}}}}}))
         version = puntuar.leer_versiones(ruta)[0]["solo opciones"]
-        comprobar("sin «funcion», la de siempre", version["piezas"]["temporal"] is temporal.decode)
+        comprobar("sin «funcion», la de la entrega («cortas a D» desde el 16/11)",
+                  version["piezas"]["temporal"] is temporal.decode_cortas_a_d)
         ruta = escribir(carpeta, json.dumps({"x": {"piezas": {"candidates": {"opciones": {}}}}}))
         comprobar("sin «funcion» ni «dejar_fuera», la de equipo de la entrega (B5, con «fuera») da error",
                   da_error(lambda: puntuar.leer_versiones(ruta)))
@@ -160,11 +161,13 @@ def comprobar_dejar_fuera(carpeta):
         comprobar("con «dejar_fuera», «fuera» en las opciones da error", da_error(lambda: puntuar.leer_versiones(ruta)))
         principal = versiones["main"]
         piezas = puntuar.piezas_para(principal.get("piezas"), principal.get("fuera"), "J03WMX")
-        comprobar("la versión que no nombra la pieza de equipo usa la de la entrega (B5) dejando fuera el partido",
+        comprobar("la versión que no nombra la pieza de equipo usa la de la entrega (K3 desde el 17/11) dejando "
+                  "fuera el partido",
                   isinstance(piezas.get("candidates"), functools.partial)
-                  and piezas["candidates"].func is aprendida.evidence_b5
+                  and piezas["candidates"].func is aprendida.evidence_k3
                   and piezas["candidates"].keywords == {"fuera": "J03WMX"})
-        comprobar("puntuar sin decir el partido la versión de main (B5 por defecto) da error",
+        comprobar("puntuar sin decir el partido la versión de main (la de la entrega, que deja fuera un partido) da "
+                  "error",
                   da_error(lambda: puntuar.ejecutar(principal, trk, gt, "oraculo")))
         # Un espía como pieza de la entrega: ejecutar le pasa el partido aunque la versión no la nombre, también
         # con las versiones de VERSIONES, que no llevan la clave «piezas».
