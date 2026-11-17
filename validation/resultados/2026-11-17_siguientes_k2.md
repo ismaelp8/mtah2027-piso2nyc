@@ -37,7 +37,8 @@ Para leerlo sin el resto del repo:
    - con balón, los dos están a 2 puntos o menos.
 
    En el partido falta el balón en el 41 % de lo evaluado.
-4. **K8, entrenar con la energía del decodificador:** ver la sección de K8.
+4. **K8, entrenar con la energía del decodificador, queda SIN MEDIR:** el PC se apagó durante el piloto. La regla y el
+   código están listos, y el comando para reanudar está en su sección.
 5. **Queda listo para la GPU** el comando que entrena y mide una ronda de 8 pliegues (`LISTO_PARA_GPU.md`).
 
 ## K6a: la media de los 8 juegos de pesos de K2, sin entrenar
@@ -86,7 +87,20 @@ Para leerlo sin el resto del repo:
 
 ## K8: entrenar con la energía del decodificador (piloto)
 
-[pendiente: se rellena con el resultado del piloto]
+**K8 queda SIN MEDIR.** La regla está escrita (`docs/decisiones.md`, 17/11, K8) y las comprobaciones de su código pasan,
+pero el piloto no llegó a hacerse.
+- **Hasta dónde llegó:** la K2 de la CPU del piloto (pliegue de `J03WMX`, semilla 20261126) iba por el paso 1.250 de
+  3.000. Su último punto de control es el del paso 1.000:
+  `~/mtah2027-datos-abiertos/conjunto_cache/puntos/k2cpu_s26_J03WMX.pt`. K8 no llegó a empezar.
+- **Por qué se cortó:** se apagó el PC a las 17:45 del 17/11. No es un fallo del entrenamiento: la pérdida bajaba con
+  normalidad.
+- **Para reanudar,** desde `validation/conjunto/` y con el entorno que tenga torch, primero la K2 (sigue desde el paso
+  1.000) y después K8:
+  `python entrenar_k8.py J03WMX --etiqueta k2cpu_s26 --lambda-crf 0 --semilla 20261126 --dispositivo cpu --columnas 33 --hilos 12`
+  `python entrenar_k8.py J03WMX --etiqueta k8_s26 --semilla 20261126 --dispositivo cpu --columnas 33 --hilos 12`
+  Después se pasan los dos a numpy (`juntar.py --etiqueta <etiqueta> --pliegues J03WMX --alfa 4 --destino
+  <conjunto_cache>/pesos_<etiqueta>.npz`) y se mide con
+  `python piloto_k8.py --k2-cpu pesos_k2cpu_s26.npz --k8 pesos_k8_s26.npz`.
 
 ## Las comprobaciones del instrumento y lo que pasó por el camino
 
