@@ -5822,3 +5822,9 @@ planificadora.
 Cumple 1 de las 4 celdas. Entrenar también con SkillCorner no mejora lo que ya daba B15 (+0,006 en las cuatro). En la
 misma ejecución, B15 repite exactamente sus números. Falta el harness de la DFL de B16, cuando acaben sus últimos
 pliegues.
+
+B17 (se prueba; `aprendida.evidence_b17`, apagada) es la media de los logits de B15 y B16, sin reentrenar.
+- α: la media geométrica de las α de los dos pliegues.
+- En SkillCorner `ENTRENAMIENTO`, B16 entra con el pliegue que no vio el partido.
+- Por qué: promediar dos redes suele dar resultados más estables partido a partido, que es lo que les falta en
+  SkillCorner para el «7 de 10».

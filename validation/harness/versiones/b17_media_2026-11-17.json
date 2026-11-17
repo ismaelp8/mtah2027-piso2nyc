@@ -1,0 +1,17 @@
+{
+  "main": {
+    "nota": "la entrega: B5 (aprendida.evidence_b5), dead_state y decode_cortas_a_d; el harness deja fuera el partido que puntúa"
+  },
+  "B15: B14 con la etiqueta de control": {
+    "nota": "docs/decisiones.md, 17/11, «B15»: referencia",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b15", "dejar_fuera": true}}
+  },
+  "B16: B15 con SkillCorner": {
+    "nota": "docs/decisiones.md, 17/11, «B16»: B15 entrenada también con SkillCorner ENTRENAMIENTO",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b16", "dejar_fuera": true}}
+  },
+  "B17: media de B15 y B16": {
+    "nota": "docs/decisiones.md, 17/11, «B17»: la media de los logits de B15 y B16, sin reentrenar; α, la media geométrica de las dos",
+    "piezas": {"candidates": {"funcion": "aprendida.evidence_b17", "dejar_fuera": true}}
+  }
+}

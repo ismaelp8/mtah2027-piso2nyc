@@ -473,6 +473,12 @@ def evidence_b16(trk, fuera=None):
     return trayectorias2.evidencia(trk, "b16", fuera, ruta=trayectorias2.PESOS_B16)
 
 
+def evidence_b17(trk, fuera=None):
+    """B17: la media de los logits de B15 y B16, sin reentrenar (17/11). Apagada."""
+    from possession import trayectorias2
+    return trayectorias2.evidencia_media(trk, fuera)
+
+
 # -- coeficientes: los escribe validation/apuesta_b/entrenar.py; no se editan a mano --------------------
 # >>> COEFICIENTES
 # Los escribe validation/apuesta_b/entrenar.py. «todos»: los 7 partidos de la DFL (la entrega); cada

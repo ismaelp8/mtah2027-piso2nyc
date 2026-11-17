@@ -36,7 +36,8 @@ UMBRAL = 0.005
 GANA_DE = 7
 MODOS = ("oraculo", "propio")
 CANDIDATOS = {"b11": aprendida.evidence_b11, "b12": aprendida.evidence_b12, "b13": aprendida.evidence_b13,
-              "b14": aprendida.evidence_b14, "b15": aprendida.evidence_b15, "b16": aprendida.evidence_b16}
+              "b14": aprendida.evidence_b14, "b15": aprendida.evidence_b15, "b16": aprendida.evidence_b16,
+              "b17": aprendida.evidence_b17}
 # B16 se entrenó con SkillCorner ENTRENAMIENTO: en esa mitad, cada partido se puntúa con el pliegue que no lo vio (scA para
 # los 5 primeros, scB para los otros 5). En EXAMEN, con el de todos.
 MITAD_SC = {id_: ("scA" if k < 5 else "scB") for k, id_ in enumerate(lc.ENTRENAMIENTO)}
@@ -47,6 +48,9 @@ def ejecutar(nombre, trk, gt, modo, id_=None):
     piezas = None if nombre == "main" else {"candidates": CANDIDATOS[nombre]}
     if nombre == "b16" and id_ in MITAD_SC:
         piezas = {"candidates": lambda t: aprendida.evidence_b16(t, fuera=MITAD_SC[id_])}
+    if nombre == "b17" and id_ in MITAD_SC:  # B15 con el modelo de los 7; B16 con el pliegue que no vio el partido
+        from possession import trayectorias2
+        piezas = {"candidates": lambda t: trayectorias2.evidencia_media(t, None, MITAD_SC[id_])}
     return pipeline.run(trk, extra=extra, pieces=piezas)
 
 

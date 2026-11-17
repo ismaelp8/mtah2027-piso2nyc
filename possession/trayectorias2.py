@@ -197,6 +197,24 @@ def logit(trk, p):
     return z
 
 
+def evidencia_media(trk, fuera=None, fuera_b16=None, alfa=None):
+    """B17 (17/11): la media de los logits de B15 y B16, puntuada como B5. Ninguna de las dos se reentrena.
+
+    `fuera` es el pliegue de B15 (un partido de la DFL o None); `fuera_b16`, el de B16 (por defecto el mismo; en
+    SkillCorner `ENTRENAMIENTO`, scA o scB). α: la media geométrica de las α de los dos pliegues, salvo que se pase.
+    """
+    p15 = pesos_de("b15", fuera, PESOS_B15)
+    p16 = pesos_de("b16", fuera if fuera_b16 is None else fuera_b16, PESOS_B16)
+    z = 0.5 * (logit(trk, p15) + logit(trk, p16))
+    if alfa is None:
+        alfa = float(np.sqrt(float(p15["alfa"]) * float(p16["alfa"])))
+    todos = aprendida.equipo_mas_cercano(trk)
+    cercano = np.full(len(trk.bx), -1, dtype=np.int8)
+    for inicio, fin in trk.blocks:
+        cercano[inicio:fin] = todos[inicio:fin]
+    return aprendida.puntuacion_de("b5", z, aprendida.balon_visible(trk), alfa, cercano)
+
+
 def evidencia(trk, modelo="b14", fuera=None, ruta=PESOS):
     p = pesos_de(modelo, fuera, ruta)
     z = logit(trk, p)
