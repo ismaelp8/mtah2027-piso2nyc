@@ -5924,3 +5924,34 @@ SkillCorner con pliegues que no vieran cada partido sin reentrenar K2. **El exam
   escritos antes (los siete de K2, C0 a C6, para que se comparen igual) y diciendo antes cómo se lee si la capa de los
   contraataques se queda casi sin efecto por la escala.
 - **Si no pasa:** B15–B17 se quedan cerrados y apagados.
+
+### 2026-11-17 · candidatos · B17, examen de SkillCorner: no pasa; la familia B15–B17 se queda cerrada y apagada
+
+Quién: Claude, con la regla de la entrada anterior commiteada antes (`70dd883`) y la autorización de la sesión
+planificadora. Comando: `python validation/secuencia/skillcorner.py --examen b17 --confirmo-el-unico-uso`, sobre
+`lector.EXAMEN` (10 partidos), con B15 y B16 de los modelos de todos. La cabecera de la salida dice «con el modelo de los 7
+partidos de la DFL»; el de B16 lleva además los 10 de `ENTRENAMIENTO`. Salida en
+`validation/secuencia/salidas/2026-11-17_skillcorner_examen_b17.md`.
+
+**Resultado [medido], frente a `main`:**
+
+| `D` | condición | `main` | B17 | diferencia [5–95 %] | gana en |
+|---|---|---|---|---|---|
+| de las etiquetas | «detectado» | 0,509 | 0,528 | +0,020 [+0,012 a +0,027] | 9 de 10 |
+| de las etiquetas | «detectado, suavizado» | 0,504 | 0,523 | +0,019 [+0,012 a +0,027] | 9 de 10 |
+| propio | «detectado» | 0,389 | 0,397 | +0,009 [+0,002 a +0,015] | 7 de 10 |
+| propio | «detectado, suavizado» | 0,384 | 0,392 | +0,008 [+0,001 a +0,015] | **6 de 10** |
+
+Posesiones: 2.289 frente a 2.283 de `main` (reales 3.152) con el `D` de las etiquetas y «detectado».
+
+**Con el umbral escrito antes** (+0,005 o más y 7 de 10, en las cuatro celdas): **no pasa.** Cumple tres celdas; falla
+«detectado, suavizado» con el `D` propio, que tiene el +0,005 (+0,008) pero gana en 6 de 10.
+
+**Decisión** (la escrita antes):
+- B15, B16 y B17 se quedan cerrados y apagados. `pipeline.PIECES` no cambia.
+- El examen queda usado para la familia B15–B17. No hay segunda apertura.
+
+Lectura [inferencia]:
+- En el examen, B17 gana más que en `ENTRENAMIENTO` (+0,008 a +0,020 frente a +0,002 a +0,016), y las cuatro celdas
+  tienen el intervalo por encima de cero. Falla por el número de partidos en una celda.
+- K2, en el mismo examen, sacó +0,021 a +0,028 (8 a 10 de 10).
