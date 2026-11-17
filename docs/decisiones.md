@@ -5806,3 +5806,13 @@ de control en todos los frames vivos. Frente a `main` [medido]:
 
 Estado: B15 apagada. Abrir su examen de SkillCorner y, si pasa, generar la entrega de prueba lo deciden Ismael y la
 planificadora.
+
+**B15, dos comprobaciones más** (descriptivas):
+- **Con los jugadores degradados como los del ATD** (`validation/apuesta_b/jugadores.py`, las tres variantes,
+  `..._jugadores_como_el_atd_b15.md`): frente a `main`, con control de +0,050 a +0,087 (7 de 7) y con el flag de +0,041 a
+  +0,054 (6 y 7 de 7). Aguanta, y gana más que con los jugadores limpios: se entrenó con copias degradadas.
+- **Escala** (`cambios_frente_a_main.py b15 --escala`): la media de |H − A| es 82, frente a 13 de B5, un cociente de 6,1 a
+  6,25.
+  - Si B15 entra, la capa de los contraataques (suma 8, pesada con la escala de B5) pesaría unas seis veces menos.
+  - Frente a `D`, B15 empuja como B5, así que el `D` no cambia por la escala.
+  - Una entrega de prueba lo vería en los 817 frames de esa capa.
