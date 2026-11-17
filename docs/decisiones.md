@@ -5337,3 +5337,130 @@ falsos, así que añaden posesiones que no existen. Va en la línea de la primer
 no el mecanismo.
 
 Descartado: probar otros umbrales o combinaciones en SkillCorner (sería elegir mirando).
+
+### 2026-11-17 · candidatos · modelo conjunto: los jugadores uno a uno, control y SkillCorner en el entrenamiento (candidatos y regla, antes de medir)
+
+Quién: lo pidió Ismael el 17/11 con un análisis de fuera sobre dónde cojeamos («Empieza a desarrollar un plan para
+resolverlo y ejecútalo»). Lo escribe Claude en la rama `exp/modelo-conjunto`, que sale de `main` en `ed49929`, antes
+de exportar, entrenar o medir nada.
+
+**Qué dice el análisis y qué se hace con cada punto:**
+
+| punto del análisis | qué se hace aquí |
+|---|---|
+| 1. Preguntar «¿dónde cambia?» y aprender el ritmo de los datos | una salida del modelo que dice «aquí cambia, y hacia quién» (candidato K1) |
+| 2. Un solo modelo que mire a los 22 jugadores en el tiempo | el modelo de abajo (candidato K2). **Sin el `D`** (ver «Lo que se deja fuera») |
+| 3. Decodificar para la métrica (riesgo mínimo) | solo si un candidato pasa los puntos 1 y 3 de la regla: S2 (16/11) midió que con la evidencia de B5 no sirve |
+| 4. El balón del vídeo con movimiento | no se hace aquí: necesita el vídeo del partido, su línea se paró con su propia regla (16/11) y hay una rama a medias (`claude/balon-video-v2`) |
+| 5. Preguntar a la organización qué regla usa | el repo oficial tiene los issues cerrados [medido: `gh issue list` responde «has disabled issues»], aunque el FAQ dice «Open an issue». Queda un borrador de correo en `validation/conjunto/pregunta_organizacion.md`; lo manda una persona |
+| 6. Probar en paquete y con más partidos | los candidatos se miden enteros (modelo y decodificador de `main`) y SkillCorner entra también en el entrenamiento, con cada partido puntuado por un modelo que no lo vio |
+
+**Por qué no repite lo cerrado ni lo que está en marcha:**
+- El detector de cambios de David (16/11) miraba el balón y el jugador más cercano de cada equipo en ±25 frames, con
+  árboles, solo en la DFL. Su techo es alto (+0,096 con control) y falló por precisión: de 10 a 16 avisos por minuto,
+  el 23–25 % buenos.
+- B11 y B12 (otra sesión, rama `claude/serene-lumiere-16245d`, en marcha) son redes de secuencia sobre 12 canales ya
+  agregados por frame, entrenadas solo en la DFL y solo donde el flag y control coinciden. La primera medida de B11
+  [medido por esa sesión, todavía sin subir]: +0,104 y +0,108 con el flag, +0,012 y +0,007 con control (4 de 7) y
+  −0,012 y −0,009 en SkillCorner con el `D` de las etiquetas. Es el patrón de siempre: más posesiones, gana con el
+  flag, empata con control y no se traslada a otro proveedor.
+- Lo que nadie ha probado, y es lo que se prueba aquí: (a) que el modelo reciba a cada jugador, no agregados; (b)
+  entrenar con las etiquetas de control en todos los frames vivos, para que aprenda a no cambiar con un toque sin
+  control; (c) entrenar también con SkillCorner, para que aguante otro proveedor; (d) una salida de cambios entrenada
+  junto a la de equipo.
+
+**El modelo** (fijado antes de entrenar; lo que puede tocar el piloto está más abajo):
+- **Entrada por jugador y frame** (14 números, todos con sumas, productos, divisiones, raíces y máximos: nada de
+  exponenciales, para que la predicción en numpy salga bit a bit igual en cualquier máquina). Cada jugador se mira en
+  el sistema de su equipo (el eje x apunta a la portería que ataca), así que cambiar los equipos de nombre no cambia
+  sus números:
+  - posición respecto al balón (2), tres núcleos racionales de la distancia al balón (1, 2,5 y 6 m, los radios de
+    B1) y la distancia con tope de 15 m;
+  - su velocidad (2) y su velocidad respecto a la del balón (2), por diferencia de ±2 frames; por encima de 12 m/s es
+    un cambio de slot y va a cero;
+  - cuánto se acerca al balón; su posición en el campo (2); y qué parte del grupo de 5 frames está presente.
+- **Entrada por frame:** balón visible, su velocidad, su distancia a la banda (pares) y su posición y velocidad en la
+  dirección de ataque del local (4, impares).
+- **A 5 Hz:** las entradas se promedian en grupos de 5 frames por tramo evaluado. El balón del ATD va suavizado 1 s y
+  SkillCorner viene de 10 fps: a 25 Hz no hay más información. Las salidas vuelven a 25 Hz por interpolación lineal
+  entre los centros de los grupos, como B12.
+- **Red, solo con ReLU:** una red pequeña por jugador (14 → 32 → 32), compartida; por equipo, la suma (dividida por
+  11) y el máximo de sus jugadores, más cuántos hay; después, una convolucional temporal de 40 canales con 6 bloques
+  residuales (núcleo 3, dilaciones 1 a 32: ve ±12,6 s). Unos 36.000 pesos.
+- **Antisimetría exacta,** como B11: cada salida impar es ½·(g(x) − g(x con los equipos cambiados)), y cada salida
+  par, ½·(g(x) + g(x cambiado)).
+- **Salidas:** z, el logit de `H` frente a `A`; dos logits de cambio, «hacia `H`» y «hacia `A`» (la clase de
+  `validation/cambios/comun.clases`: frames vivos a 12 o menos de un cambio directo); y un logit auxiliar del flag,
+  solo para entrenar.
+- **Etiquetas y pérdida:** entropía cruzada por grupo, en los frames vivos. z y los cambios, con control en la DFL y
+  con las etiquetas de SkillCorner; el auxiliar, con el flag de la DFL y peso 0,3. Los `D` entran como contexto y no
+  en la pérdida.
+- **Datos:** los 7 partidos de la DFL y los 10 de `lector.ENTRENAMIENTO` de SkillCorner, cada uno con el balón de
+  sus dos condiciones que votan. **`lector.EXAMEN` no se lee en ningún paso** (`exigir_solo_entrenamiento` en cada
+  lector).
+- **Aumentos hacia el ATD,** sorteados por trozo con semilla fija: el campo en espejo; el balón entre 0 y 5 frames
+  tarde (el ATD llega unos 4, 15/11); slots que faltan y un slot duplicado (en el partido un equipo tiene más de 11
+  slots en el 12,9 % de los frames, 16/11); un hueco más de balón de 1 a 4 s; y, en la DFL, el balón a la vista en
+  los `D` la mitad de las veces (`d_propio.con_balon_en_d`: en el ATD se ve en el 68 % de los frames de las ventanas
+  `SET PIECES`).
+- **Entrenamiento:** torch en la GPU, en un entorno aparte (`mtah2027-conjunto`); AdamW (tasa 2e-3, decaimiento
+  1e-4), 3.000 pasos de 32 trozos de 512 grupos (102 s), mitad de la DFL y mitad de SkillCorner; los 64 grupos de
+  cada borde no cuentan en la pérdida; semilla 20261117 más el índice del pliegue; sin parada temprana.
+- **Pliegues:** 7, y el de todos. El pliegue k deja fuera el partido k de la DFL y los partidos k y k + 7 de
+  `lector.ENTRENAMIENTO` (los que haya). Cada partido se puntúa con el pliegue que no lo vio. El de todos es el de la
+  entrega y el del examen.
+
+**Los dos candidatos,** frente a `main` (B5, `dead_state` y `decode_cortas_a_d` con coste 25):
+- **K1, la capa de cambios aprendida:** `main` más `cambios.capa(p, γ, 50, contra_d=True)`, con `p` las dos
+  probabilidades de cambio del modelo. Es el mecanismo de la segunda ronda de David (W = 50, contra el otro equipo,
+  sin rebaja), con otro detector. γ sale de (2, 4, 8).
+- **K2, el equipo del modelo en lugar de B5:** z puntuada como B5 (`aprendida.puntuacion_de("b5", z, visible, α,
+  cercano)`), sin capa. α sale de la rejilla de B5 (1/16 a 8).
+- **Cómo se eligen γ y α:** para cada partido de la DFL, el valor que más saca en los otros seis con sus salidas
+  fuera de muestra (media del `spellF1` de las dos convenciones, las dos condiciones que votan y los dos modos del
+  `D`); si empatan, el más pequeño. En SkillCorner y en la entrega, el elegido con los 7. No está anidado del todo,
+  como la rejilla del detector de cambios.
+
+**Regla de entrada: el límite de daño del 16/11, tal cual,** para cada candidato:
+1. **DFL con control:** +0,005 o más en las dos condiciones que votan, ganando en 6 de 7, con el `D` de las
+   etiquetas y con el propio.
+2. **SkillCorner** (solo si pasan 1 y 3): +0,005 o más con los 10 partidos de entrenamiento juntos y 7 de 10, en las
+   cuatro celdas, **cada partido con el pliegue que no lo vio**. Solo entonces se abre el examen, una vez y para un
+   solo candidato (si pasan los dos, el que más gana con control en la DFL; si empatan, K1, que no quita B5), con el
+   modelo de todos y el mismo umbral. Ismael dio el permiso el 16/11, una vez por candidato; el uso se apunta en
+   `validation/skillcorner/BITACORA.md`.
+3. **DFL con el flag:** no pierde más de 0,005 en ninguna celda. Además, con el `D` propio y el balón a la vista en
+   los `D`, tampoco pierde más de 0,005 con ninguna convención.
+4. **Entrega de prueba** frente a `equipo_v9`, con criterios de daño escritos antes de generarla. La ejecuta una
+   persona.
+
+**Sin voto (descriptivo):** lo que ve la salida de cambios fuera de muestra, con la medida de David (cambios vistos,
+avisos por minuto vivo y avisos buenos, umbral 0,5), para compararla con su detector; el acierto por frame; las
+posesiones predichas frente a las reales; y el resultado sin el partido del piloto.
+
+**El piloto.** Antes de entrenar los 8 pliegues se entrena uno solo (el que deja fuera `J03WMX` y dos partidos de
+SkillCorner) para ver que aprende. Mirando ese pliegue se pueden tocar: los pasos, la tasa, el tamaño de la red, los
+pesos de la pérdida, la fuerza de los aumentos y los errores del código. **No se tocan:** los candidatos, las
+etiquetas, los pliegues, las rejillas ni la regla. Lo que quede se fija en un commit antes de entrenar el resto, y esos
+tres partidos se dicen: sus resultados han servido para elegir.
+
+**Lo que se deja fuera, y por qué:**
+- **El `D` dentro del modelo.** El harness tapa el balón en todos los `D` de la DFL y SkillCorner casi no tiene
+  tracking en las paradas (S4): un modelo que ve el balón aprendería «sin balón, `D`», que en el ATD no vale. El `D`
+  sigue siendo de `dead_state` y `dead_ball`. Es la parte del punto 2 del análisis que no se prueba.
+- **Un decodificador nuevo.** Los dos candidatos entran por enchufes que ya existen y están probados, sin tocar
+  `pipeline.py`, `PIECES` ni `DELIVERY_LAYERS`.
+- **La predicción en numpy,** las pruebas de paridad y el fichero de pesos: solo para un candidato que pase 1 y 3.
+  Hasta entonces, las salidas del modelo se calculan con torch y se guardan fuera del repo.
+
+Avisado antes de medir:
+- **Circularidad:** las etiquetas de control salen de una regla de proximidad con el tracking limpio. Aquí pesa más
+  que en B5, porque se entrena con ellas en todos los frames. Por eso deciden también el flag (como límite) y
+  SkillCorner, cuyas etiquetas no son nuestras.
+- **Los precedentes** (la red de una capa, B9, el detector de cambios y B11) ganaron con el flag, empataron con control
+  y no pasaron SkillCorner. Si sale lo mismo, la regla lo cierra.
+- **Nada de esto se mide en el ATD.** Los jugadores del ATD (46 slots, sin identidad) no se parecen del todo a ninguno
+  de los dos proveedores; los aumentos lo acercan, pero no lo prueban.
+
+Estado: escrita antes de exportar, entrenar o medir. El piloto y el resultado van en las entradas siguientes.
+`pipeline.PIECES`, `DELIVERY_LAYERS` y la entrega (`equipo_v9`) no cambian.
